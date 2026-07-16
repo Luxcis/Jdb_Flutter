@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:provider/provider.dart';
+import 'package:jade/core/theme/app_theme.dart';
 import 'package:jade/providers/language_provider.dart';
 import 'package:jade/l10n/app_localizations.dart';
 import 'package:jade/features/home/home.dart';
@@ -15,25 +16,18 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
-    const defaultColorTheme = Colors.blue;
     final themeProvider = Provider.of<ThemeProvider>(context);
     final languageProvider = Provider.of<LanguageProvider>(context);
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
         return MaterialApp(
           title: 'Template',
-          theme: ThemeData(
-            colorScheme: lightDynamic ?? ColorScheme.fromSeed(
-              seedColor: defaultColorTheme,
-              brightness: Brightness.light,
-            ),
-          ),
-          darkTheme: ThemeData(
-            colorScheme: darkDynamic ?? ColorScheme.fromSeed(
-              seedColor: defaultColorTheme,
-              brightness: Brightness.dark,
-            ),
-          ),
+          theme: lightDynamic != null
+              ? ThemeData(colorScheme: lightDynamic)
+              : AppTheme.light(),
+          darkTheme: darkDynamic != null
+              ? ThemeData(colorScheme: darkDynamic)
+              : AppTheme.dark(),
           themeMode: themeProvider.themeMode,
           locale: languageProvider.language.toLocale(),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
