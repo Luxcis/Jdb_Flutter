@@ -1,6 +1,5 @@
-
 import 'package:flutter/material.dart';
-import 'package:jade/features/settings/settings.dart';
+import 'package:jade/features/settings/screens/settings_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -17,8 +16,9 @@ class _HomePageState extends State<HomePage> {
         icon: const Icon(Icons.settings),
         onPressed: () {
           Navigator.of(context).push(
-            MaterialPageRoute(builder:
-              (context) => const SettingsPage()),
+            MaterialPageRoute(
+              builder: (context) => const SettingsPage(),
+            ),
           );
         },
       ),

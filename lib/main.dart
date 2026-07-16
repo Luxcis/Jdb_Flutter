@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:provider/provider.dart';
 import 'package:jade/core/theme/app_theme.dart';
-import 'package:jade/providers/language_provider.dart';
-import 'package:jade/l10n/app_localizations.dart';
-import 'package:jade/features/home/home.dart';
-import 'package:jade/providers/theme_provider.dart';
+import 'package:jade/features/home/index.dart';
+import 'package:jade/core/providers/theme_provider.dart';
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -13,11 +11,11 @@ class MyApp extends StatefulWidget {
   @override
   State<StatefulWidget> createState() => _MyAppState();
 }
+
 class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-    final languageProvider = Provider.of<LanguageProvider>(context);
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
         return MaterialApp(
@@ -29,9 +27,6 @@ class _MyAppState extends State<MyApp> {
               ? ThemeData(colorScheme: darkDynamic)
               : AppTheme.dark(),
           themeMode: themeProvider.themeMode,
-          locale: languageProvider.language.toLocale(),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
           home: const HomePage(),
         );
       },
@@ -39,13 +34,11 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final themeProvider = await ThemeProvider.create();
   final entry = MultiProvider(
-    providers: [
-      ChangeNotifierProvider(create: (_) => ThemeProvider()),
-      ChangeNotifierProvider(create: (_) => LanguageProvider()),
-    ],
+    providers: [ChangeNotifierProvider.value(value: themeProvider)],
     child: const MyApp(),
   );
   runApp(entry);
