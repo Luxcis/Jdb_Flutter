@@ -1,0 +1,7612 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "JDB API",
+    "description": "JDB (JavDB) 移动版完整 API 规范（基于 Flutter APK 逆向分析）。\n\n## 签名机制 (jdsignature)\n\n所有请求必须携带 `jdsignature` 请求头，格式为：`{timestamp}.{d2}.{md5_hash}`\n\n### 签名生成步骤\n1. `timestamp` = 当前 Unix 时间戳（秒）\n2. `d1` = 硬编码的 128 字符十六进制字符串（从 libapp.so 逆向解密得到）\n3. `d2` = `\"lpw6vgqzsp\"`（从 libapp.so 逆向解密得到）\n4. `md5_hash` = MD5(`\"{timestamp}{d1}\"`)\n5. `jdsignature` = `\"{timestamp}.{d2}.{md5_hash}\"`\n\n### 逆向过程\n- `libsecurity.so` 的 `getSecret()` 返回 APK 签名证书 DER hex 前 5 字符 `\"30820\"`\n- `libapp.so` 中存储两个 Base64 编码的加密数组（s1, s2）\n- 解密算法：`md5_hex = MD5(secret)`，然后 `result[i] = arr[i] - ord(md5_hex[min(i,31)])`\n- 解密结果再做 Base64 解码即得 `d1` 和 `d2`\n\n## 认证方式\n- 登录 `POST /api/v1/sessions` 获取 Bearer Token（JWT）\n- 需认证的接口携带 `Authorization: Bearer <token>`\n\n## 自定义请求头\n- `jdsignature`: 动态签名（所有请求必须）\n- `authorization`: Bearer Token（需认证的接口）\n- `accept-language`: 语言（如 zh-CN）\n- `connection`: keep-alive\n\n## 统一响应格式\n```json\n{\n  \"success\": 1,\n  \"action\": null,\n  \"message\": null,\n  \"data\": {}\n}\n```\n`success` 为 1 表示成功，0 表示失败。`data` 可能是对象或数组。",
+    "version": "1.9.35-verified",
+    "contact": {
+      "name": "JDB"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://jdforrepam.com",
+      "description": "生产环境"
+    },
+    {
+      "url": "https://staging.letidi.com",
+      "description": "测试环境（代码默认值）"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Auth",
+      "description": "认证与注册（登录、注册、密码重置）"
+    },
+    {
+      "name": "User",
+      "description": "用户信息与操作（个人资料、收藏、浏览记录）"
+    },
+    {
+      "name": "Movie",
+      "description": "影片内容（最新、推荐、详情、播放、磁力）"
+    },
+    {
+      "name": "Search",
+      "description": "搜索（综合搜索、图片搜索、磁力搜索）"
+    },
+    {
+      "name": "Actor",
+      "description": "演员、导演、制作商、发行商"
+    },
+    {
+      "name": "Series",
+      "description": "系列与编号"
+    },
+    {
+      "name": "Ranking",
+      "description": "排行榜（播放排名、综合排名、演员排名）"
+    },
+    {
+      "name": "Review",
+      "description": "评论（热门评论、影片评论、用户评论）"
+    },
+    {
+      "name": "List",
+      "description": "影片单列（创建、编辑、收藏、相关）"
+    },
+    {
+      "name": "Tag",
+      "description": "标签关注（关注、取消关注、排序、批量）"
+    },
+    {
+      "name": "Collection",
+      "description": "收藏管理（演员、导演、制作商、系列、编号）"
+    },
+    {
+      "name": "Article",
+      "description": "文章"
+    },
+    {
+      "name": "Ad",
+      "description": "广告（开屏广告、首页广告）"
+    },
+    {
+      "name": "Wallet",
+      "description": "钱包与提现（收益、提现、绑定账户、银行列表）"
+    },
+    {
+      "name": "Payment",
+      "description": "会员套餐与支付（套餐、支付订单）"
+    },
+    {
+      "name": "Other",
+      "description": "其他（启动配置、帮助、调试、磁力应用）"
+    }
+  ],
+  "paths": {
+    "/api/v1/sessions": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "登录",
+        "description": "用户登录，验证用户名密码及设备信息后返回用户信息和 Bearer Token",
+        "responses": {
+          "200": {
+            "description": "登录成功，data 为 UserInfoEntity (含 Token)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserInfoEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "description": "登录请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "注册",
+        "description": "用户注册，需要邮箱、用户名、密码及设备信息",
+        "responses": {
+          "200": {
+            "description": "注册成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "description": "注册请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "获取用户信息",
+        "description": "获取当前登录用户信息",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 UserEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "app_channel",
+            "in": "query",
+            "description": "应用渠道",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/users/activate_registration": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "激活注册",
+        "description": "使用邮箱和激活码完成注册激活",
+        "responses": {
+          "200": {
+            "description": "激活成功，data 为 UserInfoEntity (含 Token)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserInfoEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "description": "激活注册请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivateRegistrationRequest"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/resend_activation_code": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "重发激活码",
+        "description": "重新发送注册激活码到邮箱",
+        "responses": {
+          "200": {
+            "description": "发送成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "description": "重发激活码请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailRequest"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/forgot_password": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "忘记密码(发送验证码)",
+        "description": "向指定邮箱发送密码重置验证码",
+        "responses": {
+          "200": {
+            "description": "发送成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "description": "忘记密码请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailRequest"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/reset_password": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "重置密码",
+        "description": "使用邮箱、验证码和新密码重置密码",
+        "responses": {
+          "200": {
+            "description": "重置成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "description": "重置密码请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/change_password": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "修改密码",
+        "description": "修改当前用户密码",
+        "responses": {
+          "200": {
+            "description": "修改成功，data 为 UserInfoEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserInfoEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "requestBody": {
+          "description": "修改密码请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/change_username": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "修改用户名",
+        "description": "修改当前用户名",
+        "responses": {
+          "200": {
+            "description": "修改成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "requestBody": {
+          "description": "修改用户名请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeUsernameRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/additional": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "获取用户附加信息",
+        "description": "获取当前用户附加信息（邀请码、推广统计等）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 UserInfoAdditionalEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserInfoAdditionalEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "User"
+        ],
+        "summary": "更新用户附加信息",
+        "description": "更新当前用户附加信息",
+        "responses": {
+          "200": {
+            "description": "更新成功，data 为 UserInfoAdditionalEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserInfoAdditionalEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/feedback": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "用户反馈",
+        "description": "提交用户反馈",
+        "responses": {
+          "200": {
+            "description": "提交成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "requestBody": {
+          "description": "用户反馈请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/startup": {
+      "get": {
+        "tags": [
+          "Other"
+        ],
+        "summary": "应用启动初始化",
+        "description": "获取应用启动初始化数据（公告、配置、开关等）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 StartupEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/StartupEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "platform",
+            "in": "query",
+            "description": "平台标识",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_channel",
+            "in": "query",
+            "description": "应用渠道",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_version",
+            "in": "query",
+            "description": "应用版本名",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_version_number",
+            "in": "query",
+            "description": "应用版本号",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/about": {
+      "get": {
+        "tags": [
+          "Other"
+        ],
+        "summary": "关于页面",
+        "description": "获取关于页面信息",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 AboutEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AboutEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_channel",
+            "in": "query",
+            "description": "应用渠道",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/helps": {
+      "get": {
+        "tags": [
+          "Other"
+        ],
+        "summary": "帮助文档列表",
+        "description": "获取帮助文档列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 PayHelpsEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/PayHelpsEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/movies/latest": {
+      "get": {
+        "tags": [
+          "Movie"
+        ],
+        "summary": "最新影片",
+        "description": "获取最新影片列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MovieEntity 或 SearchNewEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MovieEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "description": "类型筛选",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/movies/recommend": {
+      "get": {
+        "tags": [
+          "Movie"
+        ],
+        "summary": "推荐影片",
+        "description": "获取推荐影片（按周期）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MovieRecommendEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MovieRecommendEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "description": "推荐周期",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/movies/recommend_periods": {
+      "get": {
+        "tags": [
+          "Movie"
+        ],
+        "summary": "推荐周期",
+        "description": "获取可用的推荐周期列表",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 RecommendPeriodEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/RecommendPeriodEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/movies/top": {
+      "get": {
+        "tags": [
+          "Movie"
+        ],
+        "summary": "Top排行",
+        "description": "获取 Top 排行影片列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MovieEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MovieEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "description": "类型筛选",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "description": "年份",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/movies/may_also_like": {
+      "get": {
+        "tags": [
+          "Movie"
+        ],
+        "summary": "猜你喜欢",
+        "description": "获取猜你喜欢影片列表",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MovieEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MovieEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/movies/tags": {
+      "get": {
+        "tags": [
+          "Movie"
+        ],
+        "summary": "按标签获取影片",
+        "description": "按标签筛选影片列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MovieEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MovieEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "description": "类型筛选",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "description": "排序字段",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "description": "排序方向 (asc/desc)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v4/movies/{movie_id}": {
+      "get": {
+        "tags": [
+          "Movie"
+        ],
+        "summary": "影片详情(V4)",
+        "description": "获取影片完整详情信息 (V4 版本)",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MovieInfoEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MovieInfoEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "movie_id",
+            "in": "path",
+            "description": "影片 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/movies/{movie_id}/play": {
+      "get": {
+        "tags": [
+          "Movie"
+        ],
+        "summary": "获取播放信息",
+        "description": "获取影片 M3U8 播放地址等信息",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MovieM3u8Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MovieM3u8Entity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "movie_id",
+            "in": "path",
+            "description": "影片 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/movies/{movie_id}/resume_play": {
+      "get": {
+        "tags": [
+          "Movie"
+        ],
+        "summary": "恢复播放",
+        "description": "恢复影片播放（获取上次播放进度及播放地址）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MovieM3u8Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MovieM3u8Entity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "movie_id",
+            "in": "path",
+            "description": "影片 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/movies/{movie_id}/magnets": {
+      "get": {
+        "tags": [
+          "Movie"
+        ],
+        "summary": "获取磁力链接",
+        "description": "获取影片的磁力链接列表",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MagnetsEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MagnetsEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "movie_id",
+            "in": "path",
+            "description": "影片 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/movies/{movie_id}/reviews": {
+      "get": {
+        "tags": [
+          "Movie"
+        ],
+        "summary": "获取影片评论",
+        "description": "获取影片评论列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MovieCommentEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MovieCommentEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "movie_id",
+            "in": "path",
+            "description": "影片 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "description": "排序字段",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Movie"
+        ],
+        "summary": "创建影评",
+        "description": "为指定影片创建评论",
+        "responses": {
+          "200": {
+            "description": "创建成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "movie_id",
+            "in": "path",
+            "description": "影片 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "创建影评请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReviewRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/movies/{movie_id}/reviews/{review_id}": {
+      "put": {
+        "tags": [
+          "Movie"
+        ],
+        "summary": "更新影评",
+        "description": "更新指定影片的指定评论",
+        "responses": {
+          "200": {
+            "description": "更新成功，data 为 ReviewEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ReviewEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "movie_id",
+            "in": "path",
+            "description": "影片 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "review_id",
+            "in": "path",
+            "description": "评论 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "更新影评请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReviewRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/movies/{movie_id}/reviews/{review_id}/like": {
+      "post": {
+        "tags": [
+          "Movie"
+        ],
+        "summary": "评论点赞",
+        "description": "为指定评论点赞",
+        "responses": {
+          "200": {
+            "description": "点赞成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "movie_id",
+            "in": "path",
+            "description": "影片 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "review_id",
+            "in": "path",
+            "description": "评论 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/movies/{movie_id}/reviews/{review_id}/report": {
+      "post": {
+        "tags": [
+          "Movie"
+        ],
+        "summary": "评论举报",
+        "description": "举报指定评论",
+        "responses": {
+          "200": {
+            "description": "举报成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "movie_id",
+            "in": "path",
+            "description": "影片 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "review_id",
+            "in": "path",
+            "description": "评论 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v2/search": {
+      "get": {
+        "tags": [
+          "Search"
+        ],
+        "summary": "综合搜索",
+        "description": "综合搜索影片、演员等",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 SearchNewEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SearchNewEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "搜索关键词",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "类型筛选",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "description": "编号筛选",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v2/search_image": {
+      "get": {
+        "tags": [
+          "Search"
+        ],
+        "summary": "图片搜索",
+        "description": "以图搜片搜索",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 SearchEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SearchEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/search_magnet": {
+      "get": {
+        "tags": [
+          "Search"
+        ],
+        "summary": "磁力搜索",
+        "description": "搜索磁力链接",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MagnetsEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MagnetsEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "搜索关键词",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/actors": {
+      "get": {
+        "tags": [
+          "Actor"
+        ],
+        "summary": "演员列表",
+        "description": "获取演员列表",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 ActorEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ActorEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/actors/recommend": {
+      "get": {
+        "tags": [
+          "Actor"
+        ],
+        "summary": "推荐演员",
+        "description": "获取推荐演员列表",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 ActorRecommendEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ActorRecommendEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/actors/{actor_id}": {
+      "get": {
+        "tags": [
+          "Actor"
+        ],
+        "summary": "演员详情",
+        "description": "获取演员详情及其出演影片列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 ActorInfoEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ActorInfoEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "actor_id",
+            "in": "path",
+            "description": "演员 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "description": "排序字段",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "description": "排序方向 (asc/desc)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/actors/{actor_id}/collect_actions": {
+      "post": {
+        "tags": [
+          "Actor"
+        ],
+        "summary": "收藏/取消收藏演员",
+        "description": "收藏或取消收藏指定演员",
+        "responses": {
+          "200": {
+            "description": "操作成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "actor_id",
+            "in": "path",
+            "description": "演员 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "收藏演员请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CollectActorRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/actors/batch_uncollection": {
+      "post": {
+        "tags": [
+          "Actor"
+        ],
+        "summary": "批量取消收藏演员",
+        "description": "批量取消收藏演员",
+        "responses": {
+          "200": {
+            "description": "操作成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/directors": {
+      "get": {
+        "tags": [
+          "Actor"
+        ],
+        "summary": "导演列表",
+        "description": "获取导演列表",
+        "responses": {
+          "200": {
+            "description": "成功，data 为列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/directors/{director_id}": {
+      "get": {
+        "tags": [
+          "Actor"
+        ],
+        "summary": "导演详情",
+        "description": "获取导演详情",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MakerInfoEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MakerInfoEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "director_id",
+            "in": "path",
+            "description": "导演 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/directors/{director_id}/collect_actions": {
+      "post": {
+        "tags": [
+          "Actor"
+        ],
+        "summary": "收藏导演",
+        "description": "收藏指定导演",
+        "responses": {
+          "200": {
+            "description": "操作成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "director_id",
+            "in": "path",
+            "description": "导演 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/makers": {
+      "get": {
+        "tags": [
+          "Actor"
+        ],
+        "summary": "制作商列表",
+        "description": "获取制作商列表",
+        "responses": {
+          "200": {
+            "description": "成功，data 为列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/makers/{maker_id}": {
+      "get": {
+        "tags": [
+          "Actor"
+        ],
+        "summary": "制作商详情",
+        "description": "获取制作商详情",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MakerInfoEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MakerInfoEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "maker_id",
+            "in": "path",
+            "description": "制作商 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/makers/{maker_id}/collect_actions": {
+      "post": {
+        "tags": [
+          "Actor"
+        ],
+        "summary": "收藏制作商",
+        "description": "收藏指定制作商",
+        "responses": {
+          "200": {
+            "description": "操作成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "maker_id",
+            "in": "path",
+            "description": "制作商 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/publishers/{publisher_id}": {
+      "get": {
+        "tags": [
+          "Actor"
+        ],
+        "summary": "发行商详情",
+        "description": "获取发行商详情",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MakerInfoEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MakerInfoEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "publisher_id",
+            "in": "path",
+            "description": "发行商 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/series": {
+      "get": {
+        "tags": [
+          "Series"
+        ],
+        "summary": "系列列表",
+        "description": "获取系列列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 SeriesListEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SeriesListEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "类型筛选",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/series/{series_id}": {
+      "get": {
+        "tags": [
+          "Series"
+        ],
+        "summary": "系列详情",
+        "description": "获取系列详情",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MakerInfoEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MakerInfoEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "description": "系列 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/series/letters": {
+      "get": {
+        "tags": [
+          "Series"
+        ],
+        "summary": "系列字母索引",
+        "description": "获取系列 A-Z 字母索引",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 LettersListEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/LettersListEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/series/{series_id}/collect_actions": {
+      "post": {
+        "tags": [
+          "Series"
+        ],
+        "summary": "收藏系列",
+        "description": "收藏指定系列",
+        "responses": {
+          "200": {
+            "description": "操作成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "description": "系列 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/codes/{code_id}": {
+      "get": {
+        "tags": [
+          "Series"
+        ],
+        "summary": "编号详情",
+        "description": "获取编号详情",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MakerInfoEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MakerInfoEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "code_id",
+            "in": "path",
+            "description": "编号 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/codes/{code_id}/collect_actions": {
+      "post": {
+        "tags": [
+          "Series"
+        ],
+        "summary": "收藏编号",
+        "description": "收藏指定编号",
+        "responses": {
+          "200": {
+            "description": "操作成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code_id",
+            "in": "path",
+            "description": "编号 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/rankings": {
+      "get": {
+        "tags": [
+          "Ranking"
+        ],
+        "summary": "综合排名",
+        "description": "获取影片综合排名",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MovieEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MovieEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "description": "类型筛选",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "description": "排名周期",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/rankings/actors": {
+      "get": {
+        "tags": [
+          "Ranking"
+        ],
+        "summary": "演员排名",
+        "description": "获取演员排名",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 ActorEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ActorEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "description": "类型筛选",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "description": "排名周期",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/rankings/playback": {
+      "get": {
+        "tags": [
+          "Ranking"
+        ],
+        "summary": "播放排名",
+        "description": "获取播放排名",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 SearchNewEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SearchNewEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "description": "排名周期",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/reviews/hotly": {
+      "get": {
+        "tags": [
+          "Review"
+        ],
+        "summary": "热门评论",
+        "description": "获取热门评论列表",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MovieCommentEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MovieCommentEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "description": "周期",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Review"
+        ],
+        "summary": "热门评论点赞",
+        "description": "为热门评论点赞",
+        "responses": {
+          "200": {
+            "description": "点赞成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v2/users/{user_id}/reviews": {
+      "get": {
+        "tags": [
+          "Review"
+        ],
+        "summary": "用户评论列表",
+        "description": "获取指定用户的评论列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MovieCommentEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MovieCommentEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "用户 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "description": "排序字段",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v2/users/review_movies": {
+      "get": {
+        "tags": [
+          "Review"
+        ],
+        "summary": "已评价电影",
+        "description": "获取当前用户已评价的电影列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MovieEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MovieEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "评论状态",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "类型筛选",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "description": "排序字段",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "description": "排序方向 (asc/desc)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/lists": {
+      "get": {
+        "tags": [
+          "List"
+        ],
+        "summary": "片单列表",
+        "description": "获取片单列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MovieListsEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MovieListsEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "sort_by",
+            "in": "query",
+            "description": "排序字段",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "List"
+        ],
+        "summary": "创建片单",
+        "description": "创建新片单",
+        "responses": {
+          "200": {
+            "description": "创建成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "requestBody": {
+          "description": "创建片单请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateListRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lists/simple": {
+      "get": {
+        "tags": [
+          "List"
+        ],
+        "summary": "简版片单",
+        "description": "获取简版片单列表",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MovieListsEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MovieListsEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/lists/related": {
+      "get": {
+        "tags": [
+          "List"
+        ],
+        "summary": "相关片单",
+        "description": "获取相关片单列表",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MovieListsEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MovieListsEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/lists/{list_id}": {
+      "get": {
+        "tags": [
+          "List"
+        ],
+        "summary": "片单详情",
+        "description": "获取片单详情（含影片列表）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MovieListsInfoEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MovieListsInfoEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "list_id",
+            "in": "path",
+            "description": "片单 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "List"
+        ],
+        "summary": "更新片单",
+        "description": "更新片单名称",
+        "responses": {
+          "200": {
+            "description": "更新成功，data 为 BaseEntity 或 MovieListsInfoEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MovieListsInfoEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "list_id",
+            "in": "path",
+            "description": "片单 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "更新片单请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateListRequest"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "List"
+        ],
+        "summary": "删除片单",
+        "description": "删除指定片单",
+        "responses": {
+          "200": {
+            "description": "删除成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "list_id",
+            "in": "path",
+            "description": "片单 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/lists/{list_id}/collect_actions": {
+      "post": {
+        "tags": [
+          "List"
+        ],
+        "summary": "收藏片单",
+        "description": "收藏指定片单",
+        "responses": {
+          "200": {
+            "description": "操作成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "list_id",
+            "in": "path",
+            "description": "片单 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/lists/{list_id}/movie_actions": {
+      "post": {
+        "tags": [
+          "List"
+        ],
+        "summary": "添加/移除影片",
+        "description": "向片单添加或从中移除影片",
+        "responses": {
+          "200": {
+            "description": "操作成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "list_id",
+            "in": "path",
+            "description": "片单 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "添加/移除影片请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListMovieActionRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/tags": {
+      "get": {
+        "tags": [
+          "Tag"
+        ],
+        "summary": "标签列表",
+        "description": "获取标签列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 TagsEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/TagsEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/following_tags": {
+      "post": {
+        "tags": [
+          "Tag"
+        ],
+        "summary": "关注标签",
+        "description": "关注一个标签",
+        "responses": {
+          "200": {
+            "description": "关注成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "requestBody": {
+          "description": "关注标签请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowTagRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/following_tags/{tag_id}": {
+      "delete": {
+        "tags": [
+          "Tag"
+        ],
+        "summary": "取消关注标签",
+        "description": "取消关注指定标签",
+        "responses": {
+          "200": {
+            "description": "取消成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tag_id",
+            "in": "path",
+            "description": "标签 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/following_tags/{tag_id}/sort": {
+      "put": {
+        "tags": [
+          "Tag"
+        ],
+        "summary": "更新标签排序",
+        "description": "更新已关注标签的排序优先级",
+        "responses": {
+          "200": {
+            "description": "更新成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tag_id",
+            "in": "path",
+            "description": "标签 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "更新排序请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTagSortRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/following_tags/batch_push": {
+      "post": {
+        "tags": [
+          "Tag"
+        ],
+        "summary": "批量关注标签",
+        "description": "批量关注多个标签",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 FollowTagAllEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/FollowTagAllEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "requestBody": {
+          "description": "批量关注标签请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchFollowTagRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/following_tags/batch_destroy": {
+      "post": {
+        "tags": [
+          "Tag"
+        ],
+        "summary": "批量取消关注",
+        "description": "批量取消关注标签",
+        "responses": {
+          "200": {
+            "description": "操作成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/collected_actors": {
+      "get": {
+        "tags": [
+          "Collection"
+        ],
+        "summary": "收藏的演员",
+        "description": "获取当前用户收藏的演员列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 ActorEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ActorEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/users/collected_codes": {
+      "get": {
+        "tags": [
+          "Collection"
+        ],
+        "summary": "收藏的编号",
+        "description": "获取当前用户收藏的编号列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 CollectEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/CollectEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/users/collected_directors": {
+      "get": {
+        "tags": [
+          "Collection"
+        ],
+        "summary": "收藏的导演",
+        "description": "获取当前用户收藏的导演列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 CollectEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/CollectEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/users/collected_lists": {
+      "get": {
+        "tags": [
+          "Collection"
+        ],
+        "summary": "收藏的片单",
+        "description": "获取当前用户收藏的片单列表",
+        "responses": {
+          "200": {
+            "description": "成功，data 为列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/collected_makers": {
+      "get": {
+        "tags": [
+          "Collection"
+        ],
+        "summary": "收藏的制作商",
+        "description": "获取当前用户收藏的制作商列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 CollectEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/CollectEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/users/collected_series": {
+      "get": {
+        "tags": [
+          "Collection"
+        ],
+        "summary": "收藏的系列",
+        "description": "获取当前用户收藏的系列列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 CollectEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/CollectEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/users/recent_viewed": {
+      "get": {
+        "tags": [
+          "Collection"
+        ],
+        "summary": "最近浏览",
+        "description": "获取当前用户最近浏览的影片列表",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MovieEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MovieEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/articles": {
+      "get": {
+        "tags": [
+          "Article"
+        ],
+        "summary": "文章列表",
+        "description": "获取文章列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 ArticleListEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ArticleListEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/articles/{article_id}": {
+      "get": {
+        "tags": [
+          "Article"
+        ],
+        "summary": "文章详情",
+        "description": "获取文章详情",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 ArticleEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ArticleEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "article_id",
+            "in": "path",
+            "description": "文章 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ads": {
+      "get": {
+        "tags": [
+          "Ad"
+        ],
+        "summary": "广告配置",
+        "description": "获取广告配置",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 HomeAdEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/HomeAdEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ads/splash_log": {
+      "get": {
+        "tags": [
+          "Ad"
+        ],
+        "summary": "开屏广告日志",
+        "description": "上报开屏广告展示日志",
+        "responses": {
+          "200": {
+            "description": "成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/wallets": {
+      "get": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "钱包信息",
+        "description": "获取钱包收益信息（余额、累计收益等）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 EarningsEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/EarningsEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/wallets/rebate_logs": {
+      "get": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "返利记录",
+        "description": "获取返利记录列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 RebateLogsEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/RebateLogsEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/wallets/withdraw_logs": {
+      "get": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "提现记录",
+        "description": "获取提现记录列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 WithdrawLogsEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/WithdrawLogsEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v2/wallets/withdraw": {
+      "post": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "发起提现(V2)",
+        "description": "发起提现请求 (V2)",
+        "responses": {
+          "200": {
+            "description": "操作成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "requestBody": {
+          "description": "发起提现请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WithdrawRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallets/bind_withdraw_account": {
+      "post": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "绑定提现账户",
+        "description": "绑定提现账户（USDT 或银行卡）",
+        "responses": {
+          "200": {
+            "description": "绑定成功，data 为 EarningsEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/EarningsEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "requestBody": {
+          "description": "绑定提现账户请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BindWithdrawAccountRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallets/unbind_withdraw_account/{account_id}": {
+      "delete": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "解绑提现账户",
+        "description": "解绑指定提现账户",
+        "responses": {
+          "200": {
+            "description": "解绑成功，data 为 BindWithdrawAccountsEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BindWithdrawAccountsEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "description": "账户 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/wallets/binded_withdraw_accounts": {
+      "get": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "已绑定账户",
+        "description": "获取已绑定的提现账户列表",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 BindWithdrawAccountsEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BindWithdrawAccountsEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/wallets/sfpay_banks": {
+      "get": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "银行列表",
+        "description": "获取 SFPay 渠道支持的银行列表",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 BanksEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BanksEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/wallets/usdt_chain_types": {
+      "get": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "USDT链类型",
+        "description": "获取 USDT 支持的链类型列表",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 ChainTypesEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChainTypesEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/wallets/send_verification_email": {
+      "post": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "发送验证邮件",
+        "description": "发送钱包操作验证邮件",
+        "responses": {
+          "200": {
+            "description": "发送成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/wallets/verify_email": {
+      "post": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "验证邮箱",
+        "description": "验证邮箱验证码",
+        "responses": {
+          "200": {
+            "description": "验证成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "requestBody": {
+          "description": "验证邮箱请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v3/plans": {
+      "get": {
+        "tags": [
+          "Payment"
+        ],
+        "summary": "会员套餐(V3)",
+        "description": "获取会员套餐列表 (V3)",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 PayPlansEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/PayPlansEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "platform",
+            "in": "query",
+            "description": "平台标识",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_channel",
+            "in": "query",
+            "description": "应用渠道",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_version",
+            "in": "query",
+            "description": "应用版本",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v4/plans": {
+      "get": {
+        "tags": [
+          "Payment"
+        ],
+        "summary": "会员套餐(V4)",
+        "description": "获取会员套餐列表 (V4)",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 PayPlansEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/PayPlansEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "platform",
+            "in": "query",
+            "description": "平台标识",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_channel",
+            "in": "query",
+            "description": "应用渠道",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_version",
+            "in": "query",
+            "description": "应用版本",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v2/plans/payment_order": {
+      "post": {
+        "tags": [
+          "Payment"
+        ],
+        "summary": "创建支付订单(V2)",
+        "description": "创建支付订单 (V2)",
+        "responses": {
+          "200": {
+            "description": "创建成功，data 为 PayOrderEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/PayOrderEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "requestBody": {
+          "description": "创建支付订单请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePaymentOrderRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v3/plans/payment_order": {
+      "post": {
+        "tags": [
+          "Payment"
+        ],
+        "summary": "创建支付订单(V3)",
+        "description": "创建支付订单 (V3)",
+        "responses": {
+          "200": {
+            "description": "创建成功，data 为 PayOrderEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/PayOrderEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "requestBody": {
+          "description": "创建支付订单请求体",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePaymentOrderRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/magnet_apps": {
+      "get": {
+        "tags": [
+          "Other"
+        ],
+        "summary": "磁力应用",
+        "description": "获取推荐的磁力下载应用列表",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 MagnetsAppEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/MagnetsAppEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/logs/movie_played": {
+      "get": {
+        "tags": [
+          "Other"
+        ],
+        "summary": "播放记录上报",
+        "description": "上报影片播放记录",
+        "responses": {
+          "200": {
+            "description": "上报成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v2/logs/activated": {
+      "get": {
+        "tags": [
+          "Other"
+        ],
+        "summary": "激活日志",
+        "description": "上报应用激活日志",
+        "responses": {
+          "200": {
+            "description": "上报成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/transaction_logs": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "交易记录",
+        "description": "获取当前用户交易记录列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 TransactionEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/TransactionEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/users/promotion_logs": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "推广记录",
+        "description": "获取当前用户推广记录列表（分页）",
+        "responses": {
+          "200": {
+            "description": "成功，data 为 PromotionLogsEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseEntity"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/PromotionLogsEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/users/unpaid_tickets": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "未支付订单",
+        "description": "获取当前用户未支付订单",
+        "responses": {
+          "200": {
+            "description": "成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    },
+    "/api/v1/debug_logging": {
+      "get": {
+        "tags": [
+          "Other"
+        ],
+        "summary": "调试日志开关",
+        "description": "获取调试日志开关状态",
+        "responses": {
+          "200": {
+            "description": "成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jdsignature": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "通过 POST /api/v1/sessions 登录获取的 Bearer Token"
+      },
+      "jdsignature": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "jdsignature",
+        "description": "动态签名，格式: {timestamp}.{d2}.{md5(timestamp+d1)}"
+      }
+    },
+    "schemas": {
+      "BaseEntity": {
+        "type": "object",
+        "description": "统一响应格式信封。success 为 1 表示成功，0 表示失败；action 为后续动作提示；message 为提示消息；data 为具体业务数据（对象或数组，具体结构参见各端点说明）。",
+        "properties": {
+          "success": {
+            "type": "integer",
+            "description": "成功标志：1 成功，0 失败",
+            "example": 1
+          },
+          "action": {
+            "type": "string",
+            "nullable": true,
+            "description": "后续动作提示，可能为 null",
+            "example": null
+          },
+          "message": {
+            "type": "string",
+            "description": "提示消息",
+            "example": "success"
+          },
+          "data": {
+            "type": "object",
+            "description": "业务数据，具体结构参见各端点说明；可能是对象或数组"
+          }
+        },
+        "required": [
+          "success",
+          "message"
+        ]
+      },
+      "DeviceInfo": {
+        "type": "object",
+        "description": "设备与应用信息，用于登录、注册等需要设备指纹的请求",
+        "properties": {
+          "device_uuid": {
+            "type": "string",
+            "description": "设备唯一标识"
+          },
+          "device_name": {
+            "type": "string",
+            "description": "设备名称"
+          },
+          "device_model": {
+            "type": "string",
+            "description": "设备型号"
+          },
+          "platform": {
+            "type": "string",
+            "description": "平台标识 (android / ios)"
+          },
+          "system_version": {
+            "type": "string",
+            "description": "操作系统版本"
+          },
+          "app_channel": {
+            "type": "string",
+            "description": "应用渠道"
+          },
+          "app_version": {
+            "type": "string",
+            "description": "应用版本名"
+          },
+          "app_version_number": {
+            "type": "string",
+            "description": "应用版本号"
+          }
+        }
+      },
+      "LoginRequest": {
+        "description": "登录请求体",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DeviceInfo"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "username": {
+                "type": "string",
+                "description": "用户名或邮箱"
+              },
+              "password": {
+                "type": "string",
+                "description": "密码",
+                "format": "password"
+              }
+            },
+            "required": [
+              "username",
+              "password",
+              "device_uuid",
+              "device_name",
+              "device_model",
+              "platform",
+              "system_version",
+              "app_channel",
+              "app_version",
+              "app_version_number"
+            ]
+          }
+        ]
+      },
+      "RegisterRequest": {
+        "description": "注册请求体",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DeviceInfo"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string",
+                "format": "email",
+                "description": "邮箱"
+              },
+              "username": {
+                "type": "string",
+                "description": "用户名"
+              },
+              "password": {
+                "type": "string",
+                "format": "password",
+                "description": "密码"
+              }
+            },
+            "required": [
+              "email",
+              "username",
+              "password",
+              "device_uuid",
+              "device_name",
+              "device_model",
+              "platform",
+              "system_version",
+              "app_channel",
+              "app_version",
+              "app_version_number"
+            ]
+          }
+        ]
+      },
+      "ActivateRegistrationRequest": {
+        "description": "激活注册请求体",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DeviceInfo"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string",
+                "format": "email",
+                "description": "邮箱"
+              },
+              "code": {
+                "type": "string",
+                "description": "激活码"
+              }
+            },
+            "required": [
+              "email",
+              "code",
+              "device_uuid",
+              "device_name",
+              "device_model",
+              "platform",
+              "system_version",
+              "app_channel",
+              "app_version",
+              "app_version_number"
+            ]
+          }
+        ]
+      },
+      "EmailRequest": {
+        "type": "object",
+        "description": "仅含邮箱的请求体（重发激活码、忘记密码等）",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "邮箱"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "description": "重置密码请求体",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "邮箱"
+          },
+          "code": {
+            "type": "string",
+            "description": "验证码"
+          },
+          "new_password": {
+            "type": "string",
+            "format": "password",
+            "description": "新密码"
+          }
+        },
+        "required": [
+          "email",
+          "code",
+          "new_password"
+        ]
+      },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "description": "修改密码请求体",
+        "properties": {
+          "new_password": {
+            "type": "string",
+            "format": "password",
+            "description": "新密码"
+          }
+        },
+        "required": [
+          "new_password"
+        ]
+      },
+      "ChangeUsernameRequest": {
+        "type": "object",
+        "description": "修改用户名请求体",
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "新用户名"
+          }
+        },
+        "required": [
+          "username"
+        ]
+      },
+      "FeedbackRequest": {
+        "type": "object",
+        "description": "用户反馈请求体",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "description": "平台标识"
+          },
+          "app_version_number": {
+            "type": "string",
+            "description": "应用版本号"
+          },
+          "device_uuid": {
+            "type": "string",
+            "description": "设备唯一标识"
+          },
+          "device_model": {
+            "type": "string",
+            "description": "设备型号"
+          },
+          "system_version": {
+            "type": "string",
+            "description": "系统版本"
+          },
+          "app_channel": {
+            "type": "string",
+            "description": "应用渠道"
+          },
+          "content": {
+            "type": "string",
+            "description": "反馈内容"
+          }
+        },
+        "required": [
+          "platform",
+          "app_version_number",
+          "device_uuid",
+          "device_model",
+          "system_version",
+          "app_channel",
+          "content"
+        ]
+      },
+      "CreateReviewRequest": {
+        "type": "object",
+        "description": "创建/更新影评请求体",
+        "properties": {
+          "score": {
+            "type": "integer",
+            "description": "评分"
+          },
+          "content": {
+            "type": "string",
+            "description": "评论内容"
+          },
+          "status": {
+            "type": "string",
+            "description": "状态 (public/private 等)"
+          }
+        },
+        "required": [
+          "score",
+          "content",
+          "status"
+        ]
+      },
+      "CollectActorRequest": {
+        "type": "object",
+        "description": "收藏演员请求体",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "演员名称"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "CreateListRequest": {
+        "type": "object",
+        "description": "创建片单请求体",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "片单名称"
+          },
+          "movie_id": {
+            "type": "string",
+            "description": "影片 ID"
+          }
+        },
+        "required": [
+          "name",
+          "movie_id"
+        ]
+      },
+      "UpdateListRequest": {
+        "type": "object",
+        "description": "更新片单请求体",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "片单名称"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "ListMovieActionRequest": {
+        "type": "object",
+        "description": "片单添加/移除影片请求体",
+        "properties": {
+          "movie_id": {
+            "type": "string",
+            "description": "影片 ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "片单名称"
+          }
+        },
+        "required": [
+          "movie_id",
+          "name"
+        ]
+      },
+      "FollowTagRequest": {
+        "type": "object",
+        "description": "关注标签请求体",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "标签名称"
+          },
+          "value": {
+            "type": "string",
+            "description": "标签值"
+          }
+        },
+        "required": [
+          "name",
+          "value"
+        ]
+      },
+      "BatchFollowTagRequest": {
+        "type": "object",
+        "description": "批量关注标签请求体",
+        "properties": {
+          "tags": {
+            "type": "array",
+            "description": "标签列表",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "标签名称"
+                },
+                "value": {
+                  "type": "string",
+                  "description": "标签值"
+                },
+                "priority": {
+                  "type": "integer",
+                  "description": "优先级排序"
+                }
+              },
+              "required": [
+                "name",
+                "value"
+              ]
+            }
+          }
+        },
+        "required": [
+          "tags"
+        ]
+      },
+      "UpdateTagSortRequest": {
+        "type": "object",
+        "description": "更新标签排序请求体",
+        "properties": {
+          "priority": {
+            "type": "integer",
+            "description": "优先级排序值"
+          }
+        },
+        "required": [
+          "priority"
+        ]
+      },
+      "WithdrawRequest": {
+        "type": "object",
+        "description": "发起提现请求体 (V2)",
+        "properties": {
+          "device_uuid": {
+            "type": "string",
+            "description": "设备唯一标识"
+          },
+          "platform": {
+            "type": "string",
+            "description": "平台标识"
+          }
+        },
+        "required": [
+          "device_uuid",
+          "platform"
+        ]
+      },
+      "BindWithdrawAccountRequest": {
+        "type": "object",
+        "description": "绑定提现账户请求体",
+        "properties": {
+          "chain_type": {
+            "type": "string",
+            "description": "链类型 (如 TRC20/ERC20)"
+          },
+          "account": {
+            "type": "string",
+            "description": "账户地址"
+          },
+          "device_uuid": {
+            "type": "string",
+            "description": "设备唯一标识"
+          },
+          "platform": {
+            "type": "string",
+            "description": "平台标识"
+          },
+          "bank_id": {
+            "type": "string",
+            "description": "银行 ID"
+          }
+        },
+        "required": [
+          "chain_type",
+          "account",
+          "device_uuid",
+          "platform"
+        ]
+      },
+      "VerifyEmailRequest": {
+        "type": "object",
+        "description": "验证邮箱请求体",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "验证码"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "CreatePaymentOrderRequest": {
+        "type": "object",
+        "description": "创建支付订单请求体",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "description": "平台标识"
+          },
+          "app_channel": {
+            "type": "string",
+            "description": "应用渠道"
+          },
+          "app_version": {
+            "type": "string",
+            "description": "应用版本"
+          }
+        },
+        "required": [
+          "platform",
+          "app_channel",
+          "app_version"
+        ]
+      },
+      "UserInfoEntity": {
+        "type": "object",
+        "description": "用户信息实体（登录后返回），包含用户基本信息与认证 Token",
+        "additionalProperties": true,
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "token": {
+            "type": "string",
+            "description": "认证Token"
+          },
+          "banner_type": {
+            "type": "string",
+            "description": "横幅类型"
+          },
+          "following_tags": {
+            "type": "array",
+            "description": "已关注标签",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "UserEntity": {
+        "type": "object",
+        "description": "用户信息实体（GET /api/v1/users 返回），包含用户基本信息",
+        "additionalProperties": true,
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "banner_type": {
+            "type": "string",
+            "description": "横幅类型"
+          }
+        }
+      },
+      "UserInfoAdditionalEntity": {
+        "type": "object",
+        "description": "用户附加信息实体（邀请码、推广统计等）",
+        "additionalProperties": true,
+        "properties": {
+          "reports_count": {
+            "type": "integer",
+            "description": "举报数"
+          },
+          "deleted_comments_count": {
+            "type": "integer",
+            "description": "被删评论数"
+          },
+          "muted_count": {
+            "type": "integer",
+            "description": "禁言数"
+          },
+          "max_muted_count": {
+            "type": "integer",
+            "description": "最大禁言数"
+          },
+          "uncorrected_count": {
+            "type": "integer",
+            "description": "未纠正数"
+          },
+          "corrections_count": {
+            "type": "integer",
+            "description": "纠正数"
+          }
+        }
+      },
+      "StartupEntity": {
+        "type": "object",
+        "description": "应用启动初始化数据（公告、配置、开关等）",
+        "additionalProperties": true,
+        "properties": {
+          "backup_domains_data": {
+            "type": "array",
+            "description": "备用域名数据",
+            "items": {
+              "type": "object"
+            }
+          },
+          "recent_keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "最近搜索关键词"
+          },
+          "recent_magnet_keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "最近磁力搜索关键词"
+          },
+          "settings": {
+            "type": "object",
+            "description": "应用设置"
+          },
+          "logging_enabled": {
+            "type": "boolean",
+            "description": "是否启用日志"
+          },
+          "recognize_actor_enabled": {
+            "type": "boolean",
+            "description": "是否启用演员识别"
+          },
+          "recognize_movie_enabled": {
+            "type": "boolean",
+            "description": "是否启用影片识别"
+          },
+          "ypay_payment_enabled": {
+            "type": "boolean",
+            "description": "是否启用Y支付"
+          },
+          "splash_ad": {
+            "type": "object",
+            "description": "开屏广告"
+          },
+          "feedback": {
+            "type": "object",
+            "description": "反馈信息"
+          },
+          "user": {
+            "type": "object",
+            "description": "用户信息"
+          }
+        }
+      },
+      "AboutEntity": {
+        "type": "array",
+        "description": "关于页面信息（数组套数组，外层数组每个元素为内层数组，内层数组每项含 name/meta/url）",
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "应用名称"
+              },
+              "meta": {
+                "type": "string",
+                "description": "元信息"
+              },
+              "url": {
+                "type": "string",
+                "description": "网址"
+              }
+            }
+          }
+        }
+      },
+      "PayHelpsEntity": {
+        "type": "object",
+        "description": "帮助文档列表（分页）",
+        "additionalProperties": true,
+        "properties": {
+          "helps": {
+            "type": "array",
+            "description": "帮助项列表",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "MovieEntity": {
+        "type": "object",
+        "description": "影片列表实体（分页），用于最新影片、Top 排行、猜你喜欢、标签筛选等",
+        "additionalProperties": true,
+        "properties": {
+          "movies": {
+            "type": "array",
+            "description": "影片列表",
+            "items": {
+              "$ref": "#/components/schemas/Movie"
+            }
+          },
+          "current_page": {
+            "type": "integer",
+            "description": "当前页码"
+          },
+          "generated_at": {
+            "type": "string",
+            "description": "生成时间"
+          }
+        }
+      },
+      "SearchNewEntity": {
+        "type": "object",
+        "description": "综合搜索结果实体（含影片、演员等多类型聚合结果）",
+        "additionalProperties": true,
+        "properties": {
+          "actors": {
+            "type": "array",
+            "description": "演员结果",
+            "items": {
+              "type": "object"
+            }
+          },
+          "series": {
+            "type": "array",
+            "description": "系列结果",
+            "items": {
+              "type": "object"
+            }
+          },
+          "makers": {
+            "type": "array",
+            "description": "制作商结果",
+            "items": {
+              "type": "object"
+            }
+          },
+          "directors": {
+            "type": "array",
+            "description": "导演结果",
+            "items": {
+              "type": "object"
+            }
+          },
+          "lists": {
+            "type": "array",
+            "description": "片单结果",
+            "items": {
+              "type": "object"
+            }
+          },
+          "codes": {
+            "type": "array",
+            "description": "编号结果",
+            "items": {
+              "type": "object"
+            }
+          },
+          "movies": {
+            "type": "array",
+            "description": "影片结果",
+            "items": {
+              "type": "object"
+            }
+          },
+          "current_page": {
+            "type": "integer",
+            "description": "当前页码"
+          }
+        }
+      },
+      "MovieRecommendEntity": {
+        "type": "object",
+        "description": "推荐影片实体（按周期推荐）",
+        "additionalProperties": true,
+        "properties": {
+          "movies": {
+            "type": "array",
+            "description": "推荐影片列表",
+            "items": {
+              "type": "object"
+            }
+          },
+          "period": {
+            "type": "string",
+            "description": "推荐周期"
+          }
+        }
+      },
+      "RecommendPeriodEntity": {
+        "type": "object",
+        "description": "推荐周期列表实体",
+        "additionalProperties": true,
+        "properties": {
+          "periods": {
+            "type": "array",
+            "description": "推荐周期列表",
+            "items": {
+              "type": "object"
+            }
+          },
+          "current_page": {
+            "type": "integer",
+            "description": "当前页码"
+          }
+        }
+      },
+      "MovieInfoEntity": {
+        "type": "object",
+        "description": "影片详情实体 (V4)，包含完整影片信息",
+        "additionalProperties": true,
+        "properties": {
+          "movie": {
+            "type": "object",
+            "description": "影片详情"
+          },
+          "share_info": {
+            "type": "object",
+            "description": "分享信息"
+          },
+          "show_vip_banner": {
+            "type": "boolean",
+            "description": "是否显示VIP横幅"
+          }
+        }
+      },
+      "MovieM3u8Entity": {
+        "type": "object",
+        "description": "影片播放信息实体（M3U8 播放地址、进度等）",
+        "additionalProperties": true,
+        "properties": {
+          "movies": {
+            "type": "array",
+            "description": "播放剧集列表(含各清晰度的m3u8 URL)",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "MagnetsEntity": {
+        "type": "object",
+        "description": "磁力链接列表实体",
+        "additionalProperties": true,
+        "properties": {
+          "magnets": {
+            "type": "array",
+            "description": "磁力链接列表",
+            "items": {
+              "type": "object"
+            }
+          },
+          "current_page": {
+            "type": "integer",
+            "description": "当前页码"
+          }
+        }
+      },
+      "MovieCommentEntity": {
+        "type": "object",
+        "description": "影片评论列表实体（分页）",
+        "additionalProperties": true,
+        "properties": {
+          "reviews": {
+            "type": "array",
+            "description": "评论列表",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "description": "评论ID"
+                },
+                "user_id": {
+                  "type": "integer",
+                  "description": "用户ID"
+                },
+                "username": {
+                  "type": "string",
+                  "description": "用户名"
+                },
+                "watched_count": {
+                  "type": "integer",
+                  "description": "已观看数"
+                },
+                "status": {
+                  "type": "string",
+                  "description": "状态"
+                },
+                "status_title": {
+                  "type": "string",
+                  "description": "状态标题"
+                },
+                "score": {
+                  "type": "integer",
+                  "description": "评分"
+                },
+                "content": {
+                  "type": "string",
+                  "description": "评论内容"
+                },
+                "likes_count": {
+                  "type": "integer",
+                  "description": "点赞数"
+                },
+                "liked": {
+                  "type": "boolean",
+                  "description": "当前用户是否已点赞"
+                },
+                "created_at": {
+                  "type": "string",
+                  "description": "创建时间"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ReviewEntity": {
+        "type": "object",
+        "description": "单条影评实体（更新影评后返回）",
+        "additionalProperties": true,
+        "properties": {
+          "review": {
+            "type": "object",
+            "description": "评论详情"
+          }
+        }
+      },
+      "SearchEntity": {
+        "type": "object",
+        "description": "图片搜索结果实体",
+        "additionalProperties": true,
+        "properties": {
+          "actors": {
+            "type": "array",
+            "description": "演员结果",
+            "items": {
+              "type": "object"
+            }
+          },
+          "movies": {
+            "type": "array",
+            "description": "影片结果",
+            "items": {
+              "type": "object"
+            }
+          },
+          "keywords": {
+            "type": "array",
+            "description": "关键词",
+            "items": {
+              "type": "object"
+            }
+          },
+          "type": {
+            "type": "string",
+            "description": "搜索类型"
+          },
+          "current_page": {
+            "type": "integer",
+            "description": "当前页码"
+          }
+        }
+      },
+      "ActorEntity": {
+        "type": "object",
+        "description": "演员列表实体（分页）",
+        "additionalProperties": true,
+        "properties": {
+          "actors": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "演员列表"
+          },
+          "current_page": {
+            "type": "integer",
+            "description": "当前页码"
+          }
+        }
+      },
+      "ActorRecommendEntity": {
+        "type": "object",
+        "description": "推荐演员实体",
+        "additionalProperties": true,
+        "properties": {
+          "new_actors": {
+            "type": "array",
+            "description": "新演员",
+            "items": {
+              "type": "object"
+            }
+          },
+          "monthly_actors": {
+            "type": "array",
+            "description": "月度演员",
+            "items": {
+              "type": "object"
+            }
+          },
+          "recommend_actors": {
+            "type": "array",
+            "description": "推荐演员",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "ActorInfoEntity": {
+        "type": "object",
+        "description": "演员详情实体（含出演影片分页列表）",
+        "additionalProperties": true,
+        "properties": {
+          "actor": {
+            "type": "object",
+            "description": "演员详情"
+          },
+          "share_info": {
+            "type": "object",
+            "description": "分享信息"
+          },
+          "has_collected": {
+            "type": "boolean",
+            "description": "是否已收藏"
+          },
+          "filter_tags": {
+            "type": "array",
+            "description": "筛选标签",
+            "items": {
+              "type": "object"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "description": "标签列表",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "MakerInfoEntity": {
+        "type": "object",
+        "description": "制作商/导演/发行商/系列/编号详情实体（通用结构）",
+        "additionalProperties": true,
+        "properties": {
+          "share_info": {
+            "type": "object",
+            "description": "分享信息"
+          },
+          "has_collected": {
+            "type": "boolean",
+            "description": "是否已收藏"
+          },
+          "maker": {
+            "type": "object",
+            "description": "制作商信息"
+          },
+          "series": {
+            "type": "object",
+            "description": "系列信息"
+          },
+          "director": {
+            "type": "object",
+            "description": "导演信息"
+          },
+          "publisher": {
+            "type": "object",
+            "description": "发行商信息"
+          },
+          "code": {
+            "type": "object",
+            "description": "编号信息"
+          }
+        }
+      },
+      "SeriesListEntity": {
+        "type": "object",
+        "description": "系列列表实体（分页）",
+        "additionalProperties": true,
+        "properties": {
+          "series": {
+            "type": "array",
+            "description": "系列列表",
+            "items": {
+              "type": "object"
+            }
+          },
+          "makers": {
+            "type": "array",
+            "description": "制作商列表",
+            "items": {
+              "type": "object"
+            }
+          },
+          "directors": {
+            "type": "array",
+            "description": "导演列表",
+            "items": {
+              "type": "object"
+            }
+          },
+          "current_page": {
+            "type": "integer",
+            "description": "当前页码"
+          }
+        }
+      },
+      "LettersListEntity": {
+        "type": "object",
+        "description": "系列字母索引实体（A-Z 字母及对应数量）",
+        "additionalProperties": true,
+        "properties": {
+          "letters": {
+            "type": "array",
+            "description": "字母索引列表",
+            "items": {
+              "type": "object"
+            }
+          },
+          "current_page": {
+            "type": "integer",
+            "description": "当前页码"
+          }
+        }
+      },
+      "MovieListsEntity": {
+        "type": "object",
+        "description": "片单列表实体（分页）",
+        "additionalProperties": true,
+        "properties": {
+          "lists": {
+            "type": "array",
+            "description": "片单列表",
+            "items": {
+              "type": "object"
+            }
+          },
+          "current_page": {
+            "type": "integer",
+            "description": "当前页码"
+          }
+        }
+      },
+      "MovieListsInfoEntity": {
+        "type": "object",
+        "description": "片单详情实体（含片单信息和影片列表）",
+        "additionalProperties": true,
+        "properties": {
+          "is_creator": {
+            "type": "boolean",
+            "description": "是否创建者"
+          },
+          "share_info": {
+            "type": "object",
+            "description": "分享信息"
+          },
+          "has_collected": {
+            "type": "boolean",
+            "description": "是否已收藏"
+          },
+          "list": {
+            "type": "object",
+            "description": "片单详情"
+          }
+        }
+      },
+      "TagsEntity": {
+        "type": "object",
+        "description": "标签列表实体（分页）",
+        "additionalProperties": true,
+        "properties": {
+          "tags": {
+            "type": "array",
+            "description": "标签分类列表",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "FollowTagAllEntity": {
+        "type": "object",
+        "description": "已关注标签全部实体",
+        "additionalProperties": true,
+        "properties": {
+          "following_tags": {
+            "type": "array",
+            "description": "已关注标签列表",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "CollectEntity": {
+        "type": "object",
+        "description": "收藏列表实体（分页），用于编号/导演/制作商/系列收藏",
+        "additionalProperties": true,
+        "properties": {
+          "codes": {
+            "type": "array",
+            "description": "编号收藏",
+            "items": {
+              "type": "object"
+            }
+          },
+          "series": {
+            "type": "array",
+            "description": "系列收藏",
+            "items": {
+              "type": "object"
+            }
+          },
+          "makers": {
+            "type": "array",
+            "description": "制作商收藏",
+            "items": {
+              "type": "object"
+            }
+          },
+          "directors": {
+            "type": "array",
+            "description": "导演收藏",
+            "items": {
+              "type": "object"
+            }
+          },
+          "current_page": {
+            "type": "integer",
+            "description": "当前页码"
+          }
+        }
+      },
+      "ArticleListEntity": {
+        "type": "object",
+        "description": "文章列表实体（分页）",
+        "additionalProperties": true,
+        "properties": {
+          "articles": {
+            "type": "array",
+            "description": "文章列表",
+            "items": {
+              "type": "object"
+            }
+          },
+          "current_page": {
+            "type": "integer",
+            "description": "当前页码"
+          }
+        }
+      },
+      "ArticleEntity": {
+        "type": "object",
+        "description": "文章详情实体",
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "文章ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "标题"
+          },
+          "origin_name": {
+            "type": "string",
+            "description": "原始名称"
+          },
+          "origin_url": {
+            "type": "string",
+            "description": "原始URL"
+          },
+          "cover_url": {
+            "type": "string",
+            "description": "封面URL"
+          },
+          "author": {
+            "type": "object",
+            "description": "作者"
+          },
+          "category": {
+            "type": "string",
+            "description": "分类"
+          },
+          "image_domain": {
+            "type": "string",
+            "description": "图片域名"
+          },
+          "content": {
+            "type": "string",
+            "description": "内容"
+          },
+          "released_at": {
+            "type": "string",
+            "description": "发布时间"
+          },
+          "related_movies": {
+            "type": "array",
+            "description": "相关影片",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "HomeAdEntity": {
+        "type": "object",
+        "description": "广告配置实体（首页广告、开屏广告等）",
+        "additionalProperties": true,
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "是否启用广告"
+          },
+          "ads": {
+            "type": "object",
+            "description": "广告配置"
+          }
+        }
+      },
+      "EarningsEntity": {
+        "type": "object",
+        "description": "钱包收益实体（余额、累计收益、可提现金额等）",
+        "additionalProperties": true,
+        "properties": {
+          "minimum_withdraw_amount": {
+            "type": "number",
+            "description": "最低提现金额"
+          },
+          "maximum_withdraw_amount": {
+            "type": "number",
+            "description": "最高提现金额"
+          },
+          "withdraw_fee": {
+            "type": "number",
+            "description": "提现手续费"
+          },
+          "current_level": {
+            "type": "string",
+            "description": "当前等级"
+          },
+          "current_rate": {
+            "type": "string",
+            "description": "当前费率"
+          },
+          "next_level": {
+            "type": "string",
+            "description": "下一等级"
+          },
+          "next_rate": {
+            "type": "string",
+            "description": "下一费率"
+          },
+          "yesterday_income": {
+            "type": "string",
+            "description": "昨日收入"
+          },
+          "today_income": {
+            "type": "string",
+            "description": "今日收入"
+          },
+          "withdrawable": {
+            "type": "string",
+            "description": "可提现金额"
+          },
+          "total_income": {
+            "type": "string",
+            "description": "总收入"
+          },
+          "users_count": {
+            "type": "object",
+            "description": "用户统计",
+            "properties": {
+              "all": {
+                "type": "integer",
+                "description": "总用户数"
+              },
+              "paid": {
+                "type": "integer",
+                "description": "付费用户数"
+              },
+              "normal": {
+                "type": "integer",
+                "description": "普通用户数"
+              },
+              "bronze": {
+                "type": "integer",
+                "description": "青铜级用户数"
+              },
+              "silver": {
+                "type": "integer",
+                "description": "白银级用户数"
+              },
+              "gold": {
+                "type": "integer",
+                "description": "黄金级用户数"
+              },
+              "platinum": {
+                "type": "integer",
+                "description": "铂金级用户数"
+              },
+              "diamond": {
+                "type": "integer",
+                "description": "钻石级用户数"
+              }
+            }
+          },
+          "withdraw_methods": {
+            "type": "array",
+            "description": "提现方式",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "RebateLogsEntity": {
+        "type": "object",
+        "description": "返利记录实体（分页）",
+        "additionalProperties": true,
+        "properties": {
+          "logs": {
+            "type": "array",
+            "description": "返利记录列表",
+            "items": {
+              "type": "object"
+            }
+          },
+          "current_page": {
+            "type": "integer",
+            "description": "当前页码"
+          }
+        }
+      },
+      "WithdrawLogsEntity": {
+        "type": "object",
+        "description": "提现记录实体（分页）",
+        "additionalProperties": true,
+        "properties": {
+          "logs": {
+            "type": "array",
+            "description": "提现记录列表",
+            "items": {
+              "type": "object"
+            }
+          },
+          "current_page": {
+            "type": "integer",
+            "description": "当前页码"
+          }
+        }
+      },
+      "BindWithdrawAccountsEntity": {
+        "type": "object",
+        "description": "已绑定提现账户实体（账户列表）",
+        "additionalProperties": true,
+        "properties": {
+          "accounts": {
+            "type": "array",
+            "description": "已绑定账户列表",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "BanksEntity": {
+        "type": "object",
+        "description": "银行列表实体（SFPay 渠道）",
+        "additionalProperties": true,
+        "properties": {
+          "banks": {
+            "type": "array",
+            "description": "银行列表",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "ChainTypesEntity": {
+        "type": "object",
+        "description": "USDT 链类型实体（TRC20/ERC20 等）",
+        "additionalProperties": true,
+        "properties": {
+          "chain_types": {
+            "type": "array",
+            "description": "USDT链类型列表",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "PayPlansEntity": {
+        "type": "object",
+        "description": "会员套餐实体（套餐列表、价格、权益等）",
+        "additionalProperties": true,
+        "properties": {
+          "plan_message": {
+            "type": "string",
+            "description": "套餐提示消息"
+          },
+          "unavailable_plan_message": {
+            "type": "string",
+            "description": "不可用套餐消息"
+          },
+          "intros": {
+            "type": "array",
+            "description": "介绍信息",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "description": "序号"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "标题"
+                },
+                "subtitle": {
+                  "type": "string",
+                  "description": "副标题"
+                }
+              }
+            }
+          },
+          "plans": {
+            "type": "array",
+            "description": "套餐列表",
+            "items": {
+              "type": "object"
+            }
+          },
+          "platforms": {
+            "type": "array",
+            "description": "支付平台列表",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "PayOrderEntity": {
+        "type": "object",
+        "description": "支付订单实体（订单号、支付链接、二维码等）",
+        "additionalProperties": true,
+        "properties": {
+          "order_number": {
+            "type": "string",
+            "description": "订单号"
+          },
+          "payment_url": {
+            "type": "string",
+            "description": "支付URL"
+          },
+          "payment_name": {
+            "type": "string",
+            "description": "支付名称"
+          },
+          "sdk": {
+            "type": "string",
+            "description": "SDK标识"
+          },
+          "sdk_type": {
+            "type": "string",
+            "description": "SDK类型"
+          }
+        }
+      },
+      "MagnetsAppEntity": {
+        "type": "object",
+        "description": "磁力应用列表实体（推荐的磁力下载工具）",
+        "additionalProperties": true,
+        "properties": {
+          "apps": {
+            "type": "array",
+            "description": "磁力应用列表",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "TransactionEntity": {
+        "type": "object",
+        "description": "交易记录实体（分页）",
+        "additionalProperties": true,
+        "properties": {
+          "logs": {
+            "type": "array",
+            "description": "交易记录列表",
+            "items": {
+              "type": "object"
+            }
+          },
+          "current_page": {
+            "type": "integer",
+            "description": "当前页码"
+          },
+          "notice": {
+            "type": "string",
+            "description": "通知消息"
+          }
+        }
+      },
+      "PromotionLogsEntity": {
+        "type": "object",
+        "description": "推广记录实体（分页）",
+        "additionalProperties": true,
+        "properties": {
+          "logs": {
+            "type": "array",
+            "description": "推广记录列表",
+            "items": {
+              "type": "object"
+            }
+          },
+          "current_page": {
+            "type": "integer",
+            "description": "当前页码"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "description": "用户信息",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "is_vip": {
+            "type": "boolean"
+          },
+          "want_watch_count": {
+            "type": "integer"
+          },
+          "watched_count": {
+            "type": "integer"
+          },
+          "vip_expired_at": {
+            "type": "string"
+          },
+          "share_url": {
+            "type": "string"
+          },
+          "promotion_code": {
+            "type": "string"
+          },
+          "promotion_days": {
+            "type": "integer"
+          },
+          "promote_users_count": {
+            "type": "integer"
+          },
+          "checkin_days": {
+            "type": "integer"
+          },
+          "last_checkin_at": {
+            "type": "string"
+          }
+        }
+      },
+      "Movie": {
+        "type": "object",
+        "description": "影片摘要",
+        "properties": {
+          "ranking": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "origin_title": {
+            "type": "string"
+          },
+          "thumb_url": {
+            "type": "string"
+          },
+          "cover_url": {
+            "type": "string"
+          },
+          "has_cnsub": {
+            "type": "boolean"
+          },
+          "has_preview_images": {
+            "type": "boolean"
+          },
+          "duration": {
+            "type": "integer"
+          },
+          "magnets_count": {
+            "type": "integer"
+          },
+          "score": {
+            "type": "number"
+          },
+          "watched_count": {
+            "type": "integer"
+          },
+          "has_preview_video": {
+            "type": "boolean"
+          },
+          "can_play": {
+            "type": "boolean"
+          },
+          "play_subtitle": {
+            "type": "string"
+          },
+          "new_magnets": {
+            "type": "integer"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "preview_images": {
+            "type": "object"
+          }
+        }
+      },
+      "MovieInfo": {
+        "type": "object",
+        "description": "影片详情",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string"
+          },
+          "number_letter": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "origin_title": {
+            "type": "string"
+          },
+          "thumb_url": {
+            "type": "string"
+          },
+          "cover_url": {
+            "type": "string"
+          },
+          "has_cnsub": {
+            "type": "boolean"
+          },
+          "has_preview_images": {
+            "type": "boolean"
+          },
+          "duration": {
+            "type": "integer"
+          },
+          "score": {
+            "type": "number"
+          },
+          "want_watch_count": {
+            "type": "integer"
+          },
+          "watched_count": {
+            "type": "integer"
+          },
+          "reviews_count": {
+            "type": "integer"
+          },
+          "comments_count": {
+            "type": "integer"
+          },
+          "magnets_count": {
+            "type": "integer"
+          },
+          "has_preview_video": {
+            "type": "boolean"
+          },
+          "can_play": {
+            "type": "boolean"
+          },
+          "play_subtitle": {
+            "type": "string"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "maker_id": {
+            "type": "string"
+          },
+          "maker_name": {
+            "type": "string"
+          },
+          "director_id": {
+            "type": "string"
+          },
+          "director_name": {
+            "type": "string"
+          },
+          "publisher_id": {
+            "type": "string"
+          },
+          "publisher_name": {
+            "type": "string"
+          },
+          "series_id": {
+            "type": "string"
+          },
+          "series_name": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "top_rankings": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "play_sources": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "actors": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "review": {
+            "type": "object"
+          },
+          "magnets": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "preview_images": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "preview_video_url": {
+            "type": "string"
+          },
+          "relative_movies": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "actor_movies": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "Actor": {
+        "type": "object",
+        "description": "演员摘要",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string"
+          },
+          "avatar_url": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "name_zht": {
+            "type": "string"
+          },
+          "other_name": {
+            "type": "string"
+          },
+          "uncensored": {
+            "type": "boolean"
+          },
+          "percentage": {
+            "type": "integer"
+          }
+        }
+      },
+      "ActorInfo": {
+        "type": "object",
+        "description": "演员详情",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "avatar_url": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "name_zht": {
+            "type": "string"
+          },
+          "other_name": {
+            "type": "string"
+          },
+          "birthday": {
+            "type": "string"
+          },
+          "age": {
+            "type": "integer"
+          },
+          "cons": {
+            "type": "string"
+          },
+          "blood_type": {
+            "type": "string"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "bust": {
+            "type": "integer"
+          },
+          "cup": {
+            "type": "string"
+          },
+          "waist": {
+            "type": "integer"
+          },
+          "hips": {
+            "type": "integer"
+          },
+          "birthplace": {
+            "type": "string"
+          },
+          "interest": {
+            "type": "string"
+          },
+          "twitter_id": {
+            "type": "string"
+          },
+          "instagram_id": {
+            "type": "string"
+          },
+          "videos_count": {
+            "type": "integer"
+          }
+        }
+      },
+      "Comment": {
+        "type": "object",
+        "description": "评论",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "watched_count": {
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "status_title": {
+            "type": "string"
+          },
+          "score": {
+            "type": "integer"
+          },
+          "content": {
+            "type": "string"
+          },
+          "likes_count": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "liked": {
+            "type": "boolean"
+          },
+          "movie": {
+            "type": "object"
+          },
+          "user": {
+            "type": "object"
+          }
+        }
+      },
+      "Magnets": {
+        "type": "object",
+        "description": "磁力链接",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "hash": {
+            "type": "string"
+          },
+          "size": {
+            "type": "string"
+          },
+          "cnsub": {
+            "type": "boolean"
+          },
+          "hd": {
+            "type": "string"
+          },
+          "files_count": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "pikpak_url": {
+            "type": "string"
+          }
+        }
+      },
+      "MovieListsItem": {
+        "type": "object",
+        "description": "片单项",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "privacy": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "movies_count": {
+            "type": "integer"
+          },
+          "views_count": {
+            "type": "integer"
+          },
+          "collections_count": {
+            "type": "integer"
+          },
+          "is_default": {
+            "type": "boolean"
+          },
+          "share_info": {
+            "type": "object"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "has_movie": {
+            "type": "boolean"
+          }
+        }
+      },
+      "FolllowTagItem": {
+        "type": "object",
+        "description": "关注标签项",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer"
+          }
+        }
+      },
+      "WithdrawLog": {
+        "type": "object",
+        "description": "提现记录",
+        "properties": {
+          "withdraw_type_title": {
+            "type": "string"
+          },
+          "withdraw_type": {
+            "type": "string"
+          },
+          "account": {
+            "type": "string"
+          },
+          "order_number": {
+            "type": "string"
+          },
+          "realname": {
+            "type": "string"
+          },
+          "chain_type": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "withdraw_fee": {
+            "type": "number"
+          },
+          "real_amount": {
+            "type": "number"
+          },
+          "status_title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "processed_at": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        }
+      },
+      "TransactionLog": {
+        "type": "object",
+        "description": "交易记录",
+        "properties": {
+          "order_number": {
+            "type": "string"
+          },
+          "payment_channel": {
+            "type": "string"
+          },
+          "plan_name": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "days": {
+            "type": "integer"
+          },
+          "paid": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "show_unpaid_ticket": {
+            "type": "boolean"
+          },
+          "unpaid_status": {
+            "type": "string"
+          },
+          "unpaid_status_message": {
+            "type": "string"
+          },
+          "last_unpaid_message": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        }
+      },
+      "RebateLog": {
+        "type": "object",
+        "description": "返利记录",
+        "properties": {
+          "promoted_username": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "rebate_type": {
+            "type": "string"
+          },
+          "rate": {
+            "type": "number"
+          },
+          "rebate_price": {
+            "type": "number"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        }
+      },
+      "PromotionLog": {
+        "type": "object",
+        "description": "推广记录",
+        "properties": {
+          "promoted_username": {
+            "type": "string"
+          },
+          "reward_days": {
+            "type": "integer"
+          },
+          "is_extra": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        }
+      },
+      "DomainEntity": {
+        "type": "object",
+        "description": "域名配置",
+        "properties": {
+          "apiDomains": {
+            "type": "array",
+            "description": "API域名列表",
+            "items": {
+              "type": "object"
+            }
+          },
+          "backupUrls": {
+            "type": "array",
+            "description": "备用URL列表",
+            "items": {
+              "type": "object"
+            }
+          },
+          "unblockedAppDomain": {
+            "type": "string",
+            "description": "未封禁域名"
+          },
+          "permanentAppDomain": {
+            "type": "string",
+            "description": "永久域名"
+          },
+          "imageEndpoint": {
+            "type": "string",
+            "description": "图片端点"
+          }
+        }
+      },
+      "SplashAdEntity": {
+        "type": "object",
+        "description": "开屏广告",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "是否启用"
+          },
+          "overtime": {
+            "type": "integer",
+            "description": "超时时间(秒)"
+          },
+          "ad": {
+            "type": "object",
+            "description": "广告详情"
+          }
+        }
+      },
+      "PayStatusEntity": {
+        "type": "object",
+        "description": "支付状态",
+        "properties": {
+          "paid": {
+            "type": "boolean",
+            "description": "是否已支付"
+          }
+        }
+      },
+      "CollectResultEntity": {
+        "type": "object",
+        "description": "收藏操作结果",
+        "properties": {
+          "result": {
+            "type": "boolean",
+            "description": "操作结果"
+          }
+        }
+      },
+      "BindAccount": {
+        "type": "object",
+        "description": "已绑定提现账户",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "withdraw_type": {
+            "type": "string"
+          },
+          "withdraw_type_title": {
+            "type": "string"
+          },
+          "realname": {
+            "type": "string"
+          },
+          "account": {
+            "type": "string"
+          },
+          "bank_id": {
+            "type": "string"
+          },
+          "bank_name": {
+            "type": "string"
+          },
+          "chain_type": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

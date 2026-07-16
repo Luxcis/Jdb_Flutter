@@ -1,80 +1,73 @@
-<div align="center">
-    <br />
-    <img src="assets/icon/icon.png" alt="NFC PLinkD Logo" width="160" height="160" />
-    <h1>Flutter Android Template</h1>
-    <a href="README_zh.md">中文</a> | 
-    <a href="README_ja.md">日本語</a> | 
-    <a href="README_fr.md">Français</a>
-    <br />
-    <br />
-</div>
+# Flutter Android 模板
 
-This is a template for building Flutter applications for Android, which includes basic dynamic themes, theme settings, language settings and GitHub Actions scripts.
+## 简介
 
-## How to Use
+这是一个用于构建 Android Flutter 应用程序的模板，其中包含了基础的动态主题、主题设置、语言设置和 GitHub Actions 构建脚本。
 
-### Initiation
+## 如何使用
 
-Use this template repo, change the name and clone it.
+### 初始化
 
-### Changing the Project Name and Package Name
+使用此模板仓库，更改名称并克隆。
 
-Changing the project name in Flutter involves manually modifying several files. Follow these steps to change the project name:
+### 更改项目名称和包名
 
-1. Update `pubspec.yaml`:
-    Change the `name` property to your new project name.
+在 Flutter 中更改项目名称需要手动修改多个文件。按照以下步骤更改项目名称：
+
+1. 更新 `pubspec.yaml`:
+   将 `name` 属性更改为您的新项目名称。
 
 ```yaml
 name: your_new_project_name
 ```
 
-2. Update `android/app/src/main/res/values/strings.xml`:
+2. 更新 `android/app/src/main/res/values/strings.xml`:
 
-Change the `app_name` string to your new project name.
+将 `app_name` 字符串更改为您的新项目名称。
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Your New App Name</string>
+    <string name="app_name">您的新应用名称</string>
 </resources>
 ```
 
-3. Update package names
+3. 更新包名
 
-Change the package name used in `android/app/src/main/kotlin/com/example/template/MainActivity.kt`, as well as the path of it.
-Change the `namespace` and `applicationId` used in the `android\app\build.gradle.kts` file.
+更改 `android/app/src/main/kotlin/com/example/template/MainActivity.kt` 中使用的包名及其路径。
+更改 `android\app\build.gradle.kts` 文件中使用的 `namespace` 和 `applicationId`。
 
-4. Update the imports in `.dart`
+4. 更新 `.dart` 中的导入
 
-Change the imports from:
+将导入从：
 
 ```dart
 import 'package:flutter_android_template/**.dart';
 ```
 
-to:
+更改为：
 
 ```dart
 import 'package:your_new_project_name/**.dart';
 ```
 
-### App signing for GitHub Actions
+### GitHub Actions 的应用签名
 
-Get your `.jks` file, create the base64 string of it:
+获取您的 `.jks` 文件，创建其 base64 字符串：
 
 ```shell
 # Unix
-base64 -w 0 <Your-Key-Store-Name>.jks
+base64 -w 0 <您的密钥库名称>.jks
 # Windows
-[System.Convert]::ToBase64String([System.IO.File]::ReadAllBytes("<Your-Key-Store-Name>.jks"))
+[System.Convert]::ToBase64String([System.IO.File]::ReadAllBytes("<您的密钥库名称>.jks"))
 ```
 
-In the `Secrets and Variables  --  Actions` of your GitHub repo, add secrets:
-- SIGNING_KEYSTORE: The base64 code created above
-- SIGNING_KEYSTORE_PASSWORD: The key store password
-- SIGNING_KEY_ALIAS: The alias for the `.jks` file
-- SIGNING_KEY_PASSWORD: The password for the alias
+在您的 GitHub 仓库的 `Secrets and Variables -- Actions` 中，添加 secrets：
+- SIGNING_KEYSTORE: 上面创建的 base64 代码
+- SIGNING_KEYSTORE_PASSWORD: 密钥库密码
+- SIGNING_KEY_ALIAS: `.jks` 文件的别名
+- SIGNING_KEY_PASSWORD: 别名的密码
 
-## Use case
+## 用例
 
-- [MotionEaseTune](https://github.com/BHznJNs/MotionEaseTune), A simple application that can prevent you from motion sickness via 100Hz sound.
+- [MotionEaseTune](https://github.com/BHznJNs/MotionEaseTune), 一个简单的应用程序，可以通过 100Hz 的声音防止您晕车。

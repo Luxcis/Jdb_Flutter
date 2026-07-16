@@ -1,6 +1,6 @@
 
 import 'package:flutter/material.dart';
-import 'package:flutter_android_template/features/settings/settings.dart';
+import 'package:jade/features/settings/settings.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});

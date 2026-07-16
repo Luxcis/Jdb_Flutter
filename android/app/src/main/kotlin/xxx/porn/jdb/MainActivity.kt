@@ -1,4 +1,4 @@
-package com.example.template
+package xxx.porn.jdb
 
 import io.flutter.embedding.android.FlutterActivity
 
