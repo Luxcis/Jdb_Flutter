@@ -4,10 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/network/endpoints.dart';
-import 'package:jade/core/storage/storage_keys.dart';
-import 'package:matcher/matcher.dart';
 
 class _TokenProvider implements TokenProvider {
+  @override
   String? token;
   _TokenProvider([this.token]);
 }

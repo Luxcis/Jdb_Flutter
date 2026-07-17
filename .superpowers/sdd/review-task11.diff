@@ -1,0 +1,184 @@
+# Review package: 1d45200..84c756a
+
+## Commits
+84c756a feat(core/providers): add AuthProvider/StartupProvider/SettingsProvider
+
+## Files changed
+ lib/core/providers/auth_provider.dart       | 46 +++++++++++++++++++++++++++++
+ lib/core/providers/settings_provider.dart   | 28 ++++++++++++++++++
+ lib/core/providers/startup_provider.dart    | 40 +++++++++++++++++++++++++
+ test/core/providers/auth_provider_test.dart | 33 +++++++++++++++++++++
+ 4 files changed, 147 insertions(+)
+
+## Diff
+diff --git a/lib/core/providers/auth_provider.dart b/lib/core/providers/auth_provider.dart
+new file mode 100644
+index 0000000..6c6855e
+--- /dev/null
++++ b/lib/core/providers/auth_provider.dart
+@@ -0,0 +1,46 @@
++// lib/core/providers/auth_provider.dart
++import 'dart:convert';
++import 'package:flutter/foundation.dart';
++import 'package:shared_preferences/shared_preferences.dart';
++import 'package:jade/core/network/api_client.dart';
++import 'package:jade/core/storage/storage_keys.dart';
++
++class AuthProvider extends ChangeNotifier implements TokenProvider {
++  AuthProvider._(this._prefs);
++
++  final SharedPreferences _prefs;
++  String? _token;
++  Map<String, dynamic>? _user;
++
++  @override
++  String? get token => _token;
++  Map<String, dynamic>? get user => _user;
++  bool get isLogged => _token != null && _token!.isNotEmpty;
++
++  static Future<AuthProvider> create(SharedPreferences prefs) async {
++    final p = AuthProvider._(prefs);
++    p._token = prefs.getString(StorageKeys.token);
++    final u = prefs.getString(StorageKeys.user);
++    p._user = u != null ? jsonDecode(u) as Map<String, dynamic> : null;
++    return p;
++  }
++
++  Future<void> login({
++    required String token,
++    required Map<String, dynamic> user,
++  }) async {
++    _token = token;
++    _user = user;
++    await _prefs.setString(StorageKeys.token, token);
++    await _prefs.setString(StorageKeys.user, jsonEncode(user));
++    notifyListeners();
++  }
++
++  Future<void> logout() async {
++    _token = null;
++    _user = null;
++    await _prefs.remove(StorageKeys.token);
++    await _prefs.remove(StorageKeys.user);
++    notifyListeners();
++  }
++}
+diff --git a/lib/core/providers/settings_provider.dart b/lib/core/providers/settings_provider.dart
+new file mode 100644
+index 0000000..6501be0
+--- /dev/null
++++ b/lib/core/providers/settings_provider.dart
+@@ -0,0 +1,28 @@
++// lib/core/providers/settings_provider.dart
++import 'dart:convert';
++import 'package:flutter/foundation.dart';
++import 'package:shared_preferences/shared_preferences.dart';
++import 'package:jade/core/storage/storage_keys.dart';
++
++class SettingsProvider extends ChangeNotifier {
++  SettingsProvider._(this._prefs);
++  final SharedPreferences _prefs;
++  List<String> _defaultFilterTags = const [];
++
++  List<String> get defaultFilterTags => List.unmodifiable(_defaultFilterTags);
++
++  static Future<SettingsProvider> create(SharedPreferences prefs) async {
++    final p = SettingsProvider._(prefs);
++    final raw = prefs.getString(StorageKeys.defaultFilterTags);
++    if (raw != null) {
++      p._defaultFilterTags = List<String>.from(jsonDecode(raw) as List);
++    }
++    return p;
++  }
++
++  Future<void> setDefaultFilterTags(List<String> tags) async {
++    _defaultFilterTags = tags;
++    await _prefs.setString(StorageKeys.defaultFilterTags, jsonEncode(tags));
++    notifyListeners();
++  }
++}
+diff --git a/lib/core/providers/startup_provider.dart b/lib/core/providers/startup_provider.dart
+new file mode 100644
+index 0000000..bc76f22
+--- /dev/null
++++ b/lib/core/providers/startup_provider.dart
+@@ -0,0 +1,40 @@
++// lib/core/providers/startup_provider.dart
++import 'package:flutter/foundation.dart';
++import 'package:jade/core/network/api_client.dart';
++import 'package:jade/core/network/domain_manager.dart';
++import 'package:jade/core/network/endpoints.dart';
++
++class StartupProvider extends ChangeNotifier {
++  StartupProvider._(this._api, this._dm);
++  final ApiClient _api;
++  final DomainManager _dm;
++  bool _loaded = false;
++  bool get loaded => _loaded;
++
++  static StartupProvider create(ApiClient api, DomainManager dm) =>
++      StartupProvider._(api, dm);
++
++  /// 调 /startup 拉取并应用域名列表。
++  Future<void> fetchStartup() async {
++    try {
++      final resp = await _api.get(Endpoints.startup, queryParameters: {
++        'platform': 'android',
++        'app_channel': 'google',
++        'app_version': '1.9.29',
++        'app_version_number': '35',
++      });
++      final data = (resp.data as Map?)?['backup_domains_data'] as String?;
++      final domains = _tryDecodeDomains(data);
++      await _dm.applyStartup(domains);
++      _loaded = true;
++      notifyListeners();
++    } catch (_) {
++      // 失败保留当前域名，不阻断启动。
++    }
++  }
++
++  BackupDomainsData _tryDecodeDomains(String? data) {
++    // 简化：返回仅含主域名的兜底列表；完整解密在后续阶段。
++    return const BackupDomainsData(apiDomains: ['https://jdforrepam.com']);
++  }
++}
+diff --git a/test/core/providers/auth_provider_test.dart b/test/core/providers/auth_provider_test.dart
+new file mode 100644
+index 0000000..1d80eb7
+--- /dev/null
++++ b/test/core/providers/auth_provider_test.dart
+@@ -0,0 +1,33 @@
++// test/core/providers/auth_provider_test.dart
++import 'package:flutter_test/flutter_test.dart';
++import 'package:shared_preferences/shared_preferences.dart';
++import 'package:jade/core/providers/auth_provider.dart';
++import 'package:jade/core/storage/storage_keys.dart';
++
++void main() {
++  TestWidgetsFlutterBinding.ensureInitialized();
++  setUp(() => SharedPreferences.setMockInitialValues({}));
++
++  test('login 持久化 token 与 user，isLogged 为 true', () async {
++    final prefs = await SharedPreferences.getInstance();
++    final auth = await AuthProvider.create(prefs);
++    await auth.login(token: 'tok', user: {'id': 1, 'username': 'a'});
++    expect(auth.token, 'tok');
++    expect(auth.isLogged, isTrue);
++    expect(prefs.getString(StorageKeys.token), 'tok');
++    // 重启恢复
++    final auth2 = await AuthProvider.create(prefs);
++    expect(auth2.token, 'tok');
++    expect(auth2.isLogged, isTrue);
++  });
++
++  test('logout 清空 token/user', () async {
++    final prefs = await SharedPreferences.getInstance();
++    final auth = await AuthProvider.create(prefs);
++    await auth.login(token: 'tok', user: {'id': 1});
++    await auth.logout();
++    expect(auth.token, isNull);
++    expect(auth.isLogged, isFalse);
++    expect(prefs.getString(StorageKeys.token), isNull);
++  });
++}

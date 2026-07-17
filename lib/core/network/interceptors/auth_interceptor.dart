@@ -4,11 +4,9 @@ import 'package:jade/core/network/api_client.dart';
 class AuthInterceptor extends Interceptor {
   AuthInterceptor(Object tokenProvider)
       : _tokenProvider = tokenProvider is TokenProvider
-            ? tokenProvider
-            : (throw ArgumentError(
-                'tokenProvider must implement TokenProvider')) {
-    assert(tokenProvider is TokenProvider);
-  }
+          ? tokenProvider
+          : (throw ArgumentError(
+              'tokenProvider must implement TokenProvider')) ;
   final TokenProvider _tokenProvider;
 
   @override

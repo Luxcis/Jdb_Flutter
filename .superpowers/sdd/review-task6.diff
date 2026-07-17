@@ -1,0 +1,126 @@
+# Review package: 340427f..7abb85a
+
+## Commits
+7abb85a test(core/network): add FakeAdapter for interceptor unit tests
+
+## Files changed
+ lib/core/network/testing/fake_adapter.dart       | 66 ++++++++++++++++++++++++
+ test/core/network/testing/fake_adapter_test.dart | 37 +++++++++++++
+ 2 files changed, 103 insertions(+)
+
+## Diff
+diff --git a/lib/core/network/testing/fake_adapter.dart b/lib/core/network/testing/fake_adapter.dart
+new file mode 100644
+index 0000000..a2b53e5
+--- /dev/null
++++ b/lib/core/network/testing/fake_adapter.dart
+@@ -0,0 +1,66 @@
++// lib/core/network/testing/fake_adapter.dart
++import 'dart:convert';
++import 'package:dio/dio.dart';
++
++/// 单元测试用 HttpClientAdapter。按 path 匹配预设响应，支持同路径响应序列。
++class FakeAdapter implements HttpClientAdapter {
++  final Map<String, _Stub> _stubs = {};
++  final Map<String, List<_Stub>> _sequences = {};
++  final List<RequestOptions> requests = [];
++
++  /// 同一 path 固定返回同一响应。
++  void enqueue(String path, Map<String, dynamic> body, {int statusCode = 200}) {
++    _stubs[path] = _Stub(body: body, statusCode: statusCode);
++  }
++
++  /// 同一 path 按入队顺序依次返回（每次请求弹出首个，耗尽回退到 enqueue）。
++  /// 用于"先失败后成功"的重试场景。
++  void enqueueSequence(
++    String path,
++    List<Map<String, dynamic>> bodies, {
++    List<int>? codes,
++  }) {
++    _sequences[path] = [
++      for (var i = 0; i < bodies.length; i++)
++        _Stub(body: bodies[i], statusCode: codes?[i] ?? 200),
++    ];
++  }
++
++  @override
++  Future<ResponseBody> fetch(
++    RequestOptions options,
++    Stream<List<int>>? requestStream,
++    Future<void>? cancelFuture,
++  ) async {
++    requests.add(options);
++    _Stub? stub;
++    final seq = _sequences[options.path];
++    if (seq != null && seq.isNotEmpty) {
++      stub = seq.removeAt(0);
++    } else {
++      stub = _stubs[options.path];
++    }
++    final body = stub?.body ?? {'success': 0, 'message': 'no stub'};
++    final code = stub?.statusCode ?? 404;
++    return ResponseBody.fromString(
++      jsonEncode(body),
++      code,
++      headers: {
++        Headers.contentTypeHeader: [Headers.jsonContentType],
++      },
++    );
++  }
++
++  @override
++  void close({bool force = false}) {
++    _stubs.clear();
++    _sequences.clear();
++    requests.clear();
++  }
++}
++
++class _Stub {
++  const _Stub({required this.body, required this.statusCode});
++  final Map<String, dynamic> body;
++  final int statusCode;
++}
+diff --git a/test/core/network/testing/fake_adapter_test.dart b/test/core/network/testing/fake_adapter_test.dart
+new file mode 100644
+index 0000000..8b8a993
+--- /dev/null
++++ b/test/core/network/testing/fake_adapter_test.dart
+@@ -0,0 +1,37 @@
++import 'dart:convert';
++
++import 'package:dio/dio.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:jade/core/network/testing/fake_adapter.dart';
++
++/// Reads the full response body from a [ResponseBody.stream] and decodes as JSON.
++Future<Map<String, dynamic>> _readBody(ResponseBody resp) async {
++  final bytes = await resp.stream.fold<List<int>>(
++    <int>[],
++    (prev, chunk) => prev..addAll(chunk),
++  );
++  return jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
++}
++
++void main() {
++  test('FakeAdapter 按路径返回预设响应', () async {
++    final adapter = FakeAdapter();
++    adapter.enqueue('/api/v1/x', {'success': 1, 'data': {'a': 1}});
++    final resp = await adapter.fetch(
++      RequestOptions(path: '/api/v1/x'),
++      null,
++      null,
++    );
++    expect(resp.statusCode, 200);
++    final data = await _readBody(resp);
++    expect(data['success'], 1);
++  });
++
++  test('FakeAdapter 记录请求历史', () async {
++    final adapter = FakeAdapter();
++    adapter.enqueue('/api/v1/y', {'success': 1, 'data': null});
++    await adapter.fetch(RequestOptions(path: '/api/v1/y'), null, null);
++    expect(adapter.requests.length, 1);
++    expect(adapter.requests.first.path, '/api/v1/y');
++  });
++}
