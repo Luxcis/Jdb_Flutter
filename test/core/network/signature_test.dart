@@ -1,4 +1,9 @@
+import 'dart:io';
+import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:jade/core/constants/app_constants.dart';
+import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/signature.dart';
 
 void main() {
@@ -24,5 +29,35 @@ void main() {
     final a = JdSignature.generate(timestamp: 1784107027);
     final b = JdSignature.generate(timestamp: 1784107028);
     expect(a == b, isFalse);
+  });
+
+  test('签名调用 /api/v1/startup 接口，服务端验证通过', () async {
+    // 测试环境 SSL 证书校验可能拦截，使用 allowBadCertificate 适配器。
+    final dio = Dio(BaseOptions(
+      baseUrl: AppConstants.mainDomain,
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 15),
+    ));
+    (dio.httpClientAdapter as IOHttpClientAdapter?)?.createHttpClient = () {
+      final client = HttpClient();
+      client.badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+      return client;
+    };
+    final resp = await dio.get(Endpoints.startup, queryParameters: {
+      'platform': AppConstants.platform,
+      'app_channel': AppConstants.appChannel,
+      'app_version': AppConstants.appVersion,
+      'app_version_number': AppConstants.appVersionNumber,
+    }, options: Options(headers: {
+      'jdsignature': JdSignature.generate(),
+      'accept-language': 'zh-CN',
+      'connection': 'keep-alive',
+    }));
+    expect(resp.statusCode, 200);
+    final data = resp.data as Map<String, dynamic>;
+    expect(data['success'], 1,
+        reason: '服务端验证签名失败，success=${data['success']}，'
+            'message=${data['message']}');
   });
 }
