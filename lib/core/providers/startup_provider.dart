@@ -1,5 +1,6 @@
 // lib/core/providers/startup_provider.dart
 import 'package:flutter/foundation.dart';
+import 'package:jade/core/models/startup.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/domain_manager.dart';
 import 'package:jade/core/network/endpoints.dart';
@@ -33,8 +34,8 @@ class StartupProvider extends ChangeNotifier {
     }
   }
 
-  BackupDomainsData _tryDecodeDomains(String? data) {
+  BackupDomains _tryDecodeDomains(String? data) {
     // 简化：返回仅含主域名的兜底列表；完整解密在后续阶段。
-    return const BackupDomainsData(apiDomains: ['https://jdforrepam.com']);
+    return const BackupDomains(apiDomains: ['https://jdforrepam.com']);
   }
 }

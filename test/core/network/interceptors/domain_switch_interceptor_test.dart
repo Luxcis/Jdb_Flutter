@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jade/core/models/startup.dart';
 import 'package:jade/core/network/domain_manager.dart';
 import 'package:jade/core/network/interceptors/domain_switch_interceptor.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
@@ -28,7 +29,7 @@ void main() {
   test('608 触发 rotate 并自动重试成功', () async {
     final prefs = await SharedPreferences.getInstance();
     final dm = await DomainManager.load(prefs);
-    await dm.applyStartup(BackupDomainsData(
+    await dm.applyStartup(BackupDomains(
       apiDomains: ['https://jdforrepam.com', 'https://b.com'],
     ));
     final adapter = FakeAdapter();

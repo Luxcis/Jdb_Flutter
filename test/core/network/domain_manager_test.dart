@@ -2,6 +2,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jade/core/storage/storage_keys.dart';
+import 'package:jade/core/models/startup.dart';
 import 'package:jade/core/network/domain_manager.dart';
 
 void main() {
@@ -28,7 +29,7 @@ void main() {
   test('applyStartup 写入并持久化主域名', () async {
     final prefs = await SharedPreferences.getInstance();
     final dm = await DomainManager.load(prefs);
-    await dm.applyStartup(BackupDomainsData(
+    await dm.applyStartup(BackupDomains(
       apiDomains: ['https://jdforrepam.com', 'https://backup1.com'],
     ));
     expect(dm.currentUrl, 'https://jdforrepam.com');
@@ -39,7 +40,7 @@ void main() {
   test('rotate 顺序轮转并回到首个', () async {
     final prefs = await SharedPreferences.getInstance();
     final dm = await DomainManager.load(prefs);
-    await dm.applyStartup(BackupDomainsData(
+    await dm.applyStartup(BackupDomains(
       apiDomains: ['https://jdforrepam.com', 'https://b.com', 'https://c.com'],
     ));
     expect(dm.currentUrl, 'https://jdforrepam.com');
@@ -60,7 +61,7 @@ void main() {
   test('离开主域名时 isOnMainDomain 为 false', () async {
     final prefs = await SharedPreferences.getInstance();
     final dm = await DomainManager.load(prefs);
-    await dm.applyStartup(BackupDomainsData(
+    await dm.applyStartup(BackupDomains(
       apiDomains: ['https://jdforrepam.com', 'https://b.com'],
     ));
     await dm.rotate();
