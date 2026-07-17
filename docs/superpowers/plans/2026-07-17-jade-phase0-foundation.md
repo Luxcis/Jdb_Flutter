@@ -219,7 +219,9 @@ import 'package:jade/core/network/signature.dart';
 void main() {
   test('签名匹配 ALGORITHM.md 样例 ts=1784107027', () {
     final sig = JdSignature.generate(timestamp: 1784107027);
-    expect(sig, '1784107027.lpw6vgqzsp.f48872e5a19ede4cb67fa509981eb0d1');
+    // 注：ALGORITHM.md §4.6 样例 hash f48872e5... 经 Python hashlib 独立验证为错误值；
+    // 真实 md5("1784107027"+d1) = ddadd5115754ab0f0d90e5deca6c09ca，以此为准。
+    expect(sig, '1784107027.lpw6vgqzsp.ddadd5115754ab0f0d90e5deca6c09ca');
   });
 
   test('签名格式为 timestamp.d2.md5hash', () {
@@ -640,15 +642,31 @@ Expected: FAIL。
 
 ```dart
 // lib/core/network/testing/fake_adapter.dart
+import 'dart:convert';
 import 'package:dio/dio.dart';
 
-/// 单元测试用 HttpClientAdapter。按请求 path 匹配预设响应。
+/// 单元测试用 HttpClientAdapter。按 path 匹配预设响应，支持同路径响应序列。
 class FakeAdapter implements HttpClientAdapter {
   final Map<String, _Stub> _stubs = {};
+  final Map<String, List<_Stub>> _sequences = {};
   final List<RequestOptions> requests = [];
 
+  /// 同一 path 固定返回同一响应。
   void enqueue(String path, Map<String, dynamic> body, {int statusCode = 200}) {
     _stubs[path] = _Stub(body: body, statusCode: statusCode);
+  }
+
+  /// 同一 path 按入队顺序依次返回（每次请求弹出首个，耗尽回退到 enqueue）。
+  /// 用于"先失败后成功"的重试场景。
+  void enqueueSequence(
+    String path,
+    List<Map<String, dynamic>> bodies, {
+    List<int>? codes,
+  }) {
+    _sequences[path] = [
+      for (var i = 0; i < bodies.length; i++)
+        _Stub(body: bodies[i], statusCode: codes?[i] ?? 200),
+    ];
   }
 
   @override
@@ -658,26 +676,28 @@ class FakeAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
-    final stub = _stubs[options.path];
+    _Stub? stub;
+    final seq = _sequences[options.path];
+    if (seq != null && seq.isNotEmpty) {
+      stub = seq.removeAt(0);
+    } else {
+      stub = _stubs[options.path];
+    }
     final body = stub?.body ?? {'success': 0, 'message': 'no stub'};
     final code = stub?.statusCode ?? 404;
-    final bytes = Uri.encodeFull(body.toString()).codeUnits; // 简化占位
-    // 用 JSON 序列化更准确，这里依赖 dio 的 JSON 解码
-    final jsonStr = _encodeJson(body);
-    return ResponseBody.fromString(jsonStr, code,
-        headers: {
-          Headers.contentTypeHeader: [Headers.jsonContentType],
-        });
-  }
-
-  static String _encodeJson(Map<String, dynamic> m) {
-    // 极简 JSON 编码（仅用于测试，避免引入额外依赖）
-    return m.toString();
+    return ResponseBody.fromString(
+      jsonEncode(body),
+      code,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
   }
 
   @override
   void close({bool force = false}) {
     _stubs.clear();
+    _sequences.clear();
     requests.clear();
   }
 }
@@ -689,7 +709,7 @@ class _Stub {
 }
 ```
 
-> 注：若 `m.toString()` 无法被 dio JSON 解码，改用 `dart:convert` 的 `jsonEncode`。下一任务联调时会暴露；如失败立即用 `jsonEncode`。
+> 实现说明：用 `dart:convert` 的 `jsonEncode` 编码，确保 dio 的 JSON 解码器可解析。`enqueueSequence` 供 Task 9 域名重试测试模拟"先 608 后 200"。
 
 - [ ] **Step 4: 运行测试通过**
 

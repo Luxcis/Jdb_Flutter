@@ -1,0 +1,99 @@
+# Review package: 7abb85a..81520df
+
+## Commits
+81520df feat(core/network): add SignatureInterceptor and AuthInterceptor
+
+## Files changed
+ .../network/interceptors/auth_interceptor.dart     | 20 ++++++++++++
+ .../interceptors/signature_interceptor.dart        | 12 +++++++
+ .../signature_auth_interceptor_test.dart           | 37 ++++++++++++++++++++++
+ 3 files changed, 69 insertions(+)
+
+## Diff
+diff --git a/lib/core/network/interceptors/auth_interceptor.dart b/lib/core/network/interceptors/auth_interceptor.dart
+new file mode 100644
+index 0000000..4dda8cf
+--- /dev/null
++++ b/lib/core/network/interceptors/auth_interceptor.dart
+@@ -0,0 +1,20 @@
++import 'package:dio/dio.dart';
++
++/// 抽象 token 提供者，避免直接依赖 AuthProvider（后者在 providers 任务实现）。
++abstract class TokenProvider {
++  String? get token;
++}
++
++class AuthInterceptor extends Interceptor {
++  AuthInterceptor(this._tokenProvider);
++  final TokenProvider _tokenProvider;
++
++  @override
++  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
++    final token = _tokenProvider.token;
++    if (token != null && token.isNotEmpty) {
++      options.headers['authorization'] = 'Bearer $token';
++    }
++    handler.next(options);
++  }
++}
+diff --git a/lib/core/network/interceptors/signature_interceptor.dart b/lib/core/network/interceptors/signature_interceptor.dart
+new file mode 100644
+index 0000000..012fc6f
+--- /dev/null
++++ b/lib/core/network/interceptors/signature_interceptor.dart
+@@ -0,0 +1,12 @@
++import 'package:dio/dio.dart';
++import 'package:jade/core/network/signature.dart';
++
++class SignatureInterceptor extends Interceptor {
++  @override
++  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
++    options.headers['jdsignature'] = JdSignature.generate();
++    options.headers['accept-language'] = 'zh-CN';
++    options.headers['connection'] = 'keep-alive';
++    handler.next(options);
++  }
++}
+diff --git a/test/core/network/interceptors/signature_auth_interceptor_test.dart b/test/core/network/interceptors/signature_auth_interceptor_test.dart
+new file mode 100644
+index 0000000..842ba82
+--- /dev/null
++++ b/test/core/network/interceptors/signature_auth_interceptor_test.dart
+@@ -0,0 +1,37 @@
++import 'package:dio/dio.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:jade/core/network/interceptors/signature_interceptor.dart';
++import 'package:jade/core/network/interceptors/auth_interceptor.dart';
++
++class _FakeAuth implements TokenProvider {
++  String? token;
++  _FakeAuth([this.token]);
++}
++
++void main() {
++  test('SignatureInterceptor 注入 jdsignature 与语言头', () {
++    final ic = SignatureInterceptor();
++    final opts = RequestOptions(path: '/api/v1/x');
++    ic.onRequest(opts, RequestInterceptorHandler());
++    expect(opts.headers['jdsignature'], isNotNull);
++    final parts = (opts.headers['jdsignature'] as String).split('.');
++    expect(parts.length, 3);
++    expect(parts[1], 'lpw6vgqzsp');
++    expect(opts.headers['accept-language'], 'zh-CN');
++    expect(opts.headers['connection'], 'keep-alive');
++  });
++
++  test('AuthInterceptor 无 token 时不注入 Authorization', () {
++    final ic = AuthInterceptor(_FakeAuth(null));
++    final opts = RequestOptions(path: '/api/v1/x');
++    ic.onRequest(opts, RequestInterceptorHandler());
++    expect(opts.headers['authorization'], isNull);
++  });
++
++  test('AuthInterceptor 有 token 时注入 Bearer', () {
++    final ic = AuthInterceptor(_FakeAuth('abc.def.ghi'));
++    final opts = RequestOptions(path: '/api/v1/x');
++    ic.onRequest(opts, RequestInterceptorHandler());
++    expect(opts.headers['authorization'], 'Bearer abc.def.ghi');
++  });
++}
