@@ -2,8 +2,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/network/interceptors/signature_interceptor.dart';
 import 'package:jade/core/network/interceptors/auth_interceptor.dart';
+import 'package:jade/core/network/api_client.dart';
 
-class _FakeAuth {
+class _FakeAuth implements TokenProvider {
+  @override
   String? token;
   _FakeAuth([this.token]);
 }

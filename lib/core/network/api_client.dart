@@ -50,6 +50,11 @@ class ApiClient {
     return dio.post(path, data: data);
   }
 
+  /// 手动切换 baseUrl（用于设置页线路切换）。
+  void swapBaseUrl(String url) {
+    dio.options.baseUrl = url;
+  }
+
   /// 测试注入。
   void setAdapterForTest(HttpClientAdapter adapter) {
     dio.httpClientAdapter = adapter;
