@@ -11,14 +11,14 @@ class CachedImage extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: url,
       fit: BoxFit.cover,
-      placeholder: (_, __) => const Center(
+      placeholder: (_, _) => const Center(
         child: SizedBox(
           width: 24,
           height: 24,
           child: CircularProgressIndicator(strokeWidth: 2),
         ),
       ),
-      errorWidget: (_, __, ___) => const Center(child: Icon(Icons.broken_image)),
+      errorWidget: (_, _, _) => const Center(child: Icon(Icons.broken_image)),
     );
   }
 }
