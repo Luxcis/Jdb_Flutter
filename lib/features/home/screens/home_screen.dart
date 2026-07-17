@@ -1,33 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:jade/features/settings/screens/settings_screen.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
-  State createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  @override
-  Widget build(BuildContext context) {
-    final actions = [
-      IconButton(
-        icon: const Icon(Icons.settings),
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const SettingsPage(),
-            ),
-          );
-        },
-      ),
-    ];
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Template'),
-        actions: actions,
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      const Scaffold(body: Center(child: Text('首页')));
 }
