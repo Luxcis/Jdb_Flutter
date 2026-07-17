@@ -6,26 +6,124 @@
 
 | 环境 | URL | 说明 |
 |------|-----|------|
-| 生产环境 | `https://jdforrepam.com` | App 实际使用的域名 |
-| 测试环境 | `https://staging.letidi.com` | 代码中的默认值（`HttpApi.baseUrl` 的 `defValue`） |
+| 生产环境 | `https://jdforrepam.com` | App 实际使用的主域名 |
+| 测试环境 | `https://staging.letidi.com` | 开发测试域名，App 首次安装时的默认值 |
 
-### 域名动态切换
+此外，图片、封面、头像等静态资源统一使用 CDN 域名：`https://tp.spfcas.com/rhe951l4q/`
 
-App 支持运行时切换域名，机制如下：
+### 域名动态切换机制
 
-1. **启动时**: 调用 `GET /api/v1/startup` 获取 `backup_domains_data`（加密的备用域名列表）
-2. **存储**: 域名保存在 `SpUtil` 的 `key_baseurl` 键中
-3. **切换条件**: 当请求返回非 200 状态码时，`AuthInterceptor` 调用 `AppCommon.changeCurrentUrl()` 切换到下一个域名
-4. **提示**: 当检测到当前域名不是 `jdforrepam.com` 时，提示用户 "切换到大陆可用域名"
-5. **CDN**: 图片/封面/头像统一使用 `https://tp.spfcas.com/rhe951l4q/` 前缀
+App 采用多域名热切换策略，以应对主域名被封禁的情况。整个机制分为初始化、故障检测、备用域名切换三个阶段。
 
-### 代码中的域名逻辑
+#### 1.1 初始化（首次启动）
+
+App 首次安装后，内置的默认 Base URL 为 `https://staging.letidi.com`。启动时调用以下接口获取生产域名和备用域名列表：
+
+**请求**:
+```
+GET /api/v1/startup?platform=android&app_channel=google&app_version=1.9.29&app_version_number=35
+```
+
+**响应**（关键字段）:
+```json
+{
+  "success": 1,
+  "data": {
+    "backup_domains_data": "JCxJQTR1DerICeuy4lmmW...（Base64 加密的备用域名数据）",
+    "settings": { ... },
+    "user": { "promotion_code": null }
+  }
+}
+```
+
+响应中的 `backup_domains_data` 字段是一段 Base64 加密数据，解密后包含以下信息：
+
+| 字段 | 说明 |
+|------|------|
+| `apiDomains` | 可用 API 域名列表（数组，按优先级排序） |
+| `backupUrls` | 备用 URL 列表 |
+| `unblockedAppDomain` | 当前未被封禁的域名 |
+| `permanentAppDomain` | 永久域名（如 `javdb.com`） |
+| `imageEndpoint` | 图片服务端点 |
+
+App 收到响应后，将主域名写入本地存储的 `key_baseurl` 键，后续所有 API 请求使用该域名。
+
+#### 1.2 故障检测与域名切换
+
+每个 API 请求发出前，App 会先检查网络连接状态。若无网络则提示"无网络连接"。
+
+请求过程中，通过错误拦截器检测以下情况触发域名切换：
+
+**触发条件**：当请求返回 HTTP 状态码 608（域名封禁/服务不可用）时，或当前域名请求持续失败时。
+
+**切换流程**：
+1. 调用 `AppCommon.changeCurrentUrl()` 从 `backup_domains_data` 解密出的 `apiDomains` 列表中选取下一个可用域名
+2. 将新域名写入本地存储的 `key_baseurl` 键
+3. 重新初始化 HTTP 客户端（Dio），使用新域名作为 Base URL
+4. 用新域名重新发送刚才失败的请求
+
+**特殊情况 — 中国大陆用户**：
+当 App 检测到当前使用的域名不是主域名 `jdforrepam.com` 时（即已切换到备用域名），会向用户弹出提示："切换到大陆可用域名"。这表明备用域名可能是面向大陆用户的镜像节点。
+
+#### 1.3 完整域名生命周期
 
 ```
-HttpApi.baseUrl() → SpUtil.getString("key_baseurl", defValue: "https://staging.letidi.com")
+首次安装
+  │
+  ▼
+默认域名: staging.letidi.com
+  │
+  ▼
+调用 GET /api/v1/startup
+  │
+  ▼
+获取 backup_domains_data → 解密得到 apiDomains 列表
+  │
+  ▼
+写入主域名 jdforrepam.com 到本地存储
+  │
+  ▼
+正常请求 ──────► 成功？继续使用
+  │
+  │ 失败（608/持续错误）
+  ▼
+从 apiDomains 列表选取下一个域名
+  │
+  ▼
+更新本地存储 + 重新初始化 HTTP 客户端
+  │
+  ▼
+用新域名重试请求 ──────► 成功？继续使用新域名
+  │
+  │ 主域名恢复
+  ▼
+下次启动时通过 startup 接口重新获取最新域名列表
 ```
 
-生产环境通过 startup 接口返回的域名数据写入 SpUtil，后续请求使用新域名。
+#### 1.4 域名相关接口
+
+除了 startup 接口，关于页面也提供域名信息：
+
+**请求**:
+```
+GET /api/v1/about?app_channel=google
+```
+
+**响应**:
+```json
+{
+  "success": 1,
+  "data": [
+    [
+      {"name": "官網(最新域名)", "meta": "javdb574.com", "url": "https://javdb574.com"},
+      {"name": "官網(永久域名)", "meta": "javdb.com", "url": "https://javdb.com"},
+      {"name": "App安裝", "meta": "app.javdb574.com", "url": "https://app.javdb574.com"}
+    ]
+  ]
+}
+```
+
+该接口返回的是面向用户展示的官网域名列表，与 API 域名切换机制相互独立，但可交叉参考判断当前可用域名。
 
 ## 2. 认证方式
 
