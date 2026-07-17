@@ -1,13 +1,8 @@
 import 'package:dio/dio.dart';
 
-/// 抽象 token 提供者，避免直接依赖 AuthProvider（后者在 providers 任务实现）。
-abstract class TokenProvider {
-  String? get token;
-}
-
 class AuthInterceptor extends Interceptor {
-  AuthInterceptor(this._tokenProvider);
-  final TokenProvider _tokenProvider;
+  AuthInterceptor(dynamic tokenProvider) : _tokenProvider = tokenProvider;
+  final dynamic _tokenProvider;
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {

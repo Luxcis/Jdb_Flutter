@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/network/interceptors/signature_interceptor.dart';
 import 'package:jade/core/network/interceptors/auth_interceptor.dart';
 
-class _FakeAuth implements TokenProvider {
+class _FakeAuth {
   String? token;
   _FakeAuth([this.token]);
 }
