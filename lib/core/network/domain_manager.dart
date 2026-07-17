@@ -2,13 +2,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jade/core/constants/app_constants.dart';
+import 'package:jade/core/models/startup.dart';
 import 'package:jade/core/storage/storage_keys.dart';
-
-/// 最小域名数据结构（Phase 0 用；后续阶段替换为完整 json_serializable 模型）。
-class BackupDomainsData {
-  const BackupDomainsData({required this.apiDomains});
-  final List<String> apiDomains;
-}
 
 /// 域名动态切换状态机。参见 spec §3.3。
 class DomainManager extends ChangeNotifier {
@@ -43,7 +38,7 @@ class DomainManager extends ChangeNotifier {
   }
 
   /// 写入 startup 接口返回的域名列表，主域名落首位并持久化。
-  Future<void> applyStartup(BackupDomainsData data) async {
+  Future<void> applyStartup(BackupDomains data) async {
     _apiDomains = List<String>.from(data.apiDomains);
     _index = 0;
     _currentUrl = _apiDomains.isNotEmpty ? _apiDomains.first : _currentUrl;
