@@ -9,6 +9,8 @@ class SectionHeader extends StatelessWidget {
   final VoidCallback? onTrailing;
   final bool bold;
 
+  Widget get sliver => SliverToBoxAdapter(child: this);
+
   @override
   Widget build(BuildContext context) {
     return Padding(
