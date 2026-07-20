@@ -2,7 +2,6 @@ import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/magnet.dart';
 import 'package:jade/core/models/review.dart';
-import 'package:jade/core/models/list_model.dart';
 
 class MovieDetailService {
   MovieDetailService(this._api);

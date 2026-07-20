@@ -87,7 +87,7 @@ class _Top250TabState extends State<_Top250Tab> {
     }
     return ListenableBuilder(
       listenable: _ctrl,
-      builder: (_, __) => RefreshIndicator(
+      builder: (_, _) => RefreshIndicator(
         onRefresh: _ctrl.refresh,
         child: ListView.builder(
           itemCount: _ctrl.items.length,

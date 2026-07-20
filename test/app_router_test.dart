@@ -5,7 +5,7 @@ import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/router/app_router.dart';
 
 class _FakeAuth extends ChangeNotifier implements TokenProvider {
-  String? _token = 'tok';
+  final String _token = 'tok';
   @override String? get token => _token;
   bool get isLogged => true;
   Map<String, dynamic>? get user => null;

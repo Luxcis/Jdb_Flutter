@@ -39,10 +39,13 @@ class _FilterDrawerState extends State<FilterDrawer> {
             Expanded(
               child: ListView(children: widget.schema.groups.map((g) =>
                 ExpansionTile(title: Text(g.label), children: g.items.map((item) =>
+                  // ignore: deprecated_member_use
                   RadioListTile<String>(
                     title: Text(item.label),
                     value: item.value,
+                    // ignore: deprecated_member_use
                     groupValue: _values[g.label],
+                    // ignore: deprecated_member_use
                     onChanged: (v) {
                       setState(() { if (v != null) _values[g.label] = v; });
                     },

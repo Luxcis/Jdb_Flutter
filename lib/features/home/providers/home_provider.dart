@@ -29,9 +29,9 @@ class HomeProvider extends ChangeNotifier {
         _service.getLatest(),
         _service.getMagnetUpdates(),
       ]);
-      _recommends = results[0] as List<MovieSummary>;
-      _latest = results[1] as List<MovieSummary>;
-      _magnetUpdates = results[2] as List<MovieSummary>;
+      _recommends = results[0];
+      _latest = results[1];
+      _magnetUpdates = results[2];
     } catch (e) {
       _error = e.toString();
     } finally {

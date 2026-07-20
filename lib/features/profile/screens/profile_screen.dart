@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:jade/core/providers/auth_provider.dart';
+import 'package:jade/core/router/routes.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -18,9 +19,11 @@ class ProfilePage extends StatelessWidget {
             children: [
               const Icon(Icons.person, size: 80, color: Colors.grey),
               const SizedBox(height: 16),
+              const Text('登录后查看个人内容', style: TextStyle(color: Colors.grey)),
+              const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () => context.go('/login'),
-                child: const Text('登录'),
+                onPressed: () => context.go('/login?from=%2Fprofile'),
+                child: const Text('登录 / 注册'),
               ),
               const SizedBox(height: 24),
               ListTile(
@@ -37,42 +40,75 @@ class ProfilePage extends StatelessWidget {
       appBar: AppBar(title: const Text('我的')),
       body: ListView(
         children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  child: Text(
+                    ((auth.user ?? const {})['username'] as String? ?? '?')[0].toUpperCase(),
+                    style: const TextStyle(fontSize: 24),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        (auth.user ?? const {})['username'] as String? ?? '用户',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      if ((auth.user ?? const {})['email'] is String)
+                        Text(
+                          auth.user!['email'] as String,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
           _Cell(
             title: '我想看的',
             subtitle: '${auth.user?['want_watch_count'] ?? 0}部影片',
-            icon: Icons.bookmark,
-            onTap: () {},
+            icon: Icons.bookmark_border,
+            onTap: () => context.go(AppRoutes.profileWantWatch),
           ),
           _Cell(
             title: '我看过的',
             subtitle: '${auth.user?['watched_count'] ?? 0}部影片',
             icon: Icons.done_all,
-            onTap: () {},
+            onTap: () => context.go(AppRoutes.profileWatched),
           ),
           _Cell(
             title: '我的关注',
-            icon: Icons.favorite,
-            onTap: () {},
+            icon: Icons.favorite_border,
+            onTap: () => context.go(AppRoutes.profileFollowing),
           ),
           _Cell(
             title: '我的收藏',
-            icon: Icons.collections,
-            onTap: () {},
+            icon: Icons.collections_bookmark,
+            onTap: () => context.go(AppRoutes.profileFavorites),
           ),
           _Cell(
             title: '我的清单',
-            icon: Icons.list,
-            onTap: () {},
+            icon: Icons.list_alt,
+            onTap: () => context.go(AppRoutes.profileLists),
           ),
           _Cell(
             title: '近期浏览',
             icon: Icons.history,
-            onTap: () {},
+            onTap: () => context.go(AppRoutes.profileRecent),
           ),
           _Cell(
             title: '个人资料',
-            icon: Icons.person,
-            onTap: () {},
+            icon: Icons.person_outline,
+            onTap: () => context.go(AppRoutes.profileInfo),
           ),
           const Divider(),
           _Cell(
