@@ -32,7 +32,7 @@ class AppRouter {
   static String? _redirect(BuildContext context, GoRouterState state) {
     final auth = context.read<AuthProvider>();
     final isLogged = auth.isLogged;
-    final loc = state.uri.path;
+    final loc = state.matchedLocation;
 
     if (isLogged &&
         (loc == AppRoutes.login || loc == AppRoutes.register)) {
@@ -95,5 +95,73 @@ class AppRouter {
           path: '/search',
           builder: (c, s) => const SearchPage(),
         ),
+        // Profile 子页面占位路由（redirect 守卫依赖这些路由存在）
+        GoRoute(
+          path: AppRoutes.profileWantWatch,
+          builder: (c, s) => const _GatedPage(title: '我想看的'),
+        ),
+        GoRoute(
+          path: AppRoutes.profileWatched,
+          builder: (c, s) => const _GatedPage(title: '我看过的'),
+        ),
+        GoRoute(
+          path: AppRoutes.profileFollowing,
+          builder: (c, s) => const _GatedPage(title: '我的关注'),
+        ),
+        GoRoute(
+          path: AppRoutes.profileFavorites,
+          builder: (c, s) => const _GatedPage(title: '我的收藏'),
+        ),
+        GoRoute(
+          path: AppRoutes.profileFavoritesActors,
+          builder: (c, s) => const _GatedPage(title: '收藏的演员'),
+        ),
+        GoRoute(
+          path: AppRoutes.profileFavoritesMakers,
+          builder: (c, s) => const _GatedPage(title: '收藏的片商'),
+        ),
+        GoRoute(
+          path: AppRoutes.profileFavoritesSeries,
+          builder: (c, s) => const _GatedPage(title: '收藏的系列'),
+        ),
+        GoRoute(
+          path: AppRoutes.profileFavoritesDirectors,
+          builder: (c, s) => const _GatedPage(title: '收藏的导演'),
+        ),
+        GoRoute(
+          path: AppRoutes.profileFavoritesCodes,
+          builder: (c, s) => const _GatedPage(title: '收藏的番号'),
+        ),
+        GoRoute(
+          path: AppRoutes.profileFavoritesLists,
+          builder: (c, s) => const _GatedPage(title: '收藏的清单'),
+        ),
+        GoRoute(
+          path: AppRoutes.profileLists,
+          builder: (c, s) => const _GatedPage(title: '我的清单'),
+        ),
+        GoRoute(
+          path: AppRoutes.profileRecent,
+          builder: (c, s) => const _GatedPage(title: '近期浏览'),
+        ),
+        GoRoute(
+          path: AppRoutes.profileInfo,
+          builder: (c, s) => const _GatedPage(title: '个人资料'),
+        ),
+        GoRoute(
+          path: AppRoutes.profileSettings,
+          builder: (c, s) => const _GatedPage(title: '设置'),
+        ),
       ];
+}
+
+class _GatedPage extends StatelessWidget {
+  const _GatedPage({required this.title});
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: Text(title)),
+        body: const SizedBox(),
+      );
 }

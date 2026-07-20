@@ -22,7 +22,7 @@ class MyApp extends StatelessWidget {
               ? ThemeData(colorScheme: darkDynamic)
               : AppTheme.dark(),
           themeMode: themeProvider.themeMode,
-          routerConfig: AppRouter.buildForTest(),
+          routerConfig: AppRouter.build(),
         );
       },
     );
