@@ -25,7 +25,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _load() {
-    final api = ApiClient.instance;
+    final api = ApiClient.instanceOrNull;
+    if (api == null) return;
     final provider = HomeProvider(HomeService(api));
     provider.loadAll().then((_) {
       if (mounted) setState(() => _provider = provider);

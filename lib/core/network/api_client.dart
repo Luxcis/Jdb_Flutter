@@ -23,6 +23,7 @@ class ApiClient {
 
   static ApiClient? _instance;
   static ApiClient get instance => _instance!;
+  static ApiClient? get instanceOrNull => _instance;
 
   static Future<ApiClient> create({
     required SharedPreferences prefs,

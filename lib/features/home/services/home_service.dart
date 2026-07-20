@@ -8,7 +8,7 @@ class HomeService {
 
   Future<List<MovieSummary>> getRecommends({String? period}) async {
     final resp = await _api.get(Endpoints.moviesRecommend,
-      queryParameters: if (period != null) {'period': period},
+      queryParameters: period != null ? {'period': period} : {},
     );
     final list = (resp.data as List?) ?? [];
     return list.map((j) => MovieSummary.fromJson(j as Map<String, dynamic>)).toList();
