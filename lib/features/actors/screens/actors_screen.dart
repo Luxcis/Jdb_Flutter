@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:jade/core/widgets/actor_grid_view.dart';
 import 'package:jade/core/widgets/section_header.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
+import 'package:jade/core/widgets/login_guide_card.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/features/actors/services/actor_service.dart';
 import 'package:go_router/go_router.dart';
 
@@ -96,6 +99,13 @@ class _RecommendTabState extends State<_RecommendTab> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    if (!auth.isLogged) {
+      return const LoginGuideCard(
+        message: '登录后可查看演员推荐',
+        loginPath: '/actors',
+      );
+    }
     return CustomScrollView(
       slivers: [
         SectionHeader(title: '新人', bold: true).sliver,

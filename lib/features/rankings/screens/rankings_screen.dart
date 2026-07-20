@@ -7,6 +7,7 @@ import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/providers/auth_provider.dart';
+import 'package:jade/core/widgets/login_guide_card.dart';
 import 'package:jade/features/rankings/services/ranking_service.dart';
 import 'package:provider/provider.dart';
 
@@ -83,7 +84,10 @@ class _Top250TabState extends State<_Top250Tab> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     if (!auth.isLogged) {
-      return const Center(child: Text('请登录后查看 Top250'));
+      return const LoginGuideCard(
+        message: '登录后查看 Top250 排行榜',
+        loginPath: '/rankings',
+      );
     }
     return ListenableBuilder(
       listenable: _ctrl,
