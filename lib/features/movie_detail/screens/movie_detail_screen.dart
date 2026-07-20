@@ -53,7 +53,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     return Scaffold(
       appBar: AppBar(title: Text(d.title, maxLines: 1, overflow: TextOverflow.ellipsis)),
       body: CustomScrollView(slivers: [
-        SliverToBoxAdapter(child: SizedBox(height: 300, child: CachedImage(d.coverUrl, fit: BoxFit.contain))),
+        SliverToBoxAdapter(child: SizedBox(height: 300, child: CachedImage(d.coverUrl))),
         SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('番号: ${d.number}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           const SizedBox(height: 4),
