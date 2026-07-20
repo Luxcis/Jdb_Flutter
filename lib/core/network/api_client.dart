@@ -21,6 +21,9 @@ class ApiClient {
   late final Dio dio;
   final DomainManager domainManager;
 
+  static ApiClient? _instance;
+  static ApiClient get instance => _instance!;
+
   static Future<ApiClient> create({
     required SharedPreferences prefs,
     required TokenProvider tokenProvider,
@@ -38,7 +41,9 @@ class ApiClient {
       ResponseInterceptor(onAuthError: onAuthError),
       DomainSwitchInterceptor(domainManager: dm, dio: dio),
     ]);
-    return ApiClient._(dio: dio, domainManager: dm);
+    final client = ApiClient._(dio: dio, domainManager: dm);
+    _instance = client;
+    return client;
   }
 
   Future<Response> get(String path,
