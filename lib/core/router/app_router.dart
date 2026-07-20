@@ -51,6 +51,15 @@ class AppRouter {
               ]),
             ],
           ),
+          GoRoute(
+            path: '/movie/:id',
+            builder: (c, s) =>
+                MovieDetailPage(id: s.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: '/search',
+            builder: (c, s) => const SearchPage(),
+          ),
         ],
       );
 }
