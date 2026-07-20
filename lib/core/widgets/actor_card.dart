@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/actor.dart';
+import 'package:jade/core/widgets/cached_image.dart';
 
 class ActorCard extends StatelessWidget {
   const ActorCard({super.key, required this.actor, this.onTap});
@@ -12,12 +13,10 @@ class ActorCard extends StatelessWidget {
       onTap: onTap,
       child: Column(
         children: [
-          CircleAvatar(
-            radius: 36,
-            backgroundImage: actor.avatarUrl.startsWith('http')
-                ? NetworkImage(actor.avatarUrl) as ImageProvider
-                : NetworkImage(
-                    'https://tp.spfcas.com/rhe951l4q/${actor.avatarUrl}'),
+          SizedBox(
+            width: 72,
+            height: 72,
+            child: ClipOval(child: CachedImage(actor.avatarUrl)),
           ),
           const SizedBox(height: 4),
           Text(
