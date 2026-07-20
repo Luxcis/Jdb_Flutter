@@ -8,6 +8,7 @@ import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/paged_result.dart';
+import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/storage/storage_keys.dart';
 
 class SearchPage extends StatefulWidget {
@@ -163,7 +164,7 @@ class _MovieSearchTabState extends State<_MovieSearchTab> {
           total: 0,
         );
       }
-      final resp = await api.get('/api/v2/search', queryParameters: {
+      final resp = await api.get(Endpoints.searchV2, queryParameters: {
         'q': widget.query,
         'page': page,
       });
@@ -209,7 +210,7 @@ class _ActorSearchTabState extends State<_ActorSearchTab> {
           total: 0,
         );
       }
-      final resp = await api.get('/api/v2/search', queryParameters: {
+      final resp = await api.get(Endpoints.searchV2, queryParameters: {
         'q': widget.query,
         'type': 'actor',
         'page': page,
@@ -260,7 +261,7 @@ class _CodeSearchTabState extends State<_CodeSearchTab> {
       setState(() => _isLoading = false);
       return;
     }
-    final resp = await api.get('/api/v2/search', queryParameters: {
+    final resp = await api.get(Endpoints.searchV2, queryParameters: {
       'q': widget.query,
       'type': 'code',
     });

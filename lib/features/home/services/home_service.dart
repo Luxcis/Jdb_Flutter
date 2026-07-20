@@ -31,7 +31,11 @@ class HomeService {
 
   Future<List<MovieSummary>> getMagnetUpdates({int limit = 9}) async {
     final resp = await _api.get(Endpoints.moviesTags,
-      queryParameters: {'sort_by': 'magnet_date', 'limit': limit},
+      queryParameters: {
+        'filter_by': 'categories',
+        'sort_by': 'magnet_date',
+        'limit': limit,
+      },
     );
     final data = resp.data;
     final items = (data is Map ? data['items'] ?? [] : []) as List;

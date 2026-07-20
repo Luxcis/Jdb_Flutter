@@ -16,6 +16,7 @@ class CategoryService {
   }) async {
     final resp = await _api.get(Endpoints.moviesTags, queryParameters: {
       'type': type,
+      'filter_by': 'categories',
       'sort_by': sortBy,
       'order_by': orderBy,
       'page': page,

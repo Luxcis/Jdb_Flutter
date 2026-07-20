@@ -116,7 +116,7 @@ void main() {
       expect(list.length, 1);
     });
 
-    test('GET /api/v1/movies/tags → magnet 更新', () async {
+    test('GET /api/v1/movies/tags → magnet 更新带 filter_by', () async {
       ok(adapter, Endpoints.moviesTags, {
         'items': [
           {'id': 'm1', 'number': 'N1', 'title': 'T1',
@@ -124,7 +124,9 @@ void main() {
         ],
       });
       final list = await svc.getMagnetUpdates(limit: 9);
-      expect(adapter.requests.last.path, Endpoints.moviesTags);
+      final q = adapter.requests.last.uri.queryParameters;
+      expect(q['filter_by'], 'categories');
+      expect(q['sort_by'], 'magnet_date');
       expect(list.length, 1);
     });
   });
@@ -254,7 +256,7 @@ void main() {
       svc = CategoryService(api);
     });
 
-    test('GET /api/v1/movies/tags → 带 type/sort 参数', () async {
+    test('GET /api/v1/movies/tags → 带 type/sort/filter_by 参数', () async {
       ok(adapter, Endpoints.moviesTags, {
         'items': [
           {'id': 'm1', 'number': 'N1', 'title': 'T1',
@@ -265,6 +267,7 @@ void main() {
       await svc.getMovies(type: 1, sortBy: 'date', orderBy: 'desc');
       final q = adapter.requests.last.uri.queryParameters;
       expect(q['type'], '1');
+      expect(q['filter_by'], 'categories');
       expect(q['sort_by'], 'date');
       expect(q['order_by'], 'desc');
     });
@@ -362,12 +365,20 @@ void main() {
       expect(resp.data, contains('token'));
     });
 
-    test('POST /api/v1/users → 注册', () async {
+    test('POST /api/v1/users → 注册（含设备信息）', () async {
       ok(adapter, Endpoints.users, {});
       await api.post(Endpoints.users, data: {
+        'email': 'new@test.com',
         'username': 'new@test.com',
         'password': 'pass123',
-        'password_confirmation': 'pass123',
+        'device_uuid': 'test-uuid',
+        'device_name': 'Jade',
+        'device_model': 'Flutter',
+        'platform': 'android',
+        'system_version': '14',
+        'app_channel': 'google',
+        'app_version': '1.9.29',
+        'app_version_number': '35',
       });
       expect(adapter.requests.last.path, Endpoints.users);
     });

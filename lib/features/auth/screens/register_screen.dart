@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/api_exception.dart';
 import 'package:jade/core/network/endpoints.dart';
+import 'package:jade/core/storage/storage_keys.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -26,10 +28,23 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
+  Future<String> _deviceUuid() async {
+    final prefs = await SharedPreferences.getInstance();
+    var uuid = prefs.getString(StorageKeys.deviceUuid);
+    if (uuid == null || uuid.isEmpty) {
+      uuid =
+          '${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}'
+          '${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
+      await prefs.setString(StorageKeys.deviceUuid, uuid);
+    }
+    return uuid;
+  }
+
   void _register() async {
     final api = ApiClient.instanceOrNull;
     if (api == null) return;
 
+    final email = _emailCtrl.text.trim();
     if (_passCtrl.text != _confirmCtrl.text) {
       setState(() => _error = '两次密码不一致');
       return;
@@ -44,10 +59,19 @@ class _RegisterPageState extends State<RegisterPage> {
       _error = null;
     });
     try {
+      final deviceUuid = await _deviceUuid();
       await api.post(Endpoints.users, data: {
-        'username': _emailCtrl.text.trim(),
+        'email': email,
+        'username': email,
         'password': _passCtrl.text,
-        'password_confirmation': _confirmCtrl.text,
+        'device_uuid': deviceUuid,
+        'device_name': 'Jade',
+        'device_model': 'Flutter',
+        'platform': 'android',
+        'system_version': '14',
+        'app_channel': 'google',
+        'app_version': '1.9.29',
+        'app_version_number': '35',
       });
       if (!mounted) return;
       final from =
