@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/models/movie.dart';
+import 'package:jade/core/widgets/cached_image.dart';
 import 'package:jade/core/widgets/movie_card.dart';
+import 'package:jade/core/widgets/movie_list_tile.dart';
 
 void main() {
   testWidgets('MovieCard 渲染封面标题番号', (tester) async {
@@ -25,5 +27,63 @@ void main() {
     ));
     await tester.tap(find.text('Tap Me'));
     expect(tapped, isTrue);
+  });
+
+  group('MovieListTile', () {
+    testWidgets('基础渲染标题、番号、日期', (tester) async {
+      final movie = MovieSummary(
+        id: '1',
+        number: 'SSIS-001',
+        title: '测试影片标题',
+        coverUrl: 'covers/test.jpg',
+        releaseDate: '2024-01-01',
+      );
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: MovieListTile(movie: movie, rank: 1)),
+      ));
+      await tester.pump();
+      expect(find.text('测试影片标题'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+            (w) => w is Text && w.data!.contains('SSIS-001')),
+        findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+            (w) => w is Text && w.data!.contains('2024-01-01')),
+        findsOneWidget);
+    });
+
+    testWidgets('screenshots 参数渲染横向截图', (tester) async {
+      final movie = MovieSummary(
+        id: '1',
+        number: 'SSIS-001',
+        title: '测试影片',
+        coverUrl: 'covers/test.jpg',
+      );
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: MovieListTile(
+            movie: movie,
+            screenshots: ['shot1.jpg', 'shot2.jpg'],
+          ),
+        ),
+      ));
+      await tester.pump();
+      expect(find.byType(CachedImage), findsNWidgets(3));
+    });
+
+    testWidgets('无 screenshots 时不渲染截图区域', (tester) async {
+      final movie = MovieSummary(
+        id: '1',
+        number: 'SSIS-001',
+        title: '测试影片',
+        coverUrl: 'covers/test.jpg',
+      );
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: MovieListTile(movie: movie)),
+      ));
+      await tester.pump();
+      expect(find.byType(CachedImage), findsOneWidget);
+    });
   });
 }

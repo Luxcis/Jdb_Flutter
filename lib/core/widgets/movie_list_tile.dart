@@ -5,10 +5,16 @@ import 'package:jade/core/widgets/rating_badge.dart';
 
 class MovieListTile extends StatelessWidget {
   const MovieListTile({
-    super.key, required this.movie, this.rank, this.onTap,
+    super.key,
+    required this.movie,
+    this.rank,
+    this.screenshots,
+    this.onTap,
   });
+
   final MovieSummary movie;
   final int? rank;
+  final List<String>? screenshots;
   final VoidCallback? onTap;
 
   @override
@@ -25,26 +31,58 @@ class MovieListTile extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: SizedBox(
-                    width: 80, height: 100,
+                    width: 80,
+                    height: 100,
                     child: CachedImage(movie.coverUrl),
                   ),
                 ),
                 if (rank != null)
-                  Positioned(top: 2, left: 2, child: RatingBadge(rank: rank!)),
+                  Positioned(
+                      top: 2, left: 2, child: RatingBadge(rank: rank!)),
               ],
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(movie.title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
+                  Text(
+                    movie.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.bodyMedium
+                        ?.copyWith(fontWeight: FontWeight.w500),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     '${movie.number}  ${movie.releaseDate ?? ''}',
-                    style: textTheme.labelSmall?.copyWith(color: Colors.grey),
+                    style:
+                        textTheme.labelSmall?.copyWith(color: Colors.grey),
                   ),
+                  if (screenshots != null && screenshots!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: SizedBox(
+                        height: 56,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: screenshots!.length,
+                          itemBuilder: (_, i) => Padding(
+                            padding:
+                                const EdgeInsets.only(right: 4),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(3),
+                              child: SizedBox(
+                                width: 84,
+                                height: 56,
+                                child: CachedImage(screenshots![i]),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
