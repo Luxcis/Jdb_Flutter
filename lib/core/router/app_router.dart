@@ -6,6 +6,9 @@ import 'package:jade/features/rankings/index.dart';
 import 'package:jade/features/categories/index.dart';
 import 'package:jade/features/actors/index.dart';
 import 'package:jade/features/profile/index.dart';
+import 'package:jade/features/movie_detail/index.dart';
+import 'package:jade/features/search/index.dart';
+import 'package:jade/features/auth/index.dart';
 
 class AppRouter {
   const AppRouter._();
@@ -13,6 +16,10 @@ class AppRouter {
   static GoRouter buildForTest() => GoRouter(
         initialLocation: AppRoutes.home,
         routes: [
+          GoRoute(
+            path: AppRoutes.login,
+            builder: (c, s) => const LoginPage(),
+          ),
           StatefulShellRoute.indexedStack(
             builder: (context, state, shell) =>
                 MainShell(navigationShell: shell),
