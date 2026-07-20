@@ -65,4 +65,11 @@ class ApiClient {
   void setAdapterForTest(HttpClientAdapter adapter) {
     dio.httpClientAdapter = adapter;
   }
+
+  /// 测试用工厂：轻量 ApiClient（无单例、无拦截器链）。
+  /// 调用方负责注入 [FakeAdapter] 和装配 [ResponseInterceptor]。
+  factory ApiClient.forTest({
+    required Dio dio,
+    required DomainManager domainManager,
+  }) = ApiClient._;
 }
