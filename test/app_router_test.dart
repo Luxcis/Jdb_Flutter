@@ -22,6 +22,6 @@ void main() {
     await tester.tap(find.text('排行榜'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
-    expect(find.text('排行榜占位'), findsOneWidget);
+    expect(find.text('Top250'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 10)));
 }
