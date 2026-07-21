@@ -12,10 +12,3 @@ Article _$ArticleFromJson(Map<String, dynamic> json) => Article(
   coverUrl: json['cover_url'] as String?,
   publishDate: json['publish_date'] as String?,
 );
-
-Map<String, dynamic> _$ArticleToJson(Article instance) => <String, dynamic>{
-  'id': instance.id,
-  'title': instance.title,
-  'cover_url': instance.coverUrl,
-  'publish_date': instance.publishDate,
-};

@@ -1,7 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 part 'review.g.dart';
 
-@JsonSerializable(fieldRename: FieldRename.snake)
+@JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
 class ReviewAuthor {
   const ReviewAuthor({required this.name});
   final String name;
@@ -9,7 +9,7 @@ class ReviewAuthor {
       _$ReviewAuthorFromJson(json);
 }
 
-@JsonSerializable(fieldRename: FieldRename.snake)
+@JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
 class Review {
   const Review({
     required this.id,

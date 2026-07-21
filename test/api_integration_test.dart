@@ -161,7 +161,7 @@ void main() {
         'items': [],
         'current_page': 1, 'total_pages': 1, 'total': 0,
       });
-      final r = await svc.getPlayback(period: 'monthly', page: 1);
+      await svc.getPlayback(period: 'monthly', page: 1);
       expect(adapter.requests.last.path, Endpoints.rankingsPlayback);
     });
 
@@ -404,7 +404,7 @@ void main() {
         ],
         'current_page': 1, 'total_pages': 3, 'total': 30,
       });
-      final resp = await api.get(Endpoints.searchV2, queryParameters: {
+      await api.get(Endpoints.searchV2, queryParameters: {
         'q': 'test', 'type': 'movie', 'page': 1,
       });
       final q = adapter.requests.last.uri.queryParameters;

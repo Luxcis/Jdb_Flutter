@@ -12,10 +12,3 @@ ListModel _$ListModelFromJson(Map<String, dynamic> json) => ListModel(
   movieCount: (json['movie_count'] as num?)?.toInt() ?? 0,
   viewedCount: (json['viewed_count'] as num?)?.toInt() ?? 0,
 );
-
-Map<String, dynamic> _$ListModelToJson(ListModel instance) => <String, dynamic>{
-  'id': instance.id,
-  'name': instance.name,
-  'movie_count': instance.movieCount,
-  'viewed_count': instance.viewedCount,
-};

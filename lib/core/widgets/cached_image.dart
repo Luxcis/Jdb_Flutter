@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:jade/core/constants/app_constants.dart';
+import 'package:jade/core/network/api_client.dart';
 
 class CachedImage extends StatelessWidget {
   const CachedImage(
@@ -16,8 +17,14 @@ class CachedImage extends StatelessWidget {
   final double? width;
   final double? height;
 
-  String get _fullUrl =>
-      url.startsWith('http') ? url : '${AppConstants.imageCdnBase}$url';
+  String get _fullUrl {
+    if (url.startsWith('http')) return url;
+    final endpoint = ApiClient.instanceOrNull
+            ?.domainManager
+            .imageEndpoint ??
+        AppConstants.fallbackImageCdn;
+    return '$endpoint$url';
+  }
 
   @override
   Widget build(BuildContext context) {

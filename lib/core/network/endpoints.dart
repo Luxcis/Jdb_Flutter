@@ -44,9 +44,6 @@ class Endpoints {
 
   // ── 搜索 ──
   static const String searchV2 = '/api/v2/search';
-  // ⚠️ 该接口为 POST（multipart/form-data 上传图片），非 GET
-  static const String searchImage = '/api/v2/search_image';
-  static const String searchMagnet = '/api/v1/search_magnet';
 
   // ── 演员 ──
   static const String actors = '/api/v1/actors';

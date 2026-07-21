@@ -11,9 +11,3 @@ Series _$SeriesFromJson(Map<String, dynamic> json) => Series(
   name: json['name'] as String,
   movieCount: (json['movie_count'] as num?)?.toInt() ?? 0,
 );
-
-Map<String, dynamic> _$SeriesToJson(Series instance) => <String, dynamic>{
-  'id': instance.id,
-  'name': instance.name,
-  'movie_count': instance.movieCount,
-};

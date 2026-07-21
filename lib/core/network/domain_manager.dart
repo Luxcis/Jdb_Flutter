@@ -5,10 +5,12 @@ import 'package:jade/core/constants/app_constants.dart';
 import 'package:jade/core/models/startup.dart';
 import 'package:jade/core/storage/storage_keys.dart';
 
-/// 域名动态切换状态机。参见 spec §3.3。
+/// 域名动态切换状态机。
+///
+/// 从 startup API 解密 [BackupDomains] 后写入，同时管理 API 域名轮转和 CDN 端点。
 class DomainManager extends ChangeNotifier {
   DomainManager._({required SharedPreferences prefs}) : _prefs = prefs {
-    _currentUrl = AppConstants.defaultBaseUrl;
+    _currentUrl = AppConstants.fallbackBaseUrl;
     _apiDomains = const [];
   }
 
@@ -17,12 +19,23 @@ class DomainManager extends ChangeNotifier {
   late String _currentUrl;
   List<String> _apiDomains = const [];
   int _index = 0;
+  String? _imageEndpoint;
 
+  /// 当前 API base URL。
   String get currentUrl => _currentUrl;
-  List<String> get apiDomains => List.unmodifiable(_apiDomains);
-  bool get isOnMainDomain => _currentUrl == AppConstants.mainDomain;
 
-  /// 启动加载：SP 有则恢复，否则默认 staging。
+  /// 当前 API 域名列表。
+  List<String> get apiDomains => List.unmodifiable(_apiDomains);
+
+  /// 图片 CDN 端点，优先来自 startup，否则使用兜底值。
+  String get imageEndpoint =>
+      _imageEndpoint ?? AppConstants.fallbackImageCdn;
+
+  /// 是否位于主域名（列表第一个，即 startup 返回的首个 apiDomain）。
+  bool get isOnMainDomain =>
+      _apiDomains.isNotEmpty && _currentUrl == _apiDomains.first;
+
+  /// 启动加载：SP 有则恢复，否则使用兜底域名。
   static Future<DomainManager> load(SharedPreferences prefs) async {
     final dm = DomainManager._(prefs: prefs);
     final stored = prefs.getStringList(StorageKeys.apiDomains);
@@ -32,7 +45,7 @@ class DomainManager extends ChangeNotifier {
       dm._index = 0;
       dm._currentUrl = url ?? stored.first;
     } else {
-      dm._currentUrl = url ?? AppConstants.defaultBaseUrl;
+      dm._currentUrl = url ?? AppConstants.fallbackBaseUrl;
     }
     return dm;
   }
@@ -42,6 +55,7 @@ class DomainManager extends ChangeNotifier {
     _apiDomains = List<String>.from(data.apiDomains);
     _index = 0;
     _currentUrl = _apiDomains.isNotEmpty ? _apiDomains.first : _currentUrl;
+    _imageEndpoint = data.imageEndpoint;
     await _persist();
     notifyListeners();
   }

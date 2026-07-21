@@ -1,7 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 part 'list_model.g.dart';
 
-@JsonSerializable(fieldRename: FieldRename.snake)
+@JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
 class ListModel {
   const ListModel({required this.id, required this.name, this.movieCount = 0, this.viewedCount = 0});
   final String id;

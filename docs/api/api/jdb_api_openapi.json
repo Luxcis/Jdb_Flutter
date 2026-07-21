@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "JDB API",
-    "description": "JDB (JavDB) 移动版完整 API 规范（基于 Flutter APK 逆向分析）。\n\n## 签名机制 (jdsignature)\n\n所有请求必须携带 `jdsignature` 请求头，格式为：`{timestamp}.{d2}.{md5_hash}`\n\n### 签名生成步骤\n1. `timestamp` = 当前 Unix 时间戳（秒）\n2. `d1` = 硬编码的 128 字符十六进制字符串（从 libapp.so 逆向解密得到）\n3. `d2` = `\"lpw6vgqzsp\"`（从 libapp.so 逆向解密得到）\n4. `md5_hash` = MD5(`\"{timestamp}{d1}\"`)\n5. `jdsignature` = `\"{timestamp}.{d2}.{md5_hash}\"`\n\n### 逆向过程\n- `libsecurity.so` 的 `getSecret()` 返回 APK 签名证书 DER hex 前 5 字符 `\"30820\"`\n- `libapp.so` 中存储两个 Base64 编码的加密数组（s1, s2）\n- 解密算法：`md5_hex = MD5(secret)`，然后 `result[i] = arr[i] - ord(md5_hex[min(i,31)])`\n- 解密结果再做 Base64 解码即得 `d1` 和 `d2`\n\n## 认证方式\n- 登录 `POST /api/v1/sessions` 获取 Bearer Token（JWT）\n- 需认证的接口携带 `Authorization: Bearer <token>`\n\n## 自定义请求头\n- `jdsignature`: 动态签名（所有请求必须）\n- `authorization`: Bearer Token（需认证的接口）\n- `accept-language`: 语言（如 zh-CN）\n- `connection`: keep-alive\n\n## 统一响应格式\n```json\n{\n  \"success\": 1,\n  \"action\": null,\n  \"message\": null,\n  \"data\": {}\n}\n```\n`success` 为 1 表示成功，0 表示失败。`data` 可能是对象或数组。",
-    "version": "1.9.35-verified",
+    "description": "JDB (JavDB) 移动版完整 API 规范（基于 Flutter APK 逆向分析）。\n\n## 签名机制 (jdsignature)\n\n所有请求必须携带 `jdsignature` 请求头，格式为：`{timestamp}.{d2}.{md5_hash}`\n\n### 签名生成步骤\n1. `timestamp` = 当前 Unix 时间戳（秒）\n2. `d1` = 硬编码的 128 字符十六进制字符串（从 libapp.so 逆向解密得到）\n3. `d2` = `\"lpw6vgqzsp\"`（从 libapp.so 逆向解密得到）\n4. `md5_hash` = MD5(`\"{timestamp}{d1}\"`)\n5. `jdsignature` = `\"{timestamp}.{d2}.{md5_hash}\"`\n\n### 逆向过程\n- `libsecurity.so` 的 `getSecret()` 返回 APK 签名证书 DER hex 前 5 字符 `\"30820\"`\n- `libapp.so` 中存储两个 Base64 编码的加密数组（s1, s2）\n- 解密算法：`md5_hex = MD5(secret)`，然后 `result[i] = arr[i] - ord(md5_hex[min(i,31)])`\n- 解密结果再做 Base64 解码即得 `d1` 和 `d2`\n\n## 认证方式\n- 登录 `POST /api/v1/sessions` 获取 Bearer Token（JWT）\n- 需认证的接口携带 `Authorization: Bearer <token>`\n\n## 自定义请求头\n- `jdsignature`: 动态签名（所有请求必须）\n- `authorization`: Bearer Token（需认证的接口）\n- `accept-language`: 语言（如 zh-CN）\n- `connection`: keep-alive\n\n## 统一响应格式\n```json\n{\n  \"success\": 1,\n  \"action\": null,\n  \"message\": null,\n  \"data\": {}\n}\n```\n`success` 为 1 表示成功，0 表示失败。`data` 可能是对象或数组。\n\n## 2026-07-20 实测修正\n- 修正了7个接口的认证标注（实际需要Bearer但文档标注为公开）\n- 修正了16+个接口的必填参数标注\n- 标记了5个服务端Bug接口（tags, makers, collected_lists等）\n- search_image从GET改为POST（支持文件上传）\n- codes接口标记为不可用",
+    "version": "1.9.35-verified-20260720",
     "contact": {
       "name": "JDB"
     }
@@ -751,6 +751,15 @@
         },
         "parameters": [
           {
+            "name": "category",
+            "in": "query",
+            "description": "帮助分类（必填），可选值: general, payment",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "description": "页码，从 1 开始",
@@ -1001,6 +1010,9 @@
         ],
         "security": [
           {
+            "BearerAuth": []
+          },
+          {
             "jdsignature": []
           }
         ]
@@ -1039,6 +1051,9 @@
         },
         "security": [
           {
+            "BearerAuth": []
+          },
+          {
             "jdsignature": []
           }
         ]
@@ -1050,7 +1065,7 @@
           "Movie"
         ],
         "summary": "按标签获取影片",
-        "description": "按标签筛选影片列表（分页）",
+        "description": "按标签筛选影片列表（分页），filter_by为必填参数",
         "responses": {
           "200": {
             "description": "成功，data 为 MovieEntity",
@@ -1077,10 +1092,10 @@
         },
         "parameters": [
           {
-            "name": "type",
+            "name": "filter_by",
             "in": "query",
-            "description": "类型筛选",
-            "required": false,
+            "description": "筛选条件（必填），可选值: categories",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -1222,6 +1237,9 @@
         ],
         "security": [
           {
+            "BearerAuth": []
+          },
+          {
             "jdsignature": []
           }
         ]
@@ -1270,6 +1288,9 @@
           }
         ],
         "security": [
+          {
+            "BearerAuth": []
+          },
           {
             "jdsignature": []
           }
@@ -1395,6 +1416,9 @@
           }
         ],
         "security": [
+          {
+            "BearerAuth": []
+          },
           {
             "jdsignature": []
           }
@@ -1688,12 +1712,12 @@
       }
     },
     "/api/v2/search_image": {
-      "get": {
+      "post": {
         "tags": [
           "Search"
         ],
         "summary": "图片搜索",
-        "description": "以图搜片搜索",
+        "description": "以图搜片搜索。需要上传图片文件（multipart/form-data），字段名为 image",
         "responses": {
           "200": {
             "description": "成功，data 为 SearchEntity",
@@ -1722,7 +1746,28 @@
           {
             "jdsignature": []
           }
-        ]
+        ],
+        "requestBody": {
+          "description": "待搜索的图片文件",
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "图片文件"
+                  }
+                },
+                "required": [
+                  "image"
+                ]
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/search_magnet": {
@@ -1780,7 +1825,27 @@
           "Actor"
         ],
         "summary": "演员列表",
-        "description": "获取演员列表",
+        "description": "获取演员列表，type参数为必填，可选值: recommend/hot/new/popular",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "description": "类型筛选（必填），可选值: recommend, hot, new, popular",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "成功，data 为 ActorEntity",
@@ -2021,7 +2086,27 @@
           "Actor"
         ],
         "summary": "导演列表",
-        "description": "获取导演列表",
+        "description": "获取导演列表，type参数为必填，可选值: recommend/hot/new",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "description": "类型筛选（必填），可选值: recommend, hot, new",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "成功，data 为列表",
@@ -2136,7 +2221,28 @@
           "Actor"
         ],
         "summary": "制作商列表",
-        "description": "获取制作商列表",
+        "description": "获取制作商列表。⚠️ 实测该接口无论传什么type值均返回HTTP500，疑似服务端Bug（2026-07-20测试）",
+        "deprecated": true,
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "description": "类型筛选（必填）",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "成功，data 为列表",
@@ -2300,7 +2406,7 @@
           "Series"
         ],
         "summary": "系列列表",
-        "description": "获取系列列表（分页）",
+        "description": "获取系列列表（分页），type参数为必填",
         "responses": {
           "200": {
             "description": "成功，data 为 SeriesListEntity",
@@ -2347,8 +2453,8 @@
           {
             "name": "type",
             "in": "query",
-            "description": "类型筛选",
-            "required": false,
+            "description": "类型筛选（必填），可选值: recommend",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -2494,7 +2600,7 @@
           "Series"
         ],
         "summary": "编号详情",
-        "description": "获取编号详情",
+        "description": "获取编号详情。⚠️ 实测该接口返回404 ResourceNotFound，疑似未启用（2026-07-20测试）",
         "responses": {
           "200": {
             "description": "成功，data 为 MakerInfoEntity",
@@ -2534,7 +2640,8 @@
           {
             "jdsignature": []
           }
-        ]
+        ],
+        "deprecated": true
       }
     },
     "/api/v1/codes/{code_id}/collect_actions": {
@@ -2543,7 +2650,7 @@
           "Series"
         ],
         "summary": "收藏编号",
-        "description": "收藏指定编号",
+        "description": "收藏指定编号。⚠️ 实测返回参数错误，疑似未启用（2026-07-20测试）",
         "responses": {
           "200": {
             "description": "操作成功，返回 BaseEntity",
@@ -2574,7 +2681,8 @@
               "type": "string"
             }
           }
-        ]
+        ],
+        "deprecated": true
       }
     },
     "/api/v1/rankings": {
@@ -2583,7 +2691,7 @@
           "Ranking"
         ],
         "summary": "综合排名",
-        "description": "获取影片综合排名",
+        "description": "获取影片综合排名。type和period均为必填参数，示例: type=month&period=all",
         "responses": {
           "200": {
             "description": "成功，data 为 MovieEntity",
@@ -2612,8 +2720,8 @@
           {
             "name": "type",
             "in": "query",
-            "description": "类型筛选",
-            "required": false,
+            "description": "类型筛选（必填），可选值: month, day, week",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -2621,8 +2729,8 @@
           {
             "name": "period",
             "in": "query",
-            "description": "排名周期",
-            "required": false,
+            "description": "排名周期（必填），可选值: all, month, day, week",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -2641,7 +2749,7 @@
           "Ranking"
         ],
         "summary": "演员排名",
-        "description": "获取演员排名",
+        "description": "获取演员排名。type和period均为必填参数",
         "responses": {
           "200": {
             "description": "成功，data 为 ActorEntity",
@@ -2670,8 +2778,8 @@
           {
             "name": "type",
             "in": "query",
-            "description": "类型筛选",
-            "required": false,
+            "description": "类型筛选（必填）",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -2679,8 +2787,8 @@
           {
             "name": "period",
             "in": "query",
-            "description": "排名周期",
-            "required": false,
+            "description": "排名周期（必填）",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -2699,7 +2807,7 @@
           "Ranking"
         ],
         "summary": "播放排名",
-        "description": "获取播放排名",
+        "description": "获取播放排名。filter_by和period均为必填参数",
         "responses": {
           "200": {
             "description": "成功，data 为 SearchNewEntity",
@@ -2726,10 +2834,19 @@
         },
         "parameters": [
           {
+            "name": "filter_by",
+            "in": "query",
+            "description": "筛选条件（必填），可选值: month, day, week",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "period",
             "in": "query",
-            "description": "排名周期",
-            "required": false,
+            "description": "排名周期（必填），可选值: all, month",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -2748,7 +2865,7 @@
           "Review"
         ],
         "summary": "热门评论",
-        "description": "获取热门评论列表",
+        "description": "获取热门评论列表，period为必填参数，可选值: week, month, day",
         "responses": {
           "200": {
             "description": "成功，data 为 MovieCommentEntity",
@@ -2777,8 +2894,8 @@
           {
             "name": "period",
             "in": "query",
-            "description": "周期",
-            "required": false,
+            "description": "周期（必填），可选值: week, month, day",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -2889,6 +3006,9 @@
         ],
         "security": [
           {
+            "BearerAuth": []
+          },
+          {
             "jdsignature": []
           }
         ]
@@ -2997,7 +3117,7 @@
           "List"
         ],
         "summary": "片单列表",
-        "description": "获取片单列表（分页）",
+        "description": "获取片单列表（分页）。实测需要认证(Bearer Token)，且sort_by为必填参数",
         "responses": {
           "200": {
             "description": "成功，data 为 MovieListsEntity",
@@ -3026,8 +3146,8 @@
           {
             "name": "sort_by",
             "in": "query",
-            "description": "排序字段",
-            "required": false,
+            "description": "排序字段（必填），可选值: updated_at, movies_count, created_at",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -3052,6 +3172,9 @@
           }
         ],
         "security": [
+          {
+            "BearerAuth": []
+          },
           {
             "jdsignature": []
           }
@@ -3129,6 +3252,9 @@
         },
         "security": [
           {
+            "BearerAuth": []
+          },
+          {
             "jdsignature": []
           }
         ]
@@ -3140,7 +3266,7 @@
           "List"
         ],
         "summary": "相关片单",
-        "description": "获取相关片单列表",
+        "description": "获取相关片单列表。movie_id为必填参数",
         "responses": {
           "200": {
             "description": "成功，data 为 MovieListsEntity",
@@ -3168,6 +3294,17 @@
         "security": [
           {
             "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "movie_id",
+            "in": "query",
+            "description": "影片ID（必填）",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ]
       }
@@ -3417,7 +3554,8 @@
           "Tag"
         ],
         "summary": "标签列表",
-        "description": "获取标签列表（分页）",
+        "description": "获取标签列表。⚠️ 实测该接口返回HTTP500，疑似服务端Bug（2026-07-20测试）",
+        "deprecated": true,
         "responses": {
           "200": {
             "description": "成功，data 为 TagsEntity",
@@ -3443,6 +3581,15 @@
           }
         },
         "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "description": "类型筛选（必填）",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "name": "page",
             "in": "query",
@@ -3870,7 +4017,7 @@
           "Collection"
         ],
         "summary": "收藏的片单",
-        "description": "获取当前用户收藏的片单列表",
+        "description": "获取当前用户收藏的片单列表。⚠️ 实测该接口返回HTTP500，疑似服务端Bug（2026-07-20测试）",
         "responses": {
           "200": {
             "description": "成功，data 为列表",
@@ -3890,7 +4037,8 @@
           {
             "jdsignature": []
           }
-        ]
+        ],
+        "deprecated": true
       }
     },
     "/api/v1/users/collected_makers": {

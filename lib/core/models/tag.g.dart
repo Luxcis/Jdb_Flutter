@@ -11,9 +11,3 @@ Tag _$TagFromJson(Map<String, dynamic> json) => Tag(
   name: json['name'] as String,
   value: json['value'] as String,
 );
-
-Map<String, dynamic> _$TagToJson(Tag instance) => <String, dynamic>{
-  'id': instance.id,
-  'name': instance.name,
-  'value': instance.value,
-};

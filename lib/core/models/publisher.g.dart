@@ -12,10 +12,3 @@ Publisher _$PublisherFromJson(Map<String, dynamic> json) => Publisher(
   avatarUrl: json['avatar_url'] as String?,
   movieCount: (json['movie_count'] as num?)?.toInt() ?? 0,
 );
-
-Map<String, dynamic> _$PublisherToJson(Publisher instance) => <String, dynamic>{
-  'id': instance.id,
-  'name': instance.name,
-  'avatar_url': instance.avatarUrl,
-  'movie_count': instance.movieCount,
-};

@@ -1,7 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 part 'magnet.g.dart';
 
-@JsonSerializable(fieldRename: FieldRename.snake)
+@JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
 class Magnet {
   const Magnet({
     required this.hash,

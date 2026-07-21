@@ -15,13 +15,3 @@ PagedResult<T> _$PagedResultFromJson<T>(
   totalPages: (json['total_pages'] as num).toInt(),
   total: (json['total'] as num).toInt(),
 );
-
-Map<String, dynamic> _$PagedResultToJson<T>(
-  PagedResult<T> instance,
-  Object? Function(T value) toJsonT,
-) => <String, dynamic>{
-  'items': instance.items.map(toJsonT).toList(),
-  'current_page': instance.currentPage,
-  'total_pages': instance.totalPages,
-  'total': instance.total,
-};

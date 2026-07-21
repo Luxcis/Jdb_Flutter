@@ -34,7 +34,7 @@ void main() {
   test('签名调用 /api/v1/startup 接口，服务端验证通过', () async {
     // 测试环境 SSL 证书校验可能拦截，使用 allowBadCertificate 适配器。
     final dio = Dio(BaseOptions(
-      baseUrl: AppConstants.mainDomain,
+      baseUrl: AppConstants.fallbackBaseUrl,
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 15),
     ));
