@@ -116,7 +116,7 @@ class _RecommendTabState extends State<_RecommendTab> {
       ),
       delegate: SliverChildBuilderDelegate(
         (_, i) => GestureDetector(
-          onTap: () => context.go('/actor/${actors[i].id}'),
+          onTap: () => context.push('/actor/${actors[i].id}'),
           child: Column(
             children: [
               SizedBox(
@@ -168,7 +168,7 @@ class _ActorListTabState extends State<_ActorListTab> {
   Widget build(BuildContext context) {
     final grid = ActorGridView(
       controller: _ctrl,
-      onActorTap: (actor) => context.go('/actor/${actor.id}'),
+      onActorTap: (actor) => context.push('/actor/${actor.id}'),
     );
     if (!widget.showFilter) return grid;
 

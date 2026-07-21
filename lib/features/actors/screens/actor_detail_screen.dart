@@ -129,7 +129,7 @@ class _ActorDetailPageState extends State<ActorDetailPage> {
           Expanded(
             child: MovieGridView(
               controller: _moviesController,
-              onMovieTap: (movie) => context.go('/movie/${movie.id}'),
+              onMovieTap: (movie) => context.push('/movie/${movie.id}'),
             ),
           ),
         ],
