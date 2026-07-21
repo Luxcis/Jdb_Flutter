@@ -51,62 +51,63 @@ class _HomePageState extends State<HomePage> {
       );
     }
     return Scaffold(
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            const SliverToBoxAdapter(child: TofuScroll()),
+      body: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top),
+            sliver: const SliverToBoxAdapter(child: TofuScroll()),
+          ),
+          SliverToBoxAdapter(
+            child: SectionHeader(title: '佳片推荐', trailing: '往期推荐', bold: true),
+          ),
+          if (p.recommends.isNotEmpty)
             SliverToBoxAdapter(
-              child: SectionHeader(title: '佳片推荐', trailing: '往期推荐', bold: true),
-            ),
-            if (p.recommends.isNotEmpty)
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 220,
-                  child: PageView.builder(
-                    itemCount: p.recommends.length,
-                    itemBuilder: (_, i) => GestureDetector(
-                      onTap: () => context.go('/movie/${p.recommends[i].id}'),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          CachedImage(p.recommends[i].coverUrl),
-                          Positioned(
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              color: Colors.black54,
-                              padding: const EdgeInsets.all(8),
-                              child: Text(
-                                p.recommends[i].title,
-                                style: const TextStyle(color: Colors.white),
-                              ),
+              child: SizedBox(
+                height: 220,
+                child: PageView.builder(
+                  itemCount: p.recommends.length,
+                  itemBuilder: (_, i) => GestureDetector(
+                    onTap: () => context.push('/movie/${p.recommends[i].id}'),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        CachedImage(p.recommends[i].coverUrl),
+                        Positioned(
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          child: Container(
+                            color: Colors.black54,
+                            padding: const EdgeInsets.all(8),
+                            child: Text(
+                              p.recommends[i].title,
+                              style: const TextStyle(color: Colors.white),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
-            SliverToBoxAdapter(
-              child: SectionHeader(title: '最新上架', trailing: '全部'),
             ),
-            _buildGrid(p.latest),
-            _shuffleButton(() {
-              p.reshuffleLatest();
-              setState(() {});
-            }),
-            SliverToBoxAdapter(
-              child: SectionHeader(title: '近期磁链更新', trailing: '全部'),
-            ),
-            _buildGrid(p.magnetUpdates),
-            _shuffleButton(() {
-              p.reshuffleMagnets();
-              setState(() {});
-            }),
-          ],
-        ),
+          SliverToBoxAdapter(
+            child: SectionHeader(title: '最新上架', trailing: '全部'),
+          ),
+          _buildGrid(p.latest),
+          _shuffleButton(() {
+            p.reshuffleLatest();
+            setState(() {});
+          }),
+          SliverToBoxAdapter(
+            child: SectionHeader(title: '近期磁链更新', trailing: '全部'),
+          ),
+          _buildGrid(p.magnetUpdates),
+          _shuffleButton(() {
+            p.reshuffleMagnets();
+            setState(() {});
+          }),
+        ],
       ),
     );
   }
@@ -125,7 +126,7 @@ class _HomePageState extends State<HomePage> {
         delegate: SliverChildBuilderDelegate(
           (_, i) => MovieCard(
             movie: items[i],
-            onTap: () => context.go('/movie/${items[i].id}'),
+            onTap: () => context.push('/movie/${items[i].id}'),
           ),
           childCount: items.length > 9 ? 9 : items.length,
         ),

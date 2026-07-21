@@ -33,7 +33,7 @@ class TofuScroll extends StatelessWidget {
         itemCount: items.length,
         separatorBuilder: (_, _) => const SizedBox(width: 12),
         itemBuilder: (_, i) => GestureDetector(
-          onTap: () => context.go(items[i].route),
+          onTap: () => context.push(items[i].route),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Icon(items[i].icon, size: 28),
             const SizedBox(height: 4),
