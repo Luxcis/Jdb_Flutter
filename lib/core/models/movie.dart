@@ -9,6 +9,7 @@ class MovieSummary {
     required this.number,
     required this.title,
     required this.coverUrl,
+    this.thumbUrl,
     this.releaseDate,
     this.duration,
     this.score,
@@ -17,6 +18,7 @@ class MovieSummary {
   final String number;
   final String title;
   final String coverUrl;
+  final String? thumbUrl;
   final String? releaseDate;
   final int? duration;
   final double? score;
@@ -32,6 +34,7 @@ class MovieDetail extends MovieSummary {
     required super.number,
     required super.title,
     required super.coverUrl,
+    super.thumbUrl,
     super.releaseDate,
     super.duration,
     super.score,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// 应用配色种子
 ///
@@ -16,20 +17,37 @@ abstract final class AppTheme {
 
   /// 亮色主题（浅色模式）
   static ThemeData light() {
-    return ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: seedColor,
-        brightness: Brightness.light,
-      ),
+    return fromColorScheme(
+      ColorScheme.fromSeed(seedColor: seedColor, brightness: Brightness.light),
     );
   }
 
   /// 暗色主题（深色模式）
   static ThemeData dark() {
+    return fromColorScheme(
+      ColorScheme.fromSeed(seedColor: seedColor, brightness: Brightness.dark),
+    );
+  }
+
+  static ThemeData fromColorScheme(ColorScheme colorScheme) {
     return ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: seedColor,
-        brightness: Brightness.dark,
+      colorScheme: colorScheme,
+      appBarTheme: _appBarTheme(colorScheme.brightness),
+    );
+  }
+
+  static AppBarTheme _appBarTheme(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    return AppBarTheme(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      surfaceTintColor: Colors.transparent,
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+        systemStatusBarContrastEnforced: false,
       ),
     );
   }

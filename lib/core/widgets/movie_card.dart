@@ -7,6 +7,12 @@ class MovieCard extends StatelessWidget {
   final MovieSummary movie;
   final VoidCallback? onTap;
 
+  String get _coverImageUrl {
+    final thumbUrl = movie.thumbUrl;
+    if (thumbUrl != null && thumbUrl.isNotEmpty) return thumbUrl;
+    return movie.coverUrl;
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -17,17 +23,30 @@ class MovieCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: CachedImage(movie.coverUrl)),
+            Expanded(
+              child: ColoredBox(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: CachedImage(_coverImageUrl, fit: BoxFit.contain),
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.all(6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(movie.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500)),
+                  Text(
+                    movie.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(movie.number,
-                    style: textTheme.labelSmall?.copyWith(color: Colors.grey)),
+                  Text(
+                    movie.number,
+                    style: textTheme.labelSmall?.copyWith(color: Colors.grey),
+                  ),
                 ],
               ),
             ),

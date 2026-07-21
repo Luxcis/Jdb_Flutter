@@ -62,6 +62,7 @@ Map<String, dynamic> normalizeMovieSummaryJson(Map<String, dynamic> json) {
     if (!json.containsKey('cover_url') && json['thumb_url'] != null)
       'cover_url': json['thumb_url'],
     'cover_url': apiString(json['cover_url'] ?? json['thumb_url']) ?? '',
+    'thumb_url': apiString(json['thumb_url']),
     'duration': apiIntOrNull(json['duration']),
     'score': apiDoubleOrNull(json['score']),
   };

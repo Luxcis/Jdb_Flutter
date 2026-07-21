@@ -16,13 +16,14 @@ class MyApp extends StatelessWidget {
         return MaterialApp.router(
           title: 'Jade',
           theme: lightDynamic != null
-              ? ThemeData(colorScheme: lightDynamic)
+              ? AppTheme.fromColorScheme(lightDynamic)
               : AppTheme.light(),
           darkTheme: darkDynamic != null
-              ? ThemeData(colorScheme: darkDynamic)
+              ? AppTheme.fromColorScheme(darkDynamic)
               : AppTheme.dark(),
           themeMode: themeProvider.themeMode,
           routerConfig: AppRouter.build(),
+          debugShowCheckedModeBanner: false,
         );
       },
     );

@@ -11,12 +11,14 @@ class CachedImage extends StatelessWidget {
     this.aspect,
     this.width,
     this.height,
+    this.fit = BoxFit.cover,
   });
 
   final String url;
   final double? aspect;
   final double? width;
   final double? height;
+  final BoxFit fit;
 
   String get _fullUrl {
     if (url.startsWith('http')) return url;
@@ -31,7 +33,7 @@ class CachedImage extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: _fullUrl,
       cacheManager: JdbImageCacheManager.instance,
-      fit: BoxFit.cover,
+      fit: fit,
       width: width,
       height: height,
       placeholder: (_, _) => const Center(
