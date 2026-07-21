@@ -139,29 +139,33 @@ class _HotPlayTabState extends State<_HotPlayTab> {
       Padding(
         padding: const EdgeInsets.all(8),
         child: Row(children: [
-          SortSegmented<String>(
-            options: const [
-              (label: '高评价', value: 'high_rating'),
-              (label: '全部', value: 'all'),
-            ],
-            value: _filter,
-            onChanged: (v) {
-              _filter = v;
-              _update();
-            },
+          Expanded(
+            child: SortSegmented<String>(
+              options: const [
+                (label: '高评价', value: 'high_rating'),
+                (label: '全部', value: 'all'),
+              ],
+              value: _filter,
+              onChanged: (v) {
+                _filter = v;
+                _update();
+              },
+            ),
           ),
           const SizedBox(width: 8),
-          SortSegmented<String>(
-            options: const [
-              (label: '日榜', value: 'daily'),
-              (label: '周榜', value: 'weekly'),
-              (label: '月榜', value: 'monthly'),
-            ],
-            value: _period,
-            onChanged: (v) {
-              _period = v;
-              _update();
-            },
+          Expanded(
+            child: SortSegmented<String>(
+              options: const [
+                (label: '日榜', value: 'daily'),
+                (label: '周榜', value: 'weekly'),
+                (label: '月榜', value: 'monthly'),
+              ],
+              value: _period,
+              onChanged: (v) {
+                _period = v;
+                _update();
+              },
+            ),
           ),
         ]),
       ),
