@@ -226,7 +226,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: ActorCard(
                           actor: d.actors[i],
-                          onTap: () => context.go('/actor/${d.actors[i].id}'),
+                          onTap: () => context.push('/actor/${d.actors[i].id}'),
                         ),
                       ),
                     ),
@@ -261,7 +261,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                           child: MovieCard(
                             movie: _mayAlsoLike[i],
                             onTap: () =>
-                                context.go('/movie/${_mayAlsoLike[i].id}'),
+                                context.push('/movie/${_mayAlsoLike[i].id}'),
                           ),
                         ),
                       ),
@@ -297,7 +297,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                           child: MovieCard(
                             movie: _mayAlsoLike[i],
                             onTap: () =>
-                                context.go('/movie/${_mayAlsoLike[i].id}'),
+                                context.push('/movie/${_mayAlsoLike[i].id}'),
                           ),
                         ),
                       ),
