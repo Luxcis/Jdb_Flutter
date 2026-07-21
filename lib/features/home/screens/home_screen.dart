@@ -39,65 +39,79 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final p = _provider;
     if (p == null || p.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: SafeArea(child: Center(child: CircularProgressIndicator())),
+      );
     }
     if (p.error != null) {
       return Scaffold(
-        body: ErrorRetryWidget(message: p.error!, onRetry: _load),
+        body: SafeArea(
+          child: ErrorRetryWidget(message: p.error!, onRetry: _load),
+        ),
       );
     }
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          const SliverToBoxAdapter(child: TofuScroll()),
-          SliverToBoxAdapter(
-            child: SectionHeader(title: '佳片推荐', trailing: '往期推荐', bold: true),
-          ),
-          if (p.recommends.isNotEmpty)
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            const SliverToBoxAdapter(child: TofuScroll()),
             SliverToBoxAdapter(
-              child: SizedBox(
-                height: 220,
-                child: PageView.builder(
-                  itemCount: p.recommends.length,
-                  itemBuilder: (_, i) => GestureDetector(
-                    onTap: () => context.go('/movie/${p.recommends[i].id}'),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        CachedImage(p.recommends[i].coverUrl),
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          child: Container(
-                            color: Colors.black54,
-                            padding: const EdgeInsets.all(8),
-                            child: Text(
-                              p.recommends[i].title,
-                              style: const TextStyle(color: Colors.white),
+              child: SectionHeader(title: '佳片推荐', trailing: '往期推荐', bold: true),
+            ),
+            if (p.recommends.isNotEmpty)
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 220,
+                  child: PageView.builder(
+                    itemCount: p.recommends.length,
+                    itemBuilder: (_, i) => GestureDetector(
+                      onTap: () => context.go('/movie/${p.recommends[i].id}'),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CachedImage(p.recommends[i].coverUrl),
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            child: Container(
+                              color: Colors.black54,
+                              padding: const EdgeInsets.all(8),
+                              child: Text(
+                                p.recommends[i].title,
+                                style: const TextStyle(color: Colors.white),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
+            SliverToBoxAdapter(
+              child: SectionHeader(title: '最新上架', trailing: '全部'),
             ),
-          SliverToBoxAdapter(
-            child: SectionHeader(title: '最新上架', trailing: '全部'),
-          ),
-          _buildGrid(p.latest, () => p.reshuffleLatest()),
-          SliverToBoxAdapter(
-            child: SectionHeader(title: '近期磁链更新', trailing: '全部'),
-          ),
-          _buildGrid(p.magnetUpdates, () => p.reshuffleMagnets()),
-        ],
+            _buildGrid(p.latest),
+            _shuffleButton(() {
+              p.reshuffleLatest();
+              setState(() {});
+            }),
+            SliverToBoxAdapter(
+              child: SectionHeader(title: '近期磁链更新', trailing: '全部'),
+            ),
+            _buildGrid(p.magnetUpdates),
+            _shuffleButton(() {
+              p.reshuffleMagnets();
+              setState(() {});
+            }),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildGrid(List items, VoidCallback onShuffle) {
+  Widget _buildGrid(List items) {
     if (items.isEmpty) return const SliverToBoxAdapter(child: EmptyState());
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -114,6 +128,22 @@ class _HomePageState extends State<HomePage> {
             onTap: () => context.go('/movie/${items[i].id}'),
           ),
           childCount: items.length > 9 ? 9 : items.length,
+        ),
+      ),
+    );
+  }
+
+  Widget _shuffleButton(VoidCallback onPressed) {
+    return SliverToBoxAdapter(
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Padding(
+          padding: const EdgeInsets.only(right: 12, bottom: 8),
+          child: IconButton(
+            onPressed: onPressed,
+            icon: const Icon(Icons.shuffle),
+            tooltip: '换一组',
+          ),
         ),
       ),
     );

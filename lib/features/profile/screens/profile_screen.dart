@@ -48,7 +48,8 @@ class ProfilePage extends StatelessWidget {
                 CircleAvatar(
                   radius: 30,
                   child: Text(
-                    ((auth.user ?? const {})['username'] as String? ?? '?')[0].toUpperCase(),
+                    ((auth.user ?? const {})['username'] as String? ?? '?')[0]
+                        .toUpperCase(),
                     style: const TextStyle(fontSize: 24),
                   ),
                 ),
@@ -75,13 +76,13 @@ class ProfilePage extends StatelessWidget {
           const Divider(height: 1),
           _Cell(
             title: '我想看的',
-            subtitle: '${auth.user?['want_watch_count'] ?? 0}部影片',
+            subtitle: '我想看${auth.user?['want_watch_count'] ?? 0}部影片',
             icon: Icons.bookmark_border,
             onTap: () => context.go(AppRoutes.profileWantWatch),
           ),
           _Cell(
             title: '我看过的',
-            subtitle: '${auth.user?['watched_count'] ?? 0}部影片',
+            subtitle: '我已看过${auth.user?['watched_count'] ?? 0}部影片',
             icon: Icons.done_all,
             onTap: () => context.go(AppRoutes.profileWatched),
           ),
@@ -145,10 +146,10 @@ class _Cell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-        title: Text(title),
-        subtitle: subtitle != null ? Text(subtitle!) : null,
-        leading: Icon(icon),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
-      );
+    title: Text(title),
+    subtitle: subtitle != null ? Text(subtitle!) : null,
+    leading: Icon(icon),
+    trailing: const Icon(Icons.chevron_right),
+    onTap: onTap,
+  );
 }

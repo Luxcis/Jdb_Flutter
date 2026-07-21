@@ -17,25 +17,22 @@ class AppRouter {
   const AppRouter._();
 
   /// 生产用路由（含 auth redirect）。
-  static GoRouter build() => GoRouter(
-        initialLocation: AppRoutes.home,
-        redirect: _redirect,
-        routes: _routes,
-      );
+  static GoRouter build({String initialLocation = AppRoutes.home}) => GoRouter(
+    initialLocation: initialLocation,
+    redirect: _redirect,
+    routes: _routes,
+  );
 
   /// 测试用路由（无 redirect，避免测试依赖 AuthProvider）。
-  static GoRouter buildForTest() => GoRouter(
-        initialLocation: AppRoutes.home,
-        routes: _routes,
-      );
+  static GoRouter buildForTest({String initialLocation = AppRoutes.home}) =>
+      GoRouter(initialLocation: initialLocation, routes: _routes);
 
   static String? _redirect(BuildContext context, GoRouterState state) {
     final auth = context.read<AuthProvider>();
     final isLogged = auth.isLogged;
     final loc = state.matchedLocation;
 
-    if (isLogged &&
-        (loc == AppRoutes.login || loc == AppRoutes.register)) {
+    if (isLogged && (loc == AppRoutes.login || loc == AppRoutes.register)) {
       return AppRoutes.home;
     }
 
@@ -47,121 +44,163 @@ class AppRouter {
   }
 
   static List<RouteBase> get _routes => [
-        GoRoute(
-          path: AppRoutes.login,
-          builder: (c, s) => const LoginPage(),
-        ),
-        GoRoute(
-          path: AppRoutes.register,
-          builder: (c, s) => const RegisterPage(),
-        ),
-        StatefulShellRoute.indexedStack(
-          builder: (context, state, shell) =>
-              MainShell(navigationShell: shell),
-          branches: [
-            StatefulShellBranch(routes: [
-              GoRoute(
-                  path: AppRoutes.home,
-                  builder: (c, s) => const HomePage()),
-            ]),
-            StatefulShellBranch(routes: [
-              GoRoute(
-                  path: AppRoutes.rankings,
-                  builder: (c, s) => const RankingsPage()),
-            ]),
-            StatefulShellBranch(routes: [
-              GoRoute(
-                  path: AppRoutes.categories,
-                  builder: (c, s) => const CategoriesPage()),
-            ]),
-            StatefulShellBranch(routes: [
-              GoRoute(
-                  path: AppRoutes.actors,
-                  builder: (c, s) => const ActorsPage()),
-            ]),
-            StatefulShellBranch(routes: [
-              GoRoute(
-                  path: AppRoutes.profile,
-                  builder: (c, s) => const ProfilePage()),
-            ]),
+    GoRoute(path: AppRoutes.login, builder: (c, s) => const LoginPage()),
+    GoRoute(path: AppRoutes.register, builder: (c, s) => const RegisterPage()),
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, shell) => MainShell(navigationShell: shell),
+      branches: [
+        StatefulShellBranch(
+          routes: [
+            GoRoute(path: AppRoutes.home, builder: (c, s) => const HomePage()),
           ],
         ),
-        GoRoute(
-          path: '/movie/:id',
-          builder: (c, s) =>
-              MovieDetailPage(id: s.pathParameters['id']!),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: AppRoutes.rankings,
+              builder: (c, s) => const RankingsPage(),
+            ),
+          ],
         ),
-        GoRoute(
-          path: '/search',
-          builder: (c, s) => const SearchPage(),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: AppRoutes.categories,
+              builder: (c, s) => const CategoriesPage(),
+            ),
+          ],
         ),
-        // Profile 子页面占位路由（redirect 守卫依赖这些路由存在）
-        GoRoute(
-          path: AppRoutes.profileWantWatch,
-          builder: (c, s) => const _GatedPage(title: '我想看的'),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: AppRoutes.actors,
+              builder: (c, s) => const ActorsPage(),
+            ),
+          ],
         ),
-        GoRoute(
-          path: AppRoutes.profileWatched,
-          builder: (c, s) => const _GatedPage(title: '我看过的'),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: AppRoutes.profile,
+              builder: (c, s) => const ProfilePage(),
+            ),
+          ],
         ),
-        GoRoute(
-          path: AppRoutes.profileFollowing,
-          builder: (c, s) => const _GatedPage(title: '我的关注'),
-        ),
-        GoRoute(
-          path: AppRoutes.profileFavorites,
-          builder: (c, s) => const _GatedPage(title: '我的收藏'),
-        ),
-        GoRoute(
-          path: AppRoutes.profileFavoritesActors,
-          builder: (c, s) => const _GatedPage(title: '收藏的演员'),
-        ),
-        GoRoute(
-          path: AppRoutes.profileFavoritesMakers,
-          builder: (c, s) => const _GatedPage(title: '收藏的片商'),
-        ),
-        GoRoute(
-          path: AppRoutes.profileFavoritesSeries,
-          builder: (c, s) => const _GatedPage(title: '收藏的系列'),
-        ),
-        GoRoute(
-          path: AppRoutes.profileFavoritesDirectors,
-          builder: (c, s) => const _GatedPage(title: '收藏的导演'),
-        ),
-        GoRoute(
-          path: AppRoutes.profileFavoritesCodes,
-          builder: (c, s) => const _GatedPage(title: '收藏的番号'),
-        ),
-        GoRoute(
-          path: AppRoutes.profileFavoritesLists,
-          builder: (c, s) => const _GatedPage(title: '收藏的清单'),
-        ),
-        GoRoute(
-          path: AppRoutes.profileLists,
-          builder: (c, s) => const _GatedPage(title: '我的清单'),
-        ),
-        GoRoute(
-          path: AppRoutes.profileRecent,
-          builder: (c, s) => const _GatedPage(title: '近期浏览'),
-        ),
-        GoRoute(
-          path: AppRoutes.profileInfo,
-          builder: (c, s) => const _GatedPage(title: '个人资料'),
-        ),
-        GoRoute(
-          path: AppRoutes.profileSettings,
-          builder: (c, s) => const _GatedPage(title: '设置'),
-        ),
-      ];
+      ],
+    ),
+    GoRoute(
+      path: AppRoutes.movieDetail,
+      builder: (c, s) => MovieDetailPage(id: s.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: AppRoutes.actorDetail,
+      builder: (c, s) => ActorDetailPage(id: s.pathParameters['id']!),
+    ),
+    GoRoute(path: AppRoutes.search, builder: (c, s) => const SearchPage()),
+    GoRoute(
+      path: AppRoutes.articles,
+      builder: (c, s) => const _SimpleListPage(title: 'AV资讯'),
+    ),
+    GoRoute(
+      path: AppRoutes.reviews,
+      builder: (c, s) => const _SimpleListPage(title: '看短评'),
+    ),
+    GoRoute(
+      path: AppRoutes.magnetSearch,
+      builder: (c, s) => const _SimpleListPage(title: '找磁链'),
+    ),
+    GoRoute(
+      path: AppRoutes.imageSearch,
+      builder: (c, s) => const _SimpleListPage(title: '识别搜索'),
+    ),
+    GoRoute(
+      path: AppRoutes.series,
+      builder: (c, s) => const _SimpleListPage(title: '系列'),
+    ),
+    GoRoute(
+      path: AppRoutes.makers,
+      builder: (c, s) => const _SimpleListPage(title: '片商'),
+    ),
+    GoRoute(
+      path: AppRoutes.directors,
+      builder: (c, s) => const _SimpleListPage(title: '导演'),
+    ),
+    GoRoute(
+      path: AppRoutes.profileWantWatch,
+      builder: (c, s) =>
+          const ProfileMovieCollectionPage(title: '我想看的', filterButton: true),
+    ),
+    GoRoute(
+      path: AppRoutes.profileWatched,
+      builder: (c, s) =>
+          const ProfileMovieCollectionPage(title: '我看过的', filterButton: true),
+    ),
+    GoRoute(
+      path: AppRoutes.profileFollowing,
+      builder: (c, s) => const ProfileFollowingPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.profileFavorites,
+      builder: (c, s) => const ProfileFavoritesPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.profileFavoritesActors,
+      builder: (c, s) => const ProfileFavoriteActorsPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.profileFavoritesMakers,
+      builder: (c, s) => const ProfileNamedCollectionPage(title: '收藏的片商'),
+    ),
+    GoRoute(
+      path: AppRoutes.profileFavoritesSeries,
+      builder: (c, s) => const ProfileNamedCollectionPage(title: '收藏的系列'),
+    ),
+    GoRoute(
+      path: AppRoutes.profileFavoritesDirectors,
+      builder: (c, s) => const ProfileNamedCollectionPage(title: '收藏的导演'),
+    ),
+    GoRoute(
+      path: AppRoutes.profileFavoritesCodes,
+      builder: (c, s) => const ProfileNamedCollectionPage(title: '收藏的番号'),
+    ),
+    GoRoute(
+      path: AppRoutes.profileFavoritesLists,
+      builder: (c, s) => const ProfileNamedCollectionPage(title: '收藏的清单'),
+    ),
+    GoRoute(
+      path: AppRoutes.profileLists,
+      builder: (c, s) => const ProfileNamedCollectionPage(title: '我的清单'),
+    ),
+    GoRoute(
+      path: AppRoutes.profileRecent,
+      builder: (c, s) => const ProfileMovieCollectionPage(title: '近期浏览'),
+    ),
+    GoRoute(
+      path: AppRoutes.profileInfo,
+      builder: (c, s) => const ProfileInfoPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.profileSettings,
+      builder: (c, s) => const ProfileSettingsPage(),
+    ),
+  ];
 }
 
-class _GatedPage extends StatelessWidget {
-  const _GatedPage({required this.title});
+class _SimpleListPage extends StatelessWidget {
+  const _SimpleListPage({required this.title});
   final String title;
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(title)),
-        body: const SizedBox(),
-      );
+    appBar: AppBar(title: Text(title)),
+    body: ListView.separated(
+      itemCount: 8,
+      separatorBuilder: (_, _) => const Divider(height: 1),
+      itemBuilder: (_, i) => ListTile(
+        title: Text('$title ${i + 1}'),
+        subtitle: const Text('内容接入接口后展示'),
+        trailing: const Icon(Icons.chevron_right),
+      ),
+    ),
+  );
 }

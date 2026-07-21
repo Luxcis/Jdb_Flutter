@@ -19,7 +19,7 @@
 - 状态管理优先内置 + `provider`；偏好 fakes 而非 mocks。
 - 签名常量 D1/D2 取自 [ALGORITHM.md §4.5](../../main/security/signature/ALGORITHM.md)，硬编码，无需
   JNI。
-- 默认域名 `https://staging.letidi.com`；CDN `https://tp.spfcas.com/rhe951l4q/`。
+- 默认域名 `https://jdforrepam.com`；CDN `https://tp.spfcas.com/rhe951l4q/`。
 - Git 提交前设置代理：`export https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890 all_proxy=socks5://127.0.0.1:7890`。
 
 ---
@@ -123,11 +123,11 @@ void main() {
   test('StorageService 读写 baseUrl 并持久化', () async {
     final svc = await StorageService.create();
     expect(svc.getString(StorageKeys.baseUrl), isNull);
-    await svc.setString(StorageKeys.baseUrl, 'https://staging.letidi.com');
-    expect(svc.getString(StorageKeys.baseUrl), 'https://staging.letidi.com');
+    await svc.setString(StorageKeys.baseUrl, 'https://jdforrepam.com');
+    expect(svc.getString(StorageKeys.baseUrl), 'https://jdforrepam.com');
     // 重新实例化验证持久化
     final svc2 = await StorageService.create();
-    expect(svc2.getString(StorageKeys.baseUrl), 'https://staging.letidi.com');
+    expect(svc2.getString(StorageKeys.baseUrl), 'https://jdforrepam.com');
   });
 }
 ```
@@ -147,7 +147,7 @@ class AppConstants {
   static const String appChannel = 'google';
   static const String appVersion = '1.9.29';
   static const String appVersionNumber = '35';
-  static const String defaultBaseUrl = 'https://staging.letidi.com';
+  static const String defaultBaseUrl = 'https://jdforrepam.com';
   static const String mainDomain = 'https://jdforrepam.com';
   static const String imageCdnBase = 'https://tp.spfcas.com/rhe951l4q/';
   static const int domainFailureThreshold = 3;
@@ -444,7 +444,7 @@ void main() {
   test('load 缺省返回 staging 域名', () async {
     final prefs = await SharedPreferences.getInstance();
     final dm = await DomainManager.load(prefs);
-    expect(dm.currentUrl, 'https://staging.letidi.com');
+    expect(dm.currentUrl, 'https://jdforrepam.com');
     expect(dm.apiDomains, isEmpty);
   });
 

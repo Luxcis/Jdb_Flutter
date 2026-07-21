@@ -108,7 +108,7 @@ lib/
 
 ### 3.1 dio 客户端与拦截器链
 
-`ApiClient` 为单例，持有 `Dio` 实例，baseUrl 取自 `DomainManager.currentUrl`（启动时从 SP `key_baseurl` 读取，缺省 `https://staging.letidi.com`）。拦截器按序装配（请求方向由前到后，响应方向由后到前）：
+`ApiClient` 为单例，持有 `Dio` 实例，baseUrl 取自 `DomainManager.currentUrl`（启动时从 SP `key_baseurl` 读取，缺省 `https://jdforrepam.com`）。拦截器按序装配（请求方向由前到后，响应方向由后到前）：
 
 1. **`SignatureInterceptor`**：为每个请求注入 `jdsignature` 头。格式 `{timestamp}.{d2}.{md5(timestamp + d1)}`，常量 `D1`/`D2` 取自 [ALGORITHM.md §4.5](file:///../../docs/api/signature/ALGORITHM.md)（已硬编码，无需 JNI）。同时注入 `accept-language: zh-CN`、`connection: keep-alive`。
 2. **`AuthInterceptor`**：若 `AuthProvider.token` 非空，注入 `Authorization: Bearer {token}`。
@@ -144,7 +144,7 @@ class JdSignature {
 `DomainManager`（`ChangeNotifier`）持有 `List<String> apiDomains` 与当前索引。完整生命周期：
 
 ```
-首次安装 → SP 无 key_baseurl → baseUrl = https://staging.letidi.com
+首次安装 → SP 无 key_baseurl → baseUrl = https://jdforrepam.com
   │
   ▼ 启动调用 GET /api/v1/startup?platform=android&app_channel=google&app_version=1.9.29&app_version_number=35
   │

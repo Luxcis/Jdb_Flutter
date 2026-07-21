@@ -9,20 +9,25 @@ class PaginationController<T> extends ChangeNotifier {
   int _page = 0;
   bool _isLoading = false;
   bool _hasMore = true;
+  Object? _error;
 
   List<T> get items => List.unmodifiable(_items);
   bool get isLoading => _isLoading;
   bool get hasMore => _hasMore;
+  Object? get error => _error;
 
   Future<void> fetchMore() async {
     if (_isLoading || !_hasMore) return;
     _isLoading = true;
+    _error = null;
     notifyListeners();
     try {
       final result = await fetch(_page + 1);
       _page = result.currentPage;
       _items.addAll(result.items);
       _hasMore = _page < result.totalPages;
+    } catch (e) {
+      _error = e;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -33,6 +38,7 @@ class PaginationController<T> extends ChangeNotifier {
     _page = 0;
     _items.clear();
     _hasMore = true;
+    _error = null;
     notifyListeners();
     await fetchMore();
   }

@@ -6,6 +6,7 @@ import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/widgets/actor_grid_view.dart';
 import 'package:jade/core/widgets/cached_image.dart';
+import 'package:jade/core/widgets/filter_drawer.dart';
 import 'package:jade/core/widgets/login_guide_card.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 import 'package:jade/core/widgets/section_header.dart';
@@ -20,7 +21,7 @@ class ActorsPage extends StatefulWidget {
 
 class _ActorsPageState extends State<ActorsPage> with TickerProviderStateMixin {
   late final TabController _tabController;
-  static const tabs = ['推荐', '热门', '最新', '人气'];
+  static const tabs = ['推荐', '有码(女)', '有码(男)', '无码', '欧美(女)', '欧美(男)'];
 
   @override
   void initState() {
@@ -49,9 +50,11 @@ class _ActorsPageState extends State<ActorsPage> with TickerProviderStateMixin {
         controller: _tabController,
         children: [
           const _RecommendTab(),
-          const _ActorListTab(type: 'hot'),
-          const _ActorListTab(type: 'new'),
-          const _ActorListTab(type: 'popular'),
+          const _ActorListTab(type: 'censored_female', showFilter: true),
+          const _ActorListTab(type: 'censored_male'),
+          const _ActorListTab(type: 'uncensored'),
+          const _ActorListTab(type: 'western_female'),
+          const _ActorListTab(type: 'western_male'),
         ],
       ),
     );
@@ -133,7 +136,8 @@ class _RecommendTabState extends State<_RecommendTab> {
 
 class _ActorListTab extends StatefulWidget {
   final String type;
-  const _ActorListTab({required this.type});
+  final bool showFilter;
+  const _ActorListTab({required this.type, this.showFilter = false});
   @override
   State<_ActorListTab> createState() => _ActorListTabState();
 }
@@ -162,9 +166,51 @@ class _ActorListTabState extends State<_ActorListTab> {
 
   @override
   Widget build(BuildContext context) {
-    return ActorGridView(
+    final grid = ActorGridView(
       controller: _ctrl,
-      onActorTap: (a) => context.go('/actor/${a.id}'),
+      onActorTap: (actor) => context.go('/actor/${actor.id}'),
+    );
+    if (!widget.showFilter) return grid;
+
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        actions: [
+          Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.filter_list),
+              tooltip: '筛选',
+              onPressed: () => Scaffold.of(context).openEndDrawer(),
+            ),
+          ),
+        ],
+      ),
+      endDrawer: const FilterDrawer(
+        schema: FilterSchema(
+          groups: [
+            FilterGroup(
+              label: '排序',
+              items: [
+                (label: '人气', value: 'popular'),
+                (label: '最新', value: 'new'),
+                (label: '影片数', value: 'movie_count'),
+              ],
+            ),
+            FilterGroup(
+              label: '地区',
+              items: [
+                (label: '全部', value: 'all'),
+                (label: '日本', value: 'jp'),
+                (label: '欧美', value: 'western'),
+              ],
+            ),
+          ],
+        ),
+        onChanged: _noopActorFilter,
+      ),
+      body: grid,
     );
   }
 }
+
+void _noopActorFilter(Map<String, String> _) {}

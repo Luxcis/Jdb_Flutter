@@ -34,7 +34,7 @@ class RankingService {
   }
 
   Future<PagedResult<MovieSummary>> getRanking({
-    required String type,
+    required Object type,
     String period = 'all',
     int page = 1,
     int limit = 20,
@@ -60,7 +60,7 @@ class RankingService {
     final items = apiList(data, const [
       'actors',
       'items',
-    ]).map(ActorSummary.fromJson).toList();
+    ]).map((j) => ActorSummary.fromJson(normalizeActorSummaryJson(j))).toList();
     return PagedResult(
       items: items,
       currentPage: apiInt(data['current_page'], page),

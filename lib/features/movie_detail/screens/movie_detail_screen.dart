@@ -139,6 +139,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                   if (d.duration != null) Text('时长: ${d.duration}分钟'),
                   if (d.director != null) Text('导演: ${d.director}'),
                   if (d.maker != null) Text('片商: ${d.maker}'),
+                  if (d.series != null) Text('系列: ${d.series}'),
                   if (d.score != null) Text('评分: ${d.score}'),
                   const SizedBox(height: 12),
                   Row(
@@ -146,6 +147,11 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                       ElevatedButton(onPressed: () {}, child: const Text('想看')),
                       const SizedBox(width: 8),
                       ElevatedButton(onPressed: () {}, child: const Text('看过')),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () {},
+                        child: const Text('存入清单'),
+                      ),
                     ],
                   ),
                   Text(
@@ -164,6 +170,38 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
               ),
             ),
           ),
+          if (d.screenshots.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text(
+                      '剧照',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    height: 120,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: d.screenshots.length,
+                      itemBuilder: (_, i) => Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: CachedImage(d.screenshots[i]),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           if (d.actors.isNotEmpty)
             SliverToBoxAdapter(
               child: Column(
@@ -189,6 +227,42 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                         child: ActorCard(
                           actor: d.actors[i],
                           onTap: () => context.go('/actor/${d.actors[i].id}'),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (_mayAlsoLike.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text(
+                      'TA还出演过',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    height: 220,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _mayAlsoLike.length,
+                      itemBuilder: (_, i) => SizedBox(
+                        width: 130,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: MovieCard(
+                            movie: _mayAlsoLike[i],
+                            onTap: () =>
+                                context.go('/movie/${_mayAlsoLike[i].id}'),
+                          ),
                         ),
                       ),
                     ),
@@ -257,9 +331,9 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                   children: [
                     const TabBar(
                       tabs: [
-                        Tab(text: '磁链'),
+                        Tab(text: '磁链下载'),
                         Tab(text: '短评'),
-                        Tab(text: '清单'),
+                        Tab(text: '相关清单'),
                       ],
                     ),
                     Expanded(

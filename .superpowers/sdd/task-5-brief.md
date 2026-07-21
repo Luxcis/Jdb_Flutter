@@ -31,7 +31,7 @@ void main() {
   test('load 缺省返回 staging 域名', () async {
     final prefs = await SharedPreferences.getInstance();
     final dm = await DomainManager.load(prefs);
-    expect(dm.currentUrl, 'https://staging.letidi.com');
+    expect(dm.currentUrl, 'https://jdforrepam.com');
     expect(dm.apiDomains, isEmpty);
   });
 

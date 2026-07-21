@@ -9,7 +9,7 @@ Created `lib/core/network/domain_manager.dart` with:
   - `String currentUrl` getter
   - `List<String> apiDomains` getter (returns `List.unmodifiable`)
   - `bool isOnMainDomain` getter (compares against `AppConstants.mainDomain` = `https://jdforrepam.com`)
-  - `static Future<DomainManager> load(SharedPreferences prefs)`: restores from SP; defaults to `AppConstants.defaultBaseUrl` (`https://staging.letidi.com`) when SP empty
+  - `static Future<DomainManager> load(SharedPreferences prefs)`: restores from SP; defaults to `AppConstants.defaultBaseUrl` (`https://jdforrepam.com`) when SP empty
   - `Future<void> applyStartup(BackupDomainsData data)`: sets apiDomains list, resets index to 0, currentUrl to first domain, persists, notifyListeners
   - `Future<bool> rotate()`: cycles to next domain via `(_index + 1) % length`, wraps when exhausted, returns false when ≤1 domains; persists + notifyListeners
   - private `Future<void> _persist()`: writes `StorageKeys.baseUrl` + `StorageKeys.apiDomains`
@@ -74,7 +74,7 @@ Staged exactly these two paths; unrelated files untouched. `.superpowers/` left 
 
 ## Self-review checklist
 
-- `load()` defaults to `https://staging.letidi.com` when SP empty — YES (case 1)
+- `load()` defaults to `https://jdforrepam.com` when SP empty — YES (case 1)
 - `load()` restores both baseUrl and apiDomains from SP — YES (case 2)
 - `applyStartup` sets currentUrl to first domain + persists baseUrl & apiDomains — YES (case 3)
 - `rotate()` cycles in order, wraps to first when exhausted — YES (case 4)

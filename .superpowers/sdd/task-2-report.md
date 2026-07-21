@@ -6,7 +6,7 @@ Three files created exactly per the brief (verbatim values, no extra methods/fie
 
 1. **`lib/core/constants/app_constants.dart`** — `AppConstants` class with private constructor and static const fields:
    - `platform = 'android'`, `appChannel = 'google'`, `appVersion = '1.9.29'`, `appVersionNumber = '35'`
-   - `defaultBaseUrl = 'https://staging.letidi.com'`, `mainDomain = 'https://jdforrepam.com'`
+   - `defaultBaseUrl = 'https://jdforrepam.com'`, `mainDomain = 'https://jdforrepam.com'`
    - `imageCdnBase = 'https://tp.spfcas.com/rhe951l4q/'`, `domainFailureThreshold = 3` (int)
 
 2. **`lib/core/storage/storage_keys.dart`** — two classes:

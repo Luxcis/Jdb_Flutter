@@ -23,11 +23,11 @@ void main() {
   test('StorageService 读写 baseUrl 并持久化', () async {
     final svc = await StorageService.create();
     expect(svc.getString(StorageKeys.baseUrl), isNull);
-    await svc.setString(StorageKeys.baseUrl, 'https://staging.letidi.com');
-    expect(svc.getString(StorageKeys.baseUrl), 'https://staging.letidi.com');
+    await svc.setString(StorageKeys.baseUrl, 'https://jdforrepam.com');
+    expect(svc.getString(StorageKeys.baseUrl), 'https://jdforrepam.com');
     // 重新实例化验证持久化
     final svc2 = await StorageService.create();
-    expect(svc2.getString(StorageKeys.baseUrl), 'https://staging.letidi.com');
+    expect(svc2.getString(StorageKeys.baseUrl), 'https://jdforrepam.com');
   });
 }
 ```
@@ -47,7 +47,7 @@ class AppConstants {
   static const String appChannel = 'google';
   static const String appVersion = '1.9.29';
   static const String appVersionNumber = '35';
-  static const String defaultBaseUrl = 'https://staging.letidi.com';
+  static const String defaultBaseUrl = 'https://jdforrepam.com';
   static const String mainDomain = 'https://jdforrepam.com';
   static const String imageCdnBase = 'https://tp.spfcas.com/rhe951l4q/';
   static const int domainFailureThreshold = 3;

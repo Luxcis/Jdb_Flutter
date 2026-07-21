@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/movie.dart';
+import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 
@@ -21,6 +22,12 @@ class MovieGridView extends StatelessWidget {
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
+        if (controller.error != null && controller.items.isEmpty) {
+          return ErrorRetryWidget(
+            message: controller.error.toString(),
+            onRetry: controller.refresh,
+          );
+        }
         return NotificationListener<ScrollNotification>(
           onNotification: (n) {
             if (n is ScrollEndNotification && n.metrics.extentAfter < 200) {

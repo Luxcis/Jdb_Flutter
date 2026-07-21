@@ -20,10 +20,9 @@ class ActorService {
     );
     final m = resp.data as Map<String, dynamic>;
     return PagedResult(
-      items: apiList(m, const [
-        'actors',
-        'items',
-      ]).map(ActorSummary.fromJson).toList(),
+      items: apiList(m, const ['actors', 'items'])
+          .map((j) => ActorSummary.fromJson(normalizeActorSummaryJson(j)))
+          .toList(),
       currentPage: apiInt(m['current_page'], 1),
       totalPages: apiInt(m['total_pages'], 1),
       total: apiInt(m['total'], 0),
@@ -38,12 +37,16 @@ class ActorService {
         ...apiList(resp.data, const ['monthly_actors']),
         ...apiList(resp.data, const ['recommend_actors']),
       ];
-      if (actors.isNotEmpty) return actors.map(ActorSummary.fromJson).toList();
+      if (actors.isNotEmpty) {
+        return actors
+            .map((j) => ActorSummary.fromJson(normalizeActorSummaryJson(j)))
+            .toList();
+      }
     }
     return apiList(resp.data, const [
       'actors',
       'items',
-    ]).map(ActorSummary.fromJson).toList();
+    ]).map((j) => ActorSummary.fromJson(normalizeActorSummaryJson(j))).toList();
   }
 
   Future<PagedResult<ActorSummary>> getRankingActors({
@@ -58,10 +61,9 @@ class ActorService {
     );
     final m = resp.data as Map<String, dynamic>;
     return PagedResult(
-      items: apiList(m, const [
-        'actors',
-        'items',
-      ]).map(ActorSummary.fromJson).toList(),
+      items: apiList(m, const ['actors', 'items'])
+          .map((j) => ActorSummary.fromJson(normalizeActorSummaryJson(j)))
+          .toList(),
       currentPage: apiInt(m['current_page'], 1),
       totalPages: apiInt(m['total_pages'], 1),
       total: apiInt(m['total'], 0),

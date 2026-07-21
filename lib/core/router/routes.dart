@@ -8,6 +8,16 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String login = '/login';
   static const String register = '/register';
+  static const String search = '/search';
+  static const String actorDetail = '/actor/:id';
+  static const String movieDetail = '/movie/:id';
+  static const String articles = '/articles';
+  static const String reviews = '/reviews';
+  static const String magnetSearch = '/search/magnet';
+  static const String imageSearch = '/search/image';
+  static const String series = '/series';
+  static const String makers = '/makers';
+  static const String directors = '/directors';
 
   // Profile 子页面
   static const String profileWantWatch = '/profile/want-watch';
@@ -17,7 +27,8 @@ class AppRoutes {
   static const String profileFavoritesActors = '/profile/favorites/actors';
   static const String profileFavoritesMakers = '/profile/favorites/makers';
   static const String profileFavoritesSeries = '/profile/favorites/series';
-  static const String profileFavoritesDirectors = '/profile/favorites/directors';
+  static const String profileFavoritesDirectors =
+      '/profile/favorites/directors';
   static const String profileFavoritesCodes = '/profile/favorites/codes';
   static const String profileFavoritesLists = '/profile/favorites/lists';
   static const String profileLists = '/profile/lists';

@@ -31,6 +31,22 @@ int apiInt(dynamic value, int fallback) {
   return fallback;
 }
 
+int? apiIntOrNull(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value);
+  return null;
+}
+
+double? apiDoubleOrNull(dynamic value) {
+  if (value == null) return null;
+  if (value is double) return value;
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value);
+  return null;
+}
+
 String? apiString(dynamic value) {
   if (value == null) return null;
   if (value is String) return value;
@@ -40,8 +56,25 @@ String? apiString(dynamic value) {
 Map<String, dynamic> normalizeMovieSummaryJson(Map<String, dynamic> json) {
   return {
     ...json,
+    'id': apiString(json['id']) ?? '',
+    'number': apiString(json['number']) ?? '',
+    'title': apiString(json['title']) ?? '',
     if (!json.containsKey('cover_url') && json['thumb_url'] != null)
       'cover_url': json['thumb_url'],
+    'cover_url': apiString(json['cover_url'] ?? json['thumb_url']) ?? '',
+    'duration': apiIntOrNull(json['duration']),
+    'score': apiDoubleOrNull(json['score']),
+  };
+}
+
+Map<String, dynamic> normalizeActorSummaryJson(Map<String, dynamic> json) {
+  return {
+    ...json,
+    'id': apiString(json['id']) ?? '',
+    'name': apiString(json['name'] ?? json['title']) ?? '',
+    'avatar_url':
+        apiString(json['avatar_url'] ?? json['avatar'] ?? json['image_url']) ??
+        '',
   };
 }
 
@@ -50,15 +83,21 @@ Map<String, dynamic> normalizeMovieDetailJson(dynamic data) {
   final movie = apiMap(root['movie']).isNotEmpty ? apiMap(root['movie']) : root;
   final tags = movie['tags'];
   final previewImages = movie['preview_images'];
+  final actors = apiList(movie, const [
+    'actors',
+  ]).map(normalizeActorSummaryJson);
   return {
     ...normalizeMovieSummaryJson(movie),
     'director': movie['director'] ?? movie['director_name'],
     'maker': movie['maker'] ?? movie['maker_name'],
     'series': movie['series'] ?? movie['series_name'],
-    'magnet_count': movie['magnet_count'] ?? movie['magnets_count'],
+    'magnet_count': apiInt(movie['magnet_count'] ?? movie['magnets_count'], 0),
+    'want_watch_count': apiInt(movie['want_watch_count'], 0),
+    'watched_count': apiInt(movie['watched_count'], 0),
     'playable': movie['playable'] ?? movie['can_play'],
     'has_subtitle': movie['has_subtitle'] ?? movie['has_cnsub'],
     'screenshots': movie['screenshots'] ?? _imageUrls(previewImages),
+    'actors': actors.toList(),
     'tags': _tagLabels(tags),
   };
 }
@@ -67,12 +106,16 @@ Map<String, dynamic> normalizeActorDetailJson(dynamic data) {
   final root = apiMap(data);
   final actor = apiMap(root['actor']).isNotEmpty ? apiMap(root['actor']) : root;
   return {
-    ...actor,
+    ...normalizeActorSummaryJson(actor),
+    'birthday': apiString(actor['birthday']),
+    'age': apiIntOrNull(actor['age']),
     'height': apiString(actor['height']),
+    'cup': apiString(actor['cup']),
     'bust': apiString(actor['bust']),
     'waist': apiString(actor['waist']),
     'hip': apiString(actor['hip'] ?? actor['hips']),
-    'movie_count': actor['movie_count'] ?? actor['videos_count'],
+    'birthplace': apiString(actor['birthplace']),
+    'movie_count': apiInt(actor['movie_count'] ?? actor['videos_count'], 0),
   };
 }
 

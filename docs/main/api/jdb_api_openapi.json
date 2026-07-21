@@ -11,11 +11,7 @@
   "servers": [
     {
       "url": "https://jdforrepam.com",
-      "description": "生产环境"
-    },
-    {
-      "url": "https://staging.letidi.com",
-      "description": "测试环境（代码默认值）"
+      "description": "生产环境（代码默认值）"
     }
   ],
   "tags": [
