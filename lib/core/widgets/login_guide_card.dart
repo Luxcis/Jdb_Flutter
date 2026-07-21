@@ -36,7 +36,7 @@ class LoginGuideCard extends StatelessWidget {
                     final from = loginPath.isNotEmpty
                         ? '?from=$loginPath'
                         : '';
-                    context.go('/login$from');
+                    context.push('/login$from');
                   },
                   icon: const Icon(Icons.login),
                   label: const Text('去登录'),
