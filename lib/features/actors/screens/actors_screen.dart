@@ -20,7 +20,7 @@ class ActorsPage extends StatefulWidget {
 
 class _ActorsPageState extends State<ActorsPage> with TickerProviderStateMixin {
   late final TabController _tabController;
-  static const tabs = ['推荐', '有码(女)', '有码(男)', '无码', '欧美(女)', '欧美(男)'];
+  static const tabs = ['推荐', '热门', '最新', '人气'];
 
   @override
   void initState() {
@@ -49,11 +49,9 @@ class _ActorsPageState extends State<ActorsPage> with TickerProviderStateMixin {
         controller: _tabController,
         children: [
           const _RecommendTab(),
-          const _ActorListTab(type: 1),
-          const _ActorListTab(type: 4),
-          const _ActorListTab(type: 2),
-          const _ActorListTab(type: 3),
-          const _ActorListTab(type: 5),
+          const _ActorListTab(type: 'hot'),
+          const _ActorListTab(type: 'new'),
+          const _ActorListTab(type: 'popular'),
         ],
       ),
     );
@@ -134,7 +132,7 @@ class _RecommendTabState extends State<_RecommendTab> {
 }
 
 class _ActorListTab extends StatefulWidget {
-  final int type;
+  final String type;
   const _ActorListTab({required this.type});
   @override
   State<_ActorListTab> createState() => _ActorListTabState();

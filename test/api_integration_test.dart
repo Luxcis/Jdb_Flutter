@@ -28,10 +28,8 @@ Future<ApiClient> _createTestApi(FakeAdapter adapter) async {
 }
 
 /// stub 成功响应：adapter.enqueue(path, {'success':1,'data': data})
-void ok(FakeAdapter a, String path, dynamic data,
-    {int statusCode = 200}) {
-  a.enqueue(path, {'success': 1, 'data': data},
-      statusCode: statusCode);
+void ok(FakeAdapter a, String path, dynamic data, {int statusCode = 200}) {
+  a.enqueue(path, {'success': 1, 'data': data}, statusCode: statusCode);
 }
 
 void main() {
@@ -51,20 +49,18 @@ void main() {
     });
 
     test('路径正确且带 platform 参数', () async {
-      ok(adapter, Endpoints.startup, {
-        'backup_domains_data': null,
-      });
-      await api.get(Endpoints.startup, queryParameters: {
-        'platform': 'android',
-        'app_channel': 'google',
-        'app_version': '1.9.29',
-        'app_version_number': '35',
-      });
-      expect(adapter.requests.last.path, Endpoints.startup);
-      expect(
-        adapter.requests.last.uri.queryParameters['platform'],
-        'android',
+      ok(adapter, Endpoints.startup, {'backup_domains_data': null});
+      await api.get(
+        Endpoints.startup,
+        queryParameters: {
+          'platform': 'android',
+          'app_channel': 'google',
+          'app_version': '1.9.29',
+          'app_version_number': '35',
+        },
       );
+      expect(adapter.requests.last.path, Endpoints.startup);
+      expect(adapter.requests.last.uri.queryParameters['platform'], 'android');
     });
   });
 
@@ -82,12 +78,17 @@ void main() {
     });
 
     test('GET /api/v1/movies/recommend → 解析 MovieSummary 列表', () async {
-      ok(adapter, Endpoints.moviesRecommend, [
-        {
-          'id': 'm1', 'number': 'ABC-001', 'title': 'Test Movie',
-          'cover_url': 'covers/x.jpg', 'score': 8.5,
-        }
-      ]);
+      ok(adapter, Endpoints.moviesRecommend, {
+        'movies': [
+          {
+            'id': 'm1',
+            'number': 'ABC-001',
+            'title': 'Test Movie',
+            'cover_url': 'covers/x.jpg',
+            'score': 8.5,
+          },
+        ],
+      });
       final list = await svc.getRecommends();
       expect(list.length, 1);
       expect(list.first.title, 'Test Movie');
@@ -95,18 +96,20 @@ void main() {
     });
 
     test('GET /api/v1/movies/recommend_periods → 返回字符串列表', () async {
-      ok(adapter, Endpoints.moviesRecommendPeriods, [
-        '2024-01', '2024-02'
-      ]);
+      ok(adapter, Endpoints.moviesRecommendPeriods, {
+        'periods': [
+          {'period': '2024-01'},
+          {'period': '2024-02'},
+        ],
+      });
       final list = await svc.getRecommendPeriods();
       expect(list, ['2024-01', '2024-02']);
     });
 
     test('GET /api/v1/movies/latest → 带分页参数', () async {
       ok(adapter, Endpoints.moviesLatest, {
-        'items': [
-          {'id': 'm1', 'number': 'N1', 'title': 'T1',
-           'cover_url': 'c.jpg'},
+        'movies': [
+          {'id': 'm1', 'number': 'N1', 'title': 'T1', 'cover_url': 'c.jpg'},
         ],
       });
       final list = await svc.getLatest(page: 2, limit: 10);
@@ -118,9 +121,8 @@ void main() {
 
     test('GET /api/v1/movies/tags → magnet 更新带 filter_by', () async {
       ok(adapter, Endpoints.moviesTags, {
-        'items': [
-          {'id': 'm1', 'number': 'N1', 'title': 'T1',
-           'cover_url': 'c.jpg'},
+        'movies': [
+          {'id': 'm1', 'number': 'N1', 'title': 'T1', 'cover_url': 'c.jpg'},
         ],
       });
       final list = await svc.getMagnetUpdates(limit: 9);
@@ -146,11 +148,12 @@ void main() {
 
     test('GET /api/v1/movies/top → Top250', () async {
       ok(adapter, Endpoints.moviesTop, {
-        'items': [
-          {'id': 'r1', 'number': 'R1', 'title': 'R',
-           'cover_url': 'c.jpg'},
+        'movies': [
+          {'id': 'r1', 'number': 'R1', 'title': 'R', 'cover_url': 'c.jpg'},
         ],
-        'current_page': 1, 'total_pages': 1, 'total': 1,
+        'current_page': 1,
+        'total_pages': 1,
+        'total': 1,
       });
       final r = await svc.getTop250(page: 1);
       expect(r.items.length, 1);
@@ -158,31 +161,54 @@ void main() {
 
     test('GET /api/v1/rankings/playback → 看热播', () async {
       ok(adapter, Endpoints.rankingsPlayback, {
-        'items': [],
-        'current_page': 1, 'total_pages': 1, 'total': 0,
+        'movies': [],
+        'current_page': 1,
+        'total_pages': 1,
+        'total': 0,
       });
-      await svc.getPlayback(period: 'monthly', page: 1);
+      await svc.getPlayback(filterBy: 'month', period: 'all', page: 1);
       expect(adapter.requests.last.path, Endpoints.rankingsPlayback);
+      expect(adapter.requests.last.uri.queryParameters['filter_by'], 'month');
+      expect(adapter.requests.last.uri.queryParameters['period'], 'all');
+      expect(
+        adapter.requests.last.uri.queryParameters.containsKey('page'),
+        isFalse,
+      );
+      expect(
+        adapter.requests.last.uri.queryParameters.containsKey('limit'),
+        isFalse,
+      );
     });
 
     test('GET /api/v1/rankings → 带 type/period 参数', () async {
       ok(adapter, Endpoints.rankings, {
-        'items': [],
-        'current_page': 1, 'total_pages': 1, 'total': 0,
+        'movies': [],
+        'current_page': 1,
+        'total_pages': 1,
+        'total': 0,
       });
-      await svc.getRanking(type: 1, period: 'monthly', page: 1);
+      await svc.getRanking(type: 'month', period: 'month', page: 1);
       final q = adapter.requests.last.uri.queryParameters;
-      expect(q['type'], '1');
-      expect(q['period'], 'monthly');
+      expect(q['type'], 'month');
+      expect(q['period'], 'month');
+      expect(q.containsKey('page'), isFalse);
+      expect(q.containsKey('limit'), isFalse);
     });
 
     test('GET /api/v1/rankings/actors → 演员排名', () async {
       ok(adapter, Endpoints.rankingsActors, {
-        'items': [],
-        'current_page': 1, 'total_pages': 1, 'total': 0,
+        'actors': [],
+        'current_page': 1,
+        'total_pages': 1,
+        'total': 0,
       });
-      await svc.getActorRanking(type: 1, period: 'monthly', page: 1);
+      await svc.getActorRanking(type: 'month', period: 'month', page: 1);
       expect(adapter.requests.last.path, Endpoints.rankingsActors);
+      final q = adapter.requests.last.uri.queryParameters;
+      expect(q['type'], 'month');
+      expect(q['period'], 'month');
+      expect(q.containsKey('page'), isFalse);
+      expect(q.containsKey('limit'), isFalse);
     });
   });
 
@@ -201,22 +227,28 @@ void main() {
 
     test('GET /api/v1/actors → 带 type/page 参数', () async {
       ok(adapter, Endpoints.actors, {
-        'items': [
+        'actors': [
           {'id': 'a1', 'name': 'Actor1', 'avatar_url': 'a.jpg'},
         ],
-        'current_page': 1, 'total_pages': 3, 'total': 30,
+        'current_page': 1,
+        'total_pages': 3,
+        'total': 30,
       });
-      final r = await svc.getActors(type: 1, page: 2, limit: 10);
+      final r = await svc.getActors(type: 'hot', page: 2, limit: 10);
       final q = adapter.requests.last.uri.queryParameters;
-      expect(q['type'], '1');
-      expect(q['page'], '2');
+      expect(q['type'], 'hot');
+      expect(q.containsKey('page'), isFalse);
       expect(r.items.first.name, 'Actor1');
     });
 
     test('GET /api/v1/actors/recommend → 推荐演员', () async {
-      ok(adapter, Endpoints.actorsRecommend, [
-        {'id': 'a1', 'name': '新人A', 'avatar_url': 'a.jpg'},
-      ]);
+      ok(adapter, Endpoints.actorsRecommend, {
+        'new_actors': [
+          {'id': 'a1', 'name': '新人A', 'avatar_url': 'a.jpg'},
+        ],
+        'monthly_actors': [],
+        'recommend_actors': [],
+      });
       final list = await svc.getRecommends();
       expect(list.length, 1);
       expect(list.first.name, '新人A');
@@ -224,9 +256,15 @@ void main() {
 
     test('GET /api/v1/actors/{id} → 演员详情', () async {
       ok(adapter, '${Endpoints.actors}/a1', {
-        'id': 'a1', 'name': 'Actress', 'avatar_url': 'a.jpg',
-        'birthday': '1998-05-20', 'age': 26,
-        'height': '165cm', 'cup': 'D',
+        'actor': {
+          'id': 'a1',
+          'name': 'Actress',
+          'avatar_url': 'a.jpg',
+          'birthday': '1998-05-20',
+          'age': 26,
+          'height': 165,
+          'cup': 'D',
+        },
       });
       final d = await svc.getDetail('a1');
       expect(d.name, 'Actress');
@@ -235,7 +273,9 @@ void main() {
 
     test('GET /api/v1/actors/{id} → 最小字段容错', () async {
       ok(adapter, '${Endpoints.actors}/a1', {
-        'id': 'a1', 'name': 'Minimal', 'avatar_url': 'a.jpg',
+        'id': 'a1',
+        'name': 'Minimal',
+        'avatar_url': 'a.jpg',
       });
       final d = await svc.getDetail('a1');
       expect(d.name, 'Minimal');
@@ -258,11 +298,12 @@ void main() {
 
     test('GET /api/v1/movies/tags → 带 type/sort/filter_by 参数', () async {
       ok(adapter, Endpoints.moviesTags, {
-        'items': [
-          {'id': 'm1', 'number': 'N1', 'title': 'T1',
-           'cover_url': 'c.jpg'},
+        'movies': [
+          {'id': 'm1', 'number': 'N1', 'title': 'T1', 'cover_url': 'c.jpg'},
         ],
-        'current_page': 1, 'total_pages': 1, 'total': 1,
+        'current_page': 1,
+        'total_pages': 1,
+        'total': 1,
       });
       await svc.getMovies(type: 1, sortBy: 'date', orderBy: 'desc');
       final q = adapter.requests.last.uri.queryParameters;
@@ -288,11 +329,19 @@ void main() {
 
     test('GET /api/v4/movies/{id} → 影片详情V4', () async {
       ok(adapter, '/api/v4/movies/m1', {
-        'id': 'm1', 'number': 'SSIS-001', 'title': 'Movie',
-        'cover_url': 'c.jpg',
-        'actors': [],
-        'screenshots': ['s1.jpg'],
-        'tags': ['Tag1'],
+        'movie': {
+          'id': 'm1',
+          'number': 'SSIS-001',
+          'title': 'Movie',
+          'cover_url': 'c.jpg',
+          'actors': [],
+          'preview_images': [
+            {'url': 's1.jpg'},
+          ],
+          'tags': [
+            {'name': 'Tag1'},
+          ],
+        },
       });
       final d = await svc.getDetail('m1');
       expect(d.title, 'Movie');
@@ -300,34 +349,50 @@ void main() {
     });
 
     test('GET /api/v1/movies/{id}/magnets → 磁链列表', () async {
-      ok(adapter, '/api/v1/movies/m1/magnets', [
-        {
-          'hash': 'abc123', 'title': 'Best', 'size': '2.1GB',
-          'publish_date': '2024-01-01', 'is_high_definition': true,
-        },
-      ]);
+      ok(adapter, '/api/v1/movies/m1/magnets', {
+        'magnets': [
+          {
+            'hash': 'abc123',
+            'title': 'Best',
+            'size': '2.1GB',
+            'created_at': '2024-01-01',
+            'hd': '1',
+          },
+        ],
+      });
       final list = await svc.getMagnets('m1');
       expect(list.first.hash, 'abc123');
       expect(list.first.isHighDefinition, isTrue);
     });
 
     test('GET /api/v1/movies/{id}/reviews → 评论列表', () async {
-      ok(adapter, '/api/v1/movies/m1/reviews', [
-        {
-          'id': 'r1', 'score': 4.0, 'content': 'Great!',
-          'status': 'public',
-          'author': {'name': 'User1'},
-        },
-      ]);
+      ok(adapter, '/api/v1/movies/m1/reviews', {
+        'reviews': [
+          {
+            'id': 1,
+            'score': 4,
+            'content': 'Great!',
+            'status': 'public',
+            'username': 'User1',
+            'likes_count': 3,
+          },
+        ],
+      });
       final list = await svc.getReviews('m1');
       expect(list.first.content, 'Great!');
     });
 
-    test('GET /api/v1/movies/{id}/may_also_like → 你可能也喜欢', () async {
-      ok(adapter, '/api/v1/movies/m1/may_also_like', [
-        {'id': 'm2', 'number': 'ABC-001', 'title': 'Related',
-         'cover_url': 'c.jpg'},
-      ]);
+    test('GET /api/v1/movies/may_also_like → 你可能也喜欢', () async {
+      ok(adapter, Endpoints.moviesMayAlsoLike, {
+        'movies': [
+          {
+            'id': 'm2',
+            'number': 'ABC-001',
+            'title': 'Related',
+            'cover_url': 'c.jpg',
+          },
+        ],
+      });
       final list = await svc.getMayAlsoLike('m1');
       expect(list.first.title, 'Related');
     });
@@ -356,10 +421,10 @@ void main() {
         'token': 'jwt-token',
         'user': {'id': 1, 'username': 'test'},
       });
-      final resp = await api.post(Endpoints.sessions, data: {
-        'username': 'test@test.com',
-        'password': 'password',
-      });
+      final resp = await api.post(
+        Endpoints.sessions,
+        data: {'username': 'test@test.com', 'password': 'password'},
+      );
       expect(adapter.requests.last.method, 'POST');
       expect(adapter.requests.last.path, Endpoints.sessions);
       expect(resp.data, contains('token'));
@@ -367,19 +432,22 @@ void main() {
 
     test('POST /api/v1/users → 注册（含设备信息）', () async {
       ok(adapter, Endpoints.users, {});
-      await api.post(Endpoints.users, data: {
-        'email': 'new@test.com',
-        'username': 'new@test.com',
-        'password': 'pass123',
-        'device_uuid': 'test-uuid',
-        'device_name': 'Jade',
-        'device_model': 'Flutter',
-        'platform': 'android',
-        'system_version': '14',
-        'app_channel': 'google',
-        'app_version': '1.9.29',
-        'app_version_number': '35',
-      });
+      await api.post(
+        Endpoints.users,
+        data: {
+          'email': 'new@test.com',
+          'username': 'new@test.com',
+          'password': 'pass123',
+          'device_uuid': 'test-uuid',
+          'device_name': 'Jade',
+          'device_model': 'Flutter',
+          'platform': 'android',
+          'system_version': '14',
+          'app_channel': 'google',
+          'app_version': '1.9.29',
+          'app_version_number': '35',
+        },
+      );
       expect(adapter.requests.last.path, Endpoints.users);
     });
   });
@@ -399,14 +467,21 @@ void main() {
     test('GET /api/v2/search → 影片搜索', () async {
       ok(adapter, Endpoints.searchV2, {
         'movies': [
-          {'id': 'm1', 'number': 'ABC-001', 'title': 'Test',
-           'cover_url': 'c.jpg'},
+          {
+            'id': 'm1',
+            'number': 'ABC-001',
+            'title': 'Test',
+            'cover_url': 'c.jpg',
+          },
         ],
-        'current_page': 1, 'total_pages': 3, 'total': 30,
+        'current_page': 1,
+        'total_pages': 3,
+        'total': 30,
       });
-      await api.get(Endpoints.searchV2, queryParameters: {
-        'q': 'test', 'type': 'movie', 'page': 1,
-      });
+      await api.get(
+        Endpoints.searchV2,
+        queryParameters: {'q': 'test', 'type': 'movie', 'page': 1},
+      );
       final q = adapter.requests.last.uri.queryParameters;
       expect(q['q'], 'test');
       expect(q['type'], 'movie');
@@ -417,15 +492,15 @@ void main() {
         'actors': [
           {'id': 'a1', 'name': 'Actor1', 'avatar_url': 'a.jpg'},
         ],
-        'current_page': 1, 'total_pages': 1, 'total': 1,
+        'current_page': 1,
+        'total_pages': 1,
+        'total': 1,
       });
-      await api.get(Endpoints.searchV2, queryParameters: {
-        'q': 'test', 'type': 'actor',
-      });
-      expect(
-        adapter.requests.last.uri.queryParameters['type'],
-        'actor',
+      await api.get(
+        Endpoints.searchV2,
+        queryParameters: {'q': 'test', 'type': 'actor'},
       );
+      expect(adapter.requests.last.uri.queryParameters['type'], 'actor');
     });
   });
 }

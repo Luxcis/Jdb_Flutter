@@ -1,4 +1,6 @@
 import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/network/api_data.dart';
+import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/magnet.dart';
 import 'package:jade/core/models/review.dart';
@@ -9,21 +11,30 @@ class MovieDetailService {
 
   Future<MovieDetail> getDetail(String id) async {
     final resp = await _api.get('/api/v4/movies/$id');
-    return MovieDetail.fromJson(resp.data);
+    return MovieDetail.fromJson(normalizeMovieDetailJson(resp.data));
   }
 
   Future<List<Magnet>> getMagnets(String id) async {
     final resp = await _api.get('/api/v1/movies/$id/magnets');
-    return ((resp.data as List?) ?? []).map((j) => Magnet.fromJson(j)).toList();
+    return apiList(resp.data, const [
+      'magnets',
+      'items',
+    ]).map((j) => Magnet.fromJson(normalizeMagnetJson(j))).toList();
   }
 
   Future<List<Review>> getReviews(String id) async {
     final resp = await _api.get('/api/v1/movies/$id/reviews');
-    return ((resp.data as List?) ?? []).map((j) => Review.fromJson(j)).toList();
+    return apiList(resp.data, const [
+      'reviews',
+      'items',
+    ]).map((j) => Review.fromJson(normalizeReviewJson(j))).toList();
   }
 
-  Future<List<MovieSummary>> getMayAlsoLike(String id) async {
-    final resp = await _api.get('/api/v1/movies/$id/may_also_like');
-    return ((resp.data as List?) ?? []).map((j) => MovieSummary.fromJson(j)).toList();
+  Future<List<MovieSummary>> getMayAlsoLike(String _) async {
+    final resp = await _api.get(Endpoints.moviesMayAlsoLike);
+    return apiList(resp.data, const [
+      'movies',
+      'items',
+    ]).map((j) => MovieSummary.fromJson(normalizeMovieSummaryJson(j))).toList();
   }
 }
