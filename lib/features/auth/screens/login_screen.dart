@@ -150,7 +150,7 @@ class _LoginPageState extends State<LoginPage> {
             TextButton(
               onPressed: () {
                 final to = hasFrom ? '/register?from=$from' : '/register';
-                context.go(to);
+                context.push(to);
               },
               child: const Text('没有账号？立即注册'),
             ),

@@ -172,7 +172,7 @@ class _RegisterPageState extends State<RegisterPage> {
               onPressed: () {
                 final to =
                     hasFrom ? '/login?from=$from' : '/login';
-                context.go(to);
+                context.push(to);
               },
               child: const Text('已有账号？去登录'),
             ),
