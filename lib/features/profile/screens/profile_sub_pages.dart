@@ -367,7 +367,7 @@ class _ProfileCell extends StatelessWidget {
     title: Text(title),
     subtitle: subtitle == null ? null : Text(subtitle!),
     trailing: const Icon(Icons.chevron_right),
-    onTap: route == null ? null : () => context.go(route!),
+    onTap: route == null ? null : () => context.push(route!),
   );
 }
 
