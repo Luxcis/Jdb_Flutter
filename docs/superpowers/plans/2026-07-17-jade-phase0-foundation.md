@@ -17,7 +17,8 @@
 - Feature-First：`core/` + `features/<name>/{screens,widgets,models,services,index.dart}`；feature 只依赖 core。
 - JSON 序列化用 `json_serializable`，`fieldRename: FieldRename.snake`。
 - 状态管理优先内置 + `provider`；偏好 fakes 而非 mocks。
-- 签名常量 D1/D2 取自 [ALGORITHM.md §4.5](../../../docs/api/signature/ALGORITHM.md)，硬编码，无需 JNI。
+- 签名常量 D1/D2 取自 [ALGORITHM.md §4.5](../../main/security/signature/ALGORITHM.md)，硬编码，无需
+  JNI。
 - 默认域名 `https://staging.letidi.com`；CDN `https://tp.spfcas.com/rhe951l4q/`。
 - Git 提交前设置代理：`export https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890 all_proxy=socks5://127.0.0.1:7890`。
 

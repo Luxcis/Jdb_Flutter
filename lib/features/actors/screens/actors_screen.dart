@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:jade/core/widgets/actor_grid_view.dart';
-import 'package:jade/core/widgets/section_header.dart';
-import 'package:jade/core/widgets/pagination_controller.dart';
-import 'package:jade/core/widgets/login_guide_card.dart';
+import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/providers/auth_provider.dart';
+import 'package:jade/core/widgets/actor_grid_view.dart';
+import 'package:jade/core/widgets/cached_image.dart';
+import 'package:jade/core/widgets/login_guide_card.dart';
+import 'package:jade/core/widgets/pagination_controller.dart';
+import 'package:jade/core/widgets/section_header.dart';
 import 'package:jade/features/actors/services/actor_service.dart';
-import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 class ActorsPage extends StatefulWidget {
   const ActorsPage({super.key});
@@ -17,17 +18,9 @@ class ActorsPage extends StatefulWidget {
   State<ActorsPage> createState() => _ActorsPageState();
 }
 
-class _ActorsPageState extends State<ActorsPage>
-    with TickerProviderStateMixin {
+class _ActorsPageState extends State<ActorsPage> with TickerProviderStateMixin {
   late final TabController _tabController;
-  static const tabs = [
-    '推荐',
-    '有码(女)',
-    '有码(男)',
-    '无码',
-    '欧美(女)',
-    '欧美(男)',
-  ];
+  static const tabs = ['推荐', '有码(女)', '有码(男)', '无码', '欧美(女)', '欧美(男)'];
 
   @override
   void initState() {
@@ -90,8 +83,7 @@ class _RecommendTabState extends State<_RecommendTab> {
     final svc = ActorService(api);
     final all = await svc.getRecommends();
     setState(() {
-      _newcomers =
-          all.sublist(0, all.length > 9 ? 9 : all.length);
+      _newcomers = all.sublist(0, all.length > 9 ? 9 : all.length);
       _monthly = all;
       _dmm = all;
     });
@@ -101,10 +93,7 @@ class _RecommendTabState extends State<_RecommendTab> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     if (!auth.isLogged) {
-      return const LoginGuideCard(
-        message: '登录后可查看演员推荐',
-        loginPath: '/actors',
-      );
+      return const LoginGuideCard(message: '登录后可查看演员推荐', loginPath: '/actors');
     }
     return CustomScrollView(
       slivers: [
@@ -129,8 +118,10 @@ class _RecommendTabState extends State<_RecommendTab> {
           onTap: () => context.go('/actor/${actors[i].id}'),
           child: Column(
             children: [
-              CircleAvatar(
-                backgroundImage: NetworkImage(actors[i].avatarUrl),
+              SizedBox(
+                width: 40,
+                height: 40,
+                child: ClipOval(child: CachedImage(actors[i].avatarUrl)),
               ),
               Text(actors[i].name),
             ],

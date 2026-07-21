@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:jade/core/constants/app_constants.dart';
 import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/network/image_decryptor.dart';
 
 class CachedImage extends StatelessWidget {
   const CachedImage(
@@ -19,9 +20,8 @@ class CachedImage extends StatelessWidget {
 
   String get _fullUrl {
     if (url.startsWith('http')) return url;
-    final endpoint = ApiClient.instanceOrNull
-            ?.domainManager
-            .imageEndpoint ??
+    final endpoint =
+        ApiClient.instanceOrNull?.domainManager.imageEndpoint ??
         AppConstants.fallbackImageCdn;
     return '$endpoint$url';
   }
@@ -30,6 +30,7 @@ class CachedImage extends StatelessWidget {
   Widget build(BuildContext context) {
     return CachedNetworkImage(
       imageUrl: _fullUrl,
+      cacheManager: JdbImageCacheManager.instance,
       fit: BoxFit.cover,
       width: width,
       height: height,
@@ -40,8 +41,7 @@ class CachedImage extends StatelessWidget {
           child: CircularProgressIndicator(strokeWidth: 2),
         ),
       ),
-      errorWidget: (_, _, _) =>
-          const Center(child: Icon(Icons.broken_image)),
+      errorWidget: (_, _, _) => const Center(child: Icon(Icons.broken_image)),
     );
   }
 }
