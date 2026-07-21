@@ -51,12 +51,10 @@ class _HomePageState extends State<HomePage> {
       );
     }
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverPadding(
-            padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top),
-            sliver: const SliverToBoxAdapter(child: TofuScroll()),
-          ),
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            const SliverToBoxAdapter(child: TofuScroll()),
           SliverToBoxAdapter(
             child: SectionHeader(title: '佳片推荐', trailing: '往期推荐', bold: true),
           ),
@@ -109,8 +107,9 @@ class _HomePageState extends State<HomePage> {
           }),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildGrid(List items) {
     if (items.isEmpty) return const SliverToBoxAdapter(child: EmptyState());
