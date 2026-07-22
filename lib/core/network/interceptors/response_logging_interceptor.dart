@@ -62,14 +62,15 @@ class ResponseLoggingInterceptor extends Interceptor {
     if (!_enabled) return;
     try {
       _output(
-        '[HTTP RESPONSE]\n'
+        '-------------------[HTTP RESPONSE]-------------------\n'
         'Method: ${options.method}\n'
         'URI: ${options.uri}\n'
         'Query: ${_format(options.queryParameters, empty: '{}')}\n'
         'Request Body: ${_format(options.data, empty: '无请求内容')}\n'
         'Status: $status\n'
         'Result: $result\n'
-        'Body: ${_format(responseBody, empty: '无响应内容')}',
+        'Body: ${_format(responseBody, empty: '无响应内容')}\n'
+        '-----------------------------------------------------',
       );
     } catch (_) {
       // 调试日志不得改变请求结果。
