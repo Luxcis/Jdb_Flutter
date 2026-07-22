@@ -25,6 +25,62 @@ Future<FakeAdapter> _setupApiClient() async {
   return adapter;
 }
 
+void _enqueueCompleteMovieDetail(FakeAdapter adapter) {
+  adapter.enqueue('/api/v4/movies/m1', {
+    'success': 1,
+    'data': {
+      'movie': {
+        'id': 'm1',
+        'number': 'SSIS-001',
+        'title': '测试影片',
+        'cover_url': 'covers/test.jpg',
+        'release_date': '2026-07-22',
+        'duration': 120,
+        'director': '测试导演',
+        'maker': '测试片商',
+        'series': '测试系列',
+        'score': 4.2,
+        'want_watch_count': 12,
+        'watched_count': 8,
+        'actors': [
+          {
+            'id': 'a1',
+            'name': '测试演员',
+            'avatar_url': 'actors/test.jpg',
+          },
+        ],
+        'preview_images': [
+          {'url': 'screenshots/test.jpg'},
+        ],
+        'tags': [
+          {'name': '剧情'},
+        ],
+      },
+    },
+  });
+  adapter.enqueue('/api/v1/movies/m1/magnets', {
+    'success': 1,
+    'data': {'magnets': <Map<String, dynamic>>[]},
+  });
+  adapter.enqueue('/api/v1/movies/m1/reviews', {
+    'success': 1,
+    'data': {'reviews': <Map<String, dynamic>>[]},
+  });
+  adapter.enqueue('/api/v1/movies/may_also_like', {
+    'success': 1,
+    'data': {
+      'movies': [
+        {
+          'id': 'm2',
+          'number': 'ABC-001',
+          'title': '推荐影片',
+          'cover_url': 'covers/recommended.jpg',
+        },
+      ],
+    },
+  });
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -57,5 +113,35 @@ void main() {
     expect(find.text('测试影片'), findsOneWidget);
     expect(find.text('番号: SSIS-001'), findsOneWidget);
     expect(find.text('剧情'), findsOneWidget);
+  });
+
+  testWidgets('影片详情按参考顺序展示且正文不被常驻抽屉遮挡', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(adapter);
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byType(DraggableScrollableSheet), findsNothing);
+    expect(find.text('番号: SSIS-001'), findsOneWidget);
+    expect(find.text('类别:'), findsOneWidget);
+    expect(find.text('演员'), findsOneWidget);
+    expect(find.text('预告片 / 剧照'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.scrollUntilVisible(
+      find.text('你可能也喜欢'),
+      500,
+      scrollable: find.byType(CustomScrollView),
+    );
+    expect(find.text('TA还出演过'), findsOneWidget);
+    expect(find.text('你可能也喜欢'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
