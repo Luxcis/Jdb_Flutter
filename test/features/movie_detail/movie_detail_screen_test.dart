@@ -4,6 +4,7 @@ import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/storage/storage_keys.dart';
 import 'package:jade/core/widgets/movie_screenshot_image.dart';
+import 'package:jade/core/widgets/tag_chip.dart';
 import 'package:jade/features/movie_detail/screens/movie_detail_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -130,6 +131,33 @@ void main() {
     expect(find.text('类别:'), findsOneWidget);
     expect(find.text('演员'), findsOneWidget);
     expect(tester.takeException(), isNull);
+
+    final actions = find.byKey(const Key('movie-detail-actions'));
+    expect(actions, findsOneWidget);
+    expect(
+      find.descendant(of: actions, matching: find.byType(FilledButton)),
+      findsNWidgets(3),
+    );
+    for (final button in tester.widgetList<FilledButton>(
+      find.descendant(of: actions, matching: find.byType(FilledButton)),
+    )) {
+      expect(button.style?.minimumSize?.resolve({}), const Size(0, 32));
+      expect(button.style?.visualDensity, VisualDensity.compact);
+      expect(
+        button.style?.padding?.resolve({}),
+        const EdgeInsets.symmetric(horizontal: 12),
+      );
+    }
+
+    final categoryChip = tester.widget<TagChip>(
+      find
+          .descendant(
+            of: find.byKey(const Key('movie-detail-categories')),
+            matching: find.byType(TagChip),
+          )
+          .first,
+    );
+    expect(categoryChip.compact, isTrue);
 
     await tester.scrollUntilVisible(
       find.text('预告片 / 剧照'),

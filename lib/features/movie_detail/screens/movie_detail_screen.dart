@@ -221,6 +221,12 @@ class _MovieInfoCard extends StatelessWidget {
       ('片商', detail.maker),
       ('系列', detail.series),
     ];
+    final actionStyle = FilledButton.styleFrom(
+      minimumSize: const Size(0, 32),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      visualDensity: VisualDensity.compact,
+      textStyle: Theme.of(context).textTheme.labelMedium,
+    );
 
     return Card(
       margin: EdgeInsets.zero,
@@ -248,12 +254,25 @@ class _MovieInfoCard extends StatelessWidget {
               ),
             const SizedBox(height: 4),
             Wrap(
+              key: const Key('movie-detail-actions'),
               spacing: 8,
-              runSpacing: 8,
+              runSpacing: 6,
               children: [
-                FilledButton(onPressed: () {}, child: const Text('想看')),
-                FilledButton(onPressed: () {}, child: const Text('看过')),
-                FilledButton(onPressed: () {}, child: const Text('存入清单')),
+                FilledButton(
+                  style: actionStyle,
+                  onPressed: () {},
+                  child: const Text('想看'),
+                ),
+                FilledButton(
+                  style: actionStyle,
+                  onPressed: () {},
+                  child: const Text('看过'),
+                ),
+                FilledButton(
+                  style: actionStyle,
+                  onPressed: () {},
+                  child: const Text('存入清单'),
+                ),
               ],
             ),
             Divider(color: Theme.of(context).colorScheme.outlineVariant),
@@ -290,25 +309,28 @@ class _CategorySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      key: const Key('movie-detail-categories'),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 8,
+        spacing: 6,
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.only(top: 4),
             child: Text(
               '类别:',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           Expanded(
             child: Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [for (final tag in tags) TagChip(label: tag)],
+              spacing: 4,
+              runSpacing: 4,
+              children: [
+                for (final tag in tags) TagChip(label: tag, compact: true),
+              ],
             ),
           ),
         ],
