@@ -133,47 +133,16 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
           ),
         ],
       ),
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(child: _MovieHero(detail: detail)),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            sliver: SliverToBoxAdapter(child: _MovieInfoCard(detail: detail)),
-          ),
-          if (detail.tags.isNotEmpty)
-            SliverToBoxAdapter(child: _CategorySection(tags: detail.tags)),
-          if (detail.actors.isNotEmpty)
-            SliverToBoxAdapter(
-              child: _ActorSection(
-                actors: detail.actors,
-                onActorTap: (actor) => context.push('/actor/${actor.id}'),
-              ),
-            ),
-          if (detail.screenshots.isNotEmpty)
-            SliverToBoxAdapter(
-              child: _ScreenshotSection(urls: detail.screenshots),
-            ),
-          if (_mayAlsoLike.isNotEmpty)
-            SliverToBoxAdapter(
-              child: _MovieRowSection(
-                title: 'TA还出演过',
-                movies: _mayAlsoLike,
-                onMovieTap: (movie) => context.push('/movie/${movie.id}'),
-              ),
-            ),
-          if (_mayAlsoLike.isNotEmpty)
-            SliverToBoxAdapter(
-              child: _MovieRowSection(
-                title: '你可能也喜欢',
-                movies: _mayAlsoLike,
-                onMovieTap: (movie) => context.push('/movie/${movie.id}'),
-              ),
-            ),
-          SliverToBoxAdapter(
-            child: _AuxiliaryTabs(magnets: _magnets, reviews: _reviews),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
-        ],
+      body: DefaultTabController(
+        length: 4,
+        child: _MovieDetailTabs(
+          detail: detail,
+          magnets: _magnets,
+          reviews: _reviews,
+          mayAlsoLike: _mayAlsoLike,
+          onActorTap: (actor) => context.push('/actor/${actor.id}'),
+          onMovieTap: (movie) => context.push('/movie/${movie.id}'),
+        ),
       ),
     );
   }
@@ -204,6 +173,147 @@ class _MovieHero extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+class _MovieDetailTabs extends StatelessWidget {
+  const _MovieDetailTabs({
+    required this.detail,
+    required this.magnets,
+    required this.reviews,
+    required this.mayAlsoLike,
+    required this.onActorTap,
+    required this.onMovieTap,
+  });
+
+  final MovieDetail detail;
+  final List<Magnet> magnets;
+  final List<Review> reviews;
+  final List<MovieSummary> mayAlsoLike;
+  final ValueChanged<ActorSummary> onActorTap;
+  final ValueChanged<MovieSummary> onMovieTap;
+
+  @override
+  Widget build(BuildContext context) {
+    const tabBar = TabBar(
+      key: Key('movie-detail-tab-bar'),
+      tabs: [
+        Tab(text: '基本信息'),
+        Tab(text: '磁链下载'),
+        Tab(text: '短评'),
+        Tab(text: '相关清单'),
+      ],
+    );
+    return NestedScrollView(
+      headerSliverBuilder: (context, innerBoxIsScrolled) => [
+        SliverToBoxAdapter(child: _MovieHero(detail: detail)),
+        SliverPersistentHeader(
+          pinned: true,
+          delegate: _MovieDetailTabHeaderDelegate(
+            tabBar: tabBar,
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            dividerColor: Theme.of(context).colorScheme.outlineVariant,
+          ),
+        ),
+      ],
+      body: TabBarView(
+        children: [
+          _BasicInfoTab(
+            detail: detail,
+            mayAlsoLike: mayAlsoLike,
+            onActorTap: onActorTap,
+            onMovieTap: onMovieTap,
+          ),
+          _MagnetList(magnets: magnets),
+          _ReviewList(reviews: reviews),
+          const Center(child: Text('相关清单')),
+        ],
+      ),
+    );
+  }
+}
+
+class _BasicInfoTab extends StatelessWidget {
+  const _BasicInfoTab({
+    required this.detail,
+    required this.mayAlsoLike,
+    required this.onActorTap,
+    required this.onMovieTap,
+  });
+
+  final MovieDetail detail;
+  final List<MovieSummary> mayAlsoLike;
+  final ValueChanged<ActorSummary> onActorTap;
+  final ValueChanged<MovieSummary> onMovieTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: _MovieInfoCard(detail: detail),
+        ),
+        if (detail.tags.isNotEmpty) _CategorySection(tags: detail.tags),
+        if (detail.actors.isNotEmpty)
+          _ActorSection(actors: detail.actors, onActorTap: onActorTap),
+        if (detail.screenshots.isNotEmpty)
+          _ScreenshotSection(urls: detail.screenshots),
+        if (mayAlsoLike.isNotEmpty)
+          _MovieRowSection(
+            title: 'TA还出演过',
+            movies: mayAlsoLike,
+            onMovieTap: onMovieTap,
+          ),
+        if (mayAlsoLike.isNotEmpty)
+          _MovieRowSection(
+            title: '你可能也喜欢',
+            movies: mayAlsoLike,
+            onMovieTap: onMovieTap,
+          ),
+      ],
+    );
+  }
+}
+
+class _MovieDetailTabHeaderDelegate extends SliverPersistentHeaderDelegate {
+  const _MovieDetailTabHeaderDelegate({
+    required this.tabBar,
+    required this.backgroundColor,
+    required this.dividerColor,
+  });
+
+  final TabBar tabBar;
+  final Color backgroundColor;
+  final Color dividerColor;
+
+  @override
+  double get minExtent => tabBar.preferredSize.height;
+
+  @override
+  double get maxExtent => tabBar.preferredSize.height;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        border: Border(bottom: BorderSide(color: dividerColor)),
+      ),
+      child: tabBar,
+    );
+  }
+
+  @override
+  bool shouldRebuild(_MovieDetailTabHeaderDelegate oldDelegate) {
+    return tabBar != oldDelegate.tabBar ||
+        backgroundColor != oldDelegate.backgroundColor ||
+        dividerColor != oldDelegate.dividerColor;
   }
 }
 
@@ -473,50 +583,6 @@ class _Section extends StatelessWidget {
           ),
           SizedBox(height: height, child: child),
         ],
-      ),
-    );
-  }
-}
-
-class _AuxiliaryTabs extends StatelessWidget {
-  const _AuxiliaryTabs({required this.magnets, required this.reviews});
-
-  final List<Magnet> magnets;
-  final List<Review> reviews;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-      child: SizedBox(
-        height: 320,
-        child: Card(
-          margin: EdgeInsets.zero,
-          clipBehavior: Clip.antiAlias,
-          child: DefaultTabController(
-            length: 3,
-            child: Column(
-              children: [
-                const TabBar(
-                  tabs: [
-                    Tab(text: '磁链下载'),
-                    Tab(text: '短评'),
-                    Tab(text: '相关清单'),
-                  ],
-                ),
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      _MagnetList(magnets: magnets),
-                      _ReviewList(reviews: reviews),
-                      const Center(child: Text('相关清单')),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

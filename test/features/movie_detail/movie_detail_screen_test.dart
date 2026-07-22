@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/storage/storage_keys.dart';
+import 'package:jade/core/widgets/movie_cover_image.dart';
 import 'package:jade/core/widgets/movie_screenshot_image.dart';
 import 'package:jade/core/widgets/tag_chip.dart';
 import 'package:jade/features/movie_detail/screens/movie_detail_screen.dart';
@@ -110,6 +111,21 @@ void main() {
 
     expect(find.text('测试影片'), findsOneWidget);
     expect(find.text('番号: SSIS-001'), findsOneWidget);
+    final innerScrollable = find
+        .descendant(
+          of: find.byType(TabBarView),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Scrollable &&
+                widget.axisDirection == AxisDirection.down,
+          ),
+        )
+        .first;
+    await tester.scrollUntilVisible(
+      find.text('剧情'),
+      200,
+      scrollable: innerScrollable,
+    );
     expect(find.text('剧情'), findsOneWidget);
   });
 
@@ -127,9 +143,27 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.byType(DraggableScrollableSheet), findsNothing);
+    expect(find.byType(NestedScrollView), findsOneWidget);
+    final pinnedHeader = tester.widget<SliverPersistentHeader>(
+      find.byType(SliverPersistentHeader),
+    );
+    expect(pinnedHeader.pinned, isTrue);
+
+    const tabLabels = ['基本信息', '磁链下载', '短评', '相关清单'];
+    for (final label in tabLabels) {
+      expect(find.text(label), findsOneWidget);
+    }
+
+    final tabBar = find.byKey(const Key('movie-detail-tab-bar'));
+    expect(tabBar, findsOneWidget);
+    expect(find.ancestor(of: tabBar, matching: find.byType(Card)), findsNothing);
+    expect(
+      tester.getTopLeft(tabBar).dy,
+      greaterThan(tester.getTopLeft(find.byType(MovieCoverImage)).dy),
+    );
+
     expect(find.text('番号: SSIS-001'), findsOneWidget);
     expect(find.text('类别:'), findsOneWidget);
-    expect(find.text('演员'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     final actions = find.byKey(const Key('movie-detail-actions'));
@@ -159,21 +193,59 @@ void main() {
     );
     expect(categoryChip.compact, isTrue);
 
+    final innerScrollable = find
+        .descendant(
+          of: find.byType(TabBarView),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Scrollable &&
+                widget.axisDirection == AxisDirection.down,
+          ),
+        )
+        .first;
+    await tester.scrollUntilVisible(
+      find.text('演员'),
+      300,
+      scrollable: innerScrollable,
+    );
+    expect(find.text('演员'), findsOneWidget);
+
     await tester.scrollUntilVisible(
       find.text('预告片 / 剧照'),
       300,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: innerScrollable,
     );
     expect(find.text('预告片 / 剧照'), findsOneWidget);
     expect(find.byType(MovieScreenshotImage), findsOneWidget);
 
     await tester.scrollUntilVisible(
-      find.text('你可能也喜欢'),
+      find.text('TA还出演过'),
       500,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: innerScrollable,
     );
     expect(find.text('TA还出演过'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('你可能也喜欢'),
+      500,
+      scrollable: innerScrollable,
+    );
     expect(find.text('你可能也喜欢'), findsOneWidget);
     expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('磁链下载'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('暂无磁链'), findsOneWidget);
+
+    await tester.tap(find.text('短评'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('暂无短评'), findsOneWidget);
+
+    await tester.tap(find.text('相关清单'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('相关清单'), findsNWidgets(2));
   });
 }
