@@ -1,11 +1,12 @@
 // lib/core/network/api_client.dart
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jade/core/network/domain_manager.dart';
-import 'package:jade/core/network/interceptors/signature_interceptor.dart';
 import 'package:jade/core/network/interceptors/auth_interceptor.dart';
-import 'package:jade/core/network/interceptors/response_interceptor.dart';
 import 'package:jade/core/network/interceptors/domain_switch_interceptor.dart';
+import 'package:jade/core/network/interceptors/response_interceptor.dart';
+import 'package:jade/core/network/interceptors/response_logging_interceptor.dart';
+import 'package:jade/core/network/interceptors/signature_interceptor.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Token 提供者抽象（AuthProvider 实现）。
 abstract class TokenProvider {
@@ -13,10 +14,7 @@ abstract class TokenProvider {
 }
 
 class ApiClient {
-  ApiClient._({
-    required this.dio,
-    required this.domainManager,
-  });
+  ApiClient._({required this.dio, required this.domainManager});
 
   late final Dio dio;
   final DomainManager domainManager;
@@ -31,14 +29,17 @@ class ApiClient {
     required void Function() onAuthError,
   }) async {
     final dm = await DomainManager.load(prefs);
-    final dio = Dio(BaseOptions(
-      baseUrl: dm.currentUrl,
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 20),
-    ));
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: dm.currentUrl,
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 20),
+      ),
+    );
     dio.interceptors.addAll([
       SignatureInterceptor(),
       AuthInterceptor(tokenProvider),
+      ResponseLoggingInterceptor(),
       ResponseInterceptor(onAuthError: onAuthError),
       DomainSwitchInterceptor(domainManager: dm, dio: dio),
     ]);
@@ -47,8 +48,7 @@ class ApiClient {
     return client;
   }
 
-  Future<Response> get(String path,
-      {Map<String, dynamic>? queryParameters}) {
+  Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) {
     return dio.get(path, queryParameters: queryParameters);
   }
 
