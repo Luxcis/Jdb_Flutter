@@ -193,35 +193,29 @@ List<String> _tagLabels(dynamic tags) {
 
 List<String> _imageUrls(dynamic images) {
   if (images is List) {
-    return images
-        .map((image) {
-          if (image is String) {
-            return image;
-          }
-          if (image is Map) {
-            return apiString(image['url'] ?? image['image_url']);
-          }
-          return apiString(image);
-        })
-        .whereType<String>()
-        .toList();
+    return images.map(_imageUrl).whereType<String>().toList();
   }
   if (images is Map) {
     return images.values
         .expand((value) => value is List ? value : const [])
-        .map((image) {
-          if (image is String) {
-            return image;
-          }
-          if (image is Map) {
-            return apiString(image['url'] ?? image['image_url']);
-          }
-          return apiString(image);
-        })
+        .map(_imageUrl)
         .whereType<String>()
         .toList();
   }
   return const [];
+}
+
+String? _imageUrl(dynamic image) {
+  if (image is String) return image;
+  if (image is Map) {
+    return apiString(
+      image['large_url'] ??
+          image['url'] ??
+          image['image_url'] ??
+          image['thumb_url'],
+    );
+  }
+  return apiString(image);
 }
 
 String? _magnetSize(dynamic value) {

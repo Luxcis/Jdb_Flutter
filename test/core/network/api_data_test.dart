@@ -124,6 +124,27 @@ void main() {
     expect(movie.relativeMovies.single.id, 'relative-movie');
   });
 
+  test('normalizeMovieDetailJson 优先使用真实剧照 large_url', () {
+    final movie = MovieDetail.fromJson(
+      normalizeMovieDetailJson({
+        'movie': {
+          'id': 'm1',
+          'number': 'ABC-001',
+          'title': 'Title',
+          'cover_url': 'cover.jpg',
+          'preview_images': [
+            {
+              'large_url': 'screenshots/large.jpg',
+              'thumb_url': 'screenshots/thumb.jpg',
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(movie.screenshots, ['screenshots/large.jpg']);
+  });
+
   test('normalizeMagnetJson 兼容真实数字大小和布尔高清字段', () {
     final magnet = Magnet.fromJson(
       normalizeMagnetJson({
