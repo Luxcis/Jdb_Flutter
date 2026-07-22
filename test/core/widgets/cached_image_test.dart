@@ -42,4 +42,32 @@ void main() {
 
     expect(image.cacheManager, same(JdbImageCacheManager.instance));
   });
+
+  testWidgets('图片加载失败时使用指定本地资源', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: CachedImage(
+          'covers/missing.jpg',
+          fallbackAsset: 'assets/images/noimage_600x404.jpg',
+          semanticLabel: '测试封面',
+        ),
+      ),
+    );
+
+    final networkImage = tester.widget<CachedNetworkImage>(
+      find.byType(CachedNetworkImage),
+    );
+    final fallback = networkImage.errorWidget!(
+      tester.element(find.byType(CachedNetworkImage)),
+      'covers/missing.jpg',
+      Exception('load failed'),
+    );
+    await tester.pumpWidget(MaterialApp(home: fallback));
+
+    final image = tester.widget<Image>(find.byType(Image));
+    expect(
+      (image.image as AssetImage).assetName,
+      'assets/images/noimage_600x404.jpg',
+    );
+  });
 }
