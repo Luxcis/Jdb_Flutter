@@ -12,6 +12,8 @@ class CachedImage extends StatelessWidget {
     this.width,
     this.height,
     this.fit = BoxFit.cover,
+    this.fallbackAsset,
+    this.semanticLabel,
   });
 
   final String url;
@@ -19,6 +21,8 @@ class CachedImage extends StatelessWidget {
   final double? width;
   final double? height;
   final BoxFit fit;
+  final String? fallbackAsset;
+  final String? semanticLabel;
 
   String get _fullUrl {
     if (url.startsWith('http')) return url;
@@ -30,7 +34,7 @@ class CachedImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CachedNetworkImage(
+    final image = CachedNetworkImage(
       imageUrl: _fullUrl,
       cacheManager: JdbImageCacheManager.instance,
       fit: fit,
@@ -43,7 +47,17 @@ class CachedImage extends StatelessWidget {
           child: CircularProgressIndicator(strokeWidth: 2),
         ),
       ),
-      errorWidget: (_, _, _) => const Center(child: Icon(Icons.broken_image)),
+      errorWidget: (_, _, _) => fallbackAsset == null
+          ? const Center(child: Icon(Icons.broken_image))
+          : Image.asset(fallbackAsset!, width: width, height: height, fit: fit),
+    );
+    final label = semanticLabel;
+    if (label == null) return image;
+    return Semantics(
+      image: true,
+      label: label,
+      excludeSemantics: true,
+      child: image,
     );
   }
 }

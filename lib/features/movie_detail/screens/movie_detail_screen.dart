@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:jade/core/network/api_client.dart';
-import 'package:jade/core/models/movie.dart';
+import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/magnet.dart';
+import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/review.dart';
-import 'package:jade/core/widgets/cached_image.dart';
+import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/actor_card.dart';
-import 'package:jade/core/widgets/movie_card.dart';
+import 'package:jade/core/widgets/cached_image.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
+import 'package:jade/core/widgets/movie_card.dart';
+import 'package:jade/core/widgets/movie_cover_image.dart';
 import 'package:jade/core/widgets/tag_chip.dart';
 import 'package:jade/features/movie_detail/services/movie_detail_service.dart';
 
 class MovieDetailPage extends StatefulWidget {
-  final String id;
   const MovieDetailPage({super.key, required this.id});
+
+  final String id;
 
   @override
   State<MovieDetailPage> createState() => _MovieDetailPageState();
@@ -33,7 +36,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     _load();
   }
 
-  void _load() async {
+  Future<void> _load() async {
     setState(() {
       _loading = true;
       _error = null;
@@ -47,55 +50,56 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
         });
         return;
       }
-      final svc = MovieDetailService(api);
-      final detail = await svc.getDetail(widget.id);
+      final service = MovieDetailService(api);
+      final detail = await service.getDetail(widget.id);
       if (!mounted) return;
       setState(() {
         _detail = detail;
         _loading = false;
       });
-      final magnetsFuture = _loadMagnets(svc);
-      final reviewsFuture = _loadReviews(svc);
-      final mayAlsoLikeFuture = _loadMayAlsoLike(svc);
+
+      final magnetsFuture = _loadMagnets(service);
+      final reviewsFuture = _loadReviews(service);
+      final mayAlsoLikeFuture = _loadMayAlsoLike(service);
       final magnets = await magnetsFuture;
       final reviews = await reviewsFuture;
       final mayAlsoLike = await mayAlsoLikeFuture;
-      if (mounted) {
-        setState(() {
-          _magnets = magnets;
-          _reviews = reviews;
-          _mayAlsoLike = mayAlsoLike;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-          _loading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _magnets = magnets;
+        _reviews = reviews;
+        _mayAlsoLike = mayAlsoLike;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.toString();
+        _loading = false;
+      });
     }
   }
 
-  Future<List<Magnet>> _loadMagnets(MovieDetailService svc) async {
+  Future<List<Magnet>> _loadMagnets(MovieDetailService service) async {
     try {
-      return await svc.getMagnets(widget.id);
+      return await service.getMagnets(widget.id);
     } catch (_) {
       return const [];
     }
   }
 
-  Future<List<Review>> _loadReviews(MovieDetailService svc) async {
+  Future<List<Review>> _loadReviews(MovieDetailService service) async {
     try {
-      return await svc.getReviews(widget.id);
+      return await service.getReviews(widget.id);
     } catch (_) {
       return const [];
     }
   }
 
-  Future<List<MovieSummary>> _loadMayAlsoLike(MovieDetailService svc) async {
+  Future<List<MovieSummary>> _loadMayAlsoLike(
+    MovieDetailService service,
+  ) async {
     try {
-      return await svc.getMayAlsoLike(widget.id);
+      return await service.getMayAlsoLike(widget.id);
     } catch (_) {
       return const [];
     }
@@ -111,260 +115,422 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
         body: ErrorRetryWidget(message: _error!, onRetry: _load),
       );
     }
-    final d = _detail!;
+
+    final detail = _detail!;
     return Scaffold(
       appBar: AppBar(
-        title: Text(d.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        title: Text(
+          detail.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        actions: [
+          IconButton(
+            tooltip: '更多',
+            onPressed: () {},
+            icon: const Icon(Icons.more_vert),
+          ),
+        ],
       ),
       body: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(
-            child: SizedBox(height: 300, child: CachedImage(d.coverUrl)),
+          SliverToBoxAdapter(child: _MovieHero(detail: detail)),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            sliver: SliverToBoxAdapter(child: _MovieInfoCard(detail: detail)),
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '番号: ${d.number}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  if (d.releaseDate != null) Text('发行日期: ${d.releaseDate}'),
-                  if (d.duration != null) Text('时长: ${d.duration}分钟'),
-                  if (d.director != null) Text('导演: ${d.director}'),
-                  if (d.maker != null) Text('片商: ${d.maker}'),
-                  if (d.series != null) Text('系列: ${d.series}'),
-                  if (d.score != null) Text('评分: ${d.score}'),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      ElevatedButton(onPressed: () {}, child: const Text('想看')),
-                      const SizedBox(width: 8),
-                      ElevatedButton(onPressed: () {}, child: const Text('看过')),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: () {},
-                        child: const Text('存入清单'),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    '${d.wantWatchCount}人想看, ${d.watchedCount}人看过',
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                  if (d.tags.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Wrap(
-                        spacing: 4,
-                        children: d.tags.map((t) => TagChip(label: t)).toList(),
-                      ),
-                    ),
-                ],
+          if (detail.tags.isNotEmpty)
+            SliverToBoxAdapter(child: _CategorySection(tags: detail.tags)),
+          if (detail.actors.isNotEmpty)
+            SliverToBoxAdapter(
+              child: _ActorSection(
+                actors: detail.actors,
+                onActorTap: (actor) => context.push('/actor/${actor.id}'),
               ),
             ),
-          ),
-          if (d.screenshots.isNotEmpty)
+          if (detail.screenshots.isNotEmpty)
             SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Text(
-                      '剧照',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    height: 120,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: d.screenshots.length,
-                      itemBuilder: (_, i) => Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: AspectRatio(
-                          aspectRatio: 16 / 9,
-                          child: CachedImage(d.screenshots[i]),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              child: _ScreenshotSection(urls: detail.screenshots),
             ),
-          if (d.actors.isNotEmpty)
+          if (_mayAlsoLike.isNotEmpty)
             SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Text(
-                      '演员',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    height: 110,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: d.actors.length,
-                      itemBuilder: (_, i) => Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: ActorCard(
-                          actor: d.actors[i],
-                          onTap: () => context.push('/actor/${d.actors[i].id}'),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              child: _MovieRowSection(
+                title: 'TA还出演过',
+                movies: _mayAlsoLike,
+                onMovieTap: (movie) => context.push('/movie/${movie.id}'),
               ),
             ),
           if (_mayAlsoLike.isNotEmpty)
             SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Text(
-                      'TA还出演过',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    height: 220,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _mayAlsoLike.length,
-                      itemBuilder: (_, i) => SizedBox(
-                        width: 130,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: MovieCard(
-                            movie: _mayAlsoLike[i],
-                            onTap: () =>
-                                context.push('/movie/${_mayAlsoLike[i].id}'),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              child: _MovieRowSection(
+                title: '你可能也喜欢',
+                movies: _mayAlsoLike,
+                onMovieTap: (movie) => context.push('/movie/${movie.id}'),
               ),
             ),
-          if (_mayAlsoLike.isNotEmpty)
-            SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Text(
-                      '你可能也喜欢',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    height: 220,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _mayAlsoLike.length,
-                      itemBuilder: (_, i) => SizedBox(
-                        width: 130,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: MovieCard(
-                            movie: _mayAlsoLike[i],
-                            onTap: () =>
-                                context.push('/movie/${_mayAlsoLike[i].id}'),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          const SliverToBoxAdapter(child: SizedBox(height: 60)),
+          SliverToBoxAdapter(
+            child: _AuxiliaryTabs(magnets: _magnets, reviews: _reviews),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
       ),
-      bottomSheet: DraggableScrollableSheet(
-        initialChildSize: 0.14,
-        minChildSize: 0.14,
-        maxChildSize: 0.5,
-        builder: (_, scroll) => Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 6),
-              height: 4,
-              width: 32,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade400,
-                borderRadius: BorderRadius.circular(2),
-              ),
+    );
+  }
+}
+
+class _MovieHero extends StatelessWidget {
+  const _MovieHero({required this.detail});
+
+  final MovieDetail detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final height = (constraints.maxWidth / 1.45).clamp(220.0, 360.0);
+        return SizedBox(
+          width: double.infinity,
+          height: height,
+          child: ColoredBox(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: MovieCoverImage(
+              detail.coverUrl,
+              variant: MovieImageVariant.cover,
+              semanticLabel: detail.title,
+              fit: BoxFit.cover,
             ),
-            Expanded(
-              child: DefaultTabController(
-                length: 3,
-                child: Column(
-                  children: [
-                    const TabBar(
-                      tabs: [
-                        Tab(text: '磁链下载'),
-                        Tab(text: '短评'),
-                        Tab(text: '相关清单'),
-                      ],
-                    ),
-                    Expanded(
-                      child: TabBarView(
-                        children: [
-                          ListView.builder(
-                            itemCount: _magnets.length,
-                            itemBuilder: (_, i) => ListTile(
-                              title: Text(
-                                _magnets[i].title ?? _magnets[i].hash,
-                              ),
-                              subtitle: Text(_magnets[i].size ?? ''),
-                            ),
-                          ),
-                          ListView.builder(
-                            itemCount: _reviews.length,
-                            itemBuilder: (_, i) => ListTile(
-                              title: Text(_reviews[i].content ?? ''),
-                              subtitle: Text('评分: ${_reviews[i].score ?? '?'}'),
-                            ),
-                          ),
-                          const Center(child: Text('相关清单')),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _MovieInfoCard extends StatelessWidget {
+  const _MovieInfoCard({required this.detail});
+
+  final MovieDetail detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final metadata = <(String, String?)>[
+      ('发行日期', detail.releaseDate),
+      ('时长', detail.duration == null ? null : '${detail.duration}分钟'),
+      ('导演', detail.director),
+      ('片商', detail.maker),
+      ('系列', detail.series),
+    ];
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 8,
+          children: [
+            _MetadataLine(label: '番号', value: detail.number),
+            for (final (label, value) in metadata)
+              if (value != null && value.isNotEmpty)
+                _MetadataLine(label: label, value: value),
+            if (detail.score != null)
+              Row(
+                children: [
+                  const Text('评分: '),
+                  Icon(
+                    Icons.star_rounded,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.tertiary,
+                  ),
+                  Text(detail.score!.toStringAsFixed(1)),
+                ],
+              ),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton(onPressed: () {}, child: const Text('想看')),
+                FilledButton(onPressed: () {}, child: const Text('看过')),
+                FilledButton(onPressed: () {}, child: const Text('存入清单')),
+              ],
+            ),
+            Divider(color: Theme.of(context).colorScheme.outlineVariant),
+            Text(
+              '${detail.wantWatchCount}人想看，${detail.watchedCount}人看过',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _MetadataLine extends StatelessWidget {
+  const _MetadataLine({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text('$label: $value');
+  }
+}
+
+class _CategorySection extends StatelessWidget {
+  const _CategorySection({required this.tags});
+
+  final List<String> tags;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 8,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              '类别:',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [for (final tag in tags) TagChip(label: tag)],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActorSection extends StatelessWidget {
+  const _ActorSection({required this.actors, required this.onActorTap});
+
+  final List<ActorSummary> actors;
+  final ValueChanged<ActorSummary> onActorTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Section(
+      title: '演员',
+      height: 112,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        itemCount: actors.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (_, index) => SizedBox(
+          width: 80,
+          child: ActorCard(
+            actor: actors[index],
+            onTap: () => onActorTap(actors[index]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScreenshotSection extends StatelessWidget {
+  const _ScreenshotSection({required this.urls});
+
+  final List<String> urls;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Section(
+      title: '预告片 / 剧照',
+      trailing: Text('全部 ${urls.length} ›'),
+      height: 164,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        itemCount: urls.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (_, index) => AspectRatio(
+          aspectRatio: 16 / 9,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: CachedImage(urls[index]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MovieRowSection extends StatelessWidget {
+  const _MovieRowSection({
+    required this.title,
+    required this.movies,
+    required this.onMovieTap,
+  });
+
+  final String title;
+  final List<MovieSummary> movies;
+  final ValueChanged<MovieSummary> onMovieTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Section(
+      title: title,
+      height: 232,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        scrollDirection: Axis.horizontal,
+        itemCount: movies.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 4),
+        itemBuilder: (_, index) => SizedBox(
+          width: 140,
+          child: MovieCard(
+            movie: movies[index],
+            onTap: () => onMovieTap(movies[index]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Section extends StatelessWidget {
+  const _Section({
+    required this.title,
+    required this.height,
+    required this.child,
+    this.trailing,
+  });
+
+  final String title;
+  final double height;
+  final Widget child;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 10,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                if (trailing != null)
+                  DefaultTextStyle.merge(
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    child: trailing!,
+                  ),
+              ],
+            ),
+          ),
+          SizedBox(height: height, child: child),
+        ],
+      ),
+    );
+  }
+}
+
+class _AuxiliaryTabs extends StatelessWidget {
+  const _AuxiliaryTabs({required this.magnets, required this.reviews});
+
+  final List<Magnet> magnets;
+  final List<Review> reviews;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+      child: SizedBox(
+        height: 320,
+        child: Card(
+          margin: EdgeInsets.zero,
+          clipBehavior: Clip.antiAlias,
+          child: DefaultTabController(
+            length: 3,
+            child: Column(
+              children: [
+                const TabBar(
+                  tabs: [
+                    Tab(text: '磁链下载'),
+                    Tab(text: '短评'),
+                    Tab(text: '相关清单'),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      _MagnetList(magnets: magnets),
+                      _ReviewList(reviews: reviews),
+                      const Center(child: Text('相关清单')),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MagnetList extends StatelessWidget {
+  const _MagnetList({required this.magnets});
+
+  final List<Magnet> magnets;
+
+  @override
+  Widget build(BuildContext context) {
+    if (magnets.isEmpty) return const Center(child: Text('暂无磁链'));
+    return ListView.builder(
+      itemCount: magnets.length,
+      itemBuilder: (_, index) => ListTile(
+        title: Text(magnets[index].title ?? magnets[index].hash),
+        subtitle: Text(magnets[index].size ?? ''),
+      ),
+    );
+  }
+}
+
+class _ReviewList extends StatelessWidget {
+  const _ReviewList({required this.reviews});
+
+  final List<Review> reviews;
+
+  @override
+  Widget build(BuildContext context) {
+    if (reviews.isEmpty) return const Center(child: Text('暂无短评'));
+    return ListView.builder(
+      itemCount: reviews.length,
+      itemBuilder: (_, index) => ListTile(
+        title: Text(reviews[index].content ?? ''),
+        subtitle: Text('评分: ${reviews[index].score ?? '?'}'),
       ),
     );
   }

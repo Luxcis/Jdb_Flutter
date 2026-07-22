@@ -4,8 +4,8 @@ import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/providers/auth_provider.dart';
+import 'package:jade/core/widgets/actor_avatar_image.dart';
 import 'package:jade/core/widgets/actor_grid_view.dart';
-import 'package:jade/core/widgets/cached_image.dart';
 import 'package:jade/core/widgets/filter_drawer.dart';
 import 'package:jade/core/widgets/login_guide_card.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
@@ -122,7 +122,7 @@ class _RecommendTabState extends State<_RecommendTab> {
               SizedBox(
                 width: 40,
                 height: 40,
-                child: ClipOval(child: CachedImage(actors[i].avatarUrl)),
+                child: ClipOval(child: ActorAvatarImage(actors[i])),
               ),
               Text(actors[i].name),
             ],

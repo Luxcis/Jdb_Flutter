@@ -46,6 +46,19 @@ void main() {
     expect(actor.avatarUrl, '');
   });
 
+  test('normalizeActorSummaryJson 保留演员性别', () {
+    final actor = ActorSummary.fromJson(
+      normalizeActorSummaryJson({
+        'id': 'a1',
+        'name': '演员',
+        'avatar_url': '',
+        'gender': 'male',
+      }),
+    );
+
+    expect(actor.gender, 'male');
+  });
+
   test('normalizeMovieDetailJson 标准化详情中的演员和数字字段', () {
     final movie = MovieDetail.fromJson(
       normalizeMovieDetailJson({

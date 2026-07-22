@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/movie.dart';
-import 'package:jade/core/widgets/cached_image.dart';
+import 'package:jade/core/widgets/movie_cover_image.dart';
 
 class MovieCard extends StatelessWidget {
   const MovieCard({super.key, required this.movie, this.onTap});
@@ -26,7 +26,12 @@ class MovieCard extends StatelessWidget {
             Expanded(
               child: ColoredBox(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                child: CachedImage(_coverImageUrl, fit: BoxFit.contain),
+                child: MovieCoverImage(
+                  _coverImageUrl,
+                  variant: MovieImageVariant.thumbnail,
+                  semanticLabel: movie.title,
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
             Padding(

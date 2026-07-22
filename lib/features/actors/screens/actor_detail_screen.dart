@@ -4,7 +4,7 @@ import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/network/api_client.dart';
-import 'package:jade/core/widgets/cached_image.dart';
+import 'package:jade/core/widgets/actor_avatar_image.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 import 'package:jade/features/actors/services/actor_service.dart';
@@ -99,7 +99,7 @@ class _ActorDetailPageState extends State<ActorDetailPage> {
                 SizedBox(
                   width: 84,
                   height: 84,
-                  child: ClipOval(child: CachedImage(detail.avatarUrl)),
+                  child: ClipOval(child: ActorAvatarImage(detail)),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
