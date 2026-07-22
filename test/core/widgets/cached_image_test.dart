@@ -70,4 +70,46 @@ void main() {
       'assets/images/noimage_600x404.jpg',
     );
   });
+
+  testWidgets('blur 开启时仅成功加载的网络图片使用模糊层', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: CachedImage(
+          'covers/test.jpg',
+          blur: true,
+          fallbackAsset: 'assets/images/noimage_600x404.jpg',
+        ),
+      ),
+    );
+
+    final networkImage = tester.widget<CachedNetworkImage>(
+      find.byType(CachedNetworkImage),
+    );
+    final context = tester.element(find.byType(CachedImage));
+    final success = networkImage.imageBuilder!(
+      context,
+      const AssetImage('assets/images/noimage_600x404.jpg'),
+    );
+    final error = networkImage.errorWidget!(
+      context,
+      'covers/test.jpg',
+      StateError('load failed'),
+    );
+
+    final clip = success as ClipRect;
+    expect(clip.child, isA<ImageFiltered>());
+    expect(error, isA<Image>());
+    expect(error, isNot(isA<ImageFiltered>()));
+  });
+
+  testWidgets('blur 关闭时不配置成功图片模糊构建器', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: CachedImage('covers/test.jpg')),
+    );
+
+    final networkImage = tester.widget<CachedNetworkImage>(
+      find.byType(CachedNetworkImage),
+    );
+    expect(networkImage.imageBuilder, isNull);
+  });
 }
