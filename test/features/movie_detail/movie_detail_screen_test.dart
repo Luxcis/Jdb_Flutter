@@ -43,11 +43,7 @@ void _enqueueCompleteMovieDetail(FakeAdapter adapter) {
         'want_watch_count': 12,
         'watched_count': 8,
         'actors': [
-          {
-            'id': 'a1',
-            'name': '测试演员',
-            'avatar_url': 'actors/test.jpg',
-          },
+          {'id': 'a1', 'name': '测试演员', 'avatar_url': 'actors/test.jpg'},
         ],
         'preview_images': [
           {'url': 'screenshots/test.jpg'},
@@ -132,13 +128,19 @@ void main() {
     expect(find.text('番号: SSIS-001'), findsOneWidget);
     expect(find.text('类别:'), findsOneWidget);
     expect(find.text('演员'), findsOneWidget);
-    expect(find.text('预告片 / 剧照'), findsOneWidget);
     expect(tester.takeException(), isNull);
+
+    await tester.scrollUntilVisible(
+      find.text('预告片 / 剧照'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('预告片 / 剧照'), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.text('你可能也喜欢'),
       500,
-      scrollable: find.byType(CustomScrollView),
+      scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('TA还出演过'), findsOneWidget);
     expect(find.text('你可能也喜欢'), findsOneWidget);
