@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/storage/storage_keys.dart';
 import 'package:jade/core/widgets/movie_cover_image.dart';
@@ -51,6 +52,22 @@ void _enqueueCompleteMovieDetail(FakeAdapter adapter) {
         'preview_images': [
           {'url': 'screenshots/test.jpg'},
         ],
+        'actor_movies': [
+          {
+            'id': 'actor-movie',
+            'number': 'ACT-001',
+            'title': '演员关联影片',
+            'thumb_url': 'thumbs/actor.jpg',
+          },
+        ],
+        'relative_movies': [
+          {
+            'id': 'relative-movie',
+            'number': 'REL-001',
+            'title': '相关推荐影片',
+            'thumb_url': 'thumbs/relative.jpg',
+          },
+        ],
         'tags': [
           {'name': '剧情'},
         ],
@@ -64,19 +81,6 @@ void _enqueueCompleteMovieDetail(FakeAdapter adapter) {
   adapter.enqueue('/api/v1/movies/m1/reviews', {
     'success': 1,
     'data': {'reviews': <Map<String, dynamic>>[]},
-  });
-  adapter.enqueue('/api/v1/movies/may_also_like', {
-    'success': 1,
-    'data': {
-      'movies': [
-        {
-          'id': 'm2',
-          'number': 'ABC-001',
-          'title': '推荐影片',
-          'cover_url': 'covers/recommended.jpg',
-        },
-      ],
-    },
   });
 }
 
@@ -238,6 +242,7 @@ void main() {
       scrollable: innerScrollable,
     );
     expect(find.text('TA还出演过'), findsOneWidget);
+    expect(find.text('演员关联影片'), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.text('你可能也喜欢'),
@@ -245,6 +250,13 @@ void main() {
       scrollable: innerScrollable,
     );
     expect(find.text('你可能也喜欢'), findsOneWidget);
+    expect(find.text('相关推荐影片'), findsOneWidget);
+    expect(
+      adapter.requests.where(
+        (request) => request.path == Endpoints.moviesMayAlsoLike,
+      ),
+      isEmpty,
+    );
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.text('磁链下载'));

@@ -26,7 +26,6 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   MovieDetail? _detail;
   List<Magnet> _magnets = [];
   List<Review> _reviews = [];
-  List<MovieSummary> _mayAlsoLike = [];
   bool _loading = true;
   String? _error;
 
@@ -60,15 +59,12 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
 
       final magnetsFuture = _loadMagnets(service);
       final reviewsFuture = _loadReviews(service);
-      final mayAlsoLikeFuture = _loadMayAlsoLike(service);
       final magnets = await magnetsFuture;
       final reviews = await reviewsFuture;
-      final mayAlsoLike = await mayAlsoLikeFuture;
       if (!mounted) return;
       setState(() {
         _magnets = magnets;
         _reviews = reviews;
-        _mayAlsoLike = mayAlsoLike;
       });
     } catch (error) {
       if (!mounted) return;
@@ -90,16 +86,6 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   Future<List<Review>> _loadReviews(MovieDetailService service) async {
     try {
       return await service.getReviews(widget.id);
-    } catch (_) {
-      return const [];
-    }
-  }
-
-  Future<List<MovieSummary>> _loadMayAlsoLike(
-    MovieDetailService service,
-  ) async {
-    try {
-      return await service.getMayAlsoLike(widget.id);
     } catch (_) {
       return const [];
     }
@@ -139,7 +125,6 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
           detail: detail,
           magnets: _magnets,
           reviews: _reviews,
-          mayAlsoLike: _mayAlsoLike,
           onActorTap: (actor) => context.push('/actor/${actor.id}'),
           onMovieTap: (movie) => context.push('/movie/${movie.id}'),
         ),
@@ -181,7 +166,6 @@ class _MovieDetailTabs extends StatelessWidget {
     required this.detail,
     required this.magnets,
     required this.reviews,
-    required this.mayAlsoLike,
     required this.onActorTap,
     required this.onMovieTap,
   });
@@ -189,7 +173,6 @@ class _MovieDetailTabs extends StatelessWidget {
   final MovieDetail detail;
   final List<Magnet> magnets;
   final List<Review> reviews;
-  final List<MovieSummary> mayAlsoLike;
   final ValueChanged<ActorSummary> onActorTap;
   final ValueChanged<MovieSummary> onMovieTap;
 
@@ -220,7 +203,6 @@ class _MovieDetailTabs extends StatelessWidget {
         children: [
           _BasicInfoTab(
             detail: detail,
-            mayAlsoLike: mayAlsoLike,
             onActorTap: onActorTap,
             onMovieTap: onMovieTap,
           ),
@@ -236,13 +218,11 @@ class _MovieDetailTabs extends StatelessWidget {
 class _BasicInfoTab extends StatelessWidget {
   const _BasicInfoTab({
     required this.detail,
-    required this.mayAlsoLike,
     required this.onActorTap,
     required this.onMovieTap,
   });
 
   final MovieDetail detail;
-  final List<MovieSummary> mayAlsoLike;
   final ValueChanged<ActorSummary> onActorTap;
   final ValueChanged<MovieSummary> onMovieTap;
 
@@ -260,16 +240,16 @@ class _BasicInfoTab extends StatelessWidget {
           _ActorSection(actors: detail.actors, onActorTap: onActorTap),
         if (detail.screenshots.isNotEmpty)
           _ScreenshotSection(urls: detail.screenshots),
-        if (mayAlsoLike.isNotEmpty)
+        if (detail.actorMovies.isNotEmpty)
           _MovieRowSection(
             title: 'TA还出演过',
-            movies: mayAlsoLike,
+            movies: detail.actorMovies,
             onMovieTap: onMovieTap,
           ),
-        if (mayAlsoLike.isNotEmpty)
+        if (detail.relativeMovies.isNotEmpty)
           _MovieRowSection(
             title: '你可能也喜欢',
-            movies: mayAlsoLike,
+            movies: detail.relativeMovies,
             onMovieTap: onMovieTap,
           ),
       ],

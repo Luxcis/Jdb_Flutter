@@ -41,12 +41,4 @@ class MovieDetailService {
       'items',
     ]).map((json) => ListModel.fromJson(normalizeListModelJson(json))).toList();
   }
-
-  Future<List<MovieSummary>> getMayAlsoLike(String _) async {
-    final resp = await _api.get(Endpoints.moviesMayAlsoLike);
-    return apiList(resp.data, const [
-      'movies',
-      'items',
-    ]).map((j) => MovieSummary.fromJson(normalizeMovieSummaryJson(j))).toList();
-  }
 }

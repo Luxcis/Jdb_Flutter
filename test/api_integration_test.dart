@@ -405,21 +405,6 @@ void main() {
       expect(list.first.content, 'Great!');
     });
 
-    test('GET /api/v1/movies/may_also_like → 你可能也喜欢', () async {
-      ok(adapter, Endpoints.moviesMayAlsoLike, {
-        'movies': [
-          {
-            'id': 'm2',
-            'number': 'ABC-001',
-            'title': 'Related',
-            'cover_url': 'c.jpg',
-          },
-        ],
-      });
-      final list = await svc.getMayAlsoLike('m1');
-      expect(list.first.title, 'Related');
-    });
-
     test('getMagnets 空列表容错', () async {
       ok(adapter, '/api/v1/movies/m1/magnets', []);
       final list = await svc.getMagnets('m1');
