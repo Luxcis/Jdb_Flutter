@@ -11,6 +11,7 @@ class ResponseLoggingInterceptor extends Interceptor {
        _output = output ?? debugPrint;
 
   static const _loggedKey = 'response_logging_interceptor.logged';
+  static const _maxChunkRunes = 800;
 
   final bool _enabled;
   final void Function(String message) _output;
@@ -61,7 +62,7 @@ class ResponseLoggingInterceptor extends Interceptor {
   }) {
     if (!_enabled) return;
     try {
-      _output(
+      _writeInChunks(
         '-------------------[HTTP RESPONSE]-------------------\n'
         'Method: ${options.method}\n'
         'URI: ${options.uri}\n'
@@ -74,6 +75,23 @@ class ResponseLoggingInterceptor extends Interceptor {
       );
     } catch (_) {
       // 调试日志不得改变请求结果。
+    }
+  }
+
+  void _writeInChunks(String message) {
+    var chunk = StringBuffer();
+    var chunkLength = 0;
+    for (final rune in message.runes) {
+      chunk.writeCharCode(rune);
+      chunkLength++;
+      if (chunkLength == _maxChunkRunes) {
+        _output(chunk.toString());
+        chunk = StringBuffer();
+        chunkLength = 0;
+      }
+    }
+    if (chunkLength > 0) {
+      _output(chunk.toString());
     }
   }
 

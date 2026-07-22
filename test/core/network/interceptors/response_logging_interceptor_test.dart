@@ -135,6 +135,33 @@ void main() {
       expect(logs, isEmpty);
     });
 
+    test('超长响应分段输出且拼接后保留完整内容', () {
+      final logs = <String>[];
+      final interceptor = ResponseLoggingInterceptor(
+        enabled: true,
+        output: logs.add,
+      );
+      final longContent = List.filled(1200, '响应🙂').join();
+      final response = Response<dynamic>(
+        requestOptions: _requestOptions(),
+        statusCode: 200,
+        data: {
+          'success': 1,
+          'data': {'content': longContent},
+        },
+      );
+
+      interceptor.onResponse(response, _ResponseHandler());
+
+      expect(logs.length, greaterThan(1));
+      expect(logs.every((chunk) => chunk.runes.length <= 800), isTrue);
+      expect(logs.join(), contains('"content":"$longContent"'));
+      expect(
+        logs.join(),
+        endsWith('-----------------------------------------------------'),
+      );
+    });
+
     test('重新进入请求链后允许重试结果产生新日志', () {
       final logs = <String>[];
       final interceptor = ResponseLoggingInterceptor(
