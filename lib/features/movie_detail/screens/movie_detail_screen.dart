@@ -689,8 +689,8 @@ class _MagnetList extends StatelessWidget {
         final magnet = magnets[index];
         final metadata = [
           if (magnet.isHighDefinition) '高清',
-          if (magnet.size case final size?) size,
-          if (magnet.publishDate case final date?) date,
+          ?magnet.size,
+          ?magnet.publishDate,
         ];
         return ListTile(
           title: Text(magnet.title ?? magnet.hash),
