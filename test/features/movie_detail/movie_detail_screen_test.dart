@@ -280,7 +280,7 @@ void main() {
     expect(find.byType(MovieScreenshotImage), findsOneWidget);
 
     await tester.scrollUntilVisible(
-      find.text('TA还出演过'),
+      find.text('演员关联影片'),
       500,
       scrollable: innerScrollable,
     );
@@ -288,7 +288,7 @@ void main() {
     expect(find.text('演员关联影片'), findsOneWidget);
 
     await tester.scrollUntilVisible(
-      find.text('你可能也喜欢'),
+      find.text('相关推荐影片'),
       500,
       scrollable: innerScrollable,
     );
@@ -307,6 +307,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('测试磁链.torrent'), findsOneWidget);
     expect(find.text('高清 · 9.68 GB · 2026-07-22'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('测试磁链.torrent')).dy,
+      greaterThanOrEqualTo(tester.getBottomLeft(tabBar).dy),
+    );
 
     await tester.tap(find.text('短评'));
     await tester.pump();

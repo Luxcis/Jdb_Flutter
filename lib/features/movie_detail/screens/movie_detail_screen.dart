@@ -320,6 +320,7 @@ class _BasicInfoTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
+      key: const PageStorageKey('movie-detail-basic-info'),
       padding: const EdgeInsets.only(bottom: 24),
       children: [
         Padding(
@@ -684,6 +685,8 @@ class _MagnetList extends StatelessWidget {
     }
     if (magnets.isEmpty) return const Center(child: Text('暂无磁链'));
     return ListView.builder(
+      key: const PageStorageKey('movie-detail-magnets'),
+      padding: const EdgeInsets.only(top: kTextTabBarHeight),
       itemCount: magnets.length,
       itemBuilder: (_, index) {
         final magnet = magnets[index];
@@ -722,6 +725,8 @@ class _RelatedListList extends StatelessWidget {
     }
     if (lists.isEmpty) return const Center(child: Text('暂无相关清单'));
     return ListView.builder(
+      key: const PageStorageKey('movie-detail-related-lists'),
+      padding: const EdgeInsets.only(top: kTextTabBarHeight),
       itemCount: lists.length,
       itemBuilder: (_, index) {
         final list = lists[index];
@@ -762,6 +767,8 @@ class _ReviewList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (reviews.isEmpty) return const Center(child: Text('暂无短评'));
     return ListView.builder(
+      key: const PageStorageKey('movie-detail-reviews'),
+      padding: const EdgeInsets.only(top: kTextTabBarHeight),
       itemCount: reviews.length,
       itemBuilder: (_, index) => ListTile(
         title: Text(reviews[index].content ?? ''),
