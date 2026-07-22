@@ -333,20 +333,9 @@ class ProfileSettingsPage extends StatelessWidget {
         value: blurMovieImages,
         onChanged: context.read<SettingsProvider>().setBlurMovieImages,
       ),
-      const _ProfileCell(
-        title: '线路选择',
-        subtitle: '自动',
-        icon: Icons.swap_horiz,
-      ),
-      const _ProfileCell(
-        title: '默认筛选标签',
-        subtitle: '含磁链',
-        icon: Icons.tune,
-      ),
-      const _ProfileCell(
-        title: '清除缓存',
-        icon: Icons.cleaning_services_outlined,
-      ),
+      const _ProfileCell(title: '线路选择', subtitle: '自动', icon: Icons.swap_horiz),
+      const _ProfileCell(title: '默认筛选标签', subtitle: '含磁链', icon: Icons.tune),
+      const _ProfileCell(title: '清除缓存', icon: Icons.cleaning_services_outlined),
     ];
     return Scaffold(
       appBar: AppBar(title: const Text('设置')),

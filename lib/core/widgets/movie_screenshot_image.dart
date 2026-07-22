@@ -20,12 +20,6 @@ class MovieScreenshotImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final blur = context.watch<SettingsProvider?>()?.blurMovieImages ?? true;
-    return CachedImage(
-      url,
-      width: width,
-      height: height,
-      fit: fit,
-      blur: blur,
-    );
+    return CachedImage(url, width: width, height: height, fit: fit, blur: blur);
   }
 }

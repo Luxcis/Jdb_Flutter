@@ -8,9 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<SettingsProvider> _createSettings({bool blur = true}) async {
-  SharedPreferences.setMockInitialValues({
-    StorageKeys.blurMovieImages: blur,
-  });
+  SharedPreferences.setMockInitialValues({StorageKeys.blurMovieImages: blur});
   final prefs = await SharedPreferences.getInstance();
   return SettingsProvider.create(prefs);
 }
