@@ -76,7 +76,50 @@ void _enqueueCompleteMovieDetail(FakeAdapter adapter) {
   });
   adapter.enqueue('/api/v1/movies/m1/magnets', {
     'success': 1,
-    'data': {'magnets': <Map<String, dynamic>>[]},
+    'data': {
+      'magnets': [
+        {
+          'name': '测试磁链.torrent',
+          'hash': 'hash-1',
+          'size': 9910,
+          'hd': true,
+          'created_at': '2026-07-22',
+        },
+      ],
+    },
+  });
+  adapter.enqueue('/api/v1/movies/m1/reviews', {
+    'success': 1,
+    'data': {'reviews': <Map<String, dynamic>>[]},
+  });
+  adapter.enqueue(Endpoints.listsRelated, {
+    'success': 1,
+    'data': {
+      'lists': [
+        {
+          'id': 'list-1',
+          'name': '测试相关清单',
+          'movies_count': 12,
+          'views_count': 34,
+        },
+      ],
+    },
+  });
+}
+
+void _enqueueMinimalDetail(FakeAdapter adapter) {
+  adapter.enqueue('/api/v4/movies/m1', {
+    'success': 1,
+    'data': {
+      'movie': {
+        'id': 'm1',
+        'number': 'SSIS-001',
+        'title': '测试影片',
+        'cover_url': 'covers/test.jpg',
+        'actors': <Map<String, dynamic>>[],
+        'tags': <Map<String, dynamic>>[],
+      },
+    },
   });
   adapter.enqueue('/api/v1/movies/m1/reviews', {
     'success': 1,
@@ -262,7 +305,8 @@ void main() {
     await tester.tap(find.text('磁链下载'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('暂无磁链'), findsOneWidget);
+    expect(find.text('测试磁链.torrent'), findsOneWidget);
+    expect(find.text('高清 · 9.68 GB · 2026-07-22'), findsOneWidget);
 
     await tester.tap(find.text('短评'));
     await tester.pump();
@@ -272,6 +316,118 @@ void main() {
     await tester.tap(find.text('相关清单'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('相关清单'), findsNWidgets(2));
+    expect(find.text('测试相关清单'), findsOneWidget);
+    expect(find.text('12 部影片 · 34 次浏览'), findsOneWidget);
+  });
+
+  testWidgets('磁链失败可独立重试且不重新请求主详情和相关清单', (tester) async {
+    final adapter = await _setupApiClient();
+    _enqueueMinimalDetail(adapter);
+    adapter.enqueueSequence(
+      '/api/v1/movies/m1/magnets',
+      [
+        {'success': 0, 'message': '磁链失败'},
+        {
+          'success': 1,
+          'data': {
+            'magnets': [
+              {'hash': 'retry-hash', 'name': '磁链重试成功', 'size': 100},
+            ],
+          },
+        },
+      ],
+      codes: [500, 200],
+    );
+    adapter.enqueue(Endpoints.listsRelated, {
+      'success': 1,
+      'data': {'lists': <Map<String, dynamic>>[]},
+    });
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(find.text('磁链下载'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('磁链加载失败'), findsOneWidget);
+    await tester.tap(find.text('重试'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('磁链重试成功'), findsOneWidget);
+    expect(
+      adapter.requests.where(
+        (request) => request.path == '/api/v1/movies/m1/magnets',
+      ),
+      hasLength(2),
+    );
+    expect(
+      adapter.requests.where(
+        (request) => request.path == Endpoints.listsRelated,
+      ),
+      hasLength(1),
+    );
+    expect(
+      adapter.requests.where((request) => request.path == '/api/v4/movies/m1'),
+      hasLength(1),
+    );
+  });
+
+  testWidgets('相关清单失败可独立重试且不重新请求主详情和磁链', (tester) async {
+    final adapter = await _setupApiClient();
+    _enqueueMinimalDetail(adapter);
+    adapter.enqueue('/api/v1/movies/m1/magnets', {
+      'success': 1,
+      'data': {'magnets': <Map<String, dynamic>>[]},
+    });
+    adapter.enqueueSequence(
+      Endpoints.listsRelated,
+      [
+        {'success': 0, 'message': '清单失败'},
+        {
+          'success': 1,
+          'data': {
+            'lists': [
+              {
+                'id': 'retry-list',
+                'name': '清单重试成功',
+                'movies_count': 2,
+                'views_count': 3,
+              },
+            ],
+          },
+        },
+      ],
+      codes: [500, 200],
+    );
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(find.text('相关清单'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('相关清单加载失败'), findsOneWidget);
+    await tester.tap(find.text('重试'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('清单重试成功'), findsOneWidget);
+    expect(
+      adapter.requests.where(
+        (request) => request.path == Endpoints.listsRelated,
+      ),
+      hasLength(2),
+    );
+    expect(
+      adapter.requests.where(
+        (request) => request.path == '/api/v1/movies/m1/magnets',
+      ),
+      hasLength(1),
+    );
+    expect(
+      adapter.requests.where((request) => request.path == '/api/v4/movies/m1'),
+      hasLength(1),
+    );
   });
 }

@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/actor.dart';
+import 'package:jade/core/models/list_model.dart';
 import 'package:jade/core/models/magnet.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/review.dart';
@@ -23,9 +26,15 @@ class MovieDetailPage extends StatefulWidget {
 }
 
 class _MovieDetailPageState extends State<MovieDetailPage> {
+  MovieDetailService? _service;
   MovieDetail? _detail;
   List<Magnet> _magnets = [];
+  Object? _magnetsError;
+  bool _magnetsLoading = true;
   List<Review> _reviews = [];
+  List<ListModel> _relatedLists = [];
+  Object? _relatedListsError;
+  bool _relatedListsLoading = true;
   bool _loading = true;
   String? _error;
 
@@ -39,6 +48,13 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     setState(() {
       _loading = true;
       _error = null;
+      _magnets = [];
+      _magnetsError = null;
+      _magnetsLoading = true;
+      _reviews = [];
+      _relatedLists = [];
+      _relatedListsError = null;
+      _relatedListsLoading = true;
     });
     try {
       final api = ApiClient.instanceOrNull;
@@ -53,19 +69,13 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       final detail = await service.getDetail(widget.id);
       if (!mounted) return;
       setState(() {
+        _service = service;
         _detail = detail;
         _loading = false;
       });
-
-      final magnetsFuture = _loadMagnets(service);
-      final reviewsFuture = _loadReviews(service);
-      final magnets = await magnetsFuture;
-      final reviews = await reviewsFuture;
-      if (!mounted) return;
-      setState(() {
-        _magnets = magnets;
-        _reviews = reviews;
-      });
+      unawaited(_loadMagnets(service));
+      unawaited(_loadReviews(service));
+      unawaited(_loadRelatedLists(service));
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -75,20 +85,70 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     }
   }
 
-  Future<List<Magnet>> _loadMagnets(MovieDetailService service) async {
+  Future<void> _loadMagnets(MovieDetailService service) async {
+    if (mounted) {
+      setState(() {
+        _magnetsLoading = true;
+        _magnetsError = null;
+      });
+    }
     try {
-      return await service.getMagnets(widget.id);
-    } catch (_) {
-      return const [];
+      final magnets = await service.getMagnets(widget.id);
+      if (!mounted) return;
+      setState(() {
+        _magnets = magnets;
+        _magnetsLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _magnetsError = error;
+        _magnetsLoading = false;
+      });
     }
   }
 
-  Future<List<Review>> _loadReviews(MovieDetailService service) async {
+  Future<void> _loadReviews(MovieDetailService service) async {
     try {
-      return await service.getReviews(widget.id);
+      final reviews = await service.getReviews(widget.id);
+      if (!mounted) return;
+      setState(() => _reviews = reviews);
     } catch (_) {
-      return const [];
+      // 短评继续沿用空状态，不影响本次磁链与相关清单错误处理。
     }
+  }
+
+  Future<void> _loadRelatedLists(MovieDetailService service) async {
+    if (mounted) {
+      setState(() {
+        _relatedListsLoading = true;
+        _relatedListsError = null;
+      });
+    }
+    try {
+      final lists = await service.getRelatedLists(widget.id);
+      if (!mounted) return;
+      setState(() {
+        _relatedLists = lists;
+        _relatedListsLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _relatedListsError = error;
+        _relatedListsLoading = false;
+      });
+    }
+  }
+
+  void _retryMagnets() {
+    final service = _service;
+    if (service != null) unawaited(_loadMagnets(service));
+  }
+
+  void _retryRelatedLists() {
+    final service = _service;
+    if (service != null) unawaited(_loadRelatedLists(service));
   }
 
   @override
@@ -124,7 +184,14 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
         child: _MovieDetailTabs(
           detail: detail,
           magnets: _magnets,
+          magnetsError: _magnetsError,
+          magnetsLoading: _magnetsLoading,
+          onRetryMagnets: _retryMagnets,
           reviews: _reviews,
+          relatedLists: _relatedLists,
+          relatedListsError: _relatedListsError,
+          relatedListsLoading: _relatedListsLoading,
+          onRetryRelatedLists: _retryRelatedLists,
           onActorTap: (actor) => context.push('/actor/${actor.id}'),
           onMovieTap: (movie) => context.push('/movie/${movie.id}'),
         ),
@@ -165,14 +232,28 @@ class _MovieDetailTabs extends StatelessWidget {
   const _MovieDetailTabs({
     required this.detail,
     required this.magnets,
+    required this.magnetsError,
+    required this.magnetsLoading,
+    required this.onRetryMagnets,
     required this.reviews,
+    required this.relatedLists,
+    required this.relatedListsError,
+    required this.relatedListsLoading,
+    required this.onRetryRelatedLists,
     required this.onActorTap,
     required this.onMovieTap,
   });
 
   final MovieDetail detail;
   final List<Magnet> magnets;
+  final Object? magnetsError;
+  final bool magnetsLoading;
+  final VoidCallback onRetryMagnets;
   final List<Review> reviews;
+  final List<ListModel> relatedLists;
+  final Object? relatedListsError;
+  final bool relatedListsLoading;
+  final VoidCallback onRetryRelatedLists;
   final ValueChanged<ActorSummary> onActorTap;
   final ValueChanged<MovieSummary> onMovieTap;
 
@@ -206,9 +287,19 @@ class _MovieDetailTabs extends StatelessWidget {
             onActorTap: onActorTap,
             onMovieTap: onMovieTap,
           ),
-          _MagnetList(magnets: magnets),
+          _MagnetList(
+            magnets: magnets,
+            error: magnetsError,
+            loading: magnetsLoading,
+            onRetry: onRetryMagnets,
+          ),
           _ReviewList(reviews: reviews),
-          const Center(child: Text('相关清单')),
+          _RelatedListList(
+            lists: relatedLists,
+            error: relatedListsError,
+            loading: relatedListsLoading,
+            onRetry: onRetryRelatedLists,
+          ),
         ],
       ),
     );
@@ -573,18 +664,90 @@ class _Section extends StatelessWidget {
 }
 
 class _MagnetList extends StatelessWidget {
-  const _MagnetList({required this.magnets});
+  const _MagnetList({
+    required this.magnets,
+    required this.error,
+    required this.loading,
+    required this.onRetry,
+  });
 
   final List<Magnet> magnets;
+  final Object? error;
+  final bool loading;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
+    if (loading) return const Center(child: CircularProgressIndicator());
+    if (error != null) {
+      return _ScrollableTabError(message: '磁链加载失败', onRetry: onRetry);
+    }
     if (magnets.isEmpty) return const Center(child: Text('暂无磁链'));
     return ListView.builder(
       itemCount: magnets.length,
-      itemBuilder: (_, index) => ListTile(
-        title: Text(magnets[index].title ?? magnets[index].hash),
-        subtitle: Text(magnets[index].size ?? ''),
+      itemBuilder: (_, index) {
+        final magnet = magnets[index];
+        final metadata = [
+          if (magnet.isHighDefinition) '高清',
+          if (magnet.size case final size?) size,
+          if (magnet.publishDate case final date?) date,
+        ];
+        return ListTile(
+          title: Text(magnet.title ?? magnet.hash),
+          subtitle: metadata.isEmpty ? null : Text(metadata.join(' · ')),
+        );
+      },
+    );
+  }
+}
+
+class _RelatedListList extends StatelessWidget {
+  const _RelatedListList({
+    required this.lists,
+    required this.error,
+    required this.loading,
+    required this.onRetry,
+  });
+
+  final List<ListModel> lists;
+  final Object? error;
+  final bool loading;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) return const Center(child: CircularProgressIndicator());
+    if (error != null) {
+      return _ScrollableTabError(message: '相关清单加载失败', onRetry: onRetry);
+    }
+    if (lists.isEmpty) return const Center(child: Text('暂无相关清单'));
+    return ListView.builder(
+      itemCount: lists.length,
+      itemBuilder: (_, index) {
+        final list = lists[index];
+        return ListTile(
+          title: Text(list.name),
+          subtitle: Text('${list.movieCount} 部影片 · ${list.viewedCount} 次浏览'),
+        );
+      },
+    );
+  }
+}
+
+class _ScrollableTabError extends StatelessWidget {
+  const _ScrollableTabError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: ErrorRetryWidget(message: message, onRetry: onRetry),
+        ),
       ),
     );
   }
