@@ -3,12 +3,14 @@ import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
+import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/widgets/actor_grid_view.dart';
 import 'package:jade/core/widgets/filter_drawer.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/movie_list_tile.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
+import 'package:provider/provider.dart';
 
 class ProfileMovieCollectionPage extends StatefulWidget {
   const ProfileMovieCollectionPage({
@@ -315,18 +317,33 @@ class ProfileSettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const _CellScaffold(
-      title: '设置',
-      cells: [
-        _ProfileCell(
-          title: '外观模式',
-          subtitle: '跟随系统',
-          icon: Icons.brightness_6_outlined,
-        ),
-        _ProfileCell(title: '线路选择', subtitle: '自动', icon: Icons.swap_horiz),
-        _ProfileCell(title: '默认筛选标签', subtitle: '含磁链', icon: Icons.tune),
-        _ProfileCell(title: '清除缓存', icon: Icons.cleaning_services_outlined),
-      ],
+    final blurMovieImages = context.select<SettingsProvider, bool>(
+      (settings) => settings.blurMovieImages,
+    );
+    final cells = <Widget>[
+      const _ProfileCell(
+        title: '外观模式',
+        subtitle: '跟随系统',
+        icon: Icons.brightness_6_outlined,
+      ),
+      SwitchListTile(
+        secondary: const Icon(Icons.blur_on_outlined),
+        title: const Text('影片图片模糊'),
+        subtitle: const Text('模糊影片封面与剧照'),
+        value: blurMovieImages,
+        onChanged: context.read<SettingsProvider>().setBlurMovieImages,
+      ),
+      const _ProfileCell(title: '线路选择', subtitle: '自动', icon: Icons.swap_horiz),
+      const _ProfileCell(title: '默认筛选标签', subtitle: '含磁链', icon: Icons.tune),
+      const _ProfileCell(title: '清除缓存', icon: Icons.cleaning_services_outlined),
+    ];
+    return Scaffold(
+      appBar: AppBar(title: const Text('设置')),
+      body: ListView.separated(
+        itemCount: cells.length,
+        separatorBuilder: (_, _) => const Divider(height: 1),
+        itemBuilder: (_, index) => cells[index],
+      ),
     );
   }
 }

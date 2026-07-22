@@ -8,6 +8,7 @@ class StorageKeys {
   static const String user = 'key_user';
   static const String themeMode = 'key_theme_mode';
   static const String defaultFilterTags = 'key_default_filter_tags';
+  static const String blurMovieImages = 'key_blur_movie_images';
   static const String searchHistory = 'key_search_history';
   static const String line = 'key_line';
   static const String deviceUuid = 'key_device_uuid';
@@ -23,6 +24,7 @@ class StorageService {
   }
 
   String? getString(String key) => _prefs.getString(key);
-  Future<bool> setString(String key, String value) => _prefs.setString(key, value);
+  Future<bool> setString(String key, String value) =>
+      _prefs.setString(key, value);
   Future<bool> remove(String key) => _prefs.remove(key);
 }

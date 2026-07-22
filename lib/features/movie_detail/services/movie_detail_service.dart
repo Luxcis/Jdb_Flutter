@@ -3,6 +3,7 @@ import 'package:jade/core/network/api_data.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/magnet.dart';
+import 'package:jade/core/models/list_model.dart';
 import 'package:jade/core/models/review.dart';
 
 class MovieDetailService {
@@ -30,11 +31,14 @@ class MovieDetailService {
     ]).map((j) => Review.fromJson(normalizeReviewJson(j))).toList();
   }
 
-  Future<List<MovieSummary>> getMayAlsoLike(String _) async {
-    final resp = await _api.get(Endpoints.moviesMayAlsoLike);
+  Future<List<ListModel>> getRelatedLists(String id) async {
+    final resp = await _api.get(
+      Endpoints.listsRelated,
+      queryParameters: {'movie_id': id},
+    );
     return apiList(resp.data, const [
-      'movies',
+      'lists',
       'items',
-    ]).map((j) => MovieSummary.fromJson(normalizeMovieSummaryJson(j))).toList();
+    ]).map((json) => ListModel.fromJson(normalizeListModelJson(json))).toList();
   }
 }

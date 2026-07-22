@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/models/actor.dart';
+import 'package:jade/core/models/magnet.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/network/api_data.dart';
 
@@ -81,5 +82,83 @@ void main() {
     expect(movie.actors.single.id, '');
     expect(movie.actors.single.name, '');
     expect(movie.actors.single.avatarUrl, '');
+  });
+
+  test('normalizeMovieDetailJson 解析内嵌剧照和两类关联影片', () {
+    final movie = MovieDetail.fromJson(
+      normalizeMovieDetailJson({
+        'movie': {
+          'id': 'm1',
+          'number': 'ABC-001',
+          'title': 'Title',
+          'cover_url': 'cover.jpg',
+          'preview_images': {
+            'sample': [
+              {'url': 'screenshots/one.jpg'},
+              'screenshots/two.jpg',
+            ],
+          },
+          'actor_movies': [
+            {
+              'id': 'actor-movie',
+              'number': 'ACT-001',
+              'title': 'Actor Movie',
+              'thumb_url': 'thumbs/actor.jpg',
+            },
+          ],
+          'relative_movies': [
+            {
+              'id': 'relative-movie',
+              'number': 'REL-001',
+              'title': 'Relative Movie',
+              'cover_url': 'covers/relative.jpg',
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(movie.screenshots, ['screenshots/one.jpg', 'screenshots/two.jpg']);
+    expect(movie.actorMovies.single.id, 'actor-movie');
+    expect(movie.actorMovies.single.thumbUrl, 'thumbs/actor.jpg');
+    expect(movie.relativeMovies.single.id, 'relative-movie');
+  });
+
+  test('normalizeMovieDetailJson 优先使用真实剧照 large_url', () {
+    final movie = MovieDetail.fromJson(
+      normalizeMovieDetailJson({
+        'movie': {
+          'id': 'm1',
+          'number': 'ABC-001',
+          'title': 'Title',
+          'cover_url': 'cover.jpg',
+          'preview_images': [
+            {
+              'large_url': 'screenshots/large.jpg',
+              'thumb_url': 'screenshots/thumb.jpg',
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(movie.screenshots, ['screenshots/large.jpg']);
+  });
+
+  test('normalizeMagnetJson 兼容真实数字大小和布尔高清字段', () {
+    final magnet = Magnet.fromJson(
+      normalizeMagnetJson({
+        'name': 'movie.torrent',
+        'hash': 'hash-1',
+        'size': 9910,
+        'hd': false,
+        'created_at': '2026-07-22',
+      }),
+    );
+
+    expect(magnet.title, 'movie.torrent');
+    expect(magnet.size, '9.68 GB');
+    expect(magnet.publishDate, '2026-07-22');
+    expect(magnet.isHighDefinition, isFalse);
   });
 }

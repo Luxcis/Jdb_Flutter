@@ -47,6 +47,19 @@ double? apiDoubleOrNull(dynamic value) {
   return null;
 }
 
+bool apiBool(dynamic value, bool fallback) {
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  if (value is String) {
+    return switch (value.toLowerCase()) {
+      'true' || '1' => true,
+      'false' || '0' => false,
+      _ => fallback,
+    };
+  }
+  return fallback;
+}
+
 String? apiString(dynamic value) {
   if (value == null) return null;
   if (value is String) return value;
@@ -84,10 +97,16 @@ Map<String, dynamic> normalizeMovieDetailJson(dynamic data) {
   final root = apiMap(data);
   final movie = apiMap(root['movie']).isNotEmpty ? apiMap(root['movie']) : root;
   final tags = movie['tags'];
-  final previewImages = movie['preview_images'];
+  final previewImages = movie['screenshots'] ?? movie['preview_images'];
   final actors = apiList(movie, const [
     'actors',
   ]).map(normalizeActorSummaryJson);
+  final actorMovies = apiList(movie, const [
+    'actor_movies',
+  ]).map(normalizeMovieSummaryJson);
+  final relativeMovies = apiList(movie, const [
+    'relative_movies',
+  ]).map(normalizeMovieSummaryJson);
   return {
     ...normalizeMovieSummaryJson(movie),
     'director': movie['director'] ?? movie['director_name'],
@@ -98,8 +117,10 @@ Map<String, dynamic> normalizeMovieDetailJson(dynamic data) {
     'watched_count': apiInt(movie['watched_count'], 0),
     'playable': movie['playable'] ?? movie['can_play'],
     'has_subtitle': movie['has_subtitle'] ?? movie['has_cnsub'],
-    'screenshots': movie['screenshots'] ?? _imageUrls(previewImages),
+    'screenshots': _imageUrls(previewImages),
     'actors': actors.toList(),
+    'actor_movies': actorMovies.toList(),
+    'relative_movies': relativeMovies.toList(),
     'tags': _tagLabels(tags),
   };
 }
@@ -124,10 +145,24 @@ Map<String, dynamic> normalizeActorDetailJson(dynamic data) {
 Map<String, dynamic> normalizeMagnetJson(Map<String, dynamic> json) {
   return {
     ...json,
-    'hash': json['hash'] ?? json['id'] ?? '',
-    'title': json['title'] ?? json['name'],
-    'publish_date': json['publish_date'] ?? json['created_at'],
-    'is_high_definition': json['is_high_definition'] ?? json['hd'] != null,
+    'hash': apiString(json['hash'] ?? json['id']) ?? '',
+    'title': apiString(json['title'] ?? json['name']),
+    'size': _magnetSize(json['size']),
+    'publish_date': apiString(json['publish_date'] ?? json['created_at']),
+    'is_high_definition': apiBool(
+      json['is_high_definition'] ?? json['hd'],
+      false,
+    ),
+  };
+}
+
+Map<String, dynamic> normalizeListModelJson(Map<String, dynamic> json) {
+  return {
+    ...json,
+    'id': apiString(json['id']) ?? '',
+    'name': apiString(json['name'] ?? json['title']) ?? '',
+    'movie_count': apiInt(json['movie_count'] ?? json['movies_count'], 0),
+    'viewed_count': apiInt(json['viewed_count'] ?? json['views_count'], 0),
   };
 }
 
@@ -158,33 +193,35 @@ List<String> _tagLabels(dynamic tags) {
 
 List<String> _imageUrls(dynamic images) {
   if (images is List) {
-    return images
-        .map((image) {
-          if (image is String) {
-            return image;
-          }
-          if (image is Map) {
-            return apiString(image['url'] ?? image['image_url']);
-          }
-          return apiString(image);
-        })
-        .whereType<String>()
-        .toList();
+    return images.map(_imageUrl).whereType<String>().toList();
   }
   if (images is Map) {
     return images.values
         .expand((value) => value is List ? value : const [])
-        .map((image) {
-          if (image is String) {
-            return image;
-          }
-          if (image is Map) {
-            return apiString(image['url'] ?? image['image_url']);
-          }
-          return apiString(image);
-        })
+        .map(_imageUrl)
         .whereType<String>()
         .toList();
   }
   return const [];
+}
+
+String? _imageUrl(dynamic image) {
+  if (image is String) return image;
+  if (image is Map) {
+    return apiString(
+      image['large_url'] ??
+          image['url'] ??
+          image['image_url'] ??
+          image['thumb_url'],
+    );
+  }
+  return apiString(image);
+}
+
+String? _magnetSize(dynamic value) {
+  if (value is! num) return apiString(value);
+  final amount = value >= 1024 ? value / 1024 : value;
+  final unit = value >= 1024 ? 'GB' : 'MB';
+  final digits = amount == amount.roundToDouble() ? 0 : 2;
+  return '${amount.toStringAsFixed(digits)} $unit';
 }

@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:jade/core/constants/app_constants.dart';
@@ -14,6 +16,7 @@ class CachedImage extends StatelessWidget {
     this.fit = BoxFit.cover,
     this.fallbackAsset,
     this.semanticLabel,
+    this.blur = false,
   });
 
   final String url;
@@ -23,6 +26,7 @@ class CachedImage extends StatelessWidget {
   final BoxFit fit;
   final String? fallbackAsset;
   final String? semanticLabel;
+  final bool blur;
 
   String get _fullUrl {
     if (url.startsWith('http')) return url;
@@ -40,6 +44,19 @@ class CachedImage extends StatelessWidget {
       fit: fit,
       width: width,
       height: height,
+      imageBuilder: blur
+          ? (_, imageProvider) => ClipRect(
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Image(
+                  image: imageProvider,
+                  width: width,
+                  height: height,
+                  fit: fit,
+                ),
+              ),
+            )
+          : null,
       placeholder: (_, _) => const Center(
         child: SizedBox(
           width: 24,
