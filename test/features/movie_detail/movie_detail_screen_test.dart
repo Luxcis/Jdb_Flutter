@@ -42,7 +42,7 @@ void _enqueueCompleteMovieDetail(FakeAdapter adapter) {
         'director': '测试导演',
         'maker': '测试片商',
         'series': '测试系列',
-        'score': 4.2,
+        'score': '4.33',
         'want_watch_count': 12,
         'watched_count': 8,
         'actors': [
@@ -166,8 +166,19 @@ void main() {
     );
 
     expect(find.text('番号: SSIS-001'), findsOneWidget);
+    expect(find.text('4.33'), findsOneWidget);
+    expect(find.text('4.3'), findsNothing);
     expect(find.text('类别:'), findsOneWidget);
     expect(tester.takeException(), isNull);
+
+    final infoColumn = tester.widget<Column>(
+      find.byKey(const Key('movie-detail-info-column')),
+    );
+    expect(infoColumn.spacing, 6);
+    final actionsDivider = tester.widget<Divider>(
+      find.byKey(const Key('movie-detail-actions-divider')),
+    );
+    expect(actionsDivider.height, 12);
 
     final actions = find.byKey(const Key('movie-detail-actions'));
     expect(actions, findsOneWidget);

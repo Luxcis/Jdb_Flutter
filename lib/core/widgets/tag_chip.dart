@@ -24,6 +24,8 @@ class TagChip extends StatelessWidget {
       visualDensity: compact ? VisualDensity.compact : null,
       materialTapTargetSize: compact ? MaterialTapTargetSize.shrinkWrap : null,
       labelStyle: compact ? Theme.of(context).textTheme.labelSmall : null,
+      padding: compact ? EdgeInsets.zero : null,
+      labelPadding: compact ? const EdgeInsets.symmetric(horizontal: 6) : null,
     );
   }
 }

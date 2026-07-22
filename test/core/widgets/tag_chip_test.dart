@@ -14,6 +14,8 @@ void main() {
     expect(chip.visualDensity, isNull);
     expect(chip.materialTapTargetSize, isNull);
     expect(chip.labelStyle, isNull);
+    expect(chip.padding, isNull);
+    expect(chip.labelPadding, isNull);
   });
 
   testWidgets('TagChip compact 使用紧凑密度和小号文字', (tester) async {
@@ -28,5 +30,7 @@ void main() {
     expect(chip.visualDensity, VisualDensity.compact);
     expect(chip.materialTapTargetSize, MaterialTapTargetSize.shrinkWrap);
     expect(chip.labelStyle, Theme.of(context).textTheme.labelSmall);
+    expect(chip.padding, EdgeInsets.zero);
+    expect(chip.labelPadding, const EdgeInsets.symmetric(horizontal: 6));
   });
 }

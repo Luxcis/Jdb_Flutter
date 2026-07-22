@@ -343,8 +343,9 @@ class _MovieInfoCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          key: const Key('movie-detail-info-column'),
           crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 8,
+          spacing: 6,
           children: [
             _MetadataLine(label: '番号', value: detail.number),
             for (final (label, value) in metadata)
@@ -359,10 +360,9 @@ class _MovieInfoCard extends StatelessWidget {
                     size: 20,
                     color: Theme.of(context).colorScheme.tertiary,
                   ),
-                  Text(detail.score!.toStringAsFixed(1)),
+                  Text(detail.score!.toString()),
                 ],
               ),
-            const SizedBox(height: 4),
             Wrap(
               key: const Key('movie-detail-actions'),
               spacing: 8,
@@ -385,7 +385,11 @@ class _MovieInfoCard extends StatelessWidget {
                 ),
               ],
             ),
-            Divider(color: Theme.of(context).colorScheme.outlineVariant),
+            Divider(
+              key: const Key('movie-detail-actions-divider'),
+              height: 12,
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
             Text(
               '${detail.wantWatchCount}人想看，${detail.watchedCount}人看过',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
