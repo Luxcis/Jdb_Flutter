@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/widgets/cached_image.dart';
+import 'package:jade/core/widgets/movie_cover_image.dart';
 import 'package:jade/core/widgets/rating_badge.dart';
 
 class MovieListTile extends StatelessWidget {
@@ -33,12 +34,15 @@ class MovieListTile extends StatelessWidget {
                   child: SizedBox(
                     width: 80,
                     height: 100,
-                    child: CachedImage(movie.coverUrl),
+                    child: MovieCoverImage(
+                      movie.coverUrl,
+                      variant: MovieImageVariant.thumbnail,
+                      semanticLabel: movie.title,
+                    ),
                   ),
                 ),
                 if (rank != null)
-                  Positioned(
-                      top: 2, left: 2, child: RatingBadge(rank: rank!)),
+                  Positioned(top: 2, left: 2, child: RatingBadge(rank: rank!)),
               ],
             ),
             const SizedBox(width: 12),
@@ -51,14 +55,14 @@ class MovieListTile extends StatelessWidget {
                     movie.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: textTheme.bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.w500),
+                    style: textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     '${movie.number}  ${movie.releaseDate ?? ''}',
-                    style:
-                        textTheme.labelSmall?.copyWith(color: Colors.grey),
+                    style: textTheme.labelSmall?.copyWith(color: Colors.grey),
                   ),
                   if (screenshots != null && screenshots!.isNotEmpty)
                     Padding(
@@ -69,8 +73,7 @@ class MovieListTile extends StatelessWidget {
                           scrollDirection: Axis.horizontal,
                           itemCount: screenshots!.length,
                           itemBuilder: (_, i) => Padding(
-                            padding:
-                                const EdgeInsets.only(right: 4),
+                            padding: const EdgeInsets.only(right: 4),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(3),
                               child: SizedBox(

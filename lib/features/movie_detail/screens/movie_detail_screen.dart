@@ -9,6 +9,7 @@ import 'package:jade/core/widgets/actor_card.dart';
 import 'package:jade/core/widgets/cached_image.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/movie_card.dart';
+import 'package:jade/core/widgets/movie_cover_image.dart';
 import 'package:jade/core/widgets/tag_chip.dart';
 import 'package:jade/features/movie_detail/services/movie_detail_service.dart';
 
@@ -193,7 +194,12 @@ class _MovieHero extends StatelessWidget {
           height: height,
           child: ColoredBox(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: CachedImage(detail.coverUrl, fit: BoxFit.cover),
+            child: MovieCoverImage(
+              detail.coverUrl,
+              variant: MovieImageVariant.cover,
+              semanticLabel: detail.title,
+              fit: BoxFit.cover,
+            ),
           ),
         );
       },

@@ -64,6 +64,24 @@ void main() {
     expect(image.imageUrl, endsWith('thumbs/thumb.jpg'));
   });
 
+  testWidgets('MovieCard 缺少 thumbUrl 时仍使用缩略图占位', (tester) async {
+    final movie = MovieSummary(
+      id: '1',
+      number: 'SSIS-001',
+      title: 'Test Movie',
+      coverUrl: 'covers/cover.jpg',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: MovieCard(movie: movie)),
+      ),
+    );
+
+    final image = tester.widget<CachedImage>(find.byType(CachedImage));
+    expect(image.fallbackAsset, 'assets/images/noimage_147x200.jpg');
+  });
+
   testWidgets('MovieCard onTap 回调', (tester) async {
     var tapped = false;
     final movie = MovieSummary(
