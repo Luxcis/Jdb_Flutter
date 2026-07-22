@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:jade/core/providers/settings_provider.dart';
+import 'package:jade/core/storage/storage_keys.dart';
 import 'package:jade/features/profile/screens/profile_sub_pages.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   testWidgets('个人资料页展示资料与账号操作 cell', (tester) async {
@@ -26,12 +30,31 @@ void main() {
     expect(find.text('清单'), findsOneWidget);
   });
 
-  testWidgets('设置页展示外观、线路、默认筛选和清缓存', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: ProfileSettingsPage()));
+  testWidgets('设置页展示原设置项并切换持久化影片图片模糊', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final settings = await SettingsProvider.create(prefs);
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: settings,
+        child: const MaterialApp(home: ProfileSettingsPage()),
+      ),
+    );
 
     expect(find.text('外观模式'), findsOneWidget);
     expect(find.text('线路选择'), findsOneWidget);
     expect(find.text('默认筛选标签'), findsOneWidget);
     expect(find.text('清除缓存'), findsOneWidget);
+    expect(find.text('影片图片模糊'), findsOneWidget);
+    expect(
+      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      isTrue,
+    );
+
+    await tester.tap(find.byType(SwitchListTile));
+    await tester.pump();
+
+    expect(settings.blurMovieImages, isFalse);
+    expect(prefs.getBool(StorageKeys.blurMovieImages), isFalse);
   });
 }
