@@ -348,21 +348,44 @@ void main() {
       expect(d.screenshots.length, 1);
     });
 
-    test('GET /api/v1/movies/{id}/magnets → 磁链列表', () async {
+    test('GET /api/v1/movies/{id}/magnets 解析真实字段类型', () async {
       ok(adapter, '/api/v1/movies/m1/magnets', {
         'magnets': [
           {
-            'hash': 'abc123',
-            'title': 'Best',
-            'size': '2.1GB',
-            'created_at': '2024-01-01',
-            'hd': '1',
+            'name': 'movie.torrent',
+            'hash': 'hash-1',
+            'size': 9910,
+            'hd': true,
+            'created_at': '2026-07-22',
           },
         ],
       });
-      final list = await svc.getMagnets('m1');
-      expect(list.first.hash, 'abc123');
-      expect(list.first.isHighDefinition, isTrue);
+
+      final magnets = await svc.getMagnets('m1');
+
+      expect(adapter.requests.last.path, '/api/v1/movies/m1/magnets');
+      expect(magnets.single.size, '9.68 GB');
+      expect(magnets.single.isHighDefinition, isTrue);
+    });
+
+    test('GET /api/v1/lists/related 携带 movie_id 并解析统计字段', () async {
+      ok(adapter, Endpoints.listsRelated, {
+        'lists': [
+          {
+            'id': 'list-1',
+            'name': '测试片单',
+            'movies_count': 12,
+            'views_count': 34,
+          },
+        ],
+      });
+
+      final lists = await svc.getRelatedLists('m1');
+
+      expect(adapter.requests.last.path, Endpoints.listsRelated);
+      expect(adapter.requests.last.uri.queryParameters['movie_id'], 'm1');
+      expect(lists.single.movieCount, 12);
+      expect(lists.single.viewedCount, 34);
     });
 
     test('GET /api/v1/movies/{id}/reviews → 评论列表', () async {

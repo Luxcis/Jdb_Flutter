@@ -47,6 +47,19 @@ double? apiDoubleOrNull(dynamic value) {
   return null;
 }
 
+bool apiBool(dynamic value, bool fallback) {
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  if (value is String) {
+    return switch (value.toLowerCase()) {
+      'true' || '1' => true,
+      'false' || '0' => false,
+      _ => fallback,
+    };
+  }
+  return fallback;
+}
+
 String? apiString(dynamic value) {
   if (value == null) return null;
   if (value is String) return value;
@@ -132,10 +145,24 @@ Map<String, dynamic> normalizeActorDetailJson(dynamic data) {
 Map<String, dynamic> normalizeMagnetJson(Map<String, dynamic> json) {
   return {
     ...json,
-    'hash': json['hash'] ?? json['id'] ?? '',
-    'title': json['title'] ?? json['name'],
-    'publish_date': json['publish_date'] ?? json['created_at'],
-    'is_high_definition': json['is_high_definition'] ?? json['hd'] != null,
+    'hash': apiString(json['hash'] ?? json['id']) ?? '',
+    'title': apiString(json['title'] ?? json['name']),
+    'size': _magnetSize(json['size']),
+    'publish_date': apiString(json['publish_date'] ?? json['created_at']),
+    'is_high_definition': apiBool(
+      json['is_high_definition'] ?? json['hd'],
+      false,
+    ),
+  };
+}
+
+Map<String, dynamic> normalizeListModelJson(Map<String, dynamic> json) {
+  return {
+    ...json,
+    'id': apiString(json['id']) ?? '',
+    'name': apiString(json['name'] ?? json['title']) ?? '',
+    'movie_count': apiInt(json['movie_count'] ?? json['movies_count'], 0),
+    'viewed_count': apiInt(json['viewed_count'] ?? json['views_count'], 0),
   };
 }
 
@@ -195,4 +222,12 @@ List<String> _imageUrls(dynamic images) {
         .toList();
   }
   return const [];
+}
+
+String? _magnetSize(dynamic value) {
+  if (value is! num) return apiString(value);
+  final amount = value >= 1024 ? value / 1024 : value;
+  final unit = value >= 1024 ? 'GB' : 'MB';
+  final digits = amount == amount.roundToDouble() ? 0 : 2;
+  return '${amount.toStringAsFixed(digits)} $unit';
 }

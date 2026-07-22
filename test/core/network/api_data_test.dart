@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/models/actor.dart';
+import 'package:jade/core/models/magnet.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/network/api_data.dart';
 
@@ -117,12 +118,26 @@ void main() {
       }),
     );
 
-    expect(movie.screenshots, [
-      'screenshots/one.jpg',
-      'screenshots/two.jpg',
-    ]);
+    expect(movie.screenshots, ['screenshots/one.jpg', 'screenshots/two.jpg']);
     expect(movie.actorMovies.single.id, 'actor-movie');
     expect(movie.actorMovies.single.thumbUrl, 'thumbs/actor.jpg');
     expect(movie.relativeMovies.single.id, 'relative-movie');
+  });
+
+  test('normalizeMagnetJson 兼容真实数字大小和布尔高清字段', () {
+    final magnet = Magnet.fromJson(
+      normalizeMagnetJson({
+        'name': 'movie.torrent',
+        'hash': 'hash-1',
+        'size': 9910,
+        'hd': false,
+        'created_at': '2026-07-22',
+      }),
+    );
+
+    expect(magnet.title, 'movie.torrent');
+    expect(magnet.size, '9.68 GB');
+    expect(magnet.publishDate, '2026-07-22');
+    expect(magnet.isHighDefinition, isFalse);
   });
 }
