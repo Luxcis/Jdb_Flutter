@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/actor.dart';
-import 'package:jade/core/widgets/cached_image.dart';
+import 'package:jade/core/widgets/actor_avatar_image.dart';
 
 class ActorCard extends StatelessWidget {
   const ActorCard({super.key, required this.actor, this.onTap});
@@ -16,7 +16,7 @@ class ActorCard extends StatelessWidget {
           SizedBox(
             width: 72,
             height: 72,
-            child: ClipOval(child: CachedImage(actor.avatarUrl)),
+            child: ClipOval(child: ActorAvatarImage(actor)),
           ),
           const SizedBox(height: 4),
           Text(
