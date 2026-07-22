@@ -156,7 +156,10 @@ void main() {
 
     final tabBar = find.byKey(const Key('movie-detail-tab-bar'));
     expect(tabBar, findsOneWidget);
-    expect(find.ancestor(of: tabBar, matching: find.byType(Card)), findsNothing);
+    expect(
+      find.ancestor(of: tabBar, matching: find.byType(Card)),
+      findsNothing,
+    );
     expect(
       tester.getTopLeft(tabBar).dy,
       greaterThan(tester.getTopLeft(find.byType(MovieCoverImage)).dy),

@@ -5,7 +5,9 @@ import 'package:jade/core/widgets/tag_chip.dart';
 void main() {
   testWidgets('TagChip 默认不强制紧凑样式', (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(home: Scaffold(body: TagChip(label: '剧情'))),
+      const MaterialApp(
+        home: Scaffold(body: TagChip(label: '剧情')),
+      ),
     );
 
     final chip = tester.widget<ActionChip>(find.byType(ActionChip));

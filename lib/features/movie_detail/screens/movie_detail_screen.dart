@@ -429,9 +429,9 @@ class _CategorySection extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               '类别:',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
           Expanded(
