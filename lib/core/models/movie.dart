@@ -43,6 +43,8 @@ class MovieDetail extends MovieSummary {
     this.series,
     this.actors = const [],
     this.screenshots = const [],
+    this.actorMovies = const [],
+    this.relativeMovies = const [],
     this.tags = const [],
     this.magnetCount = 0,
     this.wantWatchCount = 0,
@@ -55,6 +57,8 @@ class MovieDetail extends MovieSummary {
   final String? series;
   final List<ActorSummary> actors;
   final List<String> screenshots;
+  final List<MovieSummary> actorMovies;
+  final List<MovieSummary> relativeMovies;
   final List<String> tags;
   final int magnetCount;
   final int wantWatchCount;

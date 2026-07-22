@@ -84,10 +84,16 @@ Map<String, dynamic> normalizeMovieDetailJson(dynamic data) {
   final root = apiMap(data);
   final movie = apiMap(root['movie']).isNotEmpty ? apiMap(root['movie']) : root;
   final tags = movie['tags'];
-  final previewImages = movie['preview_images'];
+  final previewImages = movie['screenshots'] ?? movie['preview_images'];
   final actors = apiList(movie, const [
     'actors',
   ]).map(normalizeActorSummaryJson);
+  final actorMovies = apiList(movie, const [
+    'actor_movies',
+  ]).map(normalizeMovieSummaryJson);
+  final relativeMovies = apiList(movie, const [
+    'relative_movies',
+  ]).map(normalizeMovieSummaryJson);
   return {
     ...normalizeMovieSummaryJson(movie),
     'director': movie['director'] ?? movie['director_name'],
@@ -98,8 +104,10 @@ Map<String, dynamic> normalizeMovieDetailJson(dynamic data) {
     'watched_count': apiInt(movie['watched_count'], 0),
     'playable': movie['playable'] ?? movie['can_play'],
     'has_subtitle': movie['has_subtitle'] ?? movie['has_cnsub'],
-    'screenshots': movie['screenshots'] ?? _imageUrls(previewImages),
+    'screenshots': _imageUrls(previewImages),
     'actors': actors.toList(),
+    'actor_movies': actorMovies.toList(),
+    'relative_movies': relativeMovies.toList(),
     'tags': _tagLabels(tags),
   };
 }

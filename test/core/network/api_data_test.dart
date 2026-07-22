@@ -82,4 +82,47 @@ void main() {
     expect(movie.actors.single.name, '');
     expect(movie.actors.single.avatarUrl, '');
   });
+
+  test('normalizeMovieDetailJson 解析内嵌剧照和两类关联影片', () {
+    final movie = MovieDetail.fromJson(
+      normalizeMovieDetailJson({
+        'movie': {
+          'id': 'm1',
+          'number': 'ABC-001',
+          'title': 'Title',
+          'cover_url': 'cover.jpg',
+          'preview_images': {
+            'sample': [
+              {'url': 'screenshots/one.jpg'},
+              'screenshots/two.jpg',
+            ],
+          },
+          'actor_movies': [
+            {
+              'id': 'actor-movie',
+              'number': 'ACT-001',
+              'title': 'Actor Movie',
+              'thumb_url': 'thumbs/actor.jpg',
+            },
+          ],
+          'relative_movies': [
+            {
+              'id': 'relative-movie',
+              'number': 'REL-001',
+              'title': 'Relative Movie',
+              'cover_url': 'covers/relative.jpg',
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(movie.screenshots, [
+      'screenshots/one.jpg',
+      'screenshots/two.jpg',
+    ]);
+    expect(movie.actorMovies.single.id, 'actor-movie');
+    expect(movie.actorMovies.single.thumbUrl, 'thumbs/actor.jpg');
+    expect(movie.relativeMovies.single.id, 'relative-movie');
+  });
 }

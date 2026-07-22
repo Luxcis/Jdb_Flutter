@@ -51,6 +51,16 @@ MovieDetail _$MovieDetailFromJson(Map<String, dynamic> json) => MovieDetail(
           ?.map((e) => e as String)
           .toList() ??
       const [],
+  actorMovies:
+      (json['actor_movies'] as List<dynamic>?)
+          ?.map((e) => MovieSummary.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
+  relativeMovies:
+      (json['relative_movies'] as List<dynamic>?)
+          ?.map((e) => MovieSummary.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
   tags:
       (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const [],
@@ -76,6 +86,8 @@ Map<String, dynamic> _$MovieDetailToJson(MovieDetail instance) =>
       'series': instance.series,
       'actors': instance.actors,
       'screenshots': instance.screenshots,
+      'actor_movies': instance.actorMovies,
+      'relative_movies': instance.relativeMovies,
       'tags': instance.tags,
       'magnet_count': instance.magnetCount,
       'want_watch_count': instance.wantWatchCount,
