@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/storage/storage_keys.dart';
+import 'package:jade/core/widgets/movie_screenshot_image.dart';
 import 'package:jade/features/movie_detail/screens/movie_detail_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -136,6 +137,7 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('预告片 / 剧照'), findsOneWidget);
+    expect(find.byType(MovieScreenshotImage), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.text('你可能也喜欢'),

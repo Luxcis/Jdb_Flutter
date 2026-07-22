@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/movie.dart';
-import 'package:jade/core/widgets/cached_image.dart';
 import 'package:jade/core/widgets/movie_cover_image.dart';
+import 'package:jade/core/widgets/movie_screenshot_image.dart';
 import 'package:jade/core/widgets/rating_badge.dart';
 
 class MovieListTile extends StatelessWidget {
@@ -79,7 +79,7 @@ class MovieListTile extends StatelessWidget {
                               child: SizedBox(
                                 width: 84,
                                 height: 56,
-                                child: CachedImage(screenshots![i]),
+                                child: MovieScreenshotImage(screenshots![i]),
                               ),
                             ),
                           ),

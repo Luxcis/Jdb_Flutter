@@ -6,10 +6,10 @@ import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/review.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/actor_card.dart';
-import 'package:jade/core/widgets/cached_image.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/movie_cover_image.dart';
+import 'package:jade/core/widgets/movie_screenshot_image.dart';
 import 'package:jade/core/widgets/tag_chip.dart';
 import 'package:jade/features/movie_detail/services/movie_detail_service.dart';
 
@@ -365,7 +365,7 @@ class _ScreenshotSection extends StatelessWidget {
           aspectRatio: 16 / 9,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: CachedImage(urls[index]),
+            child: MovieScreenshotImage(urls[index]),
           ),
         ),
       ),

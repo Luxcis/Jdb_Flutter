@@ -5,6 +5,7 @@ import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/widgets/cached_image.dart';
 import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/movie_list_tile.dart';
+import 'package:jade/core/widgets/movie_screenshot_image.dart';
 
 void main() {
   testWidgets('MovieCard 渲染封面标题番号', (tester) async {
@@ -150,6 +151,7 @@ void main() {
       );
       await tester.pump();
       expect(find.byType(CachedImage), findsNWidgets(3));
+      expect(find.byType(MovieScreenshotImage), findsNWidgets(2));
     });
 
     testWidgets('无 screenshots 时不渲染截图区域', (tester) async {
