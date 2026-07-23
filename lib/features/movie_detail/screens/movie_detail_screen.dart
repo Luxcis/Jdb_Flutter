@@ -13,6 +13,7 @@ import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/movie_cover_image.dart';
 import 'package:jade/core/widgets/movie_screenshot_image.dart';
+import 'package:jade/core/widgets/star_rating.dart';
 import 'package:jade/core/widgets/tag_chip.dart';
 import 'package:jade/features/movie_detail/services/movie_detail_service.dart';
 
@@ -32,6 +33,8 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   Object? _magnetsError;
   bool _magnetsLoading = true;
   List<Review> _reviews = [];
+  _ReviewSort _reviewSort = _ReviewSort.hotly;
+  bool _reviewsLoading = false;
   List<ListModel> _relatedLists = [];
   Object? _relatedListsError;
   bool _relatedListsLoading = true;
@@ -52,6 +55,8 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       _magnetsError = null;
       _magnetsLoading = true;
       _reviews = [];
+      _reviewSort = _ReviewSort.hotly;
+      _reviewsLoading = false;
       _relatedLists = [];
       _relatedListsError = null;
       _relatedListsLoading = true;
@@ -108,13 +113,27 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     }
   }
 
-  Future<void> _loadReviews(MovieDetailService service) async {
+  Future<void> _loadReviews(
+    MovieDetailService service, {
+    _ReviewSort sort = _ReviewSort.hotly,
+  }) async {
+    if (mounted) {
+      setState(() {
+        _reviewsLoading = true;
+        _reviewSort = sort;
+      });
+    }
     try {
-      final reviews = await service.getReviews(widget.id);
+      final reviews = await service.getReviews(widget.id, sortBy: sort.value);
       if (!mounted) return;
-      setState(() => _reviews = reviews);
+      setState(() {
+        _reviews = reviews;
+        _reviewsLoading = false;
+      });
     } catch (_) {
       // 短评继续沿用空状态，不影响本次磁链与相关清单错误处理。
+      if (!mounted) return;
+      setState(() => _reviewsLoading = false);
     }
   }
 
@@ -149,6 +168,12 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   void _retryRelatedLists() {
     final service = _service;
     if (service != null) unawaited(_loadRelatedLists(service));
+  }
+
+  void _changeReviewSort(_ReviewSort sort) {
+    if (_reviewSort == sort) return;
+    final service = _service;
+    if (service != null) unawaited(_loadReviews(service, sort: sort));
   }
 
   @override
@@ -188,6 +213,9 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
           magnetsLoading: _magnetsLoading,
           onRetryMagnets: _retryMagnets,
           reviews: _reviews,
+          reviewsLoading: _reviewsLoading,
+          reviewSort: _reviewSort,
+          onReviewSortChanged: _changeReviewSort,
           relatedLists: _relatedLists,
           relatedListsError: _relatedListsError,
           relatedListsLoading: _relatedListsLoading,
@@ -236,6 +264,9 @@ class _MovieDetailTabs extends StatelessWidget {
     required this.magnetsLoading,
     required this.onRetryMagnets,
     required this.reviews,
+    required this.reviewsLoading,
+    required this.reviewSort,
+    required this.onReviewSortChanged,
     required this.relatedLists,
     required this.relatedListsError,
     required this.relatedListsLoading,
@@ -250,6 +281,9 @@ class _MovieDetailTabs extends StatelessWidget {
   final bool magnetsLoading;
   final VoidCallback onRetryMagnets;
   final List<Review> reviews;
+  final bool reviewsLoading;
+  final _ReviewSort reviewSort;
+  final ValueChanged<_ReviewSort> onReviewSortChanged;
   final List<ListModel> relatedLists;
   final Object? relatedListsError;
   final bool relatedListsLoading;
@@ -293,7 +327,12 @@ class _MovieDetailTabs extends StatelessWidget {
             loading: magnetsLoading,
             onRetry: onRetryMagnets,
           ),
-          _ReviewList(reviews: reviews),
+          _ReviewList(
+            reviews: reviews,
+            loading: reviewsLoading,
+            sort: reviewSort,
+            onSortChanged: onReviewSortChanged,
+          ),
           _RelatedListList(
             lists: relatedLists,
             error: relatedListsError,
@@ -425,13 +464,10 @@ class _MovieInfoCard extends StatelessWidget {
                 _MetadataLine(label: label, value: value),
             if (detail.score != null)
               Row(
+                spacing: 6,
                 children: [
                   const Text('评分: '),
-                  Icon(
-                    Icons.star_rounded,
-                    size: 20,
-                    color: Theme.of(context).colorScheme.tertiary,
-                  ),
+                  StarRating(score: detail.score!, semanticLabel: '影片评分'),
                   Text(detail.score!.toString()),
                 ],
               ),
@@ -511,12 +547,14 @@ class _CategorySection extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: Wrap(
-              spacing: 4,
-              runSpacing: 4,
-              children: [
-                for (final tag in tags) TagChip(label: tag, compact: true),
-              ],
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                spacing: 4,
+                children: [
+                  for (final tag in tags) TagChip(label: tag, compact: true),
+                ],
+              ),
             ),
           ),
         ],
@@ -606,6 +644,7 @@ class _MovieRowSection extends StatelessWidget {
           width: 140,
           child: MovieCard(
             movie: movies[index],
+            showTitle: false,
             onTap: () => onMovieTap(movies[index]),
           ),
         ),
@@ -684,22 +723,85 @@ class _MagnetList extends StatelessWidget {
       return _ScrollableTabError(message: '磁链加载失败', onRetry: onRetry);
     }
     if (magnets.isEmpty) return const Center(child: Text('暂无磁链'));
-    return ListView.builder(
+    return ListView.separated(
       key: const PageStorageKey('movie-detail-magnets'),
-      padding: const EdgeInsets.only(top: kTextTabBarHeight),
       itemCount: magnets.length,
+      separatorBuilder: (context, index) => _detailTabDivider(context),
       itemBuilder: (_, index) {
         final magnet = magnets[index];
-        final metadata = [
-          if (magnet.isHighDefinition) '高清',
-          ?magnet.size,
-          ?magnet.publishDate,
-        ];
-        return ListTile(
-          title: Text(magnet.title ?? magnet.hash),
-          subtitle: metadata.isEmpty ? null : Text(metadata.join(' · ')),
-        );
+        return _MagnetTile(magnet: magnet);
       },
+    );
+  }
+}
+
+class _MagnetTile extends StatelessWidget {
+  const _MagnetTile({required this.magnet});
+
+  final Magnet magnet;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final subtitle = [
+      '${magnet.filesCount} 个文件',
+      if (magnet.size != null && magnet.size!.isNotEmpty) magnet.size!,
+    ].join(' / ');
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 10,
+        children: [
+          Row(
+            spacing: 10,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.file_download_outlined,
+                size: 22,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              Expanded(
+                child: Text(
+                  magnet.title ?? magnet.hash,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              if (magnet.isHighDefinition) const _InfoBadge(label: '高清'),
+              if (magnet.hasSubtitle)
+                const _InfoBadge(label: '字幕', colorRole: _BadgeColorRole.pink),
+            ],
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  subtitle,
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              if (magnet.publishDate != null)
+                Text(
+                  magnet.publishDate!,
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -724,15 +826,28 @@ class _RelatedListList extends StatelessWidget {
       return _ScrollableTabError(message: '相关清单加载失败', onRetry: onRetry);
     }
     if (lists.isEmpty) return const Center(child: Text('暂无相关清单'));
-    return ListView.builder(
+    return ListView.separated(
       key: const PageStorageKey('movie-detail-related-lists'),
-      padding: const EdgeInsets.only(top: kTextTabBarHeight),
       itemCount: lists.length,
+      separatorBuilder: (context, index) => _detailTabDivider(context),
       itemBuilder: (_, index) {
         final list = lists[index];
         return ListTile(
-          title: Text(list.name),
-          subtitle: Text('${list.movieCount} 部影片 · ${list.viewedCount} 次浏览'),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 10,
+          ),
+          title: Text(
+            list.name,
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text('${list.movieCount} 部影片，被查看 ${list.viewedCount} 次'),
+          ),
+          trailing: const Icon(Icons.chevron_right),
         );
       },
     );
@@ -759,20 +874,206 @@ class _ScrollableTabError extends StatelessWidget {
 }
 
 class _ReviewList extends StatelessWidget {
-  const _ReviewList({required this.reviews});
+  const _ReviewList({
+    required this.reviews,
+    required this.loading,
+    required this.sort,
+    required this.onSortChanged,
+  });
 
   final List<Review> reviews;
+  final bool loading;
+  final _ReviewSort sort;
+  final ValueChanged<_ReviewSort> onSortChanged;
 
   @override
   Widget build(BuildContext context) {
-    if (reviews.isEmpty) return const Center(child: Text('暂无短评'));
-    return ListView.builder(
+    if (reviews.isEmpty) {
+      return ListView(
+        key: const PageStorageKey('movie-detail-reviews'),
+        children: [
+          _ReviewSortBar(sort: sort, onSortChanged: onSortChanged),
+          SizedBox(
+            height: 180,
+            child: Center(
+              child: loading
+                  ? const CircularProgressIndicator()
+                  : const Text('暂无短评'),
+            ),
+          ),
+        ],
+      );
+    }
+    return ListView.separated(
       key: const PageStorageKey('movie-detail-reviews'),
-      padding: const EdgeInsets.only(top: kTextTabBarHeight),
-      itemCount: reviews.length,
-      itemBuilder: (_, index) => ListTile(
-        title: Text(reviews[index].content ?? ''),
-        subtitle: Text('评分: ${reviews[index].score ?? '?'}'),
+      itemCount: reviews.length + 1,
+      separatorBuilder: (context, index) => _detailTabDivider(context),
+      itemBuilder: (_, index) {
+        if (index == 0) {
+          return _ReviewSortBar(sort: sort, onSortChanged: onSortChanged);
+        }
+        return _ReviewTile(review: reviews[index - 1]);
+      },
+    );
+  }
+}
+
+enum _ReviewSort {
+  hotly('hotly'),
+  recently('recently');
+
+  const _ReviewSort(this.value);
+
+  final String value;
+}
+
+class _ReviewSortBar extends StatelessWidget {
+  const _ReviewSortBar({required this.sort, required this.onSortChanged});
+
+  final _ReviewSort sort;
+  final ValueChanged<_ReviewSort> onSortChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        SegmentedButton<_ReviewSort>(
+          showSelectedIcon: false,
+          segments: const [
+            ButtonSegment(value: _ReviewSort.hotly, label: Text('最热')),
+            ButtonSegment(value: _ReviewSort.recently, label: Text('最新')),
+          ],
+          selected: {sort},
+          onSelectionChanged: (values) => onSortChanged(values.single),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReviewTile extends StatelessWidget {
+  const _ReviewTile({required this.review});
+
+  final Review review;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final authorName = review.author?.name ?? '';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 8,
+        children: [
+          Row(
+            spacing: 8,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (authorName.isNotEmpty)
+                Text(
+                  authorName,
+                  style: textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              if (review.watchedCount > 0)
+                Expanded(
+                  child: Text(
+                    '看过${review.watchedCount}部影片',
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                )
+              else
+                const Spacer(),
+              if (review.score != null)
+                StarRating(
+                  score: review.score!,
+                  semanticLabel: '$authorName 短评评分',
+                  size: 17,
+                ),
+            ],
+          ),
+          if (review.content != null && review.content!.isNotEmpty)
+            Text(review.content!, style: textTheme.bodyLarge),
+          Row(
+            children: [
+              Icon(
+                Icons.thumb_up_alt_outlined,
+                size: 20,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                review.likedCount.toString(),
+                style: textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const Spacer(),
+              if (review.createdAt != null)
+                Text(
+                  review.createdAt!,
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Widget _detailTabDivider(BuildContext context) {
+  return Divider(
+    height: 1,
+    indent: 16,
+    endIndent: 16,
+    color: Theme.of(context).colorScheme.outlineVariant,
+  );
+}
+
+const double _detailTabTopInset = 36;
+
+enum _BadgeColorRole { blue, pink }
+
+class _InfoBadge extends StatelessWidget {
+  const _InfoBadge({
+    required this.label,
+    this.colorRole = _BadgeColorRole.blue,
+  });
+
+  final String label;
+  final _BadgeColorRole colorRole;
+
+  @override
+  Widget build(BuildContext context) {
+    final (foreground, background) = switch (colorRole) {
+      _BadgeColorRole.blue => (
+        Theme.of(context).colorScheme.primary,
+        Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.35),
+      ),
+      _BadgeColorRole.pink => (Colors.pink.shade600, Colors.pink.shade50),
+    };
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: foreground,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }

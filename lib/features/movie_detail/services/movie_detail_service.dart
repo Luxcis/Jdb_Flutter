@@ -23,8 +23,13 @@ class MovieDetailService {
     ]).map((j) => Magnet.fromJson(normalizeMagnetJson(j))).toList();
   }
 
-  Future<List<Review>> getReviews(String id) async {
-    final resp = await _api.get('/api/v1/movies/$id/reviews');
+  Future<List<Review>> getReviews(String id, {String? sortBy}) async {
+    final resp = await _api.get(
+      '/api/v1/movies/$id/reviews',
+      queryParameters: {
+        if (sortBy != null && sortBy.isNotEmpty) 'sort_by': sortBy,
+      },
+    );
     return apiList(resp.data, const [
       'reviews',
       'items',

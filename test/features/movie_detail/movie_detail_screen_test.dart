@@ -5,7 +5,9 @@ import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/storage/storage_keys.dart';
 import 'package:jade/core/widgets/movie_cover_image.dart';
+import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/movie_screenshot_image.dart';
+import 'package:jade/core/widgets/star_rating.dart';
 import 'package:jade/core/widgets/tag_chip.dart';
 import 'package:jade/features/movie_detail/screens/movie_detail_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -56,7 +58,6 @@ void _enqueueCompleteMovieDetail(FakeAdapter adapter) {
           {
             'id': 'actor-movie',
             'number': 'ACT-001',
-            'title': '演员关联影片',
             'thumb_url': 'thumbs/actor.jpg',
           },
         ],
@@ -64,12 +65,15 @@ void _enqueueCompleteMovieDetail(FakeAdapter adapter) {
           {
             'id': 'relative-movie',
             'number': 'REL-001',
-            'title': '相关推荐影片',
             'thumb_url': 'thumbs/relative.jpg',
           },
         ],
         'tags': [
           {'name': '剧情'},
+          {'name': '漫画游戏改编'},
+          {'name': '中文字幕'},
+          {'name': '角色扮演'},
+          {'name': '高画质'},
         ],
       },
     },
@@ -85,13 +89,58 @@ void _enqueueCompleteMovieDetail(FakeAdapter adapter) {
           'hd': true,
           'created_at': '2026-07-22',
         },
+        {
+          'name': '第二条磁链',
+          'hash': 'hash-2',
+          'size': 2048,
+          'files_count': 2,
+          'created_at': '2026-07-23',
+        },
       ],
     },
   });
-  adapter.enqueue('/api/v1/movies/m1/reviews', {
-    'success': 1,
-    'data': {'reviews': <Map<String, dynamic>>[]},
-  });
+  adapter.enqueueSequence('/api/v1/movies/m1/reviews', [
+    {
+      'success': 1,
+      'data': {
+        'reviews': [
+          {
+            'id': 1,
+            'username': 'reequasew',
+            'watched_count': 2060,
+            'score': 8,
+            'content': '两大女优的联手果然是很震撼的',
+            'likes_count': 17,
+            'created_at': '2016-09-24',
+          },
+          {
+            'id': 2,
+            'username': 'manoyitahieh',
+            'watched_count': 2119,
+            'content': '不错。喜欢上下双洞齐插的',
+            'likes_count': 8,
+            'created_at': '2015-05-22',
+          },
+        ],
+      },
+    },
+    {
+      'success': 1,
+      'data': {
+        'reviews': [
+          {
+            'id': 3,
+            'username': 'recent-user',
+            'watched_count': 91,
+            'score': 10,
+            'content': '最新短评内容',
+            'likes_count': 3,
+            'created_at': '2025-02-08',
+          },
+        ],
+      },
+    },
+  ]);
   adapter.enqueue(Endpoints.listsRelated, {
     'success': 1,
     'data': {
@@ -101,6 +150,12 @@ void _enqueueCompleteMovieDetail(FakeAdapter adapter) {
           'name': '测试相关清单',
           'movies_count': 12,
           'views_count': 34,
+        },
+        {
+          'id': 'list-2',
+          'name': '第二个相关清单',
+          'movies_count': 3,
+          'views_count': 4,
         },
       ],
     },
@@ -216,6 +271,7 @@ void main() {
     expect(find.text('4.33'), findsOneWidget);
     expect(find.text('4.3'), findsNothing);
     expect(find.text('类别:'), findsOneWidget);
+    expect(find.byType(StarRating), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     final infoColumn = tester.widget<Column>(
@@ -253,6 +309,22 @@ void main() {
           .first,
     );
     expect(categoryChip.compact, isTrue);
+    final categoryScroller = tester.widget<Scrollable>(
+      find
+          .descendant(
+            of: find.byKey(const Key('movie-detail-categories')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    expect(categoryScroller.axisDirection, AxisDirection.right);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('movie-detail-categories')),
+        matching: find.byType(Scrollbar),
+      ),
+      findsNothing,
+    );
 
     final innerScrollable = find
         .descendant(
@@ -280,20 +352,23 @@ void main() {
     expect(find.byType(MovieScreenshotImage), findsOneWidget);
 
     await tester.scrollUntilVisible(
-      find.text('演员关联影片'),
+      find.text('ACT-001'),
       500,
       scrollable: innerScrollable,
     );
     expect(find.text('TA还出演过'), findsOneWidget);
-    expect(find.text('演员关联影片'), findsOneWidget);
+    expect(find.text('ACT-001'), findsOneWidget);
 
     await tester.scrollUntilVisible(
-      find.text('相关推荐影片'),
+      find.text('REL-001'),
       500,
       scrollable: innerScrollable,
     );
     expect(find.text('你可能也喜欢'), findsOneWidget);
-    expect(find.text('相关推荐影片'), findsOneWidget);
+    expect(find.text('REL-001'), findsOneWidget);
+    for (final card in tester.widgetList<MovieCard>(find.byType(MovieCard))) {
+      expect(card.showTitle, isFalse);
+    }
     expect(
       adapter.requests.where(
         (request) => request.path == Endpoints.moviesMayAlsoLike,
@@ -306,22 +381,82 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('测试磁链.torrent'), findsOneWidget);
-    expect(find.text('高清 · 9.68 GB · 2026-07-22'), findsOneWidget);
+    expect(find.text('高清'), findsOneWidget);
+    expect(find.text('1 个文件 / 9.68 GB'), findsOneWidget);
+    expect(find.text('2026-07-22'), findsOneWidget);
+    expect(find.byIcon(Icons.file_download_outlined), findsNWidgets(2));
     expect(
       tester.getTopLeft(find.text('测试磁链.torrent')).dy,
-      greaterThanOrEqualTo(tester.getBottomLeft(tabBar).dy),
+      lessThan(tester.getBottomLeft(tabBar).dy + 30),
     );
+    final magnetDividers = tester.widgetList<Divider>(find.byType(Divider));
+    expect(magnetDividers, hasLength(1));
+    expect(magnetDividers.single.height, 1);
+    expect(magnetDividers.single.indent, 16);
+    expect(magnetDividers.single.endIndent, 16);
 
     await tester.tap(find.text('短评'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('暂无短评'), findsOneWidget);
+    expect(find.text('最热'), findsOneWidget);
+    expect(find.text('最新'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('最热')).dy,
+      lessThan(tester.getBottomLeft(tabBar).dy + 24),
+    );
+    expect(find.text('reequasew'), findsOneWidget);
+    expect(find.text('看过2060部影片'), findsOneWidget);
+    expect(find.text('两大女优的联手果然是很震撼的'), findsOneWidget);
+    expect(find.text('manoyitahieh'), findsOneWidget);
+    expect(find.text('17'), findsOneWidget);
+    expect(find.text('2016-09-24'), findsOneWidget);
+    expect(find.byType(StarRating), findsOneWidget);
+    expect(find.byIcon(Icons.thumb_up_alt_outlined), findsNWidgets(2));
+    expect(find.byIcon(Icons.more_horiz), findsNothing);
+    var reviewDividers = tester.widgetList<Divider>(find.byType(Divider));
+    expect(reviewDividers, hasLength(2));
+    for (final divider in reviewDividers) {
+      expect(divider.height, 1);
+      expect(divider.indent, 16);
+      expect(divider.endIndent, 16);
+    }
+    expect(
+      adapter.requests
+          .where((request) => request.path == '/api/v1/movies/m1/reviews')
+          .first
+          .uri
+          .queryParameters['sort_by'],
+      'hotly',
+    );
+
+    await tester.tap(find.text('最新'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('最新短评内容'), findsOneWidget);
+    expect(
+      adapter.requests
+          .where((request) => request.path == '/api/v1/movies/m1/reviews')
+          .last
+          .uri
+          .queryParameters['sort_by'],
+      'recently',
+    );
 
     await tester.tap(find.text('相关清单'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('测试相关清单'), findsOneWidget);
-    expect(find.text('12 部影片 · 34 次浏览'), findsOneWidget);
+    expect(find.text('12 部影片，被查看 34 次'), findsOneWidget);
+    expect(find.byIcon(Icons.chevron_right), findsNWidgets(2));
+    expect(
+      tester.getTopLeft(find.text('测试相关清单')).dy,
+      lessThan(tester.getBottomLeft(tabBar).dy + 30),
+    );
+    final relatedDividers = tester.widgetList<Divider>(find.byType(Divider));
+    expect(relatedDividers, hasLength(1));
+    expect(relatedDividers.single.height, 1);
+    expect(relatedDividers.single.indent, 16);
+    expect(relatedDividers.single.endIndent, 16);
   });
 
   testWidgets('磁链失败可独立重试且不重新请求主详情和相关清单', (tester) async {

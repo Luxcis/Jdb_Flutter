@@ -6,6 +6,7 @@ import 'package:jade/core/widgets/cached_image.dart';
 import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/movie_list_tile.dart';
 import 'package:jade/core/widgets/movie_screenshot_image.dart';
+import 'package:jade/core/widgets/star_rating.dart';
 
 void main() {
   testWidgets('MovieCard 渲染封面标题番号', (tester) async {
@@ -22,6 +23,30 @@ void main() {
     );
     expect(find.text('Test Movie'), findsOneWidget);
     expect(find.text('SSIS-001'), findsOneWidget);
+  });
+
+  testWidgets('MovieCard 可隐藏标题且不保留标题占位', (tester) async {
+    final movie = MovieSummary(
+      id: '1',
+      number: 'SSIS-001',
+      title: '',
+      coverUrl: 'covers/x.jpg',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: MovieCard(movie: movie, showTitle: false)),
+      ),
+    );
+
+    expect(find.text('SSIS-001'), findsOneWidget);
+    expect(find.text(''), findsNothing);
+    final captionColumn = tester.widget<Column>(
+      find
+          .descendant(of: find.byType(MovieCard), matching: find.byType(Column))
+          .last,
+    );
+    expect(captionColumn.children, hasLength(1));
   });
 
   testWidgets('MovieCard 封面按比例完整缩放', (tester) async {
@@ -100,6 +125,25 @@ void main() {
     );
     await tester.tap(find.text('Tap Me'));
     expect(tapped, isTrue);
+  });
+
+  testWidgets('StarRating 渲染固定 5 颗星并按 10 分制折算', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: StarRating(score: 7.5, semanticLabel: '评分')),
+      ),
+    );
+
+    final rating = tester.widget<Semantics>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Semantics && widget.properties.label == '评分 7.5 分',
+      ),
+    );
+    expect(rating.properties.label, '评分 7.5 分');
+    expect(find.byIcon(Icons.star_rounded), findsNWidgets(3));
+    expect(find.byIcon(Icons.star_half_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.star_border_rounded), findsOneWidget);
   });
 
   group('MovieListTile', () {

@@ -9,12 +9,15 @@ class Magnet {
     this.size,
     this.publishDate,
     this.isHighDefinition = false,
+    this.hasSubtitle = false,
+    this.filesCount = 1,
   });
   final String hash;
   final String? title;
   final String? size;
   final String? publishDate;
   final bool isHighDefinition;
-  factory Magnet.fromJson(Map<String, dynamic> json) =>
-      _$MagnetFromJson(json);
+  final bool hasSubtitle;
+  final int filesCount;
+  factory Magnet.fromJson(Map<String, dynamic> json) => _$MagnetFromJson(json);
 }

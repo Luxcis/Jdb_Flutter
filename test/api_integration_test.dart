@@ -405,6 +405,17 @@ void main() {
       expect(list.first.content, 'Great!');
     });
 
+    test('GET /api/v1/movies/{id}/reviews → 携带 sort_by 参数', () async {
+      ok(adapter, '/api/v1/movies/m1/reviews', {
+        'reviews': <Map<String, dynamic>>[],
+      });
+
+      await svc.getReviews('m1', sortBy: 'recently');
+
+      expect(adapter.requests.last.path, '/api/v1/movies/m1/reviews');
+      expect(adapter.requests.last.uri.queryParameters['sort_by'], 'recently');
+    });
+
     test('getMagnets 空列表容错', () async {
       ok(adapter, '/api/v1/movies/m1/magnets', []);
       final list = await svc.getMagnets('m1');

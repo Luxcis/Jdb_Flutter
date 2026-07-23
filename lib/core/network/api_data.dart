@@ -153,6 +153,8 @@ Map<String, dynamic> normalizeMagnetJson(Map<String, dynamic> json) {
       json['is_high_definition'] ?? json['hd'],
       false,
     ),
+    'has_subtitle': apiBool(json['has_subtitle'] ?? json['cnsub'], false),
+    'files_count': apiInt(json['files_count'], 1),
   };
 }
 
@@ -171,6 +173,7 @@ Map<String, dynamic> normalizeReviewJson(Map<String, dynamic> json) {
     ...json,
     'id': apiString(json['id']) ?? '',
     'liked_count': json['liked_count'] ?? json['likes_count'],
+    'watched_count': apiInt(json['watched_count'], 0),
     'author': json['author'] ?? {'name': json['username'] ?? ''},
   };
 }

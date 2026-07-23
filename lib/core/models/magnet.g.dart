@@ -12,4 +12,6 @@ Magnet _$MagnetFromJson(Map<String, dynamic> json) => Magnet(
   size: json['size'] as String?,
   publishDate: json['publish_date'] as String?,
   isHighDefinition: json['is_high_definition'] as bool? ?? false,
+  hasSubtitle: json['has_subtitle'] as bool? ?? false,
+  filesCount: (json['files_count'] as num?)?.toInt() ?? 1,
 );

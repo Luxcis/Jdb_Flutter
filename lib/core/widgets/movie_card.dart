@@ -3,9 +3,16 @@ import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/widgets/movie_cover_image.dart';
 
 class MovieCard extends StatelessWidget {
-  const MovieCard({super.key, required this.movie, this.onTap});
+  const MovieCard({
+    super.key,
+    required this.movie,
+    this.onTap,
+    this.showTitle = true,
+  });
+
   final MovieSummary movie;
   final VoidCallback? onTap;
+  final bool showTitle;
 
   String get _coverImageUrl {
     final thumbUrl = movie.thumbUrl;
@@ -39,15 +46,17 @@ class MovieCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    movie.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w500,
+                  if (showTitle) ...[
+                    Text(
+                      movie.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
+                    const SizedBox(height: 2),
+                  ],
                   Text(
                     movie.number,
                     style: textTheme.labelSmall?.copyWith(color: Colors.grey),

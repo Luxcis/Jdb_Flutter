@@ -18,6 +18,7 @@ class Review {
     this.status,
     this.author,
     this.likedCount = 0,
+    this.watchedCount = 0,
     this.createdAt,
   });
   final String id;
@@ -26,7 +27,7 @@ class Review {
   final String? status;
   final ReviewAuthor? author;
   final int likedCount;
+  final int watchedCount;
   final String? createdAt;
-  factory Review.fromJson(Map<String, dynamic> json) =>
-      _$ReviewFromJson(json);
+  factory Review.fromJson(Map<String, dynamic> json) => _$ReviewFromJson(json);
 }
