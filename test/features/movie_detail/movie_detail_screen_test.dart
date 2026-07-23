@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/endpoints.dart';
@@ -53,6 +54,7 @@ void _enqueueCompleteMovieDetail(FakeAdapter adapter) {
         ],
         'preview_images': [
           {'url': 'screenshots/test.jpg'},
+          {'url': 'screenshots/test-2.jpg'},
         ],
         'actor_movies': [
           {
@@ -349,7 +351,8 @@ void main() {
       scrollable: innerScrollable,
     );
     expect(find.text('预告片 / 剧照'), findsOneWidget);
-    expect(find.byType(MovieScreenshotImage), findsOneWidget);
+    expect(find.text('全部 2 ›'), findsNothing);
+    expect(find.byType(MovieScreenshotImage), findsNWidgets(2));
 
     await tester.scrollUntilVisible(
       find.text('ACT-001'),
@@ -395,6 +398,29 @@ void main() {
     expect(magnetDividers.single.indent, 16);
     expect(magnetDividers.single.endIndent, 16);
 
+    MethodCall? clipboardCall;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') clipboardCall = call;
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    final firstMagnetTile = find.ancestor(
+      of: find.text('测试磁链.torrent'),
+      matching: find.byType(InkWell),
+    );
+    tester.widget<InkWell>(firstMagnetTile).onTap!();
+    await tester.pump();
+    expect(clipboardCall?.arguments, {'text': 'magnet:?xt=urn:btih:hash-1'});
+    expect(find.text('磁力链接已复制'), findsOneWidget);
+
     await tester.tap(find.text('短评'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
@@ -429,9 +455,21 @@ void main() {
       'hotly',
     );
 
-    await tester.tap(find.text('最新'));
+    adapter.responseDelay = const Duration(milliseconds: 200);
+    final recentlyButton = find.ancestor(
+      of: find.text('最新'),
+      matching: find.byType(InkWell),
+    );
+    tester.widget<InkWell>(recentlyButton).onTap!();
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    final disabledSortControl = tester.widgetList<SegmentedButton>(
+      find.byWidgetPredicate((widget) => widget is SegmentedButton),
+    );
+    expect(disabledSortControl.single.onSelectionChanged, isNull);
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
+    expect(find.byType(LinearProgressIndicator), findsNothing);
     expect(find.text('最新短评内容'), findsOneWidget);
     expect(
       adapter.requests

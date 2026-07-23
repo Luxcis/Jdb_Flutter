@@ -7,6 +7,7 @@ class FakeAdapter implements HttpClientAdapter {
   final Map<String, _Stub> _stubs = {};
   final Map<String, List<_Stub>> _sequences = {};
   final List<RequestOptions> requests = [];
+  Duration responseDelay = Duration.zero;
 
   /// 同一 path 固定返回同一响应。
   void enqueue(String path, Map<String, dynamic> body, {int statusCode = 200}) {
@@ -33,6 +34,9 @@ class FakeAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
+    if (responseDelay > Duration.zero) {
+      await Future<void>.delayed(responseDelay);
+    }
     _Stub? stub;
     final seq = _sequences[options.path];
     if (seq != null && seq.isNotEmpty) {

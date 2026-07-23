@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/list_model.dart';
@@ -171,7 +172,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   }
 
   void _changeReviewSort(_ReviewSort sort) {
-    if (_reviewSort == sort) return;
+    if (_reviewsLoading || _reviewSort == sort) return;
     final service = _service;
     if (service != null) unawaited(_loadReviews(service, sort: sort));
   }
@@ -196,13 +197,6 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        actions: [
-          IconButton(
-            tooltip: '更多',
-            onPressed: () {},
-            icon: const Icon(Icons.more_vert),
-          ),
-        ],
       ),
       body: DefaultTabController(
         length: 4,
@@ -600,18 +594,254 @@ class _ScreenshotSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return _Section(
       title: '预告片 / 剧照',
-      trailing: Text('全部 ${urls.length} ›'),
       height: 164,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
         itemCount: urls.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (_, index) => AspectRatio(
-          aspectRatio: 16 / 9,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: MovieScreenshotImage(urls[index]),
+        itemBuilder: (_, index) => Semantics(
+          button: true,
+          label: '查看剧照 ${index + 1}，共 ${urls.length} 张',
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Material(
+              clipBehavior: Clip.antiAlias,
+              borderRadius: BorderRadius.circular(8),
+              child: InkWell(
+                key: Key('movie-detail-screenshot-$index'),
+                onTap: () => showDialog<void>(
+                  context: context,
+                  useSafeArea: false,
+                  builder: (_) =>
+                      _ScreenshotViewer(urls: urls, initialIndex: index),
+                ),
+                child: MovieScreenshotImage(urls[index]),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScreenshotViewer extends StatefulWidget {
+  const _ScreenshotViewer({required this.urls, required this.initialIndex});
+
+  final List<String> urls;
+  final int initialIndex;
+
+  @override
+  State<_ScreenshotViewer> createState() => _ScreenshotViewerState();
+}
+
+class _ScreenshotViewerState extends State<_ScreenshotViewer> {
+  late final PageController _controller;
+  final Map<int, bool> _zoomedPages = {};
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _controller = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleZoomChanged(int index, bool zoomed) {
+    if (_zoomedPages[index] == zoomed) return;
+    setState(() => _zoomedPages[index] = zoomed);
+  }
+
+  bool _handleBoundarySwipe(int index, _ScreenshotPageDirection direction) {
+    final targetIndex = switch (direction) {
+      _ScreenshotPageDirection.previous => index - 1,
+      _ScreenshotPageDirection.next => index + 1,
+    };
+    if (targetIndex < 0 || targetIndex >= widget.urls.length) return false;
+    unawaited(
+      _controller.animateToPage(
+        targetIndex,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+      ),
+    );
+    return true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog.fullscreen(
+      key: const Key('movie-screenshot-viewer'),
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          leading: IconButton(
+            tooltip: '关闭',
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.close),
+          ),
+          title: Text('${_currentIndex + 1} / ${widget.urls.length}'),
+          centerTitle: true,
+        ),
+        body: PageView.builder(
+          key: const Key('movie-screenshot-pages'),
+          controller: _controller,
+          physics: _zoomedPages[_currentIndex] ?? false
+              ? const NeverScrollableScrollPhysics()
+              : const PageScrollPhysics(),
+          itemCount: widget.urls.length,
+          onPageChanged: (index) => setState(() => _currentIndex = index),
+          itemBuilder: (_, index) => _ZoomableScreenshot(
+            key: ValueKey(widget.urls[index]),
+            url: widget.urls[index],
+            index: index,
+            onZoomChanged: (zoomed) => _handleZoomChanged(index, zoomed),
+            onBoundarySwipe: (direction) =>
+                _handleBoundarySwipe(index, direction),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+enum _ScreenshotPageDirection { previous, next }
+
+class _ZoomableScreenshot extends StatefulWidget {
+  const _ZoomableScreenshot({
+    super.key,
+    required this.url,
+    required this.index,
+    required this.onZoomChanged,
+    required this.onBoundarySwipe,
+  });
+
+  final String url;
+  final int index;
+  final ValueChanged<bool> onZoomChanged;
+  final bool Function(_ScreenshotPageDirection direction) onBoundarySwipe;
+
+  @override
+  State<_ZoomableScreenshot> createState() => _ZoomableScreenshotState();
+}
+
+class _ZoomableScreenshotState extends State<_ZoomableScreenshot> {
+  late final TransformationController _transformationController;
+  Offset? _doubleTapPosition;
+  bool _isZoomed = false;
+  bool _pageSwitchTriggered = false;
+  double _boundaryDragDistance = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _transformationController = TransformationController();
+    _transformationController.addListener(_handleTransformationChanged);
+  }
+
+  @override
+  void dispose() {
+    _transformationController.removeListener(_handleTransformationChanged);
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  void _handleTransformationChanged() {
+    final zoomed = _transformationController.value.getMaxScaleOnAxis() > 1.01;
+    if (_isZoomed == zoomed) return;
+    _isZoomed = zoomed;
+    widget.onZoomChanged(zoomed);
+  }
+
+  void _handleDoubleTapDown(TapDownDetails details) {
+    _doubleTapPosition = details.localPosition;
+  }
+
+  void _handleDoubleTap() {
+    if (_isZoomed) {
+      _transformationController.value = Matrix4.identity();
+      return;
+    }
+    final size = context.size;
+    final position = _doubleTapPosition;
+    if (size == null || position == null) return;
+    const scale = 2.5;
+    final translationX = (-position.dx * (scale - 1)).clamp(
+      size.width * (1 - scale),
+      0.0,
+    );
+    final translationY = (-position.dy * (scale - 1)).clamp(
+      size.height * (1 - scale),
+      0.0,
+    );
+    _transformationController.value = Matrix4.identity()
+      ..setEntry(0, 0, scale)
+      ..setEntry(1, 1, scale)
+      ..setEntry(0, 3, translationX)
+      ..setEntry(1, 3, translationY);
+  }
+
+  void _handleInteractionUpdate(ScaleUpdateDetails details) {
+    if (!_isZoomed || _pageSwitchTriggered) return;
+    final size = context.size;
+    if (size == null) return;
+    final matrix = _transformationController.value;
+    final scale = matrix.getMaxScaleOnAxis();
+    final translationX = matrix.storage[12];
+    final minimumTranslationX = size.width * (1 - scale);
+    final horizontalDelta = details.focalPointDelta.dx;
+    const edgeTolerance = 1.0;
+    final draggingPastPrevious =
+        translationX >= -edgeTolerance && horizontalDelta > 0;
+    final draggingPastNext =
+        translationX <= minimumTranslationX + edgeTolerance &&
+        horizontalDelta < 0;
+
+    if (!draggingPastPrevious && !draggingPastNext) {
+      _boundaryDragDistance = 0;
+      return;
+    }
+    _boundaryDragDistance += horizontalDelta.abs();
+    if (_boundaryDragDistance < 48) return;
+    final direction = draggingPastPrevious
+        ? _ScreenshotPageDirection.previous
+        : _ScreenshotPageDirection.next;
+    _pageSwitchTriggered = widget.onBoundarySwipe(direction);
+    _boundaryDragDistance = 0;
+  }
+
+  void _handleInteractionEnd(ScaleEndDetails details) {
+    _boundaryDragDistance = 0;
+    _pageSwitchTriggered = false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onDoubleTapDown: _handleDoubleTapDown,
+      onDoubleTap: _handleDoubleTap,
+      child: InteractiveViewer(
+        key: Key('movie-screenshot-zoom-${widget.index}'),
+        transformationController: _transformationController,
+        minScale: 1,
+        maxScale: 4,
+        onInteractionUpdate: _handleInteractionUpdate,
+        onInteractionEnd: _handleInteractionEnd,
+        child: SizedBox.expand(
+          child: MovieScreenshotImage(
+            widget.url,
+            key: Key('movie-screenshot-page-${widget.index}'),
+            fit: BoxFit.contain,
           ),
         ),
       ),
@@ -658,13 +888,11 @@ class _Section extends StatelessWidget {
     required this.title,
     required this.height,
     required this.child,
-    this.trailing,
   });
 
   final String title;
   final double height;
   final Widget child;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -676,24 +904,11 @@ class _Section extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                if (trailing != null)
-                  DefaultTextStyle.merge(
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    child: trailing!,
-                  ),
-              ],
+            child: Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
           SizedBox(height: height, child: child),
@@ -740,6 +955,19 @@ class _MagnetTile extends StatelessWidget {
 
   final Magnet magnet;
 
+  String get _magnetUri {
+    final hash = magnet.hash.trim();
+    return hash.startsWith('magnet:?') ? hash : 'magnet:?xt=urn:btih:$hash';
+  }
+
+  Future<void> _copyMagnet(BuildContext context) async {
+    await Clipboard.setData(ClipboardData(text: _magnetUri));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('磁力链接已复制')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -747,60 +975,70 @@ class _MagnetTile extends StatelessWidget {
       '${magnet.filesCount} 个文件',
       if (magnet.size != null && magnet.size!.isNotEmpty) magnet.size!,
     ].join(' / ');
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 10,
-        children: [
-          Row(
-            spacing: 10,
+    return Semantics(
+      button: true,
+      label: '复制磁力链接 ${magnet.title ?? magnet.hash}',
+      child: InkWell(
+        onTap: () => _copyMagnet(context),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 10,
             children: [
-              Icon(
-                Icons.file_download_outlined,
-                size: 22,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              Expanded(
-                child: Text(
-                  magnet.title ?? magnet.hash,
-                  style: textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
+              Row(
+                spacing: 10,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.file_download_outlined,
+                    size: 22,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
-                ),
+                  Expanded(
+                    child: Text(
+                      magnet.title ?? magnet.hash,
+                      style: textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  if (magnet.isHighDefinition) const _InfoBadge(label: '高清'),
+                  if (magnet.hasSubtitle)
+                    const _InfoBadge(
+                      label: '字幕',
+                      colorRole: _BadgeColorRole.pink,
+                    ),
+                ],
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      subtitle,
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  if (magnet.publishDate != null)
+                    Text(
+                      magnet.publishDate!,
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                ],
               ),
             ],
           ),
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: [
-              if (magnet.isHighDefinition) const _InfoBadge(label: '高清'),
-              if (magnet.hasSubtitle)
-                const _InfoBadge(label: '字幕', colorRole: _BadgeColorRole.pink),
-            ],
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  subtitle,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              if (magnet.publishDate != null)
-                Text(
-                  magnet.publishDate!,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -892,7 +1130,11 @@ class _ReviewList extends StatelessWidget {
       return ListView(
         key: const PageStorageKey('movie-detail-reviews'),
         children: [
-          _ReviewSortBar(sort: sort, onSortChanged: onSortChanged),
+          _ReviewSortHeader(
+            sort: sort,
+            loading: loading,
+            onSortChanged: onSortChanged,
+          ),
           SizedBox(
             height: 180,
             child: Center(
@@ -910,10 +1152,39 @@ class _ReviewList extends StatelessWidget {
       separatorBuilder: (context, index) => _detailTabDivider(context),
       itemBuilder: (_, index) {
         if (index == 0) {
-          return _ReviewSortBar(sort: sort, onSortChanged: onSortChanged);
+          return _ReviewSortHeader(
+            sort: sort,
+            loading: loading,
+            onSortChanged: onSortChanged,
+          );
         }
         return _ReviewTile(review: reviews[index - 1]);
       },
+    );
+  }
+}
+
+class _ReviewSortHeader extends StatelessWidget {
+  const _ReviewSortHeader({
+    required this.sort,
+    required this.loading,
+    required this.onSortChanged,
+  });
+
+  final _ReviewSort sort;
+  final bool loading;
+  final ValueChanged<_ReviewSort> onSortChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _ReviewSortBar(
+          sort: sort,
+          onSortChanged: loading ? null : onSortChanged,
+        ),
+        if (loading) const LinearProgressIndicator(minHeight: 2),
+      ],
     );
   }
 }
@@ -931,7 +1202,7 @@ class _ReviewSortBar extends StatelessWidget {
   const _ReviewSortBar({required this.sort, required this.onSortChanged});
 
   final _ReviewSort sort;
-  final ValueChanged<_ReviewSort> onSortChanged;
+  final ValueChanged<_ReviewSort>? onSortChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -945,7 +1216,9 @@ class _ReviewSortBar extends StatelessWidget {
             ButtonSegment(value: _ReviewSort.recently, label: Text('最新')),
           ],
           selected: {sort},
-          onSelectionChanged: (values) => onSortChanged(values.single),
+          onSelectionChanged: onSortChanged == null
+              ? null
+              : (values) => onSortChanged!(values.single),
         ),
       ],
     );
@@ -1037,8 +1310,6 @@ Widget _detailTabDivider(BuildContext context) {
     color: Theme.of(context).colorScheme.outlineVariant,
   );
 }
-
-const double _detailTabTopInset = 36;
 
 enum _BadgeColorRole { blue, pink }
 
