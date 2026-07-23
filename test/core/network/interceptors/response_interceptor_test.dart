@@ -13,7 +13,10 @@ Response _mkResp(Map<String, dynamic> body) {
 
 class _TestHandler extends ResponseInterceptorHandler {
   @override
-  void reject(DioException error, [bool callFollowingErrorInterceptor = false]) {
+  void reject(
+    DioException error, [
+    bool callFollowingErrorInterceptor = false,
+  ]) {
     throw error.error!;
   }
 }
@@ -22,9 +25,38 @@ void main() {
   test('success==1 解包 data', () {
     var authCalled = false;
     final ic = ResponseInterceptor(onAuthError: () => authCalled = true);
-    final resp = _mkResp({'success': 1, 'data': {'k': 'v'}});
+    final resp = _mkResp({
+      'success': 1,
+      'data': {'k': 'v'},
+    });
     ic.onResponse(resp, _TestHandler());
     expect(resp.data, {'k': 'v'});
+    expect(authCalled, isFalse);
+  });
+
+  test('success==1 解包 data 时转译嵌套字符串中的 HTML 实体', () {
+    var authCalled = false;
+    final ic = ResponseInterceptor(onAuthError: () => authCalled = true);
+    final resp = _mkResp({
+      'success': 1,
+      'data': {
+        'title': 'A&amp;B',
+        'tags': [
+          '剧情 &amp; 爱情',
+          {'name': '演员&#x2F;导演'},
+        ],
+      },
+    });
+
+    ic.onResponse(resp, _TestHandler());
+
+    expect(resp.data, {
+      'title': 'A&B',
+      'tags': [
+        '剧情 & 爱情',
+        {'name': '演员/导演'},
+      ],
+    });
     expect(authCalled, isFalse);
   });
 

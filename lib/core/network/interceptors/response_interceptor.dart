@@ -6,6 +6,15 @@ class ResponseInterceptor extends Interceptor {
   ResponseInterceptor({required this.onAuthError});
   final void Function() onAuthError;
 
+  static const _htmlEntities = {
+    'amp': '&',
+    'lt': '<',
+    'gt': '>',
+    'quot': '"',
+    'apos': "'",
+    'nbsp': ' ',
+  };
+
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
     final data = response.data;
@@ -15,12 +24,12 @@ class ResponseInterceptor extends Interceptor {
     }
     final success = data['success'];
     if (success == 1) {
-      response.data = data['data'];
+      response.data = _decodeHtmlEntities(data['data']);
       handler.next(response);
       return;
     }
     final action = (data['action'] as String?) ?? '';
-    final message = data['message'] as String?;
+    final message = _decodeHtmlEntities(data['message']) as String?;
     if (action == ApiErrorActions.jwtVerificationError) {
       onAuthError();
     }
@@ -33,5 +42,37 @@ class ResponseInterceptor extends Interceptor {
         response: response,
       ),
     );
+  }
+
+  Object? _decodeHtmlEntities(Object? value) {
+    if (value is String) {
+      return value.replaceAllMapped(RegExp(r'&(#x[0-9a-fA-F]+|#\d+|\w+);'), (
+        match,
+      ) {
+        final entity = match.group(1)!;
+        if (entity.startsWith('#x')) {
+          final codePoint = int.tryParse(entity.substring(2), radix: 16);
+          return codePoint == null
+              ? match.group(0)!
+              : String.fromCharCode(codePoint);
+        }
+        if (entity.startsWith('#')) {
+          final codePoint = int.tryParse(entity.substring(1));
+          return codePoint == null
+              ? match.group(0)!
+              : String.fromCharCode(codePoint);
+        }
+        return _htmlEntities[entity] ?? match.group(0)!;
+      });
+    }
+    if (value is List) {
+      return value.map(_decodeHtmlEntities).toList();
+    }
+    if (value is Map) {
+      return value.map(
+        (key, entryValue) => MapEntry(key, _decodeHtmlEntities(entryValue)),
+      );
+    }
+    return value;
   }
 }
