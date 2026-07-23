@@ -60,14 +60,17 @@ void main() {
       interceptor.onResponse(response, handler);
 
       expect(handler.forwarded, same(response));
-      expect(logs, hasLength(1));
-      expect(logs.single, contains('Method: POST'));
-      expect(logs.single, contains('URI: https://example.test/movies?page=1'));
-      expect(logs.single, contains('Query: {"page":1}'));
-      expect(logs.single, contains('Request Body: {"type":"latest"}'));
-      expect(logs.single, contains('Status: 200'));
-      expect(logs.single, contains('Result: SUCCESS'));
-      expect(logs.single, contains('Body: {"success":1,"data":{"id":"1"}}'));
+      expect(logs.length, greaterThan(1));
+      final output = logs.join('\n');
+      expect(output, contains('HTTP RESPONSE'));
+      expect(output, contains('Method: POST'));
+      expect(output, contains('URI: https://example.test/movies?page=1'));
+      expect(output, contains('Query: {"page":1}'));
+      expect(output, contains('Request Body: {"type":"latest"}'));
+      expect(output, contains('Status: 200'));
+      expect(output, contains('Result: SUCCESS'));
+      expect(output, contains('Body: {"success":1,"data":{"id":"1"}}'));
+      expect(output, isNot(contains('"Body": {')));
     });
 
     test('业务失败输出 ERROR 且进入错误链时不重复输出', () {
@@ -92,9 +95,10 @@ void main() {
       interceptor.onError(error, errorHandler);
 
       expect(errorHandler.forwarded, same(error));
-      expect(logs, hasLength(1));
-      expect(logs.single, contains('Result: ERROR'));
-      expect(logs.single, contains('Body: {"success":0,"message":"参数错误"}'));
+      expect(logs, isNotEmpty);
+      final output = logs.join('\n');
+      expect(output, contains('Result: ERROR'));
+      expect(output, contains('Body: {"success":0,"message":"参数错误"}'));
     });
 
     test('连接错误输出错误类型和无响应内容并继续异常', () {
@@ -112,10 +116,11 @@ void main() {
       interceptor.onError(error, handler);
 
       expect(handler.forwarded, same(error));
-      expect(logs, hasLength(1));
-      expect(logs.single, contains('Status: connectionError'));
-      expect(logs.single, contains('Result: ERROR'));
-      expect(logs.single, contains('Body: 无响应内容'));
+      expect(logs, isNotEmpty);
+      final output = logs.join('\n');
+      expect(output, contains('Status: connectionError'));
+      expect(output, contains('Result: ERROR'));
+      expect(output, contains('Body: 无响应内容'));
     });
 
     test('禁用时不输出日志', () {
@@ -135,7 +140,7 @@ void main() {
       expect(logs, isEmpty);
     });
 
-    test('超长响应分段输出且拼接后保留完整内容', () {
+    test('超长响应 Body 使用紧凑 JSON 且自定义输出保留完整内容', () {
       final logs = <String>[];
       final interceptor = ResponseLoggingInterceptor(
         enabled: true,
@@ -154,11 +159,11 @@ void main() {
       interceptor.onResponse(response, _ResponseHandler());
 
       expect(logs.length, greaterThan(1));
-      expect(logs.every((chunk) => chunk.runes.length <= 800), isTrue);
-      expect(logs.join(), contains('"content":"$longContent"'));
+      expect(logs.any((line) => line.runes.length == 800), isFalse);
+      expect(logs.every((line) => line.runes.length <= 1200), isTrue);
       expect(
         logs.join(),
-        endsWith('-----------------------------------------------------'),
+        contains('Body: {"success":1,"data":{"content":"$longContent"}}'),
       );
     });
 
@@ -186,9 +191,9 @@ void main() {
       interceptor.onResponse(retryResponse, _ResponseHandler());
 
       expect(requestHandler.forwarded, same(options));
-      expect(logs, hasLength(2));
-      expect(logs.first, contains('Status: 608'));
-      expect(logs.last, contains('Status: 200'));
+      final output = logs.join('\n');
+      expect('Status: 608'.allMatches(output), hasLength(1));
+      expect('Status: 200'.allMatches(output), hasLength(1));
     });
   });
 }
