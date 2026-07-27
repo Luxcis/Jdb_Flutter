@@ -35,22 +35,4 @@ class AppRoutes {
   static const String profileRecent = '/profile/recent';
   static const String profileInfo = '/profile/info';
   static const String profileSettings = '/profile/settings';
-
-  /// 需登录才能访问的路由集合。
-  /// 注意：/profile 主页不需要登录，仅子页面需要。
-  static const Set<String> protectedRoutes = {
-    profileWantWatch,
-    profileWatched,
-    profileFollowing,
-    profileFavorites,
-    profileFavoritesActors,
-    profileFavoritesMakers,
-    profileFavoritesSeries,
-    profileFavoritesDirectors,
-    profileFavoritesCodes,
-    profileFavoritesLists,
-    profileLists,
-    profileRecent,
-    profileInfo,
-  };
 }

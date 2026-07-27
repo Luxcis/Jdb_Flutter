@@ -47,7 +47,7 @@ class AppRouter {
     }
     final from = router.state.uri.toString();
     _allowAuthErrorLoginOnce = true;
-    router.go(
+    router.push(
       Uri(path: AppRoutes.login, queryParameters: {'from': from}).toString(),
     );
   }
@@ -64,10 +64,6 @@ class AppRouter {
 
     if (isLogged && (loc == AppRoutes.login || loc == AppRoutes.register)) {
       return AppRoutes.home;
-    }
-
-    if (!isLogged && AppRoutes.protectedRoutes.contains(loc)) {
-      return '${AppRoutes.login}?from=$loc';
     }
 
     return null;
@@ -157,63 +153,124 @@ class AppRouter {
     ),
     GoRoute(
       path: AppRoutes.profileWantWatch,
-      builder: (c, s) =>
-          const ProfileMovieCollectionPage(title: '我想看的', filterButton: true),
+      builder: (c, s) => _AuthGuard(
+        route: AppRoutes.profileWantWatch,
+        child: const ProfileMovieCollectionPage(title: '我想看的', filterButton: true),
+      ),
     ),
     GoRoute(
       path: AppRoutes.profileWatched,
-      builder: (c, s) =>
-          const ProfileMovieCollectionPage(title: '我看过的', filterButton: true),
+      builder: (c, s) => _AuthGuard(
+        route: AppRoutes.profileWatched,
+        child: const ProfileMovieCollectionPage(title: '我看过的', filterButton: true),
+      ),
     ),
     GoRoute(
       path: AppRoutes.profileFollowing,
-      builder: (c, s) => const ProfileFollowingPage(),
+      builder: (c, s) => _AuthGuard(
+        route: AppRoutes.profileFollowing,
+        child: const ProfileFollowingPage(),
+      ),
     ),
     GoRoute(
       path: AppRoutes.profileFavorites,
-      builder: (c, s) => const ProfileFavoritesPage(),
+      builder: (c, s) => _AuthGuard(
+        route: AppRoutes.profileFavorites,
+        child: const ProfileFavoritesPage(),
+      ),
     ),
     GoRoute(
       path: AppRoutes.profileFavoritesActors,
-      builder: (c, s) => const ProfileFavoriteActorsPage(),
+      builder: (c, s) => _AuthGuard(
+        route: AppRoutes.profileFavoritesActors,
+        child: const ProfileFavoriteActorsPage(),
+      ),
     ),
     GoRoute(
       path: AppRoutes.profileFavoritesMakers,
-      builder: (c, s) => const ProfileNamedCollectionPage(title: '收藏的片商'),
+      builder: (c, s) => _AuthGuard(
+        route: AppRoutes.profileFavoritesMakers,
+        child: const ProfileNamedCollectionPage(title: '收藏的片商'),
+      ),
     ),
     GoRoute(
       path: AppRoutes.profileFavoritesSeries,
-      builder: (c, s) => const ProfileNamedCollectionPage(title: '收藏的系列'),
+      builder: (c, s) => _AuthGuard(
+        route: AppRoutes.profileFavoritesSeries,
+        child: const ProfileNamedCollectionPage(title: '收藏的系列'),
+      ),
     ),
     GoRoute(
       path: AppRoutes.profileFavoritesDirectors,
-      builder: (c, s) => const ProfileNamedCollectionPage(title: '收藏的导演'),
+      builder: (c, s) => _AuthGuard(
+        route: AppRoutes.profileFavoritesDirectors,
+        child: const ProfileNamedCollectionPage(title: '收藏的导演'),
+      ),
     ),
     GoRoute(
       path: AppRoutes.profileFavoritesCodes,
-      builder: (c, s) => const ProfileNamedCollectionPage(title: '收藏的番号'),
+      builder: (c, s) => _AuthGuard(
+        route: AppRoutes.profileFavoritesCodes,
+        child: const ProfileNamedCollectionPage(title: '收藏的番号'),
+      ),
     ),
     GoRoute(
       path: AppRoutes.profileFavoritesLists,
-      builder: (c, s) => const ProfileNamedCollectionPage(title: '收藏的清单'),
+      builder: (c, s) => _AuthGuard(
+        route: AppRoutes.profileFavoritesLists,
+        child: const ProfileNamedCollectionPage(title: '收藏的清单'),
+      ),
     ),
     GoRoute(
       path: AppRoutes.profileLists,
-      builder: (c, s) => const ProfileNamedCollectionPage(title: '我的清单'),
+      builder: (c, s) => _AuthGuard(
+        route: AppRoutes.profileLists,
+        child: const ProfileNamedCollectionPage(title: '我的清单'),
+      ),
     ),
     GoRoute(
       path: AppRoutes.profileRecent,
-      builder: (c, s) => const ProfileMovieCollectionPage(title: '近期浏览'),
+      builder: (c, s) => _AuthGuard(
+        route: AppRoutes.profileRecent,
+        child: const ProfileMovieCollectionPage(title: '近期浏览'),
+      ),
     ),
     GoRoute(
       path: AppRoutes.profileInfo,
-      builder: (c, s) => const ProfileInfoPage(),
+      builder: (c, s) => _AuthGuard(
+        route: AppRoutes.profileInfo,
+        child: const ProfileInfoPage(),
+      ),
     ),
     GoRoute(
       path: AppRoutes.profileSettings,
       builder: (c, s) => const ProfileSettingsPage(),
     ),
   ];
+}
+
+class _AuthGuard extends StatefulWidget {
+  final Widget child;
+  final String route;
+  const _AuthGuard({required this.child, required this.route});
+
+  @override
+  State<_AuthGuard> createState() => _AuthGuardState();
+}
+
+class _AuthGuardState extends State<_AuthGuard> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthProvider>();
+      if (!mounted || auth.isLogged) return;
+      context.push('${AppRoutes.login}?from=${widget.route}');
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _SimpleListPage extends StatelessWidget {
