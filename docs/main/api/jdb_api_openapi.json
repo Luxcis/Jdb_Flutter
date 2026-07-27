@@ -3,7 +3,7 @@
   "info": {
     "title": "JDB API",
     "description": "JDB (JavDB) 移动版完整 API 规范（基于 Flutter APK 逆向分析）。\n\n## 签名机制 (jdsignature)\n\n所有请求必须携带 `jdsignature` 请求头，格式为：`{timestamp}.{d2}.{md5_hash}`\n\n### 签名生成步骤\n1. `timestamp` = 当前 Unix 时间戳（秒）\n2. `d1` = 硬编码的 128 字符十六进制字符串（从 libapp.so 逆向解密得到）\n3. `d2` = `\"lpw6vgqzsp\"`（从 libapp.so 逆向解密得到）\n4. `md5_hash` = MD5(`\"{timestamp}{d1}\"`)\n5. `jdsignature` = `\"{timestamp}.{d2}.{md5_hash}\"`\n\n### 逆向过程\n- `libsecurity.so` 的 `getSecret()` 返回 APK 签名证书 DER hex 前 5 字符 `\"30820\"`\n- `libapp.so` 中存储两个 Base64 编码的加密数组（s1, s2）\n- 解密算法：`md5_hex = MD5(secret)`，然后 `result[i] = arr[i] - ord(md5_hex[min(i,31)])`\n- 解密结果再做 Base64 解码即得 `d1` 和 `d2`\n\n## 认证方式\n- 登录 `POST /api/v1/sessions` 获取 Bearer Token（JWT）\n- 需认证的接口携带 `Authorization: Bearer <token>`\n\n## 自定义请求头\n- `jdsignature`: 动态签名（所有请求必须）\n- `authorization`: Bearer Token（需认证的接口）\n- `accept-language`: 语言（如 zh-CN）\n- `connection`: keep-alive\n\n## 统一响应格式\n```json\n{\n  \"success\": 1,\n  \"action\": null,\n  \"message\": null,\n  \"data\": {}\n}\n```\n`success` 为 1 表示成功，0 表示失败。`data` 可能是对象或数组。\n\n## 2026-07-20 实测修正\n- 修正了7个接口的认证标注（实际需要Bearer但文档标注为公开）\n- 修正了16+个接口的必填参数标注\n- 标记了5个服务端Bug接口（tags, makers, collected_lists等）\n- search_image从GET改为POST（支持文件上传）\n- codes接口标记为不可用",
-    "version": "1.9.35-verified-20260723",
+    "version": "1.9.35-verified-20260727",
     "contact": {
       "name": "JDB"
     }
@@ -41,7 +41,7 @@
     },
     {
       "name": "Ranking",
-      "description": "排行榜（播放排名、综合排名、演员排名）"
+      "description": "排行榜（影片排行、演员排行、播放排行、TOP250 排行）"
     },
     {
       "name": "Review",
@@ -1033,13 +1033,13 @@
     "/api/v1/movies/top": {
       "get": {
         "tags": [
-          "Movie"
+          "Ranking"
         ],
-        "summary": "TOP250排行",
-        "description": "获取 TOP250 排行影片列表（需要认证）。TOP250 页面拥有专用参数: start_rank（起始排名）, type_value, ignore_watched（排除已看过）, limit=50",
+        "summary": "TOP250 排行榜",
+        "description": "获取 TOP250 排行（需要认证）。支持按视频类型（有码/无码/欧美/FC2）及年份筛选。type 参数决定筛选维度：all=全部、video_type=按类型筛选、year=按年份筛选；type_value 为具体值。已实测验证所有筛选有效。",
         "responses": {
           "200": {
-            "description": "成功，data 为 MovieEntity（含 ranking / generated_at 字段）",
+            "description": "成功，data 为 MovieEntity 数组（含 ranking / generated_at 字段）",
             "content": {
               "application/json": {
                 "schema": {
@@ -1065,39 +1065,31 @@
           {
             "name": "start_rank",
             "in": "query",
-            "description": "起始排名",
+            "description": "起始排名。1=第1名起, 51=第51名起, 以此类推",
             "required": false,
             "schema": {
               "type": "integer",
-              "enum": [
-                1,
-                51,
-                101,
-                151,
-                201
-              ],
               "default": 1
             }
           },
           {
             "name": "type",
             "in": "query",
-            "description": "类型筛选。0=有码, 1=无码, all=全部",
+            "description": "筛选维度（必填，否则不生效）。all=全部（type_value 为空）, video_type=按视频类型筛选（type_value=0有码/1无码/2欧美/3FC2）, year=按年份筛选（type_value=2025等）",
             "required": false,
             "schema": {
               "type": "string",
               "enum": [
-                "0",
-                "1",
-                "all"
-              ],
-              "default": "all"
+                "all",
+                "video_type",
+                "year"
+              ]
             }
           },
           {
             "name": "type_value",
             "in": "query",
-            "description": "类型值（type 对应的具体值）",
+            "description": "筛选具体值。video_type 时: 0=有码, 1=无码, 2=欧美, 3=FC2；year 时: 年份如 2025；all 时为空字符串",
             "required": false,
             "schema": {
               "type": "string"
@@ -1106,34 +1098,21 @@
           {
             "name": "ignore_watched",
             "in": "query",
-            "description": "是否排除已看过影片",
+            "description": "是否排除已看过影片（参数格式正确但需有足够已看影片才能观测到效果）",
             "required": false,
             "schema": {
               "type": "string",
               "enum": [
                 "true",
                 "false"
-              ]
-            }
-          },
-          {
-            "name": "period",
-            "in": "query",
-            "description": "排名周期。注意：当前 host 上所有周期返回相同数据",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "daily",
-                "weekly",
-                "monthly"
-              ]
+              ],
+              "default": "false"
             }
           },
           {
             "name": "page",
             "in": "query",
-            "description": "页码，从 1 开始",
+            "description": "页码（与 start_rank 存在叠加效应，建议仅使用 start_rank 控制分页）",
             "required": false,
             "schema": {
               "type": "integer",
@@ -1144,7 +1123,7 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "每页条数",
+            "description": "每页条数（反编译确认客户端硬编码为 50）",
             "required": false,
             "schema": {
               "type": "integer",
@@ -2943,8 +2922,8 @@
         "tags": [
           "Ranking"
         ],
-        "summary": "综合排名",
-        "description": "获取影片综合排名。type和period均为必填参数，示例: type=month&period=all",
+        "summary": "影片排行榜（综合）",
+        "description": "按分类（有码/无码/欧美/FC2）+ 周期（日/周/月）获取影片综合排名。type和period均为必填参数",
         "responses": {
           "200": {
             "description": "成功，data 为 MovieEntity",
@@ -3023,11 +3002,11 @@
         "tags": [
           "Ranking"
         ],
-        "summary": "演员排名",
-        "description": "获取演员排名。type和filter_by均为必填参数",
+        "summary": "演员排行榜",
+        "description": "获取演员排行。type为必填参数，来自排行榜子页面的 topType 路由参数。已知可选值: new_actors（新人演员）、monthly_actors（月度演员）",
         "responses": {
           "200": {
-            "description": "成功，data 为 ActorEntity",
+            "description": "成功，data 为 ActorEntity 数组",
             "content": {
               "application/json": {
                 "schema": {
@@ -3053,25 +3032,13 @@
           {
             "name": "type",
             "in": "query",
-            "description": "类型筛选（必填）",
+            "description": "类型筛选（必填）。从反编译代码确认仅此一个查询参数。已知值: new_actors=新人演员, monthly_actors=月度演员",
             "required": true,
             "schema": {
               "type": "string",
               "enum": [
-                "0"
-              ]
-            }
-          },
-          {
-            "name": "filter_by",
-            "in": "query",
-            "description": "筛选条件（必填）。views=按浏览量, movies_count=按作品数",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "views",
-                "movies_count"
+                "new_actors",
+                "monthly_actors"
               ]
             }
           }
@@ -3088,11 +3055,11 @@
         "tags": [
           "Ranking"
         ],
-        "summary": "播放排名",
-        "description": "获取播放排名。filter_by和period均为必填参数",
+        "summary": "播放排行榜",
+        "description": "按筛选条件（全部/高分）+ 周期（日/周/月）获取播放排行。filter_by和period均为必填参数",
         "responses": {
           "200": {
-            "description": "成功，data 为 SearchNewEntity",
+            "description": "成功，data 为 MovieEntity 数组",
             "content": {
               "application/json": {
                 "schema": {
@@ -3104,7 +3071,7 @@
                       "type": "object",
                       "properties": {
                         "data": {
-                          "$ref": "#/components/schemas/SearchNewEntity"
+                          "$ref": "#/components/schemas/MovieEntity"
                         }
                       }
                     }
@@ -3118,19 +3085,28 @@
           {
             "name": "filter_by",
             "in": "query",
-            "description": "筛选条件（必填）。可选值: all（全部）, high_score（高分）",
+            "description": "筛选条件（必填）。all=全部, high_score=高分",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "all",
+                "high_score"
+              ]
             }
           },
           {
             "name": "period",
             "in": "query",
-            "description": "排名周期（必填）。可选值: daily, weekly, monthly",
+            "description": "排名周期（必填）",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "daily",
+                "weekly",
+                "monthly"
+              ]
             }
           }
         ],
