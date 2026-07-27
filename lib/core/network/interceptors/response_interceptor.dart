@@ -99,8 +99,9 @@ class ResponseInterceptor extends Interceptor {
       return value.map(_decodeHtmlEntities).toList();
     }
     if (value is Map) {
-      return value.map(
-        (key, entryValue) => MapEntry(key, _decodeHtmlEntities(entryValue)),
+      return value.map<String, dynamic>(
+        (key, entryValue) =>
+            MapEntry(key.toString(), _decodeHtmlEntities(entryValue)),
       );
     }
     return value;

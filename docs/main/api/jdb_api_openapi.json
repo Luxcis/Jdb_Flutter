@@ -3003,10 +3003,10 @@
           "Ranking"
         ],
         "summary": "演员排行榜",
-        "description": "获取演员排行。type为必填参数，来自排行榜子页面的 topType 路由参数。已知可选值: new_actors（新人演员）、monthly_actors（月度演员）",
+        "description": "获取演员排行。type 为必填整数参数，反编译确认仅此一个查询参数（无 filter_by）。已实测验证: type=0 返回有码演员日榜（95人）、type=1 返回无码演员周榜（81人）、type=2 返回欧美演员（81人）。type=3+ 回退到默认同 type=0",
         "responses": {
           "200": {
-            "description": "成功，data 为 ActorEntity 数组",
+            "description": "成功，data.actors 为 ActorEntity 数组（含 id/name/name_zht/other_name/avatar_url 字段）",
             "content": {
               "application/json": {
                 "schema": {
@@ -3018,7 +3018,15 @@
                       "type": "object",
                       "properties": {
                         "data": {
-                          "$ref": "#/components/schemas/ActorEntity"
+                          "type": "object",
+                          "properties": {
+                            "actors": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/ActorEntity"
+                              }
+                            }
+                          }
                         }
                       }
                     }
@@ -3032,13 +3040,14 @@
           {
             "name": "type",
             "in": "query",
-            "description": "类型筛选（必填）。从反编译代码确认仅此一个查询参数。已知值: new_actors=新人演员, monthly_actors=月度演员",
+            "description": "排名类型（必填）。0=有码榜（95人）, 1=无码榜（81人）, 2=欧美（81人）。其他值回退到默认同 type=0",
             "required": true,
             "schema": {
-              "type": "string",
+              "type": "integer",
               "enum": [
-                "new_actors",
-                "monthly_actors"
+                0,
+                1,
+                2
               ]
             }
           }

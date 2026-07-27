@@ -75,6 +75,26 @@ void main() {
     expect(authCalled, isFalse);
   });
 
+  test('success==1 解包 data 后将嵌套 Map 规范化为 String key', () {
+    var authCalled = false;
+    final ic = ResponseInterceptor(onAuthError: () => authCalled = true);
+    final resp = _mkResp({
+      'success': 1,
+      'data': <dynamic, Object?>{
+        'token': 'jwt-token',
+        'user': <dynamic, Object?>{'id': 1, 'username': 'test'},
+      },
+    });
+
+    ic.onResponse(resp, _TestHandler());
+
+    final data = resp.data as Map<String, dynamic>;
+    expect(data['token'], 'jwt-token');
+    expect(data['user'], isA<Map<String, dynamic>>());
+    expect(data['user'], {'id': 1, 'username': 'test'});
+    expect(authCalled, isFalse);
+  });
+
   test('success==0 抛 ApiException 且非鉴权不调 onAuthError', () {
     var authCalled = false;
     final ic = ResponseInterceptor(onAuthError: () => authCalled = true);

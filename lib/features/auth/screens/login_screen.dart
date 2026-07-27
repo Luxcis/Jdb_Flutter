@@ -1,12 +1,13 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/api_exception.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/storage/storage_keys.dart';
-import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -48,18 +49,21 @@ class _LoginPageState extends State<LoginPage> {
       _error = null;
     });
     try {
-      final resp = await api.post(Endpoints.sessions, data: {
-        'username': _emailCtrl.text.trim(),
-        'password': _passCtrl.text,
-        'device_uuid': await _getDeviceUuid(),
-        'device_name': 'Jade',
-        'device_model': 'Flutter',
-        'platform': 'android',
-        'system_version': '14',
-        'app_channel': 'google',
-        'app_version': '1.9.29',
-        'app_version_number': '35',
-      });
+      final resp = await api.post(
+        Endpoints.sessions,
+        data: FormData.fromMap({
+          'username': _emailCtrl.text.trim(),
+          'password': _passCtrl.text,
+          'device_uuid': await _getDeviceUuid(),
+          'device_name': 'Jade',
+          'device_model': 'Flutter',
+          'platform': 'android',
+          'system_version': '14',
+          'app_channel': 'google',
+          'app_version': '1.9.35',
+          'app_version_number': '35',
+        }),
+      );
       final data = resp.data;
       final token = data['token'] as String;
       final user = data['user'] as Map<String, dynamic>;
@@ -98,71 +102,71 @@ class _LoginPageState extends State<LoginPage> {
         appBar: AppBar(title: const Text('登录')),
         body: Padding(
           padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (hasFrom)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Text(
-                  '请登录后继续',
-                  style: Theme.of(context).textTheme.titleMedium,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (hasFrom)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Text(
+                    '请登录后继续',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              TextField(
+                controller: _emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: '邮箱',
+                  border: OutlineInputBorder(),
                 ),
               ),
-            TextField(
-              controller: _emailCtrl,
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: '邮箱',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _passCtrl,
-              obscureText: true,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => _login(),
-              decoration: const InputDecoration(
-                labelText: '密码',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _loading ? null : _login,
-                child: _loading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('登录'),
-              ),
-            ),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Text(
-                  _error!,
-                  style: const TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center,
+              const SizedBox(height: 12),
+              TextField(
+                controller: _passCtrl,
+                obscureText: true,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _login(),
+                decoration: const InputDecoration(
+                  labelText: '密码',
+                  border: OutlineInputBorder(),
                 ),
               ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () {
-                final to = hasFrom ? '/register?from=$from' : '/register';
-                context.push(to);
-              },
-              child: const Text('没有账号？立即注册'),
-            ),
-          ],
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _loading ? null : _login,
+                  child: _loading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('登录'),
+                ),
+              ),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () {
+                  final to = hasFrom ? '/register?from=$from' : '/register';
+                  context.push(to);
+                },
+                child: const Text('没有账号？立即注册'),
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
