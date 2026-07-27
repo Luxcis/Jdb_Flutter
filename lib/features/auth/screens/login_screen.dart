@@ -88,10 +88,16 @@ class _LoginPageState extends State<LoginPage> {
     final from = GoRouterState.of(context).uri.queryParameters['from'] ?? '';
     final hasFrom = from.isNotEmpty;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('登录')),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        context.go(hasFrom ? from : '/home');
+      },
+      child: Scaffold(
+        appBar: AppBar(title: const Text('登录')),
+        body: Padding(
+          padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -156,6 +162,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

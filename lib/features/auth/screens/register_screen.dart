@@ -99,10 +99,16 @@ class _RegisterPageState extends State<RegisterPage> {
         GoRouterState.of(context).uri.queryParameters['from'] ?? '';
     final hasFrom = from.isNotEmpty;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('注册')),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        context.go(hasFrom ? from : '/login');
+      },
+      child: Scaffold(
+        appBar: AppBar(title: const Text('注册')),
+        body: Padding(
+          padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -178,6 +184,7 @@ class _RegisterPageState extends State<RegisterPage> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
