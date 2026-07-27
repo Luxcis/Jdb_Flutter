@@ -3,7 +3,7 @@
   "info": {
     "title": "JDB API",
     "description": "JDB (JavDB) 移动版完整 API 规范（基于 Flutter APK 逆向分析）。\n\n## 签名机制 (jdsignature)\n\n所有请求必须携带 `jdsignature` 请求头，格式为：`{timestamp}.{d2}.{md5_hash}`\n\n### 签名生成步骤\n1. `timestamp` = 当前 Unix 时间戳（秒）\n2. `d1` = 硬编码的 128 字符十六进制字符串（从 libapp.so 逆向解密得到）\n3. `d2` = `\"lpw6vgqzsp\"`（从 libapp.so 逆向解密得到）\n4. `md5_hash` = MD5(`\"{timestamp}{d1}\"`)\n5. `jdsignature` = `\"{timestamp}.{d2}.{md5_hash}\"`\n\n### 逆向过程\n- `libsecurity.so` 的 `getSecret()` 返回 APK 签名证书 DER hex 前 5 字符 `\"30820\"`\n- `libapp.so` 中存储两个 Base64 编码的加密数组（s1, s2）\n- 解密算法：`md5_hex = MD5(secret)`，然后 `result[i] = arr[i] - ord(md5_hex[min(i,31)])`\n- 解密结果再做 Base64 解码即得 `d1` 和 `d2`\n\n## 认证方式\n- 登录 `POST /api/v1/sessions` 获取 Bearer Token（JWT）\n- 需认证的接口携带 `Authorization: Bearer <token>`\n\n## 自定义请求头\n- `jdsignature`: 动态签名（所有请求必须）\n- `authorization`: Bearer Token（需认证的接口）\n- `accept-language`: 语言（如 zh-CN）\n- `connection`: keep-alive\n\n## 统一响应格式\n```json\n{\n  \"success\": 1,\n  \"action\": null,\n  \"message\": null,\n  \"data\": {}\n}\n```\n`success` 为 1 表示成功，0 表示失败。`data` 可能是对象或数组。\n\n## 2026-07-20 实测修正\n- 修正了7个接口的认证标注（实际需要Bearer但文档标注为公开）\n- 修正了16+个接口的必填参数标注\n- 标记了5个服务端Bug接口（tags, makers, collected_lists等）\n- search_image从GET改为POST（支持文件上传）\n- codes接口标记为不可用",
-    "version": "1.9.35-verified-20260722",
+    "version": "1.9.35-verified-20260723",
     "contact": {
       "name": "JDB"
     }
@@ -88,6 +88,17 @@
         ],
         "summary": "登录",
         "description": "用户登录，验证用户名密码及设备信息后返回用户信息和 Bearer Token",
+        "requestBody": {
+          "description": "登录请求体（FormData 表单格式，所有字段均为字符串）",
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "登录成功，data 为 UserInfoEntity (含 Token)",
@@ -110,15 +121,37 @@
                 }
               }
             }
-          }
-        },
-        "requestBody": {
-          "description": "登录请求体",
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LoginRequest"
+          },
+          "422": {
+            "description": "登录失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                },
+                "examples": {
+                  "账号不存在": {
+                    "value": {
+                      "success": 0,
+                      "action": "NonExistentUser",
+                      "message": "帳號不存在"
+                    }
+                  },
+                  "密码错误": {
+                    "value": {
+                      "success": 0,
+                      "action": "InvalidSignature",
+                      "message": "無效的簽名"
+                    }
+                  },
+                  "需要激活": {
+                    "value": {
+                      "success": 0,
+                      "action": "InActiveUser",
+                      "message": "账号未激活"
+                    }
+                  }
+                }
               }
             }
           }
@@ -796,10 +829,10 @@
           "Movie"
         ],
         "summary": "最新影片",
-        "description": "获取最新影片列表（分页）",
+        "description": "获取最新影片列表（分页）。\n\n### 参数交互规则\n- `filter_by=all` 时，客户端强制 `sort_by=release`\n- `filter_by` 非 `all` 时，默认 `sort_by=update`\n- `order_by` 仅对 `sort_by=release` 生效\n\n### 场景示例\n- 首页最新全部：`type=all&filter_by=all&sort_by=release&order_by=desc&page=1&limit=48`\n- 近期磁链更新（首页卡片）：`type=all&filter_by=magnets&sort_by=update&page=1&limit=18`\n- 新上架可播放（首页卡片）：`type=all&filter_by=can_play&sort_by=update&page=1&limit=18`",
         "responses": {
           "200": {
-            "description": "成功，data 为 MovieEntity 或 SearchNewEntity",
+            "description": "成功，data 包含 movies 数组和 current_page",
             "content": {
               "application/json": {
                 "schema": {
@@ -825,37 +858,60 @@
           {
             "name": "type",
             "in": "query",
-            "description": "类型筛选，可选值: all",
+            "description": "类型筛选",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "all"
+              ],
+              "default": "all"
             }
           },
           {
             "name": "filter_by",
             "in": "query",
-            "description": "筛选条件。可选值: all, magnets, can_play, subtitle。默认首页用 magnets+sort_by=update",
+            "description": "筛选条件。all=全部, magnets=可下载（有磁链）, can_play=可播放, subtitle=含字幕",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "all",
+                "magnets",
+                "can_play",
+                "subtitle"
+              ],
+              "default": "magnets"
             }
           },
           {
             "name": "sort_by",
             "in": "query",
-            "description": "排序字段。可选值: release, update, score, hit, want_watch_count, watched_count",
+            "description": "排序字段。release=发布日期, update=更新时间, score=评分, hit=热度, want_watch_count=想看数, watched_count=看过数",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "release",
+                "update",
+                "score",
+                "hit",
+                "want_watch_count",
+                "watched_count"
+              ]
             }
           },
           {
             "name": "order_by",
             "in": "query",
-            "description": "排序方向。可选值: asc, desc（仅 sort_by=release 时有效）",
+            "description": "排序方向。仅 sort_by=release 时有效",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
             }
           },
           {
@@ -864,16 +920,19 @@
             "description": "页码，从 1 开始",
             "required": false,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
             }
           },
           {
             "name": "limit",
             "in": "query",
-            "description": "每页条数（默认 48）",
+            "description": "每页条数。标准列表页用 48，首页卡片条用 18",
             "required": false,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "default": 48
             }
           }
         ],
@@ -1006,19 +1065,33 @@
           {
             "name": "start_rank",
             "in": "query",
-            "description": "起始排名（1-250），可选值: 1, 51, 101, 151, 201",
+            "description": "起始排名",
             "required": false,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "enum": [
+                1,
+                51,
+                101,
+                151,
+                201
+              ],
+              "default": 1
             }
           },
           {
             "name": "type",
             "in": "query",
-            "description": "类型筛选。可选值: 0, 1, all",
+            "description": "类型筛选。0=有码, 1=无码, all=全部",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "0",
+                "1",
+                "all"
+              ],
+              "default": "all"
             }
           },
           {
@@ -1033,19 +1106,28 @@
           {
             "name": "ignore_watched",
             "in": "query",
-            "description": "是否排除已看过影片。可选值: true, false",
+            "description": "是否排除已看过影片",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
             }
           },
           {
             "name": "period",
             "in": "query",
-            "description": "排名周期。可选值: daily, weekly, monthly（注意：当前 host 上所有周期返回相同数据）",
+            "description": "排名周期。注意：当前 host 上所有周期返回相同数据",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "daily",
+                "weekly",
+                "monthly"
+              ]
             }
           },
           {
@@ -1054,16 +1136,19 @@
             "description": "页码，从 1 开始",
             "required": false,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
             }
           },
           {
             "name": "limit",
             "in": "query",
-            "description": "每页条数（默认 50）",
+            "description": "每页条数",
             "required": false,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "default": 50
             }
           }
         ],
@@ -1182,37 +1267,52 @@
           {
             "name": "sort_by",
             "in": "query",
-            "description": "排序字段。可选值: release, update, score, hit, want_watch_count, watched_count",
+            "description": "排序字段。release=发布日期, update=更新时间, score=评分, hit=热度, want_watch_count=想看数, watched_count=看过数",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "release",
+                "update",
+                "score",
+                "hit",
+                "want_watch_count",
+                "watched_count"
+              ]
             }
           },
           {
             "name": "order_by",
             "in": "query",
-            "description": "排序方向。可选值: asc, desc",
+            "description": "排序方向。仅 sort_by=release 时有效",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
             }
           },
           {
             "name": "page",
             "in": "query",
-            "description": "页码，从 1 开始（默认 1）",
+            "description": "页码，从 1 开始",
             "required": false,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
             }
           },
           {
             "name": "limit",
             "in": "query",
-            "description": "每页条数（默认 48）",
+            "description": "每页条数",
             "required": false,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "default": 48
             }
           },
           {
@@ -1478,10 +1578,15 @@
           {
             "name": "sort_by",
             "in": "query",
-            "description": "排序字段",
+            "description": "排序方式。hotly=按热度排序（默认），recently=按最新排序",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "hotly",
+                "recently"
+              ],
+              "default": "hotly"
             }
           },
           {
@@ -1490,16 +1595,18 @@
             "description": "页码，从 1 开始",
             "required": false,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "default": 1
             }
           },
           {
             "name": "limit",
             "in": "query",
-            "description": "每页条数",
+            "description": "每页条数，客户端固定为 48",
             "required": false,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "default": 48
             }
           }
         ],
@@ -1776,10 +1883,19 @@
           {
             "name": "type",
             "in": "query",
-            "description": "搜索类型。可选值: movie（默认）, actor, series, maker, director, code",
+            "description": "搜索类型",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "movie",
+                "actor",
+                "series",
+                "maker",
+                "director",
+                "code"
+              ],
+              "default": "movie"
             }
           },
           {
@@ -1794,19 +1910,31 @@
           {
             "name": "movie_sort_by",
             "in": "query",
-            "description": "排序字段（type=movie 时有效）。可选值: relevance, release, update, score",
+            "description": "排序字段（type=movie 时有效）。relevance=相关性, release=发布日期, update=更新时间, score=评分",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "relevance",
+                "release",
+                "update",
+                "score"
+              ]
             }
           },
           {
             "name": "movie_filter_by",
             "in": "query",
-            "description": "筛选条件（type=movie 时有效）。可选值: all, can_play, magnets, subtitle",
+            "description": "筛选条件（type=movie 时有效）。all=全部, can_play=可播放, magnets=可下载, subtitle=含字幕",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "all",
+                "can_play",
+                "magnets",
+                "subtitle"
+              ]
             }
           },
           {
@@ -1815,7 +1943,9 @@
             "description": "页码，从 1 开始",
             "required": false,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
             }
           },
           {
@@ -1824,7 +1954,8 @@
             "description": "每页条数",
             "required": false,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "default": 48
             }
           }
         ],
@@ -2845,16 +2976,27 @@
             "description": "分类（必填）。0=有码(Censored), 1=无码(Uncensored), 2=欧美(Western), 3=FC2",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "0",
+                "1",
+                "2",
+                "3"
+              ]
             }
           },
           {
             "name": "period",
             "in": "query",
-            "description": "排名周期（必填）。可选值: daily, weekly, monthly",
+            "description": "排名周期（必填）",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "daily",
+                "weekly",
+                "monthly"
+              ]
             }
           },
           {
@@ -2863,7 +3005,9 @@
             "description": "页码，从 1 开始",
             "required": false,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
             }
           }
         ],
@@ -2909,19 +3053,26 @@
           {
             "name": "type",
             "in": "query",
-            "description": "类型筛选（必填）。可选值: 0",
+            "description": "类型筛选（必填）",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "0"
+              ]
             }
           },
           {
             "name": "filter_by",
             "in": "query",
-            "description": "筛选条件（必填）。可选值: views, movies_count",
+            "description": "筛选条件（必填）。views=按浏览量, movies_count=按作品数",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "views",
+                "movies_count"
+              ]
             }
           }
         ],
@@ -3025,10 +3176,16 @@
           {
             "name": "period",
             "in": "query",
-            "description": "周期（必填）。可选值: weekly, monthly, yearly, all",
+            "description": "周期（必填）",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "weekly",
+                "monthly",
+                "yearly",
+                "all"
+              ]
             }
           },
           {
@@ -3037,16 +3194,19 @@
             "description": "页码，从 1 开始",
             "required": false,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
             }
           },
           {
             "name": "limit",
             "in": "query",
-            "description": "每页条数（汇编默认 48）",
+            "description": "每页条数",
             "required": false,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "default": 48
             }
           }
         ],
@@ -3333,8 +3493,8 @@
         "tags": [
           "List"
         ],
-        "summary": "创建片单",
-        "description": "创建新片单",
+        "summary": "创建片单并存入影片",
+        "description": "创建新片单，同时将当前影片存入。请求体使用 multipart/form-data 格式。用于影片详情页「存入清单」弹窗中的新建清单功能。",
         "responses": {
           "200": {
             "description": "创建成功，返回 BaseEntity",
@@ -3356,10 +3516,10 @@
           }
         ],
         "requestBody": {
-          "description": "创建片单请求体",
+          "description": "创建片单请求体（multipart/form-data）",
           "required": true,
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
                 "$ref": "#/components/schemas/CreateListRequest"
               }
@@ -3373,8 +3533,8 @@
         "tags": [
           "List"
         ],
-        "summary": "简版片单",
-        "description": "获取简版片单列表",
+        "summary": "简版片单（含影片是否在清单的标记）",
+        "description": "获取用户片单列表，同时标记指定影片是否已在每个清单中。用于影片详情页「存入清单」弹窗。每页默认返回48条，返回>=24条时支持上拉加载更多。",
         "responses": {
           "200": {
             "description": "成功，data 为 MovieListsEntity",
@@ -3399,6 +3559,37 @@
             }
           }
         },
+        "parameters": [
+          {
+            "name": "movie_id",
+            "in": "query",
+            "description": "影片ID，用于标记每个清单的 has_movie 字段",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 48
+            }
+          }
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -3612,47 +3803,7 @@
           "List"
         ],
         "summary": "收藏片单",
-        "description": "收藏指定片单",
-        "responses": {
-          "200": {
-            "description": "操作成功，返回 BaseEntity",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseEntity"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          },
-          {
-            "jdsignature": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "list_id",
-            "in": "path",
-            "description": "片单 ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ]
-      }
-    },
-    "/api/v1/lists/{list_id}/movie_actions": {
-      "post": {
-        "tags": [
-          "List"
-        ],
-        "summary": "添加/移除影片",
-        "description": "向片单添加或从中移除影片",
+        "description": "收藏/取消收藏指定片单。请求体使用 multipart/form-data 格式。",
         "responses": {
           "200": {
             "description": "操作成功，返回 BaseEntity",
@@ -3685,10 +3836,70 @@
           }
         ],
         "requestBody": {
-          "description": "添加/移除影片请求体",
+          "description": "收藏片单请求体（multipart/form-data）",
           "required": true,
           "content": {
-            "application/json": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "片单名称"
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lists/{list_id}/movie_actions": {
+      "post": {
+        "tags": [
+          "List"
+        ],
+        "summary": "添加/移除影片",
+        "description": "向片单添加或从中移除影片。客户端采用乐观更新策略：先更新本地 UI 状态（切换 has_movie 标记、更新 movies_count），再调用此接口。请求体使用 multipart/form-data 格式。",
+        "responses": {
+          "200": {
+            "description": "操作成功，返回 BaseEntity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseEntity"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "jdsignature": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "list_id",
+            "in": "path",
+            "description": "片单 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "添加/移除影片请求体（multipart/form-data）",
+          "required": true,
+          "content": {
+            "multipart/form-data": {
               "schema": {
                 "$ref": "#/components/schemas/ListMovieActionRequest"
               }
@@ -5649,44 +5860,49 @@
       },
       "DeviceInfo": {
         "type": "object",
-        "description": "设备与应用信息，用于登录、注册等需要设备指纹的请求",
+        "description": "设备与应用信息，用于登录、注册等需要设备指纹的请求 (反编译自 LoginPagePresenter.login 参数)",
         "properties": {
           "device_uuid": {
             "type": "string",
-            "description": "设备唯一标识"
+            "description": "设备唯一标识 (login 第6参数, fp-0x40)"
           },
           "device_name": {
             "type": "string",
-            "description": "设备名称"
+            "description": "设备名称 (login 第5参数, fp-0x38)"
           },
           "device_model": {
             "type": "string",
-            "description": "设备型号"
+            "description": "设备型号 (login 第3参数, fp-0x30)"
           },
           "platform": {
             "type": "string",
-            "description": "平台标识 (android / ios)"
+            "description": "平台标识 (硬编码 \"android\")",
+            "enum": [
+              "android",
+              "ios",
+              "web"
+            ]
           },
           "system_version": {
             "type": "string",
-            "description": "操作系统版本"
+            "description": "操作系统版本 (login 第9参数, fp-0x18)"
           },
           "app_channel": {
             "type": "string",
-            "description": "应用渠道"
+            "description": "应用渠道 (login 第2参数, fp-0x28)"
           },
           "app_version": {
             "type": "string",
-            "description": "应用版本名"
+            "description": "应用版本名 (硬编码 \"official\")"
           },
           "app_version_number": {
             "type": "string",
-            "description": "应用版本号"
+            "description": "应用版本号 (硬编码 \"1.9.35\")"
           }
         }
       },
       "LoginRequest": {
-        "description": "登录请求体",
+        "description": "登录请求体（FormData 编码，所有字段均为字符串）",
         "allOf": [
           {
             "$ref": "#/components/schemas/DeviceInfo"
@@ -5696,11 +5912,11 @@
             "properties": {
               "username": {
                 "type": "string",
-                "description": "用户名或邮箱"
+                "description": "用户名或邮箱 (反编译: LoginPagePresenter.login 第8参数)"
               },
               "password": {
                 "type": "string",
-                "description": "密码",
+                "description": "密码 (反编译: LoginPagePresenter.login 第7参数)",
                 "format": "password"
               }
             },
@@ -5940,15 +6156,15 @@
       },
       "CreateListRequest": {
         "type": "object",
-        "description": "创建片单请求体",
+        "description": "创建片单请求体（multipart/form-data）。创建新片单同时将指定影片存入。",
         "properties": {
           "name": {
             "type": "string",
-            "description": "片单名称"
+            "description": "新片单名称"
           },
           "movie_id": {
             "type": "string",
-            "description": "影片 ID"
+            "description": "同时存入的影片 ID"
           }
         },
         "required": [
@@ -5958,11 +6174,11 @@
       },
       "UpdateListRequest": {
         "type": "object",
-        "description": "更新片单请求体",
+        "description": "更新片单请求体（application/json）",
         "properties": {
           "name": {
             "type": "string",
-            "description": "片单名称"
+            "description": "片单新名称"
           }
         },
         "required": [
@@ -5971,7 +6187,7 @@
       },
       "ListMovieActionRequest": {
         "type": "object",
-        "description": "片单添加/移除影片请求体",
+        "description": "片单添加/移除影片请求体（multipart/form-data）。客户端先根据当前 has_movie 状态决定操作类型并乐观更新 UI，再发送此请求。",
         "properties": {
           "movie_id": {
             "type": "string",
@@ -5979,7 +6195,7 @@
           },
           "name": {
             "type": "string",
-            "description": "片单名称"
+            "description": "片单名称（用于服务端追踪/日志）"
           }
         },
         "required": [
@@ -6138,6 +6354,28 @@
           "app_version"
         ]
       },
+      "FollowTagItem": {
+        "type": "object",
+        "description": "用户关注的标签项 (反编译自 FolllowTagItem, class id 4779, size 0x18)",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "标签ID (field_7)"
+          },
+          "name": {
+            "type": "string",
+            "description": "标签名称 (field_b)"
+          },
+          "value": {
+            "type": "string",
+            "description": "标签值 (field_f)"
+          },
+          "priority": {
+            "type": "number",
+            "description": "优先级权重 (field_13, double?)"
+          }
+        }
+      },
       "UserInfoEntity": {
         "type": "object",
         "description": "用户信息实体（登录后返回），包含用户基本信息与认证 Token",
@@ -6148,17 +6386,17 @@
           },
           "token": {
             "type": "string",
-            "description": "认证Token"
+            "description": "认证Token (field_b, JWT Bearer Token)"
           },
           "banner_type": {
             "type": "string",
-            "description": "横幅类型"
+            "description": "横幅类型 (field_f)"
           },
           "following_tags": {
             "type": "array",
-            "description": "已关注标签",
+            "description": "已关注标签列表 (field_13, List<FolllowTagItem>?)",
             "items": {
-              "type": "object"
+              "$ref": "#/components/schemas/FollowTagItem"
             }
           }
         }
@@ -6748,14 +6986,14 @@
       },
       "MovieListsEntity": {
         "type": "object",
-        "description": "片单列表实体（分页）",
+        "description": "片单列表实体（分页）。lists 数组中每个元素的 has_movie 字段标记当前影片是否已在对应清单中。",
         "additionalProperties": true,
         "properties": {
           "lists": {
             "type": "array",
             "description": "片单列表",
             "items": {
-              "type": "object"
+              "$ref": "#/components/schemas/MovieListsItem"
             }
           },
           "current_page": {
@@ -6782,8 +7020,7 @@
             "description": "是否已收藏"
           },
           "list": {
-            "type": "object",
-            "description": "片单详情"
+            "$ref": "#/components/schemas/MovieListsItem"
           }
         }
       },
@@ -7248,46 +7485,66 @@
       },
       "User": {
         "type": "object",
-        "description": "用户信息",
+        "description": "用户信息 (反编译自 User, class id 4780, size 0x3c)",
         "properties": {
           "id": {
-            "type": "integer"
+            "type": "integer",
+            "description": "用户ID (field_7)"
           },
           "username": {
-            "type": "string"
+            "type": "string",
+            "description": "用户名 (field_b)"
           },
           "email": {
-            "type": "string"
+            "type": "string",
+            "description": "邮箱 (field_f)"
           },
           "is_vip": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "是否VIP (field_13)"
           },
           "want_watch_count": {
-            "type": "integer"
+            "type": "integer",
+            "description": "想看数量 (field_1b)"
           },
           "watched_count": {
-            "type": "integer"
+            "type": "integer",
+            "description": "已看数量 (field_1f)"
           },
           "vip_expired_at": {
-            "type": "string"
+            "type": "string",
+            "description": "VIP过期时间 (field_17[0])",
+            "nullable": true
           },
           "share_url": {
-            "type": "string"
+            "type": "string",
+            "description": "分享链接 (field_23)",
+            "nullable": true
           },
           "promotion_code": {
-            "type": "string"
+            "type": "string",
+            "description": "推广码 (field_27)",
+            "nullable": true
           },
           "promotion_days": {
-            "type": "integer"
+            "type": "integer",
+            "description": "推广天数 (field_2b)",
+            "nullable": true
           },
           "promote_users_count": {
-            "type": "integer"
+            "type": "integer",
+            "description": "推广用户数 (field_2f)",
+            "nullable": true
           },
           "checkin_days": {
-            "type": "integer"
+            "type": "integer",
+            "description": "签到天数 (field_33)",
+            "nullable": true
           },
           "last_checkin_at": {
-            "type": "string"
+            "type": "string",
+            "description": "最后签到时间 (field_37)",
+            "nullable": true
           }
         }
       },
@@ -7686,43 +7943,55 @@
       },
       "MovieListsItem": {
         "type": "object",
-        "description": "片单项",
+        "description": "片单项。has_movie 字段在 /lists/simple 接口中返回，标记指定影片是否已在当前清单中。",
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "description": "片单 ID"
           },
           "type": {
-            "type": "string"
+            "type": "integer",
+            "description": "片单类型"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "片单名称"
           },
           "privacy": {
-            "type": "string"
+            "type": "string",
+            "description": "隐私设置"
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "description": "片单描述"
           },
           "movies_count": {
-            "type": "integer"
+            "type": "integer",
+            "description": "影片数量"
           },
           "views_count": {
-            "type": "integer"
+            "type": "integer",
+            "description": "浏览数"
           },
           "collections_count": {
-            "type": "integer"
+            "type": "integer",
+            "description": "被收藏数"
           },
           "is_default": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "是否默认清单"
           },
           "share_info": {
-            "type": "object"
+            "type": "string",
+            "description": "分享信息"
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "description": "创建时间"
           },
           "has_movie": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "当前影片是否已在清单中（仅 /lists/simple 接口返回）。true=已在清单中(显示移除)，false/null=不在清单中(显示添加)"
           }
         }
       },
