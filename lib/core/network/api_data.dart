@@ -165,6 +165,7 @@ Map<String, dynamic> normalizeListModelJson(Map<String, dynamic> json) {
     'name': apiString(json['name'] ?? json['title']) ?? '',
     'movie_count': apiInt(json['movie_count'] ?? json['movies_count'], 0),
     'viewed_count': apiInt(json['viewed_count'] ?? json['views_count'], 0),
+    'has_movie': apiBool(json['has_movie'], false),
   };
 }
 

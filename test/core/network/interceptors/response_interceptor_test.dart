@@ -21,6 +21,21 @@ class _TestHandler extends ResponseInterceptorHandler {
   }
 }
 
+class _TestErrorHandler extends ErrorInterceptorHandler {
+  @override
+  void reject(
+    DioException error, [
+    bool callFollowingErrorInterceptor = false,
+  ]) {
+    throw error.error ?? error;
+  }
+
+  @override
+  void next(DioException error) {
+    throw error.error ?? error;
+  }
+}
+
 void main() {
   test('success==1 解包 data', () {
     var authCalled = false;
@@ -85,6 +100,41 @@ void main() {
     });
     expect(
       () => ic.onResponse(resp, _TestHandler()),
+      throwsA(isA<ApiException>()),
+    );
+    expect(authCalled, isTrue);
+  });
+
+  test('NonExistentUser 触发 onAuthError 并抛异常', () {
+    var authCalled = false;
+    final ic = ResponseInterceptor(onAuthError: () => authCalled = true);
+    final resp = _mkResp({
+      'success': 0,
+      'action': ApiErrorActions.nonExistentUser,
+      'message': '用戶不存在',
+    });
+    expect(
+      () => ic.onResponse(resp, _TestHandler()),
+      throwsA(isA<ApiException>()),
+    );
+    expect(authCalled, isTrue);
+  });
+
+  test('HTTP 401 错误响应中的鉴权 action 触发 onAuthError', () {
+    var authCalled = false;
+    final ic = ResponseInterceptor(onAuthError: () => authCalled = true);
+    final error = DioException(
+      requestOptions: RequestOptions(path: '/x'),
+      response: _mkResp({
+        'success': 0,
+        'action': ApiErrorActions.jwtVerificationError,
+        'message': '請登錄帳號',
+      })..statusCode = 401,
+      type: DioExceptionType.badResponse,
+    );
+
+    expect(
+      () => ic.onError(error, _TestErrorHandler()),
       throwsA(isA<ApiException>()),
     );
     expect(authCalled, isTrue);

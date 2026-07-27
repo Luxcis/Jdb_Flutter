@@ -30,7 +30,7 @@ class ResponseInterceptor extends Interceptor {
     }
     final action = (data['action'] as String?) ?? '';
     final message = _decodeHtmlEntities(data['message']) as String?;
-    if (action == ApiErrorActions.jwtVerificationError) {
+    if (_isAuthAction(action)) {
       onAuthError();
     }
     final ex = ApiException.fromAction(action, message);
@@ -43,6 +43,36 @@ class ResponseInterceptor extends Interceptor {
       ),
     );
   }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    final response = err.response;
+    final data = response?.data;
+    if (data is Map) {
+      final action = (data['action'] as String?) ?? '';
+      final message = _decodeHtmlEntities(data['message']) as String?;
+      if (_isAuthAction(action)) {
+        onAuthError();
+        handler.reject(
+          DioException(
+            requestOptions: err.requestOptions,
+            error: ApiException.fromAction(action, message),
+            type: err.type,
+            response: response,
+          ),
+        );
+        return;
+      }
+    }
+    if (response?.statusCode == 401) {
+      onAuthError();
+    }
+    handler.next(err);
+  }
+
+  bool _isAuthAction(String action) =>
+      action == ApiErrorActions.jwtVerificationError ||
+      action == ApiErrorActions.nonExistentUser;
 
   Object? _decodeHtmlEntities(Object? value) {
     if (value is String) {

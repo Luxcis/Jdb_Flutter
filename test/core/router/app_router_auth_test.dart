@@ -19,8 +19,7 @@ void main() {
     return auth;
   }
 
-  testWidgets('未登录访问 protectedRoutes 重定向到 /login',
-      (tester) async {
+  testWidgets('未登录访问 protectedRoutes 重定向到 /login', (tester) async {
     final auth = await createAuth(false);
     final router = AppRouter.build();
     await tester.pumpWidget(
@@ -88,5 +87,23 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(router.state.matchedLocation, AppRoutes.home);
+  });
+
+  testWidgets('全局认证失效从当前页面跳转登录并携带 from', (tester) async {
+    final auth = await createAuth(true);
+    final router = AppRouter.build(initialLocation: '/movie/m1');
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AuthProvider>.value(
+        value: auth,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    AppRouter.goLoginForAuthError();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(router.state.matchedLocation, AppRoutes.login);
+    expect(router.state.uri.queryParameters['from'], '/movie/m1');
   });
 }

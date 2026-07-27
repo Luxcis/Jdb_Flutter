@@ -388,6 +388,65 @@ void main() {
       expect(lists.single.viewedCount, 34);
     });
 
+    test('GET /api/v1/lists/simple 携带分页参数并解析 has_movie', () async {
+      ok(adapter, Endpoints.listsSimple, {
+        'lists': [
+          {
+            'id': 'list-1',
+            'name': '已存入片单',
+            'movies_count': 12,
+            'views_count': 34,
+            'has_movie': true,
+          },
+        ],
+      });
+
+      final lists = await svc.getSimpleLists('m1', page: 2);
+
+      expect(adapter.requests.last.path, Endpoints.listsSimple);
+      final query = adapter.requests.last.uri.queryParameters;
+      expect(query['movie_id'], 'm1');
+      expect(query['page'], '2');
+      expect(query['limit'], '48');
+      expect(lists.single.hasMovie, isTrue);
+      expect(lists.single.movieCount, 12);
+    });
+
+    test(
+      'POST /api/v1/lists/{list_id}/movie_actions 使用 multipart 表单',
+      () async {
+        ok(adapter, '${Endpoints.lists}/list-1/movie_actions', {});
+
+        await svc.toggleMovieInList(
+          listId: 'list-1',
+          listName: '测试片单',
+          movieId: 'm1',
+        );
+
+        final request = adapter.requests.last;
+        expect(request.method, 'POST');
+        expect(request.path, '${Endpoints.lists}/list-1/movie_actions');
+        final formData = request.data as FormData;
+        final fields = Map.fromEntries(formData.fields);
+        expect(fields['movie_id'], 'm1');
+        expect(fields['name'], '测试片单');
+      },
+    );
+
+    test('POST /api/v1/lists 创建清单并存入当前影片', () async {
+      ok(adapter, Endpoints.lists, {});
+
+      await svc.createListWithMovie(name: '新清单', movieId: 'm1');
+
+      final request = adapter.requests.last;
+      expect(request.method, 'POST');
+      expect(request.path, Endpoints.lists);
+      final formData = request.data as FormData;
+      final fields = Map.fromEntries(formData.fields);
+      expect(fields['name'], '新清单');
+      expect(fields['movie_id'], 'm1');
+    });
+
     test('GET /api/v1/movies/{id}/reviews → 评论列表', () async {
       ok(adapter, '/api/v1/movies/m1/reviews', {
         'reviews': [

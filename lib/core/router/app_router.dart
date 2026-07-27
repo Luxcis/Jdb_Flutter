@@ -16,21 +16,51 @@ import 'package:jade/features/auth/index.dart';
 class AppRouter {
   const AppRouter._();
 
+  static GoRouter? _activeRouter;
+  static bool _allowAuthErrorLoginOnce = false;
+
   /// 生产用路由（含 auth redirect）。
-  static GoRouter build({String initialLocation = AppRoutes.home}) => GoRouter(
-    initialLocation: initialLocation,
-    redirect: _redirect,
-    routes: _routes,
+  static GoRouter build({String initialLocation = AppRoutes.home}) => _remember(
+    GoRouter(
+      initialLocation: initialLocation,
+      redirect: _redirect,
+      routes: _routes,
+    ),
   );
 
   /// 测试用路由（无 redirect，避免测试依赖 AuthProvider）。
   static GoRouter buildForTest({String initialLocation = AppRoutes.home}) =>
-      GoRouter(initialLocation: initialLocation, routes: _routes);
+      _remember(GoRouter(initialLocation: initialLocation, routes: _routes));
+
+  static GoRouter _remember(GoRouter router) {
+    _activeRouter = router;
+    return router;
+  }
+
+  static void goLoginForAuthError() {
+    final router = _activeRouter;
+    if (router == null) return;
+    final matchedLocation = router.state.matchedLocation;
+    if (matchedLocation == AppRoutes.login ||
+        matchedLocation == AppRoutes.register) {
+      return;
+    }
+    final from = router.state.uri.toString();
+    _allowAuthErrorLoginOnce = true;
+    router.go(
+      Uri(path: AppRoutes.login, queryParameters: {'from': from}).toString(),
+    );
+  }
 
   static String? _redirect(BuildContext context, GoRouterState state) {
     final auth = context.read<AuthProvider>();
     final isLogged = auth.isLogged;
     final loc = state.matchedLocation;
+
+    if (_allowAuthErrorLoginOnce && loc == AppRoutes.login) {
+      _allowAuthErrorLoginOnce = false;
+      return null;
+    }
 
     if (isLogged && (loc == AppRoutes.login || loc == AppRoutes.register)) {
       return AppRoutes.home;

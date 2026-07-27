@@ -18,7 +18,7 @@ class _TokenProvider implements TokenProvider {
   String? get token => null;
 }
 
-Future<FakeAdapter> _setupApiClient() async {
+Future<FakeAdapter> _setupApiClient({VoidCallback? onAuthError}) async {
   final adapter = FakeAdapter();
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString(StorageKeys.baseUrl, 'https://jdforrepam.com');
@@ -26,10 +26,42 @@ Future<FakeAdapter> _setupApiClient() async {
   final api = await ApiClient.create(
     prefs: prefs,
     tokenProvider: _TokenProvider(),
-    onAuthError: () {},
+    onAuthError: onAuthError ?? () {},
   );
   api.setAdapterForTest(adapter);
   return adapter;
+}
+
+void _mockPathProvider(WidgetTester tester) {
+  const channel = MethodChannel('plugins.flutter.io/path_provider');
+  tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+    channel,
+    (_) async => '/tmp/jade_flutter_test',
+  );
+  addTearDown(
+    () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      channel,
+      null,
+    ),
+  );
+}
+
+Future<void> _pumpUntilRequest(
+  WidgetTester tester,
+  FakeAdapter adapter,
+  String path,
+) async {
+  for (var i = 0; i < 20; i++) {
+    if (adapter.requests.any((request) => request.path == path)) return;
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+}
+
+Future<void> _pumpUntilText(WidgetTester tester, String text) async {
+  for (var i = 0; i < 20; i++) {
+    if (find.text(text).evaluate().isNotEmpty) return;
+    await tester.pump(const Duration(milliseconds: 50));
+  }
 }
 
 void _enqueueCompleteMovieDetail(FakeAdapter adapter) {
@@ -289,8 +321,11 @@ void main() {
     expect(actions, findsOneWidget);
     expect(
       find.descendant(of: actions, matching: find.byType(FilledButton)),
-      findsNWidgets(3),
+      findsOneWidget,
     );
+    expect(find.text('想看'), findsNothing);
+    expect(find.text('看过'), findsNothing);
+    expect(find.text('存入清单'), findsOneWidget);
     for (final button in tester.widgetList<FilledButton>(
       find.descendant(of: actions, matching: find.byType(FilledButton)),
     )) {
@@ -495,6 +530,196 @@ void main() {
     expect(relatedDividers.single.height, 1);
     expect(relatedDividers.single.indent, 16);
     expect(relatedDividers.single.endIndent, 16);
+  });
+
+  testWidgets('点击存入清单打开弹窗并按 has_movie 勾选清单', (tester) async {
+    _mockPathProvider(tester);
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(adapter);
+    adapter.enqueue(Endpoints.listsSimple, {
+      'success': 1,
+      'data': {
+        'lists': [
+          {
+            'id': 'list-1',
+            'name': '已加入清单',
+            'movies_count': 2,
+            'views_count': 10,
+            'has_movie': true,
+          },
+          {
+            'id': 'list-2',
+            'name': '未加入清单',
+            'movies_count': 0,
+            'views_count': 1,
+            'has_movie': false,
+          },
+        ],
+      },
+    });
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    adapter.responseDelay = const Duration(milliseconds: 200);
+    await tester.tap(find.byKey(const Key('movie-save-to-list-button')));
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(
+      find.byKey(const Key('movie-save-to-list-loading-overlay')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('movie-list-name-field')), findsNothing);
+    expect(find.byType(CheckboxListTile), findsNothing);
+
+    await _pumpUntilRequest(tester, adapter, Endpoints.listsSimple);
+    await _pumpUntilText(tester, '已加入清单');
+    expect(
+      find.byKey(const Key('movie-save-to-list-loading-overlay')),
+      findsNothing,
+    );
+
+    final simpleRequest = adapter.requests.lastWhere(
+      (request) => request.path == Endpoints.listsSimple,
+    );
+    expect(simpleRequest.uri.queryParameters['movie_id'], 'm1');
+    expect(simpleRequest.uri.queryParameters['page'], '1');
+    expect(simpleRequest.uri.queryParameters['limit'], '48');
+    expect(find.text('已加入清单'), findsOneWidget);
+    expect(find.text('未加入清单'), findsOneWidget);
+
+    final checked = tester.widget<CheckboxListTile>(
+      find.ancestor(
+        of: find.text('已加入清单'),
+        matching: find.byType(CheckboxListTile),
+      ),
+    );
+    final unchecked = tester.widget<CheckboxListTile>(
+      find.ancestor(
+        of: find.text('未加入清单'),
+        matching: find.byType(CheckboxListTile),
+      ),
+    );
+    expect(checked.value, isTrue);
+    expect(unchecked.value, isFalse);
+  });
+
+  testWidgets('存入清单 simple 接口未登录时触发全局认证处理且不打开弹窗', (tester) async {
+    _mockPathProvider(tester);
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    var authCalled = false;
+    final adapter = await _setupApiClient(onAuthError: () => authCalled = true);
+    _enqueueCompleteMovieDetail(adapter);
+    adapter.enqueue(Endpoints.listsSimple, {
+      'success': 0,
+      'action': 'JWTVerificationError',
+      'message': '請登錄帳號',
+    }, statusCode: 401);
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.byKey(const Key('movie-save-to-list-button')));
+    await _pumpUntilRequest(tester, adapter, Endpoints.listsSimple);
+    await tester.pump();
+
+    expect(find.byKey(const Key('movie-list-name-field')), findsNothing);
+    expect(find.byType(CheckboxListTile), findsNothing);
+    expect(authCalled, isTrue);
+  });
+
+  testWidgets('在清单弹窗中切换清单并创建新清单', (tester) async {
+    _mockPathProvider(tester);
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(adapter);
+    adapter.enqueueSequence(Endpoints.listsSimple, [
+      {
+        'success': 1,
+        'data': {
+          'lists': [
+            {
+              'id': 'list-1',
+              'name': '未加入清单',
+              'movies_count': 0,
+              'views_count': 1,
+              'has_movie': false,
+            },
+          ],
+        },
+      },
+      {
+        'success': 1,
+        'data': {
+          'lists': [
+            {
+              'id': 'list-2',
+              'name': '新清单',
+              'movies_count': 1,
+              'views_count': 0,
+              'has_movie': true,
+            },
+          ],
+        },
+      },
+    ]);
+    adapter.enqueue('${Endpoints.lists}/list-1/movie_actions', {
+      'success': 1,
+      'data': {},
+    });
+    adapter.enqueue(Endpoints.lists, {'success': 1, 'data': {}});
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('movie-save-to-list-button')));
+    await tester.pump(const Duration(milliseconds: 500));
+    await _pumpUntilRequest(tester, adapter, Endpoints.listsSimple);
+    await tester.pump();
+
+    final listTile = tester.widget<CheckboxListTile>(
+      find.ancestor(
+        of: find.text('未加入清单'),
+        matching: find.byType(CheckboxListTile),
+      ),
+    );
+    listTile.onChanged!(true);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump();
+
+    final toggleRequest = adapter.requests.last;
+    expect(toggleRequest.path, '${Endpoints.lists}/list-1/movie_actions');
+    expect(toggleRequest.method, 'POST');
+
+    await tester.enterText(
+      find.byKey(const Key('movie-list-name-field')),
+      '新清单',
+    );
+    await tester.tap(find.byKey(const Key('movie-list-create-button')));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+
+    expect(
+      adapter.requests.any(
+        (request) =>
+            request.method == 'POST' && request.path == Endpoints.lists,
+      ),
+      isTrue,
+    );
+    expect(find.text('新清单'), findsOneWidget);
   });
 
   testWidgets('磁链失败可独立重试且不重新请求主详情和相关清单', (tester) async {

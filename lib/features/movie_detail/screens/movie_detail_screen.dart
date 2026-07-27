@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/list_model.dart';
@@ -9,6 +10,7 @@ import 'package:jade/core/models/magnet.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/review.dart';
 import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/network/api_exception.dart';
 import 'package:jade/core/widgets/actor_card.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/movie_card.dart';
@@ -40,6 +42,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   Object? _relatedListsError;
   bool _relatedListsLoading = true;
   bool _loading = true;
+  bool _saveToListOpening = false;
   String? _error;
 
   @override
@@ -177,6 +180,59 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     if (service != null) unawaited(_loadReviews(service, sort: sort));
   }
 
+  Future<void> _openSaveToListSheet() async {
+    if (_saveToListOpening) return;
+    final api = ApiClient.instanceOrNull;
+    final service = _service ?? (api == null ? null : MovieDetailService(api));
+    if (service == null) return;
+    setState(() => _saveToListOpening = true);
+    try {
+      final lists = await service.getSimpleLists(widget.id);
+      if (!mounted) return;
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        builder: (context) => _SaveToListSheet(
+          service: service,
+          movieId: widget.id,
+          initialLists: lists,
+        ),
+      );
+    } on DioException catch (error) {
+      if (!mounted) return;
+      if (_isAuthError(error)) {
+        return;
+      }
+      _showSnackBar('清单加载失败');
+    } catch (error) {
+      if (!mounted) return;
+      _showSnackBar('清单加载失败');
+    } finally {
+      if (mounted) {
+        setState(() => _saveToListOpening = false);
+      }
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  bool _isAuthError(DioException error) {
+    final apiError = error.error;
+    if (apiError is ApiException) return apiError.isAuthError;
+    final data = error.response?.data;
+    if (data is Map) {
+      final action = data['action'];
+      return action == ApiErrorActions.jwtVerificationError ||
+          action == ApiErrorActions.nonExistentUser;
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -189,35 +245,48 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     }
 
     final detail = _detail!;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          detail.title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            title: Text(
+              detail.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          body: DefaultTabController(
+            length: 4,
+            child: _MovieDetailTabs(
+              detail: detail,
+              magnets: _magnets,
+              magnetsError: _magnetsError,
+              magnetsLoading: _magnetsLoading,
+              onRetryMagnets: _retryMagnets,
+              reviews: _reviews,
+              reviewsLoading: _reviewsLoading,
+              reviewSort: _reviewSort,
+              onReviewSortChanged: _changeReviewSort,
+              relatedLists: _relatedLists,
+              relatedListsError: _relatedListsError,
+              relatedListsLoading: _relatedListsLoading,
+              onRetryRelatedLists: _retryRelatedLists,
+              onSaveToList: _openSaveToListSheet,
+              onActorTap: (actor) => context.push('/actor/${actor.id}'),
+              onMovieTap: (movie) => context.push('/movie/${movie.id}'),
+            ),
+          ),
         ),
-      ),
-      body: DefaultTabController(
-        length: 4,
-        child: _MovieDetailTabs(
-          detail: detail,
-          magnets: _magnets,
-          magnetsError: _magnetsError,
-          magnetsLoading: _magnetsLoading,
-          onRetryMagnets: _retryMagnets,
-          reviews: _reviews,
-          reviewsLoading: _reviewsLoading,
-          reviewSort: _reviewSort,
-          onReviewSortChanged: _changeReviewSort,
-          relatedLists: _relatedLists,
-          relatedListsError: _relatedListsError,
-          relatedListsLoading: _relatedListsLoading,
-          onRetryRelatedLists: _retryRelatedLists,
-          onActorTap: (actor) => context.push('/actor/${actor.id}'),
-          onMovieTap: (movie) => context.push('/movie/${movie.id}'),
-        ),
-      ),
+        if (_saveToListOpening)
+          const Positioned.fill(
+            child: ColoredBox(
+              key: Key('movie-save-to-list-loading-overlay'),
+              color: Color(0x66000000),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -265,6 +334,7 @@ class _MovieDetailTabs extends StatelessWidget {
     required this.relatedListsError,
     required this.relatedListsLoading,
     required this.onRetryRelatedLists,
+    required this.onSaveToList,
     required this.onActorTap,
     required this.onMovieTap,
   });
@@ -282,6 +352,7 @@ class _MovieDetailTabs extends StatelessWidget {
   final Object? relatedListsError;
   final bool relatedListsLoading;
   final VoidCallback onRetryRelatedLists;
+  final VoidCallback onSaveToList;
   final ValueChanged<ActorSummary> onActorTap;
   final ValueChanged<MovieSummary> onMovieTap;
 
@@ -312,6 +383,7 @@ class _MovieDetailTabs extends StatelessWidget {
         children: [
           _BasicInfoTab(
             detail: detail,
+            onSaveToList: onSaveToList,
             onActorTap: onActorTap,
             onMovieTap: onMovieTap,
           ),
@@ -342,11 +414,13 @@ class _MovieDetailTabs extends StatelessWidget {
 class _BasicInfoTab extends StatelessWidget {
   const _BasicInfoTab({
     required this.detail,
+    required this.onSaveToList,
     required this.onActorTap,
     required this.onMovieTap,
   });
 
   final MovieDetail detail;
+  final VoidCallback onSaveToList;
   final ValueChanged<ActorSummary> onActorTap;
   final ValueChanged<MovieSummary> onMovieTap;
 
@@ -358,7 +432,7 @@ class _BasicInfoTab extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: _MovieInfoCard(detail: detail),
+          child: _MovieInfoCard(detail: detail, onSaveToList: onSaveToList),
         ),
         if (detail.tags.isNotEmpty) _CategorySection(tags: detail.tags),
         if (detail.actors.isNotEmpty)
@@ -423,9 +497,10 @@ class _MovieDetailTabHeaderDelegate extends SliverPersistentHeaderDelegate {
 }
 
 class _MovieInfoCard extends StatelessWidget {
-  const _MovieInfoCard({required this.detail});
+  const _MovieInfoCard({required this.detail, required this.onSaveToList});
 
   final MovieDetail detail;
+  final VoidCallback onSaveToList;
 
   @override
   Widget build(BuildContext context) {
@@ -471,18 +546,9 @@ class _MovieInfoCard extends StatelessWidget {
               runSpacing: 6,
               children: [
                 FilledButton(
+                  key: const Key('movie-save-to-list-button'),
                   style: actionStyle,
-                  onPressed: () {},
-                  child: const Text('想看'),
-                ),
-                FilledButton(
-                  style: actionStyle,
-                  onPressed: () {},
-                  child: const Text('看过'),
-                ),
-                FilledButton(
-                  style: actionStyle,
-                  onPressed: () {},
+                  onPressed: onSaveToList,
                   child: const Text('存入清单'),
                 ),
               ],
@@ -514,6 +580,268 @@ class _MetadataLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text('$label: $value');
+  }
+}
+
+class _SaveToListSheet extends StatefulWidget {
+  const _SaveToListSheet({
+    required this.service,
+    required this.movieId,
+    required this.initialLists,
+  });
+
+  final MovieDetailService service;
+  final String movieId;
+  final List<ListModel> initialLists;
+
+  @override
+  State<_SaveToListSheet> createState() => _SaveToListSheetState();
+}
+
+class _SaveToListSheetState extends State<_SaveToListSheet> {
+  static const int _pageSize = 48;
+
+  final TextEditingController _nameController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  final Set<String> _pendingListIds = {};
+  List<ListModel> _lists = [];
+  int _page = 1;
+  bool _loading = true;
+  bool _loadingMore = false;
+  bool _hasMore = false;
+  bool _creating = false;
+  Object? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_loadMoreIfNeeded);
+    _lists = widget.initialLists;
+    _hasMore = widget.initialLists.length >= _pageSize;
+    _loading = false;
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_loadMoreIfNeeded)
+      ..dispose();
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadFirstPage() async {
+    if (mounted) {
+      setState(() {
+        _page = 1;
+        _loading = true;
+        _error = null;
+        _hasMore = false;
+      });
+    }
+    try {
+      final lists = await widget.service.getSimpleLists(
+        widget.movieId,
+        page: 1,
+        limit: _pageSize,
+      );
+      if (!mounted) return;
+      setState(() {
+        _lists = lists;
+        _hasMore = lists.length >= _pageSize;
+        _loading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error;
+        _loading = false;
+      });
+    }
+  }
+
+  void _loadMoreIfNeeded() {
+    if (!_hasMore || _loading || _loadingMore) return;
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (position.extentAfter > 240) return;
+    unawaited(_loadNextPage());
+  }
+
+  Future<void> _loadNextPage() async {
+    setState(() => _loadingMore = true);
+    final nextPage = _page + 1;
+    try {
+      final lists = await widget.service.getSimpleLists(
+        widget.movieId,
+        page: nextPage,
+        limit: _pageSize,
+      );
+      if (!mounted) return;
+      setState(() {
+        _page = nextPage;
+        _lists = [..._lists, ...lists];
+        _hasMore = lists.length >= _pageSize;
+        _loadingMore = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _loadingMore = false);
+      _showMessage('清单加载失败');
+    }
+  }
+
+  Future<void> _toggleList(ListModel list) async {
+    if (_pendingListIds.contains(list.id)) return;
+    final index = _lists.indexWhere((item) => item.id == list.id);
+    if (index < 0) return;
+    final nextHasMovie = !list.hasMovie;
+    final nextCount = (list.movieCount + (nextHasMovie ? 1 : -1)).clamp(
+      0,
+      1 << 31,
+    );
+    setState(() {
+      _pendingListIds.add(list.id);
+      _lists[index] = list.copyWith(
+        hasMovie: nextHasMovie,
+        movieCount: nextCount,
+      );
+    });
+    try {
+      await widget.service.toggleMovieInList(
+        listId: list.id,
+        listName: list.name,
+        movieId: widget.movieId,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _lists[index] = list);
+      _showMessage(nextHasMovie ? '添加失败' : '移除失败');
+    } finally {
+      if (mounted) {
+        setState(() => _pendingListIds.remove(list.id));
+      }
+    }
+  }
+
+  Future<void> _createList() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty || _creating) return;
+    setState(() => _creating = true);
+    try {
+      await widget.service.createListWithMovie(
+        name: name,
+        movieId: widget.movieId,
+      );
+      if (!mounted) return;
+      _nameController.clear();
+      await _loadFirstPage();
+    } catch (error) {
+      if (!mounted) return;
+      _showMessage('创建清单失败');
+    } finally {
+      if (mounted) {
+        setState(() => _creating = false);
+      }
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * 0.78,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Text(
+                '存入清单',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Row(
+                spacing: 8,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      key: const Key('movie-list-name-field'),
+                      controller: _nameController,
+                      enabled: !_creating,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => unawaited(_createList()),
+                      decoration: const InputDecoration(
+                        labelText: '新清单名称',
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  FilledButton(
+                    key: const Key('movie-list-create-button'),
+                    onPressed: _creating
+                        ? null
+                        : () => unawaited(_createList()),
+                    child: Text(_creating ? '创建中' : '创建'),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(child: _buildBody()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null) {
+      return ErrorRetryWidget(message: '清单加载失败', onRetry: _loadFirstPage);
+    }
+    if (_lists.isEmpty) {
+      return const Center(child: Text('暂无清单'));
+    }
+    return ListView.builder(
+      controller: _scrollController,
+      itemCount: _lists.length + (_loadingMore ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index >= _lists.length) {
+          return const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final list = _lists[index];
+        final pending = _pendingListIds.contains(list.id);
+        return CheckboxListTile(
+          value: list.hasMovie,
+          onChanged: pending ? null : (_) => unawaited(_toggleList(list)),
+          title: Text(list.name),
+          subtitle: Text('${list.movieCount} 部影片，被查看 ${list.viewedCount} 次'),
+          controlAffinity: ListTileControlAffinity.leading,
+          secondary: pending
+              ? const SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : null,
+        );
+      },
+    );
   }
 }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,6 +9,7 @@ import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/providers/startup_provider.dart';
 import 'package:jade/core/providers/theme_provider.dart';
+import 'package:jade/core/router/app_router.dart';
 
 export 'package:jade/app.dart' show MyApp;
 
@@ -28,7 +31,10 @@ Future<Widget> _buildEntry() async {
   final apiClient = await ApiClient.create(
     prefs: prefs,
     tokenProvider: authProvider,
-    onAuthError: authProvider.logout,
+    onAuthError: () {
+      unawaited(authProvider.logout());
+      AppRouter.goLoginForAuthError();
+    },
   );
   final startupProvider = StartupProvider.create(
     apiClient,
