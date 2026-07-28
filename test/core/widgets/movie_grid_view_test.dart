@@ -1,0 +1,68 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:jade/core/models/movie.dart';
+import 'package:jade/core/models/paged_result.dart';
+import 'package:jade/core/widgets/movie_grid_view.dart';
+import 'package:jade/core/widgets/pagination_controller.dart';
+
+void main() {
+  testWidgets('空数据首次加载时显示居中进度环', (tester) async {
+    final pending = Completer<PagedResult<MovieSummary>>();
+    final controller = PaginationController<MovieSummary>(
+      fetch: (_) => pending.future,
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: MovieGridView(controller: controller)),
+      ),
+    );
+
+    controller.fetchMore();
+    await tester.pump();
+
+    expect(find.byKey(const Key('movie-grid-initial-loading')), findsOneWidget);
+    expect(find.byType(GridView), findsNothing);
+  });
+
+  testWidgets('已有数据加载下一页时保留影片并显示底部进度环', (tester) async {
+    final nextPage = Completer<PagedResult<MovieSummary>>();
+    final movie = MovieSummary(
+      id: 'm1',
+      number: 'ABC-001',
+      title: '测试影片',
+      coverUrl: 'cover.jpg',
+    );
+    final controller = PaginationController<MovieSummary>(
+      fetch: (page) {
+        if (page == 1) {
+          return Future.value(
+            PagedResult(
+              items: [movie],
+              currentPage: 1,
+              totalPages: 2,
+              total: 2,
+            ),
+          );
+        }
+        return nextPage.future;
+      },
+    );
+    addTearDown(controller.dispose);
+    await controller.fetchMore();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: MovieGridView(controller: controller)),
+      ),
+    );
+
+    controller.fetchMore();
+    await tester.pump();
+
+    expect(find.text('测试影片'), findsOneWidget);
+    expect(find.byKey(const Key('movie-grid-loading-more')), findsOneWidget);
+  });
+}

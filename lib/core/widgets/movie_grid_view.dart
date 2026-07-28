@@ -28,6 +28,12 @@ class MovieGridView extends StatelessWidget {
             onRetry: controller.refresh,
           );
         }
+        if (controller.isLoading && controller.items.isEmpty) {
+          return const Center(
+            key: Key('movie-grid-initial-loading'),
+            child: CircularProgressIndicator(),
+          );
+        }
         return NotificationListener<ScrollNotification>(
           onNotification: (n) {
             if (n is ScrollEndNotification && n.metrics.extentAfter < 200) {
@@ -37,21 +43,35 @@ class MovieGridView extends StatelessWidget {
           },
           child: RefreshIndicator(
             onRefresh: controller.refresh,
-            child: GridView.builder(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                childAspectRatio: 0.56,
-              ),
-              itemCount: controller.items.length,
-              padding: const EdgeInsets.all(8),
-              itemBuilder: (_, i) => MovieCard(
-                movie: controller.items[i],
-                onTap: onMovieTap != null
-                    ? () => onMovieTap!(controller.items[i])
-                    : null,
-              ),
+            child: CustomScrollView(
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.all(8),
+                  sliver: SliverGrid.builder(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
+                      childAspectRatio: 0.56,
+                    ),
+                    itemCount: controller.items.length,
+                    itemBuilder: (_, i) => MovieCard(
+                      movie: controller.items[i],
+                      onTap: onMovieTap != null
+                          ? () => onMovieTap!(controller.items[i])
+                          : null,
+                    ),
+                  ),
+                ),
+                if (controller.isLoading)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      key: Key('movie-grid-loading-more'),
+                      padding: EdgeInsets.all(16),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  ),
+              ],
             ),
           ),
         );
