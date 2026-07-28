@@ -40,7 +40,7 @@ Future<_RankingFixture> _pumpRankings(
   bool loggedIn = true,
   double textScaleFactor = 1,
   bool withRouter = false,
-  int initialTabIndex = 0,
+  int initialTabIndex = 2,
   List<Map<String, dynamic>>? top250Responses,
 }) async {
   tester.view.physicalSize = const Size(320, 640);
@@ -310,7 +310,7 @@ void main() {
   });
 
   testWidgets('Top250 筛选抽屉完整展示筛选项且切换 Tab 后隐藏入口', (tester) async {
-    await _pumpRankings(tester);
+    await _pumpRankings(tester, initialTabIndex: 0);
     await _pumpRankingFrame(tester);
 
     expect(find.byTooltip('筛选 Top250'), findsOneWidget);
@@ -357,7 +357,7 @@ void main() {
   });
 
   testWidgets('Top250 筛选立即刷新并保持抽屉打开', (tester) async {
-    final fixture = await _pumpRankings(tester);
+    final fixture = await _pumpRankings(tester, initialTabIndex: 0);
     await _pumpRankingFrame(tester);
     await tester.tap(find.byTooltip('筛选 Top250'));
     await tester.pump();
@@ -413,7 +413,7 @@ void main() {
   });
 
   testWidgets('Top250 未登录时不请求且登录后自动加载', (tester) async {
-    final fixture = await _pumpRankings(tester, loggedIn: false);
+    final fixture = await _pumpRankings(tester, loggedIn: false, initialTabIndex: 0);
     await _pumpRankingFrame(tester);
 
     expect(
@@ -439,6 +439,7 @@ void main() {
   testWidgets('Top250 滚动接近底部后按排名追加下一批', (tester) async {
     final fixture = await _pumpRankings(
       tester,
+      initialTabIndex: 0,
       top250Responses: [_top250Response(1, 50), _top250Response(51, 50)],
     );
     await _pumpRankingFrame(tester);
@@ -481,6 +482,7 @@ void main() {
   testWidgets('Top250 首批不足 50 条时不再请求', (tester) async {
     final fixture = await _pumpRankings(
       tester,
+      initialTabIndex: 0,
       top250Responses: [_top250Response(1, 10)],
     );
     await _pumpRankingFrame(tester);
@@ -501,6 +503,7 @@ void main() {
   testWidgets('Top250 从 201 开始时加载一批后停止', (tester) async {
     final fixture = await _pumpRankings(
       tester,
+      initialTabIndex: 0,
       top250Responses: [_top250Response(1, 1), _top250Response(201, 50)],
     );
     await _pumpRankingFrame(tester);
@@ -529,6 +532,7 @@ void main() {
   testWidgets('Top250 从 51 开始时继续请求 101 且排名连续', (tester) async {
     final fixture = await _pumpRankings(
       tester,
+      initialTabIndex: 0,
       top250Responses: [
         _top250Response(1, 1),
         _top250Response(51, 50),
@@ -582,6 +586,7 @@ void main() {
   testWidgets('Top250 追加失败时保留列表并可重试同一批', (tester) async {
     final fixture = await _pumpRankings(
       tester,
+      initialTabIndex: 0,
       top250Responses: [
         _top250Response(1, 50),
         {'success': 0, 'message': 'next page failed'},
@@ -624,7 +629,7 @@ void main() {
   });
 
   testWidgets('Top250 列表影片点击进入详情页', (tester) async {
-    final fixture = await _pumpRankings(tester, withRouter: true);
+    final fixture = await _pumpRankings(tester, withRouter: true, initialTabIndex: 0);
     await _pumpRankingFrame(tester);
 
     await tester.tap(find.text('Ranked Movie'));
