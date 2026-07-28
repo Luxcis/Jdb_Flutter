@@ -14,7 +14,7 @@ import 'package:jade/features/rankings/services/ranking_service.dart';
 import 'package:provider/provider.dart';
 
 class RankingsPage extends StatefulWidget {
-  const RankingsPage({super.key, this.initialTabIndex = 0})
+  const RankingsPage({super.key, this.initialTabIndex = 2})
     : assert(initialTabIndex >= 0 && initialTabIndex < 6);
 
   final int initialTabIndex;
