@@ -5,14 +5,26 @@ class RatingBadge extends StatelessWidget {
 
   final int rank;
 
+  Color _rankColor(int rank) {
+    switch (rank) {
+      case 1:
+        return Color(0xFFFFD700);
+      case 2:
+        return Color(0xFFA8A9AD);
+      case 3:
+        return Color(0xFFCD7F32);
+      default:
+        return Colors.black54;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Container(
       width: 22,
       height: 22,
       decoration: BoxDecoration(
-        color: rank <= 3 ? cs.primary : Colors.black54,
+        color: _rankColor(rank),
         borderRadius: BorderRadius.circular(4),
       ),
       alignment: Alignment.center,
