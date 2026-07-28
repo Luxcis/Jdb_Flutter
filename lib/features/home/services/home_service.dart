@@ -37,7 +37,14 @@ class HomeService {
   Future<List<MovieSummary>> getLatest({int page = 1, int limit = 9}) async {
     final resp = await _api.get(
       Endpoints.moviesLatest,
-      queryParameters: {'page': page, 'limit': limit},
+      queryParameters: {
+        'type': 'all',
+        'filter_by': 'can_play',
+        'sort_by': 'update',
+        'order_by': 'desc',
+        'limit': limit,
+        'page': page,
+      },
     );
     return apiList(resp.data, const [
       'movies',
@@ -45,13 +52,19 @@ class HomeService {
     ]).map((j) => MovieSummary.fromJson(normalizeMovieSummaryJson(j))).toList();
   }
 
-  Future<List<MovieSummary>> getMagnetUpdates({int limit = 9}) async {
+  Future<List<MovieSummary>> getMagnetUpdates({
+    int page = 1,
+    int limit = 9,
+  }) async {
     final resp = await _api.get(
-      Endpoints.moviesTags,
+      Endpoints.moviesLatest,
       queryParameters: {
-        'filter_by': 'categories',
-        'sort_by': 'magnet_date',
+        'type': 'all',
+        'filter_by': 'magnets',
+        'sort_by': 'update',
+        'order_by': 'desc',
         'limit': limit,
+        'page': page,
       },
     );
     return apiList(resp.data, const [

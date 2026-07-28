@@ -106,30 +106,48 @@ void main() {
       expect(list, ['2024-01', '2024-02']);
     });
 
-    test('GET /api/v1/movies/latest → 带分页参数', () async {
+    test('首页最新上架使用 can_play 的 latest 完整参数', () async {
       ok(adapter, Endpoints.moviesLatest, {
         'movies': [
-          {'id': 'm1', 'number': 'N1', 'title': 'T1', 'cover_url': 'c.jpg'},
+          {'id': 'm2', 'number': 'N2', 'title': 'T2', 'cover_url': 'c2.jpg'},
         ],
       });
-      final list = await svc.getLatest(page: 2, limit: 10);
-      final q = adapter.requests.last.uri.queryParameters;
-      expect(q['page'], '2');
-      expect(q['limit'], '10');
-      expect(list.length, 1);
+
+      final list = await svc.getLatest(page: 2);
+
+      final request = adapter.requests.last;
+      expect(request.path, Endpoints.moviesLatest);
+      expect(request.uri.queryParameters, {
+        'type': 'all',
+        'filter_by': 'can_play',
+        'sort_by': 'update',
+        'order_by': 'desc',
+        'limit': '9',
+        'page': '2',
+      });
+      expect(list.single.id, 'm2');
     });
 
-    test('GET /api/v1/movies/tags → magnet 更新带 filter_by', () async {
-      ok(adapter, Endpoints.moviesTags, {
+    test('首页近期磁链更新使用 magnets 的 latest 完整参数', () async {
+      ok(adapter, Endpoints.moviesLatest, {
         'movies': [
-          {'id': 'm1', 'number': 'N1', 'title': 'T1', 'cover_url': 'c.jpg'},
+          {'id': 'm3', 'number': 'N3', 'title': 'T3', 'cover_url': 'c3.jpg'},
         ],
       });
-      final list = await svc.getMagnetUpdates(limit: 9);
-      final q = adapter.requests.last.uri.queryParameters;
-      expect(q['filter_by'], 'categories');
-      expect(q['sort_by'], 'magnet_date');
-      expect(list.length, 1);
+
+      final list = await svc.getMagnetUpdates(page: 3);
+
+      final request = adapter.requests.last;
+      expect(request.path, Endpoints.moviesLatest);
+      expect(request.uri.queryParameters, {
+        'type': 'all',
+        'filter_by': 'magnets',
+        'sort_by': 'update',
+        'order_by': 'desc',
+        'limit': '9',
+        'page': '3',
+      });
+      expect(list.single.id, 'm3');
     });
   });
 
