@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
@@ -10,10 +11,11 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _RankingFixture {
-  const _RankingFixture(this.adapter, this.auth);
+  const _RankingFixture(this.adapter, this.auth, {this.router});
 
   final FakeAdapter adapter;
   final AuthProvider auth;
+  final GoRouter? router;
 }
 
 Future<_RankingFixture> _pumpRankings(
@@ -21,6 +23,7 @@ Future<_RankingFixture> _pumpRankings(
   Duration responseDelay = Duration.zero,
   bool loggedIn = true,
   double textScaleFactor = 1,
+  bool withRouter = false,
 }) async {
   tester.view.physicalSize = const Size(320, 640);
   tester.view.devicePixelRatio = 1;
@@ -47,12 +50,17 @@ Future<_RankingFixture> _pumpRankings(
     Endpoints.rankingsPlayback,
     Endpoints.rankings,
   ]) {
+    final movieId = switch (path) {
+      Endpoints.moviesTop => 'top-movie',
+      Endpoints.rankingsPlayback => 'hot-movie',
+      _ => 'ranked-movie',
+    };
     adapter.enqueue(path, {
       'success': 1,
       'data': {
         'movies': [
           {
-            'id': path,
+            'id': movieId,
             'number': 'ABC-001',
             'title': path == Endpoints.rankingsPlayback
                 ? 'Hot Movie'
@@ -66,21 +74,41 @@ Future<_RankingFixture> _pumpRankings(
       },
     });
   }
-  await tester.pumpWidget(
-    ChangeNotifierProvider<AuthProvider>.value(
-      value: auth,
-      child: MaterialApp(
-        home: MediaQuery(
-          data: MediaQueryData(
-            size: const Size(320, 640),
-            textScaler: TextScaler.linear(textScaleFactor),
-          ),
-          child: const RankingsPage(),
-        ),
-      ),
-    ),
+  final router = withRouter
+      ? GoRouter(
+          initialLocation: '/rankings',
+          routes: [
+            GoRoute(path: '/rankings', builder: (_, _) => const RankingsPage()),
+            GoRoute(
+              path: '/movie/:id',
+              builder: (_, state) => Scaffold(
+                body: Text(
+                  '影片 ${state.pathParameters['id']}',
+                  key: const Key('movie-detail-placeholder'),
+                ),
+              ),
+            ),
+          ],
+        )
+      : null;
+  if (router != null) addTearDown(router.dispose);
+  final mediaQueryData = MediaQueryData(
+    size: const Size(320, 640),
+    textScaler: TextScaler.linear(textScaleFactor),
   );
-  return _RankingFixture(adapter, auth);
+  final app = router == null
+      ? MaterialApp(
+          home: MediaQuery(data: mediaQueryData, child: const RankingsPage()),
+        )
+      : MaterialApp.router(
+          routerConfig: router,
+          builder: (_, child) =>
+              MediaQuery(data: mediaQueryData, child: child!),
+        );
+  await tester.pumpWidget(
+    ChangeNotifierProvider<AuthProvider>.value(value: auth, child: app),
+  );
+  return _RankingFixture(adapter, auth, router: router);
 }
 
 Future<void> _pumpRankingFrame(WidgetTester tester) async {
@@ -352,5 +380,41 @@ void main() {
       hasLength(1),
     );
     expect(find.text('Ranked Movie'), findsOneWidget);
+  });
+
+  testWidgets('Top250 列表影片点击进入详情页', (tester) async {
+    final fixture = await _pumpRankings(tester, withRouter: true);
+    await _pumpRankingFrame(tester);
+
+    await tester.tap(find.text('Ranked Movie'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(fixture.router!.state.uri.path, '/movie/top-movie');
+    expect(find.byKey(const Key('movie-detail-placeholder')), findsOneWidget);
+  });
+
+  testWidgets('看热播网格影片点击进入详情页', (tester) async {
+    final fixture = await _pumpRankings(tester, withRouter: true);
+    await _showTab(tester, 1);
+
+    await tester.tap(find.text('Hot Movie'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(fixture.router!.state.uri.path, '/movie/hot-movie');
+    expect(find.byKey(const Key('movie-detail-placeholder')), findsOneWidget);
+  });
+
+  testWidgets('综合排行榜网格影片点击进入详情页', (tester) async {
+    final fixture = await _pumpRankings(tester, withRouter: true);
+    await _showTab(tester, 2);
+
+    await tester.tap(find.text('Ranked Movie'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(fixture.router!.state.uri.path, '/movie/ranked-movie');
+    expect(find.byKey(const Key('movie-detail-placeholder')), findsOneWidget);
   });
 }

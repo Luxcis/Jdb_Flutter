@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/network/api_client.dart';
@@ -211,10 +212,14 @@ class _Top250TabState extends State<_Top250Tab>
           child: ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
             itemCount: _controller.items.length,
-            itemBuilder: (_, index) => MovieListTile(
-              movie: _controller.items[index],
-              rank: widget.filter.startRank + index,
-            ),
+            itemBuilder: (context, index) {
+              final movie = _controller.items[index];
+              return MovieListTile(
+                movie: movie,
+                rank: widget.filter.startRank + index,
+                onTap: () => context.push('/movie/${movie.id}'),
+              );
+            },
           ),
         );
       },
@@ -433,7 +438,12 @@ class _HotPlayTabState extends State<_HotPlayTab>
             ],
           ),
         ),
-        Expanded(child: MovieGridView(controller: _controller)),
+        Expanded(
+          child: MovieGridView(
+            controller: _controller,
+            onMovieTap: (movie) => context.push('/movie/${movie.id}'),
+          ),
+        ),
       ],
     );
   }
@@ -504,7 +514,12 @@ class _RankTabState extends State<_RankTab> with AutomaticKeepAliveClientMixin {
             onChanged: _updatePeriod,
           ),
         ),
-        Expanded(child: MovieGridView(controller: _controller)),
+        Expanded(
+          child: MovieGridView(
+            controller: _controller,
+            onMovieTap: (movie) => context.push('/movie/${movie.id}'),
+          ),
+        ),
       ],
     );
   }
