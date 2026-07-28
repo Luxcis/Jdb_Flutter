@@ -4,6 +4,7 @@ import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/providers/auth_provider.dart';
+import 'package:jade/core/widgets/rating_badge.dart';
 import 'package:jade/features/rankings/screens/rankings_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,6 +21,10 @@ Future<_RankingFixture> _pumpRankings(
   bool loggedIn = true,
   double textScaleFactor = 1,
 }) async {
+  tester.view.physicalSize = const Size(320, 640);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
   SharedPreferences.setMockInitialValues({
     'key_baseurl': 'https://jdforrepam.com',
     'key_api_domains': ['https://jdforrepam.com'],
@@ -88,6 +93,14 @@ Future<void> _showTab(WidgetTester tester, int targetIndex) async {
   controller.animateTo(targetIndex);
   await tester.pump();
   await _pumpRankingFrame(tester);
+}
+
+Future<void> _scrollFilterSheetToBottom(WidgetTester tester) async {
+  final list = find.byType(ListView).last;
+  await tester.drag(list, const Offset(0, -200));
+  await tester.pump();
+  await tester.drag(list, const Offset(0, -800));
+  await tester.pump();
 }
 
 void main() {
@@ -167,5 +180,85 @@ void main() {
 
     expect(find.text('高分'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Top250 筛选抽屉完整展示筛选项且切换 Tab 后隐藏入口', (tester) async {
+    await _pumpRankings(tester);
+    await _pumpRankingFrame(tester);
+
+    expect(find.byTooltip('筛选 Top250'), findsOneWidget);
+    await tester.tap(find.byTooltip('筛选 Top250'));
+    await tester.pump();
+    await _pumpRankingFrame(tester);
+
+    expect(find.text('筛选'), findsOneWidget);
+    expect(find.widgetWithText(ChoiceChip, '全部'), findsOneWidget);
+    expect(find.text('${DateTime.now().year}'), findsOneWidget);
+    expect(find.text('2008'), findsOneWidget);
+    await _scrollFilterSheetToBottom(tester);
+    expect(find.text('起始排名'), findsOneWidget);
+    expect(find.text('未标「看过」'), findsOneWidget);
+
+    await tester.tapAt(const Offset(8, 8));
+    await tester.pump();
+    await _pumpRankingFrame(tester);
+    await _showTab(tester, 1);
+    expect(find.byTooltip('筛选 Top250'), findsNothing);
+  });
+
+  testWidgets('Top250 筛选立即刷新并保持抽屉打开', (tester) async {
+    final fixture = await _pumpRankings(tester);
+    await _pumpRankingFrame(tester);
+    await tester.tap(find.byTooltip('筛选 Top250'));
+    await tester.pump();
+    await _pumpRankingFrame(tester);
+
+    await tester.tap(find.widgetWithText(ChoiceChip, '欧美'));
+    await _pumpRankingFrame(tester);
+    var query = fixture.adapter.requests
+        .where((request) => request.path == Endpoints.moviesTop)
+        .last
+        .uri
+        .queryParameters;
+    expect(query['type'], 'video_type');
+    expect(query['type_value'], '2');
+    expect(find.text('筛选'), findsOneWidget);
+
+    final year = '${DateTime.now().year}';
+    await tester.tap(find.widgetWithText(ChoiceChip, year));
+    await _pumpRankingFrame(tester);
+    query = fixture.adapter.requests
+        .where((request) => request.path == Endpoints.moviesTop)
+        .last
+        .uri
+        .queryParameters;
+    expect(query['type'], 'year');
+    expect(query['type_value'], year);
+    expect(find.text('筛选'), findsOneWidget);
+
+    await _scrollFilterSheetToBottom(tester);
+    await tester.tap(find.widgetWithText(ChoiceChip, '51'));
+    await _pumpRankingFrame(tester);
+    query = fixture.adapter.requests
+        .where((request) => request.path == Endpoints.moviesTop)
+        .last
+        .uri
+        .queryParameters;
+    expect(query['start_rank'], '51');
+
+    await tester.tap(find.byType(Switch));
+    await _pumpRankingFrame(tester);
+    query = fixture.adapter.requests
+        .where((request) => request.path == Endpoints.moviesTop)
+        .last
+        .uri
+        .queryParameters;
+    expect(query['ignore_watched'], 'true');
+    expect(find.byType(BottomSheet), findsOneWidget);
+
+    await tester.tapAt(const Offset(8, 8));
+    await tester.pump();
+    await _pumpRankingFrame(tester);
+    expect(tester.widget<RatingBadge>(find.byType(RatingBadge)).rank, 51);
   });
 }

@@ -24,15 +24,38 @@ class _RankingsPageState extends State<RankingsPage>
   static const tabs = ['Top250', '看热播', '有码', '无码', '欧美', 'FC2'];
 
   late final TabController _tabController;
+  var _top250Filter = const Top250Filter();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: tabs.length, vsync: this);
+    _tabController.addListener(_handleTabChanged);
+  }
+
+  void _handleTabChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _showTop250Filter() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+      ),
+      builder: (_) => _Top250FilterSheet(
+        value: _top250Filter,
+        onChanged: (value) => setState(() => _top250Filter = value),
+      ),
+    );
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -42,6 +65,14 @@ class _RankingsPageState extends State<RankingsPage>
     return Scaffold(
       appBar: AppBar(
         title: const Text('排行榜'),
+        actions: [
+          if (_tabController.index == 0)
+            IconButton(
+              tooltip: '筛选 Top250',
+              onPressed: _showTop250Filter,
+              icon: const Icon(Icons.filter_alt_outlined),
+            ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -50,21 +81,52 @@ class _RankingsPageState extends State<RankingsPage>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: const [
-          _Top250Tab(),
-          _HotPlayTab(),
-          _RankTab(type: '0'),
-          _RankTab(type: '1'),
-          _RankTab(type: '2'),
-          _RankTab(type: '3'),
+        children: [
+          _Top250Tab(filter: _top250Filter),
+          const _HotPlayTab(),
+          const _RankTab(type: '0'),
+          const _RankTab(type: '1'),
+          const _RankTab(type: '2'),
+          const _RankTab(type: '3'),
         ],
       ),
     );
   }
 }
 
+@immutable
+class Top250Filter {
+  const Top250Filter({
+    this.type = 'all',
+    this.typeValue = '',
+    this.startRank = 1,
+    this.ignoreWatched = false,
+  });
+
+  final String type;
+  final String typeValue;
+  final int startRank;
+  final bool ignoreWatched;
+
+  Top250Filter copyWith({
+    String? type,
+    String? typeValue,
+    int? startRank,
+    bool? ignoreWatched,
+  }) {
+    return Top250Filter(
+      type: type ?? this.type,
+      typeValue: typeValue ?? this.typeValue,
+      startRank: startRank ?? this.startRank,
+      ignoreWatched: ignoreWatched ?? this.ignoreWatched,
+    );
+  }
+}
+
 class _Top250Tab extends StatefulWidget {
-  const _Top250Tab();
+  const _Top250Tab({required this.filter});
+
+  final Top250Filter filter;
 
   @override
   State<_Top250Tab> createState() => _Top250TabState();
@@ -78,13 +140,29 @@ class _Top250TabState extends State<_Top250Tab>
   Future<PagedResult<MovieSummary>> _fetchPage(int _) async {
     final api = ApiClient.instanceOrNull;
     if (api == null) return _emptyMoviePage();
-    return RankingService(api).getTop250();
+    return RankingService(api).getTop250(
+      startRank: widget.filter.startRank,
+      type: widget.filter.type,
+      typeValue: widget.filter.typeValue,
+      ignoreWatched: widget.filter.ignoreWatched,
+    );
   }
 
   @override
   void initState() {
     super.initState();
     _controller.fetchMore();
+  }
+
+  @override
+  void didUpdateWidget(covariant _Top250Tab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.filter.type != widget.filter.type ||
+        oldWidget.filter.typeValue != widget.filter.typeValue ||
+        oldWidget.filter.startRank != widget.filter.startRank ||
+        oldWidget.filter.ignoreWatched != widget.filter.ignoreWatched) {
+      _controller.reloadWith(_fetchPage);
+    }
   }
 
   @override
@@ -123,9 +201,120 @@ class _Top250TabState extends State<_Top250Tab>
           child: ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
             itemCount: _controller.items.length,
-            itemBuilder: (_, index) =>
-                MovieListTile(movie: _controller.items[index], rank: index + 1),
+            itemBuilder: (_, index) => MovieListTile(
+              movie: _controller.items[index],
+              rank: widget.filter.startRank + index,
+            ),
           ),
+        );
+      },
+    );
+  }
+}
+
+class _Top250FilterSheet extends StatefulWidget {
+  const _Top250FilterSheet({required this.value, required this.onChanged});
+
+  final Top250Filter value;
+  final ValueChanged<Top250Filter> onChanged;
+
+  @override
+  State<_Top250FilterSheet> createState() => _Top250FilterSheetState();
+}
+
+class _Top250FilterSheetState extends State<_Top250FilterSheet> {
+  static const _videoTypes = [
+    (label: '有码', value: '0'),
+    (label: '无码', value: '1'),
+    (label: '欧美', value: '2'),
+    (label: 'FC2', value: '3'),
+  ];
+  static const _startRanks = [1, 51, 101, 151, 201];
+
+  late Top250Filter _value = widget.value;
+
+  void _emit(Top250Filter value) {
+    setState(() => _value = value);
+    widget.onChanged(value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final years = [
+      for (var year = DateTime.now().year; year >= 2008; year--) year,
+    ];
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.8,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (context, scrollController) {
+        return ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          children: [
+            Text('筛选', style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 20),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                ChoiceChip(
+                  label: const Text('全部'),
+                  selected: _value.type == 'all',
+                  onSelected: (_) =>
+                      _emit(_value.copyWith(type: 'all', typeValue: '')),
+                ),
+                for (final type in _videoTypes)
+                  ChoiceChip(
+                    label: Text(type.label),
+                    selected:
+                        _value.type == 'video_type' &&
+                        _value.typeValue == type.value,
+                    onSelected: (_) => _emit(
+                      _value.copyWith(
+                        type: 'video_type',
+                        typeValue: type.value,
+                      ),
+                    ),
+                  ),
+                for (final year in years)
+                  ChoiceChip(
+                    label: Text('$year'),
+                    selected:
+                        _value.type == 'year' && _value.typeValue == '$year',
+                    onSelected: (_) => _emit(
+                      _value.copyWith(type: 'year', typeValue: '$year'),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Text('起始排名', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                for (final startRank in _startRanks)
+                  ChoiceChip(
+                    label: Text('$startRank'),
+                    selected: _value.startRank == startRank,
+                    onSelected: (_) =>
+                        _emit(_value.copyWith(startRank: startRank)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('未标「看过」'),
+              subtitle: const Text('仅查看还未被标记「看过」的影片'),
+              value: _value.ignoreWatched,
+              onChanged: (value) =>
+                  _emit(_value.copyWith(ignoreWatched: value)),
+            ),
+          ],
         );
       },
     );
