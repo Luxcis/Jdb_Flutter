@@ -10,66 +10,70 @@ class RankingService {
   final ApiClient _api;
 
   Future<PagedResult<MovieSummary>> getTop250({
-    int page = 1,
-    int limit = 20,
-    String? year,
+    int startRank = 1,
+    String type = 'all',
+    String typeValue = '',
+    bool ignoreWatched = false,
+    int limit = 50,
   }) async {
-    final params = <String, dynamic>{'page': page, 'limit': limit};
-    if (year != null) params['year'] = year;
-    final resp = await _api.get(Endpoints.moviesTop, queryParameters: params);
-    return _parseMoviePage(resp.data);
+    final response = await _api.get(
+      Endpoints.moviesTop,
+      queryParameters: {
+        'start_rank': startRank,
+        'type': type,
+        'type_value': typeValue,
+        'ignore_watched': ignoreWatched.toString(),
+        'limit': limit,
+      },
+    );
+    return _parseMoviePage(response.data, fallbackPage: 1);
   }
 
   Future<PagedResult<MovieSummary>> getPlayback({
-    String filterBy = 'day',
-    String period = 'all',
-    int page = 1,
-    int limit = 20,
+    String filterBy = 'high_score',
+    String period = 'daily',
   }) async {
-    final resp = await _api.get(
+    final response = await _api.get(
       Endpoints.rankingsPlayback,
       queryParameters: {'filter_by': filterBy, 'period': period},
     );
-    return _parseMoviePage(resp.data);
+    return _parseMoviePage(response.data, fallbackPage: 1);
   }
 
   Future<PagedResult<MovieSummary>> getRanking({
-    required Object type,
-    String period = 'all',
+    required String type,
+    String period = 'daily',
     int page = 1,
-    int limit = 20,
   }) async {
-    final resp = await _api.get(
+    final response = await _api.get(
       Endpoints.rankings,
-      queryParameters: {'type': type, 'period': period},
+      queryParameters: {'type': type, 'period': period, 'page': page},
     );
-    return _parseMoviePage(resp.data);
+    return _parseMoviePage(response.data, fallbackPage: page);
   }
 
-  Future<PagedResult<ActorSummary>> getActorRanking({
-    required String type,
-    String period = 'month',
-    int page = 1,
-    int limit = 20,
-  }) async {
-    final resp = await _api.get(
+  Future<PagedResult<ActorSummary>> getActorRanking({required int type}) async {
+    final response = await _api.get(
       Endpoints.rankingsActors,
-      queryParameters: {'type': type, 'period': period},
+      queryParameters: {'type': type},
     );
-    final data = resp.data as Map<String, dynamic>;
+    final data = response.data as Map<String, dynamic>;
     final items = apiList(data, const [
       'actors',
       'items',
     ]).map((j) => ActorSummary.fromJson(normalizeActorSummaryJson(j))).toList();
     return PagedResult(
       items: items,
-      currentPage: apiInt(data['current_page'], page),
+      currentPage: 1,
       totalPages: apiInt(data['total_pages'], 1),
-      total: apiInt(data['total'], 0),
+      total: apiInt(data['total'], items.length),
     );
   }
 
-  PagedResult<MovieSummary> _parseMoviePage(dynamic data) {
+  PagedResult<MovieSummary> _parseMoviePage(
+    dynamic data, {
+    required int fallbackPage,
+  }) {
     final m = data as Map<String, dynamic>;
     final items = apiList(m, const [
       'movies',
@@ -77,9 +81,9 @@ class RankingService {
     ]).map((j) => MovieSummary.fromJson(normalizeMovieSummaryJson(j))).toList();
     return PagedResult(
       items: items,
-      currentPage: apiInt(m['current_page'], 1),
-      totalPages: apiInt(m['total_pages'], 1),
-      total: apiInt(m['total'], 0),
+      currentPage: apiInt(m['current_page'], fallbackPage),
+      totalPages: apiInt(m['total_pages'], fallbackPage),
+      total: apiInt(m['total'], items.length),
     );
   }
 }

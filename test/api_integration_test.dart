@@ -146,7 +146,7 @@ void main() {
       svc = RankingService(api);
     });
 
-    test('GET /api/v1/movies/top → Top250', () async {
+    test('GET /api/v1/movies/top → 使用 Top250 专用筛选参数', () async {
       ok(adapter, Endpoints.moviesTop, {
         'movies': [
           {'id': 'r1', 'number': 'R1', 'title': 'R', 'cover_url': 'c.jpg'},
@@ -155,21 +155,36 @@ void main() {
         'total_pages': 1,
         'total': 1,
       });
-      final r = await svc.getTop250(page: 1);
+      final r = await svc.getTop250(
+        startRank: 51,
+        type: 'video_type',
+        typeValue: '2',
+        ignoreWatched: true,
+      );
+      final q = adapter.requests.last.uri.queryParameters;
+      expect(q['start_rank'], '51');
+      expect(q['type'], 'video_type');
+      expect(q['type_value'], '2');
+      expect(q['ignore_watched'], 'true');
+      expect(q['limit'], '50');
+      expect(q.containsKey('page'), isFalse);
       expect(r.items.length, 1);
     });
 
-    test('GET /api/v1/rankings/playback → 看热播', () async {
+    test('GET /api/v1/rankings/playback → 使用筛选与周期枚举', () async {
       ok(adapter, Endpoints.rankingsPlayback, {
         'movies': [],
         'current_page': 1,
         'total_pages': 1,
         'total': 0,
       });
-      await svc.getPlayback(filterBy: 'month', period: 'all', page: 1);
+      await svc.getPlayback(filterBy: 'high_score', period: 'weekly');
       expect(adapter.requests.last.path, Endpoints.rankingsPlayback);
-      expect(adapter.requests.last.uri.queryParameters['filter_by'], 'month');
-      expect(adapter.requests.last.uri.queryParameters['period'], 'all');
+      expect(
+        adapter.requests.last.uri.queryParameters['filter_by'],
+        'high_score',
+      );
+      expect(adapter.requests.last.uri.queryParameters['period'], 'weekly');
       expect(
         adapter.requests.last.uri.queryParameters.containsKey('page'),
         isFalse,
@@ -180,33 +195,33 @@ void main() {
       );
     });
 
-    test('GET /api/v1/rankings → 带 type/period 参数', () async {
+    test('GET /api/v1/rankings → 带 type/period/page 参数', () async {
       ok(adapter, Endpoints.rankings, {
         'movies': [],
-        'current_page': 1,
-        'total_pages': 1,
+        'current_page': 2,
+        'total_pages': 2,
         'total': 0,
       });
-      await svc.getRanking(type: 'month', period: 'month', page: 1);
+      await svc.getRanking(type: '0', period: 'monthly', page: 2);
       final q = adapter.requests.last.uri.queryParameters;
-      expect(q['type'], 'month');
-      expect(q['period'], 'month');
-      expect(q.containsKey('page'), isFalse);
+      expect(q['type'], '0');
+      expect(q['period'], 'monthly');
+      expect(q['page'], '2');
       expect(q.containsKey('limit'), isFalse);
     });
 
-    test('GET /api/v1/rankings/actors → 演员排名', () async {
+    test('GET /api/v1/rankings/actors → 仅传整数 type', () async {
       ok(adapter, Endpoints.rankingsActors, {
         'actors': [],
         'current_page': 1,
         'total_pages': 1,
         'total': 0,
       });
-      await svc.getActorRanking(type: 'month', period: 'month', page: 1);
+      await svc.getActorRanking(type: 2);
       expect(adapter.requests.last.path, Endpoints.rankingsActors);
       final q = adapter.requests.last.uri.queryParameters;
-      expect(q['type'], 'month');
-      expect(q['period'], 'month');
+      expect(q['type'], '2');
+      expect(q.containsKey('period'), isFalse);
       expect(q.containsKey('page'), isFalse);
       expect(q.containsKey('limit'), isFalse);
     });
