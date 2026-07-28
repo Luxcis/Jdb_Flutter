@@ -478,6 +478,151 @@ void main() {
     expect(find.text('Top Movie 51'), findsOneWidget);
   });
 
+  testWidgets('Top250 首批不足 50 条时不再请求', (tester) async {
+    final fixture = await _pumpRankings(
+      tester,
+      top250Responses: [_top250Response(1, 10)],
+    );
+    await _pumpRankingFrame(tester);
+    await tester.drag(
+      find.byKey(const Key('top250-list')),
+      const Offset(0, -10000),
+    );
+    await _pumpRankingFrame(tester);
+
+    expect(
+      fixture.adapter.requests.where(
+        (request) => request.path == Endpoints.moviesTop,
+      ),
+      hasLength(1),
+    );
+  });
+
+  testWidgets('Top250 从 201 开始时加载一批后停止', (tester) async {
+    final fixture = await _pumpRankings(
+      tester,
+      top250Responses: [_top250Response(1, 1), _top250Response(201, 50)],
+    );
+    await _pumpRankingFrame(tester);
+    await tester.tap(find.byTooltip('筛选 Top250'));
+    await tester.pump();
+    await _pumpRankingFrame(tester);
+    await _scrollFilterSheetToBottom(tester);
+    await tester.tap(find.widgetWithText(ChoiceChip, '201'));
+    await _pumpRankingFrame(tester);
+    await tester.tapAt(const Offset(8, 8));
+    await tester.pump();
+
+    await tester.drag(
+      find.byKey(const Key('top250-list')),
+      const Offset(0, -10000),
+    );
+    await _pumpRankingFrame(tester);
+
+    final topRequests = fixture.adapter.requests.where(
+      (request) => request.path == Endpoints.moviesTop,
+    );
+    expect(topRequests, hasLength(2));
+    expect(topRequests.last.uri.queryParameters['start_rank'], '201');
+  });
+
+  testWidgets('Top250 从 51 开始时继续请求 101 且排名连续', (tester) async {
+    final fixture = await _pumpRankings(
+      tester,
+      top250Responses: [
+        _top250Response(1, 1),
+        _top250Response(51, 50),
+        _top250Response(101, 50),
+      ],
+    );
+    await _pumpRankingFrame(tester);
+    await tester.tap(find.byTooltip('筛选 Top250'));
+    await tester.pump();
+    await _pumpRankingFrame(tester);
+    await _scrollFilterSheetToBottom(tester);
+    await tester.tap(find.widgetWithText(ChoiceChip, '51'));
+    await _pumpRankingFrame(tester);
+    await tester.tapAt(const Offset(8, 8));
+    await tester.pump();
+
+    await tester.drag(
+      find.byKey(const Key('top250-list')),
+      const Offset(0, -10000),
+    );
+    await _pumpRankingFrame(tester);
+    await tester.drag(
+      find.byKey(const Key('top250-list')),
+      const Offset(0, -200),
+    );
+    await tester.pump();
+
+    final startRanks = fixture.adapter.requests
+        .where((request) => request.path == Endpoints.moviesTop)
+        .map((request) => request.uri.queryParameters['start_rank'])
+        .toList();
+    expect(startRanks, ['1', '51', '101']);
+    expect(find.text('Top Movie 101'), findsOneWidget);
+    final appendedTile = find.ancestor(
+      of: find.text('Top Movie 101'),
+      matching: find.byType(MovieListTile),
+    );
+    expect(
+      tester
+          .widget<RatingBadge>(
+            find.descendant(
+              of: appendedTile,
+              matching: find.byType(RatingBadge),
+            ),
+          )
+          .rank,
+      101,
+    );
+  });
+
+  testWidgets('Top250 追加失败时保留列表并可重试同一批', (tester) async {
+    final fixture = await _pumpRankings(
+      tester,
+      top250Responses: [
+        _top250Response(1, 50),
+        {'success': 0, 'message': 'next page failed'},
+        _top250Response(51, 50),
+      ],
+    );
+    await _pumpRankingFrame(tester);
+
+    await tester.drag(
+      find.byKey(const Key('top250-list')),
+      const Offset(0, -10000),
+    );
+    await _pumpRankingFrame(tester);
+
+    expect(find.text('Top Movie 50'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('top250-load-more-retry')),
+      200,
+      scrollable: find.descendant(
+        of: find.byKey(const Key('top250-list')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(find.byKey(const Key('top250-load-more-retry')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('top250-load-more-retry')));
+    await _pumpRankingFrame(tester);
+    await tester.drag(
+      find.byKey(const Key('top250-list')),
+      const Offset(0, -200),
+    );
+    await tester.pump();
+
+    final startRanks = fixture.adapter.requests
+        .where((request) => request.path == Endpoints.moviesTop)
+        .map((request) => request.uri.queryParameters['start_rank'])
+        .toList();
+    expect(startRanks, ['1', '51', '51']);
+    expect(find.text('Top Movie 51'), findsOneWidget);
+  });
+
   testWidgets('Top250 列表影片点击进入详情页', (tester) async {
     final fixture = await _pumpRankings(tester, withRouter: true);
     await _pumpRankingFrame(tester);

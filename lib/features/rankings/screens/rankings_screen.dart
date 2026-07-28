@@ -240,12 +240,16 @@ class _Top250TabState extends State<_Top250Tab>
         if (_controller.isLoading && _controller.items.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
+        final showFooter =
+            _controller.isLoading ||
+            (_controller.error != null && _controller.items.isNotEmpty);
         return RefreshIndicator(
           onRefresh: _controller.refresh,
           child: NotificationListener<ScrollNotification>(
             onNotification: (notification) {
               if (notification is ScrollEndNotification &&
-                  notification.metrics.extentAfter < 200) {
+                  notification.metrics.extentAfter < 200 &&
+                  _controller.error == null) {
                 _controller.fetchMore();
               }
               return false;
@@ -253,15 +257,17 @@ class _Top250TabState extends State<_Top250Tab>
             child: ListView.builder(
               key: const Key('top250-list'),
               physics: const AlwaysScrollableScrollPhysics(),
-              itemCount:
-                  _controller.items.length + (_controller.isLoading ? 1 : 0),
+              itemCount: _controller.items.length + (showFooter ? 1 : 0),
               itemBuilder: (context, index) {
                 if (index == _controller.items.length) {
-                  return const Padding(
-                    key: Key('top250-loading-more'),
-                    padding: EdgeInsets.all(16),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
+                  if (_controller.isLoading) {
+                    return const Padding(
+                      key: Key('top250-loading-more'),
+                      padding: EdgeInsets.all(16),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  return _Top250LoadMoreError(onRetry: _controller.fetchMore);
                 }
                 final movie = _controller.items[index];
                 return MovieListTile(
@@ -274,6 +280,24 @@ class _Top250TabState extends State<_Top250Tab>
           ),
         );
       },
+    );
+  }
+}
+
+class _Top250LoadMoreError extends StatelessWidget {
+  const _Top250LoadMoreError({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: TextButton.icon(
+        key: const Key('top250-load-more-retry'),
+        onPressed: onRetry,
+        icon: const Icon(Icons.refresh),
+        label: const Text('加载失败，点击重试'),
+      ),
     );
   }
 }
