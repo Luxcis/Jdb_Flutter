@@ -97,9 +97,7 @@ Future<void> _showTab(WidgetTester tester, int targetIndex) async {
 }
 
 Future<void> _scrollFilterSheetToBottom(WidgetTester tester) async {
-  final list = find.byType(ListView).last;
-  await tester.drag(list, const Offset(0, -200));
-  await tester.pump();
+  final list = find.byKey(const Key('top250-filter-list'));
   await tester.drag(list, const Offset(0, -800));
   await tester.pump();
 }
@@ -192,10 +190,33 @@ void main() {
     await tester.pump();
     await _pumpRankingFrame(tester);
 
+    final sheetFinder = find.byType(BottomSheet);
+    expect(sheetFinder, findsOneWidget);
     expect(find.text('筛选'), findsOneWidget);
     expect(find.widgetWithText(ChoiceChip, '全部'), findsOneWidget);
     expect(find.text('${DateTime.now().year}'), findsOneWidget);
     expect(find.text('2008'), findsOneWidget);
+    expect(
+      tester.getSize(sheetFinder).height,
+      closeTo(tester.view.physicalSize.height * 2 / 3, 2),
+    );
+    expect(find.byType(DraggableScrollableSheet), findsNothing);
+
+    final heightBeforeUpwardDrag = tester.getSize(sheetFinder).height;
+    await tester.drag(sheetFinder, const Offset(0, -120));
+    await tester.pump();
+    expect(
+      tester.getSize(sheetFinder).height,
+      closeTo(heightBeforeUpwardDrag, 1),
+    );
+
+    for (final chip in tester.widgetList<ChoiceChip>(find.byType(ChoiceChip))) {
+      expect(chip.showCheckmark, isFalse);
+      expect(chip.visualDensity, VisualDensity.compact);
+      expect(chip.materialTapTargetSize, MaterialTapTargetSize.shrinkWrap);
+      expect(chip.labelPadding, const EdgeInsets.symmetric(horizontal: 6));
+    }
+
     await _scrollFilterSheetToBottom(tester);
     expect(find.text('起始排名'), findsOneWidget);
     expect(find.text('未标「看过」'), findsOneWidget);

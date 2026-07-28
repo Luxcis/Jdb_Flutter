@@ -41,14 +41,13 @@ class _RankingsPageState extends State<RankingsPage>
   }
 
   void _showTop250Filter() {
+    final sheetHeight = MediaQuery.sizeOf(context).height * 2 / 3;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: true,
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.sizeOf(context).height * 0.9,
-      ),
+      constraints: BoxConstraints.tightFor(height: sheetHeight),
       builder: (_) => _Top250FilterSheet(
         value: _top250Filter,
         onChanged: (value) => setState(() => _top250Filter = value),
@@ -254,80 +253,90 @@ class _Top250FilterSheetState extends State<_Top250FilterSheet> {
     final years = [
       for (var year = DateTime.now().year; year >= 2008; year--) year,
     ];
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.8,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
-      builder: (context, scrollController) {
-        return ListView(
-          controller: scrollController,
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+    return ListView(
+      key: const Key('top250-filter-list'),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      children: [
+        Text('筛选', style: Theme.of(context).textTheme.headlineSmall),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
           children: [
-            Text('筛选', style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 20),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                ChoiceChip(
-                  label: const Text('全部'),
-                  selected: _value.type == 'all',
-                  onSelected: (_) =>
-                      _emit(_value.copyWith(type: 'all', typeValue: '')),
+            _CompactChoiceChip(
+              label: '全部',
+              selected: _value.type == 'all',
+              onSelected: () =>
+                  _emit(_value.copyWith(type: 'all', typeValue: '')),
+            ),
+            for (final type in _videoTypes)
+              _CompactChoiceChip(
+                label: type.label,
+                selected:
+                    _value.type == 'video_type' &&
+                    _value.typeValue == type.value,
+                onSelected: () => _emit(
+                  _value.copyWith(type: 'video_type', typeValue: type.value),
                 ),
-                for (final type in _videoTypes)
-                  ChoiceChip(
-                    label: Text(type.label),
-                    selected:
-                        _value.type == 'video_type' &&
-                        _value.typeValue == type.value,
-                    onSelected: (_) => _emit(
-                      _value.copyWith(
-                        type: 'video_type',
-                        typeValue: type.value,
-                      ),
-                    ),
-                  ),
-                for (final year in years)
-                  ChoiceChip(
-                    label: Text('$year'),
-                    selected:
-                        _value.type == 'year' && _value.typeValue == '$year',
-                    onSelected: (_) => _emit(
-                      _value.copyWith(type: 'year', typeValue: '$year'),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            Text('起始排名', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                for (final startRank in _startRanks)
-                  ChoiceChip(
-                    label: Text('$startRank'),
-                    selected: _value.startRank == startRank,
-                    onSelected: (_) =>
-                        _emit(_value.copyWith(startRank: startRank)),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('未标「看过」'),
-              subtitle: const Text('仅查看还未被标记「看过」的影片'),
-              value: _value.ignoreWatched,
-              onChanged: (value) =>
-                  _emit(_value.copyWith(ignoreWatched: value)),
-            ),
+              ),
+            for (final year in years)
+              _CompactChoiceChip(
+                label: '$year',
+                selected: _value.type == 'year' && _value.typeValue == '$year',
+                onSelected: () =>
+                    _emit(_value.copyWith(type: 'year', typeValue: '$year')),
+              ),
           ],
-        );
-      },
+        ),
+        const SizedBox(height: 16),
+        Text('起始排名', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final startRank in _startRanks)
+              _CompactChoiceChip(
+                label: '$startRank',
+                selected: _value.startRank == startRank,
+                onSelected: () => _emit(_value.copyWith(startRank: startRank)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('未标「看过」'),
+          subtitle: const Text('仅查看还未被标记「看过」的影片'),
+          value: _value.ignoreWatched,
+          onChanged: (value) => _emit(_value.copyWith(ignoreWatched: value)),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactChoiceChip extends StatelessWidget {
+  const _CompactChoiceChip({
+    required this.label,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onSelected(),
+      showCheckmark: false,
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      labelPadding: const EdgeInsets.symmetric(horizontal: 6),
     );
   }
 }
