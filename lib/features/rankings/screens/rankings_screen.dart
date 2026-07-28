@@ -396,28 +396,39 @@ class _HotPlayTabState extends State<_HotPlayTab>
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            spacing: 8,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Row(
+            key: const Key('hot-play-filter-row'),
             children: [
-              _FilterChipRow(
-                label: '范围',
-                options: const [
-                  (label: '高分', value: 'high_score'),
-                  (label: '全部', value: 'all'),
-                ],
-                value: _filterBy,
-                onSelected: _updateFilterBy,
+              Expanded(
+                flex: 2,
+                child: SortSegmented<String>(
+                  key: const Key('hot-play-range-filter'),
+                  compact: true,
+                  expanded: true,
+                  options: const [
+                    (label: '高分', value: 'high_score'),
+                    (label: '全部', value: 'all'),
+                  ],
+                  value: _filterBy,
+                  onChanged: _updateFilterBy,
+                ),
               ),
-              _FilterChipRow(
-                label: '周期',
-                options: const [
-                  (label: '日榜', value: 'daily'),
-                  (label: '周榜', value: 'weekly'),
-                  (label: '月榜', value: 'monthly'),
-                ],
-                value: _period,
-                onSelected: _updatePeriod,
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 3,
+                child: SortSegmented<String>(
+                  key: const Key('hot-play-period-filter'),
+                  compact: true,
+                  expanded: true,
+                  options: const [
+                    (label: '日榜', value: 'daily'),
+                    (label: '周榜', value: 'weekly'),
+                    (label: '月榜', value: 'monthly'),
+                  ],
+                  value: _period,
+                  onChanged: _updatePeriod,
+                ),
               ),
             ],
           ),
@@ -483,8 +494,11 @@ class _RankTabState extends State<_RankTab> with AutomaticKeepAliveClientMixin {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           child: SortSegmented<String>(
+            key: const Key('rank-period-filter'),
+            compact: true,
+            expanded: true,
             options: periods,
             value: _period,
             onChanged: _updatePeriod,
@@ -492,44 +506,6 @@ class _RankTabState extends State<_RankTab> with AutomaticKeepAliveClientMixin {
         ),
         Expanded(child: MovieGridView(controller: _controller)),
       ],
-    );
-  }
-}
-
-class _FilterChipRow extends StatelessWidget {
-  const _FilterChipRow({
-    required this.label,
-    required this.options,
-    required this.value,
-    required this.onSelected,
-  });
-
-  final String label;
-  final List<({String label, String value})> options;
-  final String value;
-  final ValueChanged<String> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          SizedBox(
-            width: 40,
-            child: Text(label, style: Theme.of(context).textTheme.labelLarge),
-          ),
-          for (final option in options)
-            ChoiceChip(
-              label: Text(option.label),
-              selected: value == option.value,
-              onSelected: (_) => onSelected(option.value),
-            ),
-        ],
-      ),
     );
   }
 }

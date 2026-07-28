@@ -128,10 +128,34 @@ void main() {
     final fixture = await _pumpRankings(tester);
     await _showTab(tester, 1);
 
-    expect(find.text('范围'), findsOneWidget);
-    expect(find.text('周期'), findsOneWidget);
-    expect(find.byType(ChoiceChip), findsNWidgets(5));
-    await tester.tap(find.widgetWithText(ChoiceChip, '周榜'));
+    expect(find.text('范围'), findsNothing);
+    expect(find.text('周期'), findsNothing);
+    expect(find.byType(ChoiceChip), findsNothing);
+
+    final row = find.byKey(const Key('hot-play-filter-row'));
+    final range = find.byKey(const Key('hot-play-range-filter'));
+    final period = find.byKey(const Key('hot-play-period-filter'));
+    expect(row, findsOneWidget);
+    expect(range, findsOneWidget);
+    expect(period, findsOneWidget);
+    expect(tester.getTopLeft(range).dy, tester.getTopLeft(period).dy);
+    expect(
+      tester.getSize(range).width / tester.getSize(period).width,
+      closeTo(2 / 3, 0.08),
+    );
+
+    for (final finder in [range, period]) {
+      final segmented = tester.widget<SegmentedButton<String>>(
+        find.descendant(
+          of: finder,
+          matching: find.byType(SegmentedButton<String>),
+        ),
+      );
+      expect(segmented.showSelectedIcon, isFalse);
+      expect(segmented.expandedInsets, EdgeInsets.zero);
+    }
+
+    await tester.tap(find.text('周榜'));
     await _pumpRankingFrame(tester);
 
     final query = fixture.adapter.requests
@@ -141,6 +165,25 @@ void main() {
         .queryParameters;
     expect(query['filter_by'], 'high_score');
     expect(query['period'], 'weekly');
+  });
+
+  testWidgets('综合排行榜周期胶囊紧凑并撑满屏幕', (tester) async {
+    await _pumpRankings(tester);
+    await _showTab(tester, 2);
+
+    final filter = find.byKey(const Key('rank-period-filter'));
+    expect(filter, findsOneWidget);
+    expect(tester.getSize(filter).width, closeTo(320 - 16, 1));
+
+    final segmented = tester.widget<SegmentedButton<String>>(
+      find.descendant(
+        of: filter,
+        matching: find.byType(SegmentedButton<String>),
+      ),
+    );
+    expect(segmented.showSelectedIcon, isFalse);
+    expect(segmented.expandedInsets, EdgeInsets.zero);
+    expect(segmented.style?.visualDensity, VisualDensity.compact);
   });
 
   testWidgets('综合排行榜没有演员月榜且类型映射从 0 开始', (tester) async {
@@ -178,6 +221,9 @@ void main() {
     await _showTab(tester, 1);
 
     expect(find.text('高分'), findsOneWidget);
+    final range = find.byKey(const Key('hot-play-range-filter'));
+    final period = find.byKey(const Key('hot-play-period-filter'));
+    expect(tester.getTopLeft(range).dy, tester.getTopLeft(period).dy);
     expect(tester.takeException(), isNull);
   });
 
