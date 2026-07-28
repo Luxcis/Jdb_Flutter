@@ -35,6 +35,40 @@ class _HomePageState extends State<HomePage> {
     setState(() => _provider = provider);
   }
 
+  Future<void> _refreshLatest() async {
+    final provider = _provider;
+    if (provider == null || provider.isLatestRefreshing) return;
+    final refresh = provider.reshuffleLatest();
+    setState(() {});
+    try {
+      await refresh;
+    } catch (_) {
+      if (mounted) _showRefreshError();
+    } finally {
+      if (mounted) setState(() {});
+    }
+  }
+
+  Future<void> _refreshMagnets() async {
+    final provider = _provider;
+    if (provider == null || provider.isMagnetRefreshing) return;
+    final refresh = provider.reshuffleMagnets();
+    setState(() {});
+    try {
+      await refresh;
+    } catch (_) {
+      if (mounted) _showRefreshError();
+    } finally {
+      if (mounted) setState(() {});
+    }
+  }
+
+  void _showRefreshError() {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('换一组失败，请重试')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = _provider;
@@ -97,18 +131,20 @@ class _HomePageState extends State<HomePage> {
               child: SectionHeader(title: '最新上架', trailing: '全部'),
             ),
             _buildGrid(p.latest),
-            _shuffleButton(() {
-              p.reshuffleLatest();
-              setState(() {});
-            }),
+            _shuffleButton(
+              key: const Key('home-latest-shuffle'),
+              isLoading: p.isLatestRefreshing,
+              onPressed: _refreshLatest,
+            ),
             SliverToBoxAdapter(
               child: SectionHeader(title: '近期磁链更新', trailing: '全部'),
             ),
             _buildGrid(p.magnetUpdates),
-            _shuffleButton(() {
-              p.reshuffleMagnets();
-              setState(() {});
-            }),
+            _shuffleButton(
+              key: const Key('home-magnets-shuffle'),
+              isLoading: p.isMagnetRefreshing,
+              onPressed: _refreshMagnets,
+            ),
           ],
         ),
       ),
@@ -137,16 +173,32 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _shuffleButton(VoidCallback onPressed) {
+  Widget _shuffleButton({
+    required Key key,
+    required bool isLoading,
+    required VoidCallback onPressed,
+  }) {
     return SliverToBoxAdapter(
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: Padding(
-          padding: const EdgeInsets.only(right: 12, bottom: 8),
-          child: IconButton(
-            onPressed: onPressed,
-            icon: const Icon(Icons.shuffle),
-            tooltip: '换一组',
+      child: SizedBox(
+        height: 72,
+        child: Center(
+          child: TextButton(
+            key: key,
+            onPressed: isLoading ? null : onPressed,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 6,
+              children: [
+                const Text('换一组'),
+                if (isLoading)
+                  const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  const Icon(Icons.refresh),
+              ],
+            ),
           ),
         ),
       ),
