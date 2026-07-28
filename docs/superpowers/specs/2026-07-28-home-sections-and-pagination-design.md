@@ -104,7 +104,7 @@ page=<当前页>
 
 ### 看热播定向跳转
 
-“看热播”入口改为跳转 `/rankings?tab=hot`。应用路由读取 `tab` 查询参数：
+“看热播”入口改为通过 `context.go` 跨底部导航分支跳转 `/rankings?tab=hot`；其他豆腐块继续使用 `context.push`，保留原返回栈行为。应用路由读取 `tab` 查询参数：
 
 - `tab=hot` 时构造 `RankingsPage(initialTabIndex: 1)`；
 - 缺少参数或参数不受支持时构造默认 `RankingsPage(initialTabIndex: 0)`。

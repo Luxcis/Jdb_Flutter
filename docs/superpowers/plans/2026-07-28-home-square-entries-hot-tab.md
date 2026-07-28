@@ -4,7 +4,7 @@
 
 **Goal:** 将首页豆腐块调整为紧凑的 `72×72` 方形，并让“看热播”直接进入排行榜的“看热播”Tab。
 
-**Architecture:** `TofuScroll` 只负责方形入口视觉与生成 `/rankings?tab=hot` URI；`AppRouter` 将稳定查询参数映射为 `RankingsPage.initialTabIndex`；`RankingsPage` 继续使用现有 `TabController`，仅开放初始索引注入。
+**Architecture:** `TofuScroll` 负责方形入口视觉，并仅对跨底部导航分支的“看热播”使用 `context.go('/rankings?tab=hot')`；其他入口继续使用 `context.push`。`AppRouter` 将稳定查询参数映射为 `RankingsPage.initialTabIndex`；`RankingsPage` 继续使用现有 `TabController`，仅开放初始索引注入。
 
 **Tech Stack:** Flutter, Dart, Material 3, GoRouter, flutter_test
 
@@ -14,6 +14,7 @@
 - 入口栏高度为 88，水平和垂直内边距为 8，相邻卡片间距为 8。
 - 图标尺寸为 24，图标与文案间距为 4，文案使用主题 `bodySmall`。
 - “看热播”目标 URI 固定为 `/rankings?tab=hot`。
+- “看热播”使用 `context.go` 切换 StatefulShell 分支，其他豆腐块继续使用 `context.push`。
 - `tab=hot` 映射到排行榜索引 1；普通或未知参数映射到索引 0。
 - 不新增全局状态，不新增路由，不改变其他豆腐块目标。
 - 所有行为变更先写失败测试并确认 RED，再写最小实现并确认 GREEN。
@@ -117,7 +118,13 @@ return SizedBox(
           ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
-            onTap: () => context.push(item.route),
+            onTap: () {
+              if (item.route == '/rankings?tab=hot') {
+                context.go(item.route);
+                return;
+              }
+              context.push(item.route);
+            },
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               spacing: 4,
@@ -283,7 +290,7 @@ testWidgets('从首页进入 rankings tab=hot 打开看热播 Tab', (tester) asy
 
   router.go('/home');
   await tester.pump(const Duration(milliseconds: 100));
-  router.push('/rankings?tab=hot');
+  router.go('/rankings?tab=hot');
   await tester.pump(const Duration(milliseconds: 100));
 
   expect(router.state.uri.path, '/rankings');
