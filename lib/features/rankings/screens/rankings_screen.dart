@@ -25,6 +25,7 @@ class _RankingsPageState extends State<RankingsPage>
 
   late final TabController _tabController;
   var _top250Filter = const Top250Filter();
+  var _selectedTabIndex = 0;
 
   @override
   void initState() {
@@ -34,7 +35,9 @@ class _RankingsPageState extends State<RankingsPage>
   }
 
   void _handleTabChanged() {
-    if (mounted) setState(() {});
+    final index = _tabController.index;
+    if (!mounted || _selectedTabIndex == index) return;
+    setState(() => _selectedTabIndex = index);
   }
 
   void _showTop250Filter() {
@@ -66,7 +69,7 @@ class _RankingsPageState extends State<RankingsPage>
       appBar: AppBar(
         title: const Text('排行榜'),
         actions: [
-          if (_tabController.index == 0)
+          if (_selectedTabIndex == 0)
             IconButton(
               tooltip: '筛选 Top250',
               onPressed: _showTop250Filter,
@@ -134,6 +137,7 @@ class _Top250Tab extends StatefulWidget {
 
 class _Top250TabState extends State<_Top250Tab>
     with AutomaticKeepAliveClientMixin {
+  var _wasLoggedIn = false;
   late final PaginationController<MovieSummary> _controller =
       PaginationController(fetch: _fetchPage);
 
@@ -149,9 +153,16 @@ class _Top250TabState extends State<_Top250Tab>
   }
 
   @override
-  void initState() {
-    super.initState();
-    _controller.fetchMore();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final isLoggedIn = context.watch<AuthProvider>().isLogged;
+    if (isLoggedIn && !_wasLoggedIn) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !context.read<AuthProvider>().isLogged) return;
+        _controller.reloadWith(_fetchPage);
+      });
+    }
+    _wasLoggedIn = isLoggedIn;
   }
 
   @override

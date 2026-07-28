@@ -10,9 +10,10 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _RankingFixture {
-  const _RankingFixture(this.adapter);
+  const _RankingFixture(this.adapter, this.auth);
 
   final FakeAdapter adapter;
+  final AuthProvider auth;
 }
 
 Future<_RankingFixture> _pumpRankings(
@@ -79,7 +80,7 @@ Future<_RankingFixture> _pumpRankings(
       ),
     ),
   );
-  return _RankingFixture(adapter);
+  return _RankingFixture(adapter, auth);
 }
 
 Future<void> _pumpRankingFrame(WidgetTester tester) async {
@@ -260,5 +261,29 @@ void main() {
     await tester.pump();
     await _pumpRankingFrame(tester);
     expect(tester.widget<RatingBadge>(find.byType(RatingBadge)).rank, 51);
+  });
+
+  testWidgets('Top250 未登录时不请求且登录后自动加载', (tester) async {
+    final fixture = await _pumpRankings(tester, loggedIn: false);
+    await _pumpRankingFrame(tester);
+
+    expect(
+      fixture.adapter.requests.where(
+        (request) => request.path == Endpoints.moviesTop,
+      ),
+      isEmpty,
+    );
+
+    await fixture.auth.login(token: 'token', user: {'id': 1});
+    await tester.pump();
+    await _pumpRankingFrame(tester);
+
+    expect(
+      fixture.adapter.requests.where(
+        (request) => request.path == Endpoints.moviesTop,
+      ),
+      hasLength(1),
+    );
+    expect(find.text('Ranked Movie'), findsOneWidget);
   });
 }
