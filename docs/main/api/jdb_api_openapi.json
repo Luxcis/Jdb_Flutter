@@ -828,11 +828,11 @@
         "tags": [
           "Movie"
         ],
-        "summary": "最新影片",
-        "description": "获取最新影片列表（分页）。\n\n### 参数交互规则\n- `filter_by=all` 时，客户端强制 `sort_by=release`\n- `filter_by` 非 `all` 时，默认 `sort_by=update`\n- `order_by` 仅对 `sort_by=release` 生效\n\n### 场景示例\n- 首页最新全部：`type=all&filter_by=all&sort_by=release&order_by=desc&page=1&limit=48`\n- 近期磁链更新（首页卡片）：`type=all&filter_by=magnets&sort_by=update&page=1&limit=18`\n- 新上架可播放（首页卡片）：`type=all&filter_by=can_play&sort_by=update&page=1&limit=18`",
+        "summary": "最新影片（首页最新上架 & 近期磁链更新）",
+        "description": "获取最新影片列表（分页），支持多维度筛选与排序。\n\n### 首页两大功能入口\n此接口同时承载首页的「最新上架」和「近期磁链更新」两个功能，仅通过参数区分：\n- **最新上架**：按发布日期倒序展示全部影片\n- **近期磁链更新**：仅展示有磁链的影片，按磁链更新时间排序，响应中 `new_magnets` 字段表示近期新增磁链数\n\n### 参数交互规则（已通过 Flutter ARM64 汇编验证）\n- `type` 始终为 `all`（客户端固定传入）\n- `filter_by=all`（传 null 时默认值）→ 客户端强制 `sort_by=release`\n- `filter_by` 非 `all`（传 1/2/3 时）→ 使用传入的 `sort_by` 参数\n- `order_by` 仅对 `sort_by=release` 生效\n- `limit` 在 Flutter 端硬编码为 48（汇编指令: `mov x16, #0x30`），用于标准列表页\n- Flutter 端使用 `SearchNewEntity` 类型解析响应（而非 `MovieEntity`），因两者均含 `movies`/`current_page` 字段兼容\n\n### 调用链\n```\nLatestMoviePagePresenter.getLatestMovies()\n  → 构建 queryParameters: {type, filter_by, sort_by, page, limit}\n  → BasePagePresenter.requestNetwork<SearchNewEntity>()\n  → Dio HTTP GET /api/v1/movies/latest\n  → onSuccess → BaseListProvider.setHasMore/addAll/setStateType\n```\n\n### 场景示例\n- 首页最新全部：`type=all&filter_by=all&sort_by=release&order_by=desc&page=1&limit=48`\n- 近期磁链更新（首页卡片）：`type=all&filter_by=magnets&sort_by=update&page=1&limit=18`\n- 新上架可播放（首页卡片）：`type=all&filter_by=can_play&sort_by=update&page=1&limit=18`",
         "responses": {
           "200": {
-            "description": "成功，data 包含 movies 数组和 current_page",
+            "description": "成功，data 包含 movies 数组、current_page、generated_at。\n- `movies[].new_magnets` 表示近期新增磁链数，用于「近期磁链更新」卡片展示\n- `movies[].magnets_count` 表示当前总磁链数\n- `movies[].can_play` 表示是否支持在线播放",
             "content": {
               "application/json": {
                 "schema": {
@@ -858,7 +858,7 @@
           {
             "name": "type",
             "in": "query",
-            "description": "类型筛选",
+            "description": "类型筛选。Flutter 客户端始终传入 `all`",
             "required": false,
             "schema": {
               "type": "string",
@@ -887,7 +887,7 @@
           {
             "name": "sort_by",
             "in": "query",
-            "description": "排序字段。release=发布日期, update=更新时间, score=评分, hit=热度, want_watch_count=想看数, watched_count=看过数",
+            "description": "排序字段。release=发布日期, update=磁链更新时间, score=评分, hit=热度, want_watch_count=想看数, watched_count=看过数。注意：`filter_by=all` 时客户端强制使用 `release`；`filter_by=magnets` 时默认使用 `update`",
             "required": false,
             "schema": {
               "type": "string",
@@ -928,7 +928,7 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "每页条数。标准列表页用 48，首页卡片条用 18",
+            "description": "每页条数。Flutter 标准列表页硬编码 48（汇编 `mov x16, #0x30`），首页卡片条时客户端传入 18",
             "required": false,
             "schema": {
               "type": "integer",
@@ -7538,61 +7538,80 @@
         "description": "影片摘要",
         "properties": {
           "ranking": {
-            "type": "integer"
+            "type": "integer",
+            "description": "排名序号"
           },
           "id": {
-            "type": "string"
+            "type": "string",
+            "description": "影片 ID（用于后续详情/磁链/评论等接口）"
           },
           "number": {
-            "type": "string"
+            "type": "string",
+            "description": "番号"
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "作品标题"
           },
           "origin_title": {
-            "type": "string"
+            "type": "string",
+            "description": "原版标题"
           },
           "thumb_url": {
-            "type": "string"
+            "type": "string",
+            "description": "缩略图 URL（CDN: tp.spfcas.com）"
           },
           "cover_url": {
-            "type": "string"
+            "type": "string",
+            "description": "封面图 URL（CDN: tp.spfcas.com）"
           },
           "has_cnsub": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "是否有中文字幕（对应 filter_by=subtitle 筛选）"
           },
           "has_preview_images": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "是否有预览图"
           },
           "duration": {
-            "type": "integer"
+            "type": "integer",
+            "description": "影片时长（秒）"
           },
           "magnets_count": {
-            "type": "integer"
+            "type": "integer",
+            "description": "当前总磁链数（filter_by=magnets 时此值 > 0）"
           },
           "score": {
-            "type": "number"
+            "type": "number",
+            "description": "评分"
           },
           "watched_count": {
-            "type": "integer"
+            "type": "integer",
+            "description": "看过次数"
           },
           "has_preview_video": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "是否有预览视频"
           },
           "can_play": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "是否可在线播放（对应 filter_by=can_play 筛选）"
           },
           "play_subtitle": {
-            "type": "string"
+            "type": "string",
+            "description": "播放字幕语言代码（如 \"zh\"）"
           },
           "new_magnets": {
-            "type": "integer"
+            "type": "integer",
+            "description": "近期新增磁链数。首页「近期磁链更新」卡片中展示此值，表示该影片近期新增的磁链数量"
           },
           "release_date": {
-            "type": "string"
+            "type": "string",
+            "description": "发布日期（sort_by=release 时按此字段排序）"
           },
           "preview_images": {
-            "type": "object"
+            "type": "object",
+            "description": "预览图对象"
           }
         }
       },
