@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jade/app.dart';
 import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/network/backup_domains_decryptor.dart';
+import 'package:jade/core/network/startup_api_client.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/providers/startup_provider.dart';
@@ -13,9 +15,12 @@ import 'package:jade/core/router/app_router.dart';
 
 export 'package:jade/app.dart' show MyApp;
 
-Future<void> mainForTest() async {
+Future<void> mainForTest({
+  StartupApi? startupApi,
+  StartupDomainsDecoder? decoder,
+}) async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(await _buildEntry());
+  runApp(await _buildEntry(startupApi: startupApi, decoder: decoder));
 }
 
 void main() async {
@@ -23,7 +28,10 @@ void main() async {
   runApp(await _buildEntry());
 }
 
-Future<Widget> _buildEntry() async {
+Future<Widget> _buildEntry({
+  StartupApi? startupApi,
+  StartupDomainsDecoder? decoder,
+}) async {
   final prefs = await SharedPreferences.getInstance();
   final themeProvider = await ThemeProvider.create();
   final authProvider = await AuthProvider.create(prefs);
@@ -37,11 +45,11 @@ Future<Widget> _buildEntry() async {
     },
   );
   final startupProvider = StartupProvider.create(
-    apiClient,
-    apiClient.domainManager,
+    startupApi: startupApi ?? StartupApiClient.create(),
+    apiClient: apiClient,
+    domainManager: apiClient.domainManager,
+    decoder: decoder ?? BackupDomainsDecryptor.decrypt,
   );
-  // fire-and-forget 域名刷新
-  startupProvider.fetchStartup();
 
   return MultiProvider(
     providers: [
