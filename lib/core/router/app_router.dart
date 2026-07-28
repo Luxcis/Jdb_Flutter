@@ -87,7 +87,7 @@ class AppRouter {
               builder: (context, state) => RankingsPage(
                 initialTabIndex: state.uri.queryParameters['tab'] == 'hot'
                     ? 1
-                    : 0,
+                    : 2,
               ),
             ),
           ],
