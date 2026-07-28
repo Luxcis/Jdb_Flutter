@@ -12,6 +12,7 @@ import 'package:jade/features/profile/index.dart';
 import 'package:jade/features/movie_detail/index.dart';
 import 'package:jade/features/search/index.dart';
 import 'package:jade/features/auth/index.dart';
+import 'package:jade/features/startup/index.dart';
 
 class AppRouter {
   const AppRouter._();
@@ -20,13 +21,14 @@ class AppRouter {
   static bool _allowAuthErrorLoginOnce = false;
 
   /// 生产用路由（含 auth redirect）。
-  static GoRouter build({String initialLocation = AppRoutes.home}) => _remember(
-    GoRouter(
-      initialLocation: initialLocation,
-      redirect: _redirect,
-      routes: _routes,
-    ),
-  );
+  static GoRouter build({String initialLocation = AppRoutes.startup}) =>
+      _remember(
+        GoRouter(
+          initialLocation: initialLocation,
+          redirect: _redirect,
+          routes: _routes,
+        ),
+      );
 
   /// 测试用路由（无 redirect，避免测试依赖 AuthProvider）。
   static GoRouter buildForTest({String initialLocation = AppRoutes.home}) =>
@@ -70,6 +72,10 @@ class AppRouter {
   }
 
   static List<RouteBase> get _routes => [
+    GoRoute(
+      path: AppRoutes.startup,
+      builder: (context, state) => const StartupPage(),
+    ),
     GoRoute(path: AppRoutes.login, builder: (c, s) => const LoginPage()),
     GoRoute(path: AppRoutes.register, builder: (c, s) => const RegisterPage()),
     StatefulShellRoute.indexedStack(

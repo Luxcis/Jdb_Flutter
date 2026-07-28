@@ -1,6 +1,7 @@
 class AppRoutes {
   const AppRoutes._();
 
+  static const String startup = '/startup';
   static const String home = '/home';
   static const String rankings = '/rankings';
   static const String categories = '/categories';

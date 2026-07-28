@@ -19,9 +19,16 @@ void main() {
     return auth;
   }
 
+  test('生产路由默认从启动页开始', () {
+    final router = AppRouter.build();
+    addTearDown(router.dispose);
+
+    expect(router.routeInformationProvider.value.uri.path, AppRoutes.startup);
+  });
+
   testWidgets('未登录访问 protectedRoutes 重定向到 /login', (tester) async {
     final auth = await createAuth(false);
-    final router = AppRouter.build();
+    final router = AppRouter.build(initialLocation: AppRoutes.home);
     await tester.pumpWidget(
       ChangeNotifierProvider<AuthProvider>.value(
         value: auth,
@@ -40,7 +47,7 @@ void main() {
 
   testWidgets('已登录访问 /login 重定向到 /home', (tester) async {
     final auth = await createAuth(true);
-    final router = AppRouter.build();
+    final router = AppRouter.build(initialLocation: AppRoutes.home);
     await tester.pumpWidget(
       ChangeNotifierProvider<AuthProvider>.value(
         value: auth,
@@ -57,7 +64,7 @@ void main() {
 
   testWidgets('已登录访问 protectedRoutes 正常放行', (tester) async {
     final auth = await createAuth(true);
-    final router = AppRouter.build();
+    final router = AppRouter.build(initialLocation: AppRoutes.home);
     await tester.pumpWidget(
       ChangeNotifierProvider<AuthProvider>.value(
         value: auth,
@@ -74,7 +81,7 @@ void main() {
 
   testWidgets('未登录访问非受保护路由正常放行', (tester) async {
     final auth = await createAuth(false);
-    final router = AppRouter.build();
+    final router = AppRouter.build(initialLocation: AppRoutes.home);
     await tester.pumpWidget(
       ChangeNotifierProvider<AuthProvider>.value(
         value: auth,
