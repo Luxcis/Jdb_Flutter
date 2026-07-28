@@ -116,11 +116,9 @@ void main() {
     expect(tabBar.controller!.index, 1);
   });
 
-  testWidgets('rankings 未知参数仍打开 Top250', (tester) async {
+  testWidgets('rankings 未携带 tab 参数时默认打开有码', (tester) async {
     final auth = await createAuth(false);
-    final router = AppRouter.buildForTest(
-      initialLocation: '/rankings?tab=unknown',
-    );
+    final router = AppRouter.buildForTest(initialLocation: '/rankings');
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ChangeNotifierProvider<AuthProvider>.value(
@@ -131,7 +129,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     final tabBar = tester.widget<TabBar>(find.byType(TabBar));
-    expect(tabBar.controller!.index, 0);
+    expect(tabBar.controller!.index, 2);
   });
 
   testWidgets('全局认证失效从当前页面跳转登录并携带 from', (tester) async {
