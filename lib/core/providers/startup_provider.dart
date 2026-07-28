@@ -1,48 +1,82 @@
-// lib/core/providers/startup_provider.dart
 import 'package:flutter/foundation.dart';
 import 'package:jade/core/models/startup.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/backup_domains_decryptor.dart';
 import 'package:jade/core/network/domain_manager.dart';
-import 'package:jade/core/network/endpoints.dart';
+import 'package:jade/core/network/startup_api_client.dart';
+
+enum StartupStatus { idle, loading, success, failure }
+
+typedef StartupDomainsDecoder = BackupDomains Function(String data);
 
 class StartupProvider extends ChangeNotifier {
-  StartupProvider._(this._api, this._dm);
-  final ApiClient _api;
-  final DomainManager _dm;
-  bool _loaded = false;
-  bool get loaded => _loaded;
+  StartupProvider._({
+    required StartupApi startupApi,
+    required ApiClient apiClient,
+    required DomainManager domainManager,
+    required StartupDomainsDecoder decoder,
+  }) : _startupApi = startupApi,
+       _apiClient = apiClient,
+       _domainManager = domainManager,
+       _decoder = decoder;
 
-  static StartupProvider create(ApiClient api, DomainManager dm) =>
-      StartupProvider._(api, dm);
+  static const String failureMessage = '启动失败，请检查网络后重试';
 
-  /// 调 /startup 拉取并应用域名列表。
-  Future<void> fetchStartup() async {
+  final StartupApi _startupApi;
+  final ApiClient _apiClient;
+  final DomainManager _domainManager;
+  final StartupDomainsDecoder _decoder;
+
+  StartupStatus _status = StartupStatus.idle;
+  String? _errorMessage;
+
+  StartupStatus get status => _status;
+  String? get errorMessage => _errorMessage;
+
+  static StartupProvider create({
+    required StartupApi startupApi,
+    required ApiClient apiClient,
+    required DomainManager domainManager,
+    StartupDomainsDecoder decoder = BackupDomainsDecryptor.decrypt,
+  }) {
+    return StartupProvider._(
+      startupApi: startupApi,
+      apiClient: apiClient,
+      domainManager: domainManager,
+      decoder: decoder,
+    );
+  }
+
+  Future<bool> load() async {
+    if (_status == StartupStatus.loading) {
+      return false;
+    }
+    _status = StartupStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+
     try {
-      final resp = await _api.get(Endpoints.startup, queryParameters: {
-        'platform': 'android',
-        'app_channel': 'google',
-        'app_version': '1.9.29',
-        'app_version_number': '35',
-      });
-      final data = (resp.data as Map?)?['backup_domains_data'] as String?;
-      final domains = _tryDecodeDomains(data);
-      await _dm.applyStartup(domains);
-      _loaded = true;
+      final startup = await _startupApi.fetchStartup();
+      final encoded = startup.backupDomainsData;
+      if (encoded == null || encoded.isEmpty) {
+        throw const FormatException('Missing backup_domains_data');
+      }
+      final domains = _decoder(encoded);
+      if (domains.apiDomains.isEmpty) {
+        throw const FormatException('Empty apiDomains');
+      }
+      await _domainManager.applyStartup(domains);
+      _apiClient.swapBaseUrl(_domainManager.currentUrl);
+      _status = StartupStatus.success;
       notifyListeners();
+      return true;
     } catch (_) {
-      // 失败保留当前域名，不阻断启动。
+      _status = StartupStatus.failure;
+      _errorMessage = failureMessage;
+      notifyListeners();
+      return false;
     }
   }
 
-  BackupDomains _tryDecodeDomains(String? data) {
-    if (data == null || data.isEmpty) {
-      return const BackupDomains(apiDomains: ['https://jdforrepam.com']);
-    }
-    try {
-      return BackupDomainsDecryptor.decrypt(data);
-    } catch (_) {
-      return const BackupDomains(apiDomains: ['https://jdforrepam.com']);
-    }
-  }
+  Future<bool> retry() => load();
 }
