@@ -5,6 +5,7 @@ import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/providers/auth_provider.dart';
+import 'package:jade/core/widgets/movie_list_tile.dart';
 import 'package:jade/core/widgets/rating_badge.dart';
 import 'package:jade/features/rankings/screens/rankings_screen.dart';
 import 'package:provider/provider.dart';
@@ -18,6 +19,21 @@ class _RankingFixture {
   final GoRouter? router;
 }
 
+Map<String, dynamic> _top250Response(int startRank, int count) => {
+  'success': 1,
+  'data': {
+    'movies': [
+      for (var index = 0; index < count; index++)
+        {
+          'id': 'top-${startRank + index}',
+          'number': 'TOP-${startRank + index}',
+          'title': 'Top Movie ${startRank + index}',
+          'cover_url': 'cover.jpg',
+        },
+    ],
+  },
+};
+
 Future<_RankingFixture> _pumpRankings(
   WidgetTester tester, {
   Duration responseDelay = Duration.zero,
@@ -25,6 +41,7 @@ Future<_RankingFixture> _pumpRankings(
   double textScaleFactor = 1,
   bool withRouter = false,
   int initialTabIndex = 0,
+  List<Map<String, dynamic>>? top250Responses,
 }) async {
   tester.view.physicalSize = const Size(320, 640);
   tester.view.devicePixelRatio = 1;
@@ -46,13 +63,28 @@ Future<_RankingFixture> _pumpRankings(
   );
   final adapter = FakeAdapter()..responseDelay = responseDelay;
   api.setAdapterForTest(adapter);
-  for (final path in [
-    Endpoints.moviesTop,
-    Endpoints.rankingsPlayback,
-    Endpoints.rankings,
-  ]) {
+  if (top250Responses != null) {
+    adapter.enqueueSequence(Endpoints.moviesTop, top250Responses);
+  } else {
+    adapter.enqueue(Endpoints.moviesTop, {
+      'success': 1,
+      'data': {
+        'movies': [
+          {
+            'id': 'top-movie',
+            'number': 'ABC-001',
+            'title': 'Ranked Movie',
+            'cover_url': 'cover.jpg',
+          },
+        ],
+        'current_page': 1,
+        'total_pages': 1,
+        'total': 1,
+      },
+    });
+  }
+  for (final path in [Endpoints.rankingsPlayback, Endpoints.rankings]) {
     final movieId = switch (path) {
-      Endpoints.moviesTop => 'top-movie',
       Endpoints.rankingsPlayback => 'hot-movie',
       _ => 'ranked-movie',
     };
@@ -402,6 +434,48 @@ void main() {
       hasLength(1),
     );
     expect(find.text('Ranked Movie'), findsOneWidget);
+  });
+
+  testWidgets('Top250 滚动接近底部后按排名追加下一批', (tester) async {
+    final fixture = await _pumpRankings(
+      tester,
+      top250Responses: [_top250Response(1, 50), _top250Response(51, 50)],
+    );
+    await _pumpRankingFrame(tester);
+    fixture.adapter.responseDelay = const Duration(seconds: 1);
+
+    await tester.drag(
+      find.byKey(const Key('top250-list')),
+      const Offset(0, -10000),
+    );
+    await tester.pump();
+
+    expect(find.text('Top Movie 50'), findsOneWidget);
+    expect(find.byType(MovieListTile), findsWidgets);
+    await tester.drag(
+      find.byKey(const Key('top250-list')),
+      const Offset(0, -200),
+    );
+    await tester.pump();
+    expect(find.byKey(const Key('top250-loading-more')), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 1));
+    expect(
+      fixture.adapter.requests
+          .where((request) => request.path == Endpoints.moviesTop)
+          .last
+          .uri
+          .queryParameters['start_rank'],
+      '51',
+    );
+
+    await _pumpRankingFrame(tester);
+    await tester.drag(
+      find.byKey(const Key('top250-list')),
+      const Offset(0, -200),
+    );
+    await tester.pump();
+    expect(find.text('Top Movie 51'), findsOneWidget);
   });
 
   testWidgets('Top250 列表影片点击进入详情页', (tester) async {

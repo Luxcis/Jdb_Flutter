@@ -155,18 +155,33 @@ class _Top250Tab extends StatefulWidget {
 
 class _Top250TabState extends State<_Top250Tab>
     with AutomaticKeepAliveClientMixin {
+  static const _pageSize = 50;
+  static const _maxRank = 250;
+
   var _wasLoggedIn = false;
   late final PaginationController<MovieSummary> _controller =
       PaginationController(fetch: _fetchPage);
 
-  Future<PagedResult<MovieSummary>> _fetchPage(int _) async {
+  int get _logicalTotalPages =>
+      ((_maxRank - widget.filter.startRank + 1) / _pageSize).ceil();
+
+  Future<PagedResult<MovieSummary>> _fetchPage(int page) async {
     final api = ApiClient.instanceOrNull;
-    if (api == null) return _emptyMoviePage();
-    return RankingService(api).getTop250(
-      startRank: widget.filter.startRank,
+    if (api == null) return _emptyMoviePage(page: page);
+    final result = await RankingService(api).getTop250(
+      startRank: widget.filter.startRank + (page - 1) * _pageSize,
       type: widget.filter.type,
       typeValue: widget.filter.typeValue,
       ignoreWatched: widget.filter.ignoreWatched,
+      limit: _pageSize,
+    );
+    final isLastPage =
+        result.items.length < _pageSize || page >= _logicalTotalPages;
+    return PagedResult(
+      items: result.items,
+      currentPage: page,
+      totalPages: isLastPage ? page : _logicalTotalPages,
+      total: _maxRank - widget.filter.startRank + 1,
     );
   }
 
@@ -227,17 +242,35 @@ class _Top250TabState extends State<_Top250Tab>
         }
         return RefreshIndicator(
           onRefresh: _controller.refresh,
-          child: ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: _controller.items.length,
-            itemBuilder: (context, index) {
-              final movie = _controller.items[index];
-              return MovieListTile(
-                movie: movie,
-                rank: widget.filter.startRank + index,
-                onTap: () => context.push('/movie/${movie.id}'),
-              );
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              if (notification is ScrollEndNotification &&
+                  notification.metrics.extentAfter < 200) {
+                _controller.fetchMore();
+              }
+              return false;
             },
+            child: ListView.builder(
+              key: const Key('top250-list'),
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount:
+                  _controller.items.length + (_controller.isLoading ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index == _controller.items.length) {
+                  return const Padding(
+                    key: Key('top250-loading-more'),
+                    padding: EdgeInsets.all(16),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                final movie = _controller.items[index];
+                return MovieListTile(
+                  movie: movie,
+                  rank: widget.filter.startRank + index,
+                  onTap: () => context.push('/movie/${movie.id}'),
+                );
+              },
+            ),
           ),
         );
       },
