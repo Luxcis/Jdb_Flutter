@@ -24,6 +24,7 @@ Future<_RankingFixture> _pumpRankings(
   bool loggedIn = true,
   double textScaleFactor = 1,
   bool withRouter = false,
+  int initialTabIndex = 0,
 }) async {
   tester.view.physicalSize = const Size(320, 640);
   tester.view.devicePixelRatio = 1;
@@ -78,7 +79,10 @@ Future<_RankingFixture> _pumpRankings(
       ? GoRouter(
           initialLocation: '/rankings',
           routes: [
-            GoRoute(path: '/rankings', builder: (_, _) => const RankingsPage()),
+            GoRoute(
+              path: '/rankings',
+              builder: (_, _) => RankingsPage(initialTabIndex: initialTabIndex),
+            ),
             GoRoute(
               path: '/movie/:id',
               builder: (_, state) => Scaffold(
@@ -98,7 +102,10 @@ Future<_RankingFixture> _pumpRankings(
   );
   final app = router == null
       ? MaterialApp(
-          home: MediaQuery(data: mediaQueryData, child: const RankingsPage()),
+          home: MediaQuery(
+            data: mediaQueryData,
+            child: RankingsPage(initialTabIndex: initialTabIndex),
+          ),
         )
       : MaterialApp.router(
           routerConfig: router,
@@ -132,6 +139,21 @@ Future<void> _scrollFilterSheetToBottom(WidgetTester tester) async {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('指定 initialTabIndex 1 时首帧打开看热播', (tester) async {
+    final fixture = await _pumpRankings(tester, initialTabIndex: 1);
+    await _pumpRankingFrame(tester);
+
+    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+    expect(tabBar.controller!.index, 1);
+    expect(
+      fixture.adapter.requests.where(
+        (request) => request.path == Endpoints.rankingsPlayback,
+      ),
+      isNotEmpty,
+    );
+    expect(find.byTooltip('筛选 Top250'), findsNothing);
+  });
 
   testWidgets('切换到看热播时先显示 Loading 且不显示空网格', (tester) async {
     final fixture = await _pumpRankings(

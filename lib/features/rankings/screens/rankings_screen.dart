@@ -14,7 +14,10 @@ import 'package:jade/features/rankings/services/ranking_service.dart';
 import 'package:provider/provider.dart';
 
 class RankingsPage extends StatefulWidget {
-  const RankingsPage({super.key});
+  const RankingsPage({super.key, this.initialTabIndex = 0})
+    : assert(initialTabIndex >= 0 && initialTabIndex < 6);
+
+  final int initialTabIndex;
 
   @override
   State<RankingsPage> createState() => _RankingsPageState();
@@ -26,13 +29,28 @@ class _RankingsPageState extends State<RankingsPage>
 
   late final TabController _tabController;
   var _top250Filter = const Top250Filter();
-  var _selectedTabIndex = 0;
+  late int _selectedTabIndex;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: tabs.length, vsync: this);
+    _selectedTabIndex = widget.initialTabIndex;
+    _tabController = TabController(
+      length: tabs.length,
+      initialIndex: widget.initialTabIndex,
+      vsync: this,
+    );
     _tabController.addListener(_handleTabChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant RankingsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialTabIndex == widget.initialTabIndex ||
+        _tabController.index == widget.initialTabIndex) {
+      return;
+    }
+    _tabController.index = widget.initialTabIndex;
   }
 
   void _handleTabChanged() {

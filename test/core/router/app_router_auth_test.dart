@@ -89,6 +89,51 @@ void main() {
     expect(router.state.matchedLocation, AppRoutes.home);
   });
 
+  testWidgets('从首页进入 rankings tab=hot 打开看热播 Tab', (tester) async {
+    final auth = await createAuth(false);
+    final router = AppRouter.buildForTest(initialLocation: '/rankings');
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AuthProvider>.value(
+        value: auth,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    router.go('/home');
+    await tester.pump(const Duration(milliseconds: 100));
+    router.go('/rankings?tab=hot');
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(router.state.uri.path, '/rankings');
+    expect(router.state.uri.queryParameters['tab'], 'hot');
+    expect(
+      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      1,
+    );
+    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+    expect(tabBar.controller!.index, 1);
+  });
+
+  testWidgets('rankings 未知参数仍打开 Top250', (tester) async {
+    final auth = await createAuth(false);
+    final router = AppRouter.buildForTest(
+      initialLocation: '/rankings?tab=unknown',
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AuthProvider>.value(
+        value: auth,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+    expect(tabBar.controller!.index, 0);
+  });
+
   testWidgets('全局认证失效从当前页面跳转登录并携带 from', (tester) async {
     final auth = await createAuth(true);
     final router = AppRouter.build(initialLocation: '/movie/m1');

@@ -84,7 +84,11 @@ class AppRouter {
           routes: [
             GoRoute(
               path: AppRoutes.rankings,
-              builder: (c, s) => const RankingsPage(),
+              builder: (context, state) => RankingsPage(
+                initialTabIndex: state.uri.queryParameters['tab'] == 'hot'
+                    ? 1
+                    : 0,
+              ),
             ),
           ],
         ),
@@ -155,14 +159,20 @@ class AppRouter {
       path: AppRoutes.profileWantWatch,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileWantWatch,
-        child: const ProfileMovieCollectionPage(title: '我想看的', filterButton: true),
+        child: const ProfileMovieCollectionPage(
+          title: '我想看的',
+          filterButton: true,
+        ),
       ),
     ),
     GoRoute(
       path: AppRoutes.profileWatched,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileWatched,
-        child: const ProfileMovieCollectionPage(title: '我看过的', filterButton: true),
+        child: const ProfileMovieCollectionPage(
+          title: '我看过的',
+          filterButton: true,
+        ),
       ),
     ),
     GoRoute(

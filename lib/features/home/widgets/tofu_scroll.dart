@@ -22,7 +22,7 @@ class TofuScroll extends StatelessWidget {
     TofuItem(
       label: '看热播',
       icon: Icons.play_circle,
-      route: '/rankings',
+      route: '/rankings?tab=hot',
       color: Colors.lightBlue,
     ),
     TofuItem(
@@ -78,17 +78,19 @@ class TofuScroll extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 116,
+      height: 88,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.all(8),
         itemCount: items.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 12),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, i) {
           final item = items[i];
-          return SizedBox(
-            width: 84,
+          return SizedBox.square(
+            dimension: 72,
             child: Card(
+              key: Key('tofu-${item.label}'),
+              margin: EdgeInsets.zero,
               elevation: 2,
               shadowColor: Colors.black.withValues(alpha: 0.16),
               color: Theme.of(context).colorScheme.surface,
@@ -100,15 +102,21 @@ class TofuScroll extends StatelessWidget {
               ),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
-                onTap: () => context.push(item.route),
+                onTap: () {
+                  if (item.route == '/rankings?tab=hot') {
+                    context.go(item.route);
+                    return;
+                  }
+                  context.push(item.route);
+                },
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  spacing: 8,
+                  spacing: 4,
                   children: [
-                    Icon(item.icon, size: 30, color: item.color),
+                    Icon(item.icon, size: 24, color: item.color),
                     Text(
                       item.label,
-                      style: Theme.of(context).textTheme.bodyLarge,
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
                 ),
