@@ -6,12 +6,18 @@ import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/api_exception.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/providers/auth_provider.dart';
+import 'package:jade/core/storage/login_credential_store.dart';
 import 'package:provider/provider.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key, this.deviceParametersProvider});
+  const LoginPage({
+    super.key,
+    this.deviceParametersProvider,
+    this.credentialStore,
+  });
 
   final LoginDeviceParametersProvider? deviceParametersProvider;
+  final LoginCredentialStore? credentialStore;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -20,8 +26,38 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
+  late final LoginCredentialStore _credentialStore;
+  var _usernameEdited = false;
+  var _passwordEdited = false;
   var _loading = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _credentialStore =
+        widget.credentialStore ?? SecureLoginCredentialStore.createDefault();
+    _restoreCredentials();
+  }
+
+  Future<void> _restoreCredentials() async {
+    try {
+      final credentials = await _credentialStore.read();
+      if (!mounted) return;
+
+      final username = credentials.username;
+      if (!_usernameEdited && username != null && username.isNotEmpty) {
+        _emailCtrl.text = username;
+      }
+
+      final password = credentials.password;
+      if (!_passwordEdited && password != null && password.isNotEmpty) {
+        _passCtrl.text = password;
+      }
+    } catch (_) {
+      // 安全存储异常不应阻止用户手动登录。
+    }
+  }
 
   @override
   void dispose() {
@@ -38,6 +74,8 @@ class _LoginPageState extends State<LoginPage> {
       _error = null;
     });
     try {
+      final username = _emailCtrl.text.trim();
+      final password = _passCtrl.text;
       final deviceProvider =
           widget.deviceParametersProvider ??
           await LoginDeviceInfoService.createDefault();
@@ -45,14 +83,19 @@ class _LoginPageState extends State<LoginPage> {
       final resp = await api.post(
         Endpoints.sessions,
         data: FormData.fromMap({
-          'username': _emailCtrl.text.trim(),
-          'password': _passCtrl.text,
+          'username': username,
+          'password': password,
           ...deviceParameters.toMap(),
         }),
       );
       final data = resp.data;
       final token = data['token'] as String;
       final user = data['user'] as Map<String, dynamic>;
+      try {
+        await _credentialStore.save(username: username, password: password);
+      } catch (_) {
+        // 缓存失败不回滚已成功的登录。
+      }
       if (!mounted) return;
       await context.read<AuthProvider>().login(token: token, user: user);
       if (!mounted) return;
@@ -101,6 +144,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               TextField(
                 controller: _emailCtrl,
+                onChanged: (_) => _usernameEdited = true,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
@@ -111,6 +155,7 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 12),
               TextField(
                 controller: _passCtrl,
+                onChanged: (_) => _passwordEdited = true,
                 obscureText: true,
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _login(),
