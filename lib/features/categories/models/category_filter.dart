@@ -109,7 +109,7 @@ class CategoryFilter {
     if (type < 0 || type > 4) {
       throw RangeError.range(type, 0, 4, 'type');
     }
-    final extras = LinkedHashSet<String>();
+    final extras = <String>{};
     for (final categoryId in categoryOrder) {
       extras.addAll(extraByCategory[categoryId] ?? const {});
     }
