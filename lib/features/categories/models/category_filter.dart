@@ -18,15 +18,15 @@ enum CategorySort {
 
 @immutable
 class CategoryFilter {
-  const CategoryFilter({
+  CategoryFilter({
     this.main,
     this.year,
     this.duration,
     this.month,
-    this.extraByCategory = const {},
+    Map<String, Set<String>> extraByCategory = const {},
     this.sort = CategorySort.release,
     this.orderBy = 'desc',
-  });
+  }) : extraByCategory = _immutableExtras(extraByCategory);
 
   final String? main;
   final String? year;
@@ -35,6 +35,13 @@ class CategoryFilter {
   final Map<String, Set<String>> extraByCategory;
   final CategorySort sort;
   final String orderBy;
+
+  static Map<String, Set<String>> _immutableExtras(
+    Map<String, Set<String>> extras,
+  ) => Map.unmodifiable({
+    for (final entry in extras.entries)
+      entry.key: Set.unmodifiable(LinkedHashSet<String>.of(entry.value)),
+  });
 
   Set<String> selectedValues(String categoryId) {
     final single = switch (categoryId) {
@@ -90,6 +97,9 @@ class CategoryFilter {
   );
 
   String toFilterBy(int type, List<String> categoryOrder) {
+    if (type < 0 || type > 4) {
+      throw RangeError.range(type, 0, 4, 'type');
+    }
     final extras = LinkedHashSet<String>();
     for (final categoryId in categoryOrder) {
       extras.addAll(extraByCategory[categoryId] ?? const {});

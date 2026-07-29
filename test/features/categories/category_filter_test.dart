@@ -5,12 +5,27 @@ import 'package:jade/features/categories/models/category_tag.dart';
 void main() {
   test('五个类型的空筛选保留固定七段', () {
     for (var type = 0; type < 5; type++) {
-      expect(const CategoryFilter().toFilterBy(type, const []), '$type:t:::::');
+      expect(CategoryFilter().toFilterBy(type, const []), '$type:t:::::');
+    }
+  });
+
+  test('非法类型抛出带范围和参数名的 RangeError', () {
+    for (final type in [-1, 5]) {
+      expect(
+        () => CategoryFilter().toFilterBy(type, const []),
+        throwsA(
+          isA<RangeError>()
+              .having((error) => error.invalidValue, 'invalidValue', type)
+              .having((error) => error.start, 'start', 0)
+              .having((error) => error.end, 'end', 4)
+              .having((error) => error.name, 'name', 'type'),
+        ),
+      );
     }
   });
 
   test('按 category_id 写入固定段位并稳定拼接 extra', () {
-    final filter = const CategoryFilter()
+    final filter = CategoryFilter()
         .toggle('main', 'm')
         .toggle('subject', '23')
         .toggle('role', '158')
@@ -32,7 +47,7 @@ void main() {
   });
 
   test('固定段单选可替换和取消，extra 分组可多选', () {
-    final filter = const CategoryFilter()
+    final filter = CategoryFilter()
         .toggle('main', 'p')
         .toggle('main', 'm')
         .toggle('subject', '23')
@@ -41,6 +56,34 @@ void main() {
 
     expect(filter.main, isNull);
     expect(filter.selectedValues('subject'), {'23', '51'});
+  });
+
+  test('构造和复制后 extra 分组与外部集合隔离且不可变', () {
+    final source = <String, Set<String>>{
+      'subject': <String>{'23'},
+    };
+    final filter = CategoryFilter(extraByCategory: source);
+    source['subject']!.add('51');
+    source['role'] = <String>{'158'};
+
+    expect(filter.selectedValues('subject'), {'23'});
+    expect(filter.selectedValues('role'), isEmpty);
+    expect(
+      () => filter.extraByCategory['subject']!.add('51'),
+      throwsUnsupportedError,
+    );
+    expect(
+      () => filter.extraByCategory['role'] = <String>{'158'},
+      throwsUnsupportedError,
+    );
+
+    final copiedSource = <String, Set<String>>{
+      'subject': <String>{'23'},
+    };
+    final copied = filter.copyWith(extraByCategory: copiedSource);
+    copiedSource['subject']!.add('51');
+
+    expect(copied.selectedValues('subject'), {'23'});
   });
 
   test('解析接口返回的动态标签分组', () {
