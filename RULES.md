@@ -56,13 +56,35 @@ lib/
 
 ## 版本控制
 
-- **智能体主动**：当智能体认为当前修改适合发布为新版本时，应总结变更内容并向用户确认，获得授权后执行版本发布流程。
-- **用户主动**：用户提出版本发布时，智能体应审查当前修改、总结变更要点，并向用户建议是否适合发布以及推荐的 bump 类型。
+版本发布仅由**用户主动**触发，智能体不主动判断或建议版本发布。
+
+### 发布流程
+
+1. **拉取版本现状**：用户提出版本发布需求后，智能体需拉取远端所有 release 标签，并读取 `pubspec.yaml`
+   中的 `version:` 字段，掌握当前版本状态。
+2. **确定目标版本号**：
+   - 若用户**未指定**目标版本号，智能体需展示当前所有已存在的版本号列表及版本演进说明，主动询问用户需要发布的目标版本号。
+   - 若用户**已提供**目标版本号，智能体同样需展示当前所有已存在的版本号说明，再次和用户确认目标版本号，避免版本冲突。
+3. **执行发布**：获取用户确认的正式版本号后，按顺序执行以下操作：
+   1. 修改 `pubspec.yaml` 中的 `version:` 字段为确认的版本号，提交并推送到远端。
+   2. 基于更新后的代码创建对应版本号的 Git 标签（格式：`vX.Y.Z`，message 为 `Release vX.Y.Z`），并推送到远端。
+   3. 在代码托管平台创建对应版本的正式 Release，变更说明严格按以下格式生成：自动梳理两次版本之间的所有提交内容，分类整理为
+      feat、fix 等类型的变更条目，并附上版本间的完整变更日志链接。示例格式：
+
+   ```
+   What's Changed
+   fix: forward DeepSeek V4+ reasoning_effort for openai-compatible providers
+   fix(models): add Anthropic native /v1/models fetcher(target V1 branch)
+   feat(models): add Kimi K2.7 Code support
+   Full Changelog: v1.9.11...v1.9.12
+   ```
+
+### 版本约定
+
 - **唯一修改点**：仅修改 `pubspec.yaml` 中的 `version:` 字段。
 - **版本格式**：`X.Y.Z+N`（语义化版本），`N = X*10000 + Y*100 + Z`（MAJOR/MINOR/PATCH ≤ 99）。
-- **Bump 类型**：未指定时默认 patch。
-- **Tag**：`vX.Y.Z`，message 为 `Release vX.Y.Z`。
-- **Commit**：`chore: bump version to X.Y.Z (versionCode N)`。
-- **执行顺序**：修改 pubspec.yaml → `git add` → `git commit` → `git tag` → `git push --tags`。
-- **安全检查**：提交前检查是否有除 pubspec.yaml 外的未提交变更；新 versionCode 必须 > 旧值且 ≤ 2100000000。
+- **Tag 格式**：`vX.Y.Z`。
+- **Commit 格式**：`chore: bump version to X.Y.Z (versionCode N)`。
+- **安全检查**：提交前检查是否有除 `pubspec.yaml` 外的未提交变更；新 versionCode 必须 > 旧值且 ≤
+  2100000000。
 
