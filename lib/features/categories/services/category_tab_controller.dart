@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
@@ -24,9 +26,12 @@ class CategoryTabController extends ChangeNotifier {
   CategoryFilter _filter = const CategoryFilter();
   List<CategoryTagGroup> _groups = const [];
   bool _initialized = false;
+  bool _tagsLoaded = false;
   bool _tagsLoading = false;
   bool _disposed = false;
   Object? _tagsError;
+  Future<void>? _initializationFuture;
+  Future<void>? _tagsFuture;
 
   CategoryFilter get filter => _filter;
   List<CategoryTagGroup> get groups => _groups;
@@ -36,24 +41,53 @@ class CategoryTabController extends ChangeNotifier {
   List<String> get _categoryOrder =>
       _groups.map((group) => group.categoryId).toList(growable: false);
 
-  Future<void> initialize() async {
-    if (_initialized || _disposed) return;
+  Future<void> initialize() {
+    if (_disposed) return Future.value();
+    final initialization = _initializationFuture;
+    if (initialization != null) return initialization;
+    if (_initialized) return Future.value();
     _initialized = true;
-    await Future.wait([retryTags(), movies.reloadWith(_fetchPage)]);
+    final completion = Completer<void>();
+    final initialLoad = completion.future;
+    _initializationFuture = initialLoad;
+    unawaited(_loadInitialData(completion));
+    return initialLoad;
   }
 
-  Future<void> retryTags() async {
-    if (_tagsLoading || _disposed) return;
+  Future<void> _loadInitialData(Completer<void> completion) async {
+    try {
+      await Future.wait<void>([retryTags(), movies.reloadWith(_fetchPage)]);
+      completion.complete();
+    } catch (error, stackTrace) {
+      completion.completeError(error, stackTrace);
+    }
+  }
+
+  Future<void> retryTags() {
+    if (_disposed || _tagsLoaded) return Future.value();
+    final pending = _tagsFuture;
+    if (pending != null) return pending;
+    final completion = Completer<void>();
+    final load = completion.future;
+    _tagsFuture = load;
     _tagsLoading = true;
     _tagsError = null;
     _notify();
+    unawaited(_loadTags(completion));
+    return load;
+  }
+
+  Future<void> _loadTags(Completer<void> completion) async {
     try {
       _groups = await _source.getTags(type: type);
+      _tagsLoaded = true;
     } catch (error) {
       _tagsError = error;
     } finally {
       _tagsLoading = false;
+      _tagsFuture = null;
       _notify();
+      completion.complete();
     }
   }
 

@@ -25,6 +25,8 @@ class _FakeSource implements CategoryDataSource {
   final tagsCalls = <int>[];
   final movieRequests = <_MovieRequest>[];
   final _pendingMovies = Queue<Completer<PagedResult<MovieSummary>>>();
+  Completer<List<CategoryTagGroup>>? pendingTags;
+  List<CategoryTagGroup> tagsResult = _tagGroups;
   var tagFailuresRemaining = 0;
 
   void queuePendingMovie(Completer<PagedResult<MovieSummary>> pending) {
@@ -38,23 +40,9 @@ class _FakeSource implements CategoryDataSource {
       tagFailuresRemaining--;
       throw StateError('标签加载失败');
     }
-    return const [
-      CategoryTagGroup(
-        category: '基本',
-        categoryId: 'main',
-        tags: [CategoryTagItem(id: 'p', name: '可播放', videosCount: 1)],
-      ),
-      CategoryTagGroup(
-        category: '题材',
-        categoryId: 'subject',
-        tags: [CategoryTagItem(id: '23', name: '剧情', videosCount: 1)],
-      ),
-      CategoryTagGroup(
-        category: '系列',
-        categoryId: 'series',
-        tags: [CategoryTagItem(id: '99', name: '系列作', videosCount: 1)],
-      ),
-    ];
+    final pending = pendingTags;
+    if (pending != null) return pending.future;
+    return tagsResult;
   }
 
   @override
@@ -75,6 +63,24 @@ class _FakeSource implements CategoryDataSource {
     return Future.value(_moviePage(type: type, page: page));
   }
 }
+
+const _tagGroups = [
+  CategoryTagGroup(
+    category: '基本',
+    categoryId: 'main',
+    tags: [CategoryTagItem(id: 'p', name: '可播放', videosCount: 1)],
+  ),
+  CategoryTagGroup(
+    category: '题材',
+    categoryId: 'subject',
+    tags: [CategoryTagItem(id: '23', name: '剧情', videosCount: 1)],
+  ),
+  CategoryTagGroup(
+    category: '系列',
+    categoryId: 'series',
+    tags: [CategoryTagItem(id: '99', name: '系列作', videosCount: 1)],
+  ),
+];
 
 PagedResult<MovieSummary> _moviePage({
   required int type,
@@ -123,6 +129,79 @@ void main() {
     expect(controller.tagsError, isNull);
     expect(controller.groups, hasLength(3));
     expect(source.tagsCalls, [1, 1]);
+  });
+
+  test('标签成功后直接重试不会重复请求', () async {
+    final source = _FakeSource();
+    final controller = CategoryTabController(type: 1, source: source);
+    addTearDown(controller.dispose);
+
+    await controller.initialize();
+    await controller.retryTags();
+
+    expect(source.tagsCalls, [1]);
+  });
+
+  test('空标签列表也会缓存为成功结果', () async {
+    final source = _FakeSource()..tagsResult = const [];
+    final controller = CategoryTabController(type: 1, source: source);
+    addTearDown(controller.dispose);
+
+    await controller.retryTags();
+    await controller.retryTags();
+
+    expect(controller.groups, isEmpty);
+    expect(controller.tagsError, isNull);
+    expect(source.tagsCalls, [1]);
+  });
+
+  test('并发初始化会共同等待标签与首屏影片请求', () async {
+    final source = _FakeSource();
+    final tags = Completer<List<CategoryTagGroup>>();
+    final movies = Completer<PagedResult<MovieSummary>>();
+    source.pendingTags = tags;
+    source.queuePendingMovie(movies);
+    final controller = CategoryTabController(type: 0, source: source);
+    addTearDown(controller.dispose);
+    var completions = 0;
+
+    final first = controller.initialize();
+    final second = controller.initialize();
+    unawaited(first.then<void>((_) => completions++));
+    unawaited(second.then<void>((_) => completions++));
+
+    expect(source.tagsCalls, [0]);
+    expect(source.movieRequests, hasLength(1));
+    tags.complete(_tagGroups);
+    await Future<void>.delayed(Duration.zero);
+    expect(completions, 0);
+    movies.complete(_moviePage(type: 0, page: 1));
+    await Future.wait([first, second]);
+
+    expect(completions, 2);
+  });
+
+  test('并发标签重试共用请求并共同等待完成', () async {
+    final source = _FakeSource();
+    final tags = Completer<List<CategoryTagGroup>>();
+    source.pendingTags = tags;
+    final controller = CategoryTabController(type: 0, source: source);
+    addTearDown(controller.dispose);
+    var completions = 0;
+
+    final first = controller.retryTags();
+    final second = controller.retryTags();
+    unawaited(first.then<void>((_) => completions++));
+    unawaited(second.then<void>((_) => completions++));
+
+    expect(source.tagsCalls, [0]);
+    expect(completions, 0);
+    await Future<void>.delayed(Duration.zero);
+    expect(completions, 0);
+    tags.complete(_tagGroups);
+    await Future.wait([first, second]);
+
+    expect(completions, 2);
   });
 
   test('两个 Tab 的筛选状态与请求完全隔离', () async {
@@ -203,5 +282,23 @@ void main() {
     pending.complete(_moviePage(type: 0, page: 1));
 
     await expectLater(reload, completes);
+  });
+
+  test('标签请求在释放后完成不会通知 listener', () async {
+    final source = _FakeSource();
+    final tags = Completer<List<CategoryTagGroup>>();
+    source.pendingTags = tags;
+    final controller = CategoryTabController(type: 0, source: source);
+    var notifications = 0;
+    controller.addListener(() => notifications++);
+
+    final retry = controller.retryTags();
+    expect(notifications, 1);
+    controller.dispose();
+    expect(notifications, 1);
+    tags.complete(_tagGroups);
+    await retry;
+
+    expect(notifications, 1);
   });
 }
