@@ -3,6 +3,12 @@ import 'package:jade/features/categories/models/category_filter.dart';
 import 'package:jade/features/categories/models/category_tag.dart';
 
 void main() {
+  test('默认筛选可使用 const 构造', () {
+    const filter = CategoryFilter();
+
+    expect(filter.toFilterBy(0, const []), '0:t:::::');
+  });
+
   test('五个类型的空筛选保留固定七段', () {
     for (var type = 0; type < 5; type++) {
       expect(CategoryFilter().toFilterBy(type, const []), '$type:t:::::');
@@ -62,7 +68,7 @@ void main() {
     final source = <String, Set<String>>{
       'subject': <String>{'23'},
     };
-    final filter = CategoryFilter(extraByCategory: source);
+    final filter = const CategoryFilter().copyWith(extraByCategory: source);
     source['subject']!.add('51');
     source['role'] = <String>{'158'};
 

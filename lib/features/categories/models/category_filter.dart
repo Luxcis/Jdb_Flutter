@@ -18,14 +18,23 @@ enum CategorySort {
 
 @immutable
 class CategoryFilter {
-  CategoryFilter({
+  const CategoryFilter({
     this.main,
     this.year,
     this.duration,
     this.month,
-    Map<String, Set<String>> extraByCategory = const {},
     this.sort = CategorySort.release,
     this.orderBy = 'desc',
+  }) : extraByCategory = const {};
+
+  CategoryFilter._withExtras({
+    required this.main,
+    required this.year,
+    required this.duration,
+    required this.month,
+    required Map<String, Set<String>> extraByCategory,
+    required this.sort,
+    required this.orderBy,
   }) : extraByCategory = _immutableExtras(extraByCategory);
 
   final String? main;
@@ -72,7 +81,7 @@ class CategoryFilter {
   }
 
   CategoryFilter _copySingle(String categoryId, String? value) =>
-      CategoryFilter(
+      CategoryFilter._withExtras(
         main: categoryId == 'main' ? value : main,
         year: categoryId == 'year' ? value : year,
         duration: categoryId == 'duration' ? value : duration,
@@ -86,7 +95,7 @@ class CategoryFilter {
     Map<String, Set<String>>? extraByCategory,
     CategorySort? sort,
     String? orderBy,
-  }) => CategoryFilter(
+  }) => CategoryFilter._withExtras(
     main: main,
     year: year,
     duration: duration,
