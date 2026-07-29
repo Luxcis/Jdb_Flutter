@@ -38,4 +38,24 @@ void main() {
     expect(controller.items, [2]);
     expect(controller.isLoading, isFalse);
   });
+
+  test('preserveItems 刷新在成功前保留旧内容并在成功后替换', () async {
+    final next = Completer<PagedResult<int>>();
+    final controller = PaginationController<int>(
+      fetch: (_) async => _page([1]),
+    );
+    await controller.fetchMore();
+
+    final refresh = controller.reloadWith(
+      (_) => next.future,
+      preserveItems: true,
+    );
+
+    expect(controller.items, [1]);
+    expect(controller.isRefreshing, isTrue);
+    next.complete(_page([2]));
+    await refresh;
+    expect(controller.items, [2]);
+    expect(controller.isRefreshing, isFalse);
+  });
 }

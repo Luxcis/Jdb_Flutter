@@ -11,11 +11,14 @@ class PaginationController<T> extends ChangeNotifier {
   int _page = 0;
   int _generation = 0;
   bool _isLoading = false;
+  bool _isRefreshing = false;
+  bool _replaceOnSuccess = false;
   bool _hasMore = true;
   Object? _error;
 
   List<T> get items => List.unmodifiable(_items);
   bool get isLoading => _isLoading;
+  bool get isRefreshing => _isRefreshing;
   bool get hasMore => _hasMore;
   Object? get error => _error;
 
@@ -23,13 +26,19 @@ class PaginationController<T> extends ChangeNotifier {
     if (_isLoading || !_hasMore) return;
     final generation = _generation;
     final fetch = _fetch;
+    final requestedPage = _page + 1;
     _isLoading = true;
+    _isRefreshing = _replaceOnSuccess && _items.isNotEmpty;
     _error = null;
     notifyListeners();
     try {
-      final result = await fetch(_page + 1);
+      final result = await fetch(requestedPage);
       if (generation != _generation) return;
       _page = result.currentPage;
+      if (_replaceOnSuccess) {
+        _items.clear();
+        _replaceOnSuccess = false;
+      }
       _items.addAll(result.items);
       _hasMore = _page < result.totalPages;
     } catch (error) {
@@ -37,18 +46,24 @@ class PaginationController<T> extends ChangeNotifier {
     } finally {
       if (generation == _generation) {
         _isLoading = false;
+        _isRefreshing = false;
         notifyListeners();
       }
     }
   }
 
-  Future<void> reloadWith(PageFetcher<T> fetch) async {
+  Future<void> reloadWith(
+    PageFetcher<T> fetch, {
+    bool preserveItems = false,
+  }) async {
     _generation++;
     _fetch = fetch;
     _page = 0;
-    _items.clear();
+    if (!preserveItems) _items.clear();
+    _replaceOnSuccess = preserveItems && _items.isNotEmpty;
     _hasMore = true;
     _isLoading = false;
+    _isRefreshing = false;
     _error = null;
     notifyListeners();
     await fetchMore();

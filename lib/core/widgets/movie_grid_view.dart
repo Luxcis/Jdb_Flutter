@@ -35,40 +35,62 @@ class MovieGridView extends StatelessWidget {
           );
         }
         return NotificationListener<ScrollNotification>(
-          onNotification: (n) {
-            if (n is ScrollEndNotification && n.metrics.extentAfter < 200) {
+          onNotification: (notification) {
+            if (notification.metrics.extentAfter < 400) {
               controller.fetchMore();
             }
             return false;
           },
           child: RefreshIndicator(
             onRefresh: controller.refresh,
-            child: CustomScrollView(
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.all(8),
-                  sliver: SliverGrid.builder(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      mainAxisSpacing: 8,
-                      crossAxisSpacing: 8,
-                      childAspectRatio: 0.56,
+            child: Stack(
+              children: [
+                CustomScrollView(
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.all(8),
+                      sliver: SliverGrid.builder(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossAxisCount,
+                          mainAxisSpacing: 8,
+                          crossAxisSpacing: 8,
+                          childAspectRatio: 0.56,
+                        ),
+                        itemCount: controller.items.length,
+                        itemBuilder: (_, i) => MovieCard(
+                          movie: controller.items[i],
+                          onTap: onMovieTap != null
+                              ? () => onMovieTap!(controller.items[i])
+                              : null,
+                        ),
+                      ),
                     ),
-                    itemCount: controller.items.length,
-                    itemBuilder: (_, i) => MovieCard(
-                      movie: controller.items[i],
-                      onTap: onMovieTap != null
-                          ? () => onMovieTap!(controller.items[i])
-                          : null,
-                    ),
-                  ),
+                    if (controller.error != null && controller.items.isNotEmpty)
+                      SliverToBoxAdapter(
+                        child: TextButton.icon(
+                          key: const Key('movie-grid-load-more-retry'),
+                          onPressed: controller.fetchMore,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('加载失败，点击重试'),
+                        ),
+                      ),
+                    if (controller.isLoading)
+                      const SliverToBoxAdapter(
+                        child: Padding(
+                          key: Key('movie-grid-loading-more'),
+                          padding: EdgeInsets.all(16),
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
+                      ),
+                  ],
                 ),
-                if (controller.isLoading)
-                  const SliverToBoxAdapter(
-                    child: Padding(
-                      key: Key('movie-grid-loading-more'),
-                      padding: EdgeInsets.all(16),
-                      child: Center(child: CircularProgressIndicator()),
+                if (controller.isRefreshing)
+                  const Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: LinearProgressIndicator(
+                      key: Key('movie-grid-refreshing'),
                     ),
                   ),
               ],

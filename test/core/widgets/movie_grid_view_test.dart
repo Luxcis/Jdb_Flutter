@@ -65,4 +65,41 @@ void main() {
     expect(find.text('测试影片'), findsOneWidget);
     expect(find.byKey(const Key('movie-grid-loading-more')), findsOneWidget);
   });
+
+  testWidgets('滚动接近底部 400px 时自动请求下一页', (tester) async {
+    final requestedPages = <int>[];
+    final movies = List.generate(
+      30,
+      (index) => MovieSummary(
+        id: '$index',
+        number: 'N-$index',
+        title: '影片 $index',
+        coverUrl: '',
+      ),
+    );
+    final controller = PaginationController<MovieSummary>(
+      fetch: (page) async {
+        requestedPages.add(page);
+        return PagedResult(
+          items: page == 1 ? movies : const [],
+          currentPage: page,
+          totalPages: 2,
+          total: 30,
+        );
+      },
+    );
+    addTearDown(controller.dispose);
+    await controller.fetchMore();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: MovieGridView(controller: controller)),
+      ),
+    );
+
+    final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
+    scrollable.position.jumpTo(scrollable.position.maxScrollExtent - 399);
+    await tester.pump();
+
+    expect(requestedPages, contains(2));
+  });
 }
