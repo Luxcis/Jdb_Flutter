@@ -8,6 +8,7 @@ import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/features/home/services/home_service.dart';
 import 'package:jade/features/rankings/services/ranking_service.dart';
 import 'package:jade/features/actors/services/actor_service.dart';
+import 'package:jade/features/categories/models/category_filter.dart';
 import 'package:jade/features/categories/services/category_service.dart';
 import 'package:jade/features/movie_detail/services/movie_detail_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -321,29 +322,81 @@ void main() {
   // ═══════════════════════════════════════════════
   group('CategoryService', () {
     late FakeAdapter adapter;
-    late CategoryService svc;
+    late CategoryService service;
 
     setUp(() async {
       adapter = FakeAdapter();
       final api = await _createTestApi(adapter);
-      svc = CategoryService(api);
+      service = CategoryService(api);
     });
 
-    test('GET /api/v1/movies/tags → 带 type/sort/filter_by 参数', () async {
+    test('GET /api/v2/tags 按 type 获取并解析动态分组', () async {
+      ok(adapter, Endpoints.tagsV2, {
+        'tags': [
+          {
+            'category': '基本',
+            'category_id': 'main',
+            'tags': [
+              {'id': 'p', 'name': '可播放', 'videos_count': 10},
+            ],
+          },
+        ],
+      });
+
+      final groups = await service.getTags(type: 0);
+
+      expect(adapter.requests.last.uri.queryParameters, {'type': '0'});
+      expect(groups.single.categoryId, 'main');
+      expect(groups.single.tags.single.id, 'p');
+    });
+
+    test('GET /api/v1/movies/tags 首次请求使用空筛选和 limit 48', () async {
       ok(adapter, Endpoints.moviesTags, {
         'movies': [
           {'id': 'm1', 'number': 'N1', 'title': 'T1', 'cover_url': 'c.jpg'},
         ],
         'current_page': 1,
-        'total_pages': 1,
-        'total': 1,
+        'total_pages': 2,
+        'total_count': 49,
       });
-      await svc.getMovies(type: 1, sortBy: 'date', orderBy: 'desc');
-      final q = adapter.requests.last.uri.queryParameters;
-      expect(q['type'], '1');
-      expect(q['filter_by'], 'categories');
-      expect(q['sort_by'], 'date');
-      expect(q['order_by'], 'desc');
+
+      final result = await service.getMovies(
+        type: 0,
+        filter: const CategoryFilter(),
+        categoryOrder: const [],
+      );
+
+      expect(adapter.requests.last.uri.queryParameters, {
+        'filter_by': '0:t:::::',
+        'sort_by': 'release',
+        'order_by': 'desc',
+        'page': '1',
+        'limit': '48',
+      });
+      expect(result.total, 49);
+    });
+
+    test('非 release 排序不发送 order_by', () async {
+      ok(adapter, Endpoints.moviesTags, {
+        'movies': <Map<String, dynamic>>[],
+        'current_page': 2,
+        'total_pages': 2,
+        'total': 0,
+      });
+      final filter = const CategoryFilter().copyWith(sort: CategorySort.score);
+
+      await service.getMovies(
+        type: 4,
+        filter: filter,
+        categoryOrder: const [],
+        page: 2,
+      );
+
+      final query = adapter.requests.last.uri.queryParameters;
+      expect(query['filter_by'], '4:t:::::');
+      expect(query['sort_by'], 'score');
+      expect(query.containsKey('order_by'), isFalse);
+      expect(query['page'], '2');
     });
   });
 
