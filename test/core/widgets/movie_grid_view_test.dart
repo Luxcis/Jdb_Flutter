@@ -97,9 +97,105 @@ void main() {
     );
 
     final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
-    scrollable.position.jumpTo(scrollable.position.maxScrollExtent - 399);
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(CustomScrollView)),
+    );
+    await gesture.moveBy(
+      Offset(0, -(scrollable.position.maxScrollExtent - 399)),
+    );
     await tester.pump();
 
     expect(requestedPages, contains(2));
+    await gesture.up();
+  });
+
+  testWidgets('已有列表加载失败时可点击重试并追加下一页', (tester) async {
+    var pageTwoAttempts = 0;
+    final firstMovie = MovieSummary(
+      id: 'm1',
+      number: 'ABC-001',
+      title: '第一页影片',
+      coverUrl: '',
+    );
+    final secondMovie = MovieSummary(
+      id: 'm2',
+      number: 'ABC-002',
+      title: '第二页影片',
+      coverUrl: '',
+    );
+    final controller = PaginationController<MovieSummary>(
+      fetch: (page) async {
+        if (page == 1) {
+          return PagedResult(
+            items: [firstMovie],
+            currentPage: 1,
+            totalPages: 2,
+            total: 2,
+          );
+        }
+        if (pageTwoAttempts++ == 0) throw StateError('加载下一页失败');
+        return PagedResult(
+          items: [secondMovie],
+          currentPage: 2,
+          totalPages: 2,
+          total: 2,
+        );
+      },
+    );
+    addTearDown(controller.dispose);
+    await controller.fetchMore();
+    await controller.fetchMore();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: MovieGridView(controller: controller)),
+      ),
+    );
+
+    expect(find.text('第一页影片'), findsOneWidget);
+    expect(find.byKey(const Key('movie-grid-load-more-retry')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('movie-grid-load-more-retry')));
+    await tester.pump();
+
+    expect(find.text('第一页影片'), findsOneWidget);
+    expect(find.text('第二页影片'), findsOneWidget);
+    expect(find.byKey(const Key('movie-grid-load-more-retry')), findsNothing);
+  });
+
+  testWidgets('保留内容刷新时显示刷新条，完成后移除', (tester) async {
+    final refreshedPage = Completer<PagedResult<MovieSummary>>();
+    final movie = MovieSummary(
+      id: 'm1',
+      number: 'ABC-001',
+      title: '测试影片',
+      coverUrl: '',
+    );
+    final controller = PaginationController<MovieSummary>(
+      fetch: (_) async =>
+          PagedResult(items: [movie], currentPage: 1, totalPages: 1, total: 1),
+    );
+    addTearDown(controller.dispose);
+    await controller.fetchMore();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: MovieGridView(controller: controller)),
+      ),
+    );
+
+    final refresh = controller.reloadWith(
+      (_) => refreshedPage.future,
+      preserveItems: true,
+    );
+    await tester.pump();
+
+    expect(find.byKey(const Key('movie-grid-refreshing')), findsOneWidget);
+
+    refreshedPage.complete(
+      PagedResult(items: [movie], currentPage: 1, totalPages: 1, total: 1),
+    );
+    await refresh;
+    await tester.pump();
+
+    expect(find.byKey(const Key('movie-grid-refreshing')), findsNothing);
   });
 }

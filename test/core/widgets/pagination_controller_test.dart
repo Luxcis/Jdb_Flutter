@@ -58,4 +58,27 @@ void main() {
     expect(controller.items, [2]);
     expect(controller.isRefreshing, isFalse);
   });
+
+  test('preserveItems 刷新失败保留旧内容并允许重试后替换', () async {
+    var refreshAttempts = 0;
+    final controller = PaginationController<int>(
+      fetch: (_) async => _page([1]),
+    );
+    await controller.fetchMore();
+
+    await controller.reloadWith((_) async {
+      if (refreshAttempts++ == 0) throw StateError('刷新失败');
+      return _page([2]);
+    }, preserveItems: true);
+
+    expect(controller.items, [1]);
+    expect(controller.error, isA<StateError>());
+    expect(controller.isRefreshing, isFalse);
+
+    await controller.fetchMore();
+
+    expect(controller.items, [2]);
+    expect(controller.error, isNull);
+    expect(controller.isRefreshing, isFalse);
+  });
 }
