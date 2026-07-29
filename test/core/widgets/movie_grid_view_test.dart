@@ -2,12 +2,54 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
+import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 
 void main() {
+  testWidgets('点击影片卡片默认打开对应影片详情页', (tester) async {
+    final movie = MovieSummary(
+      id: 'movie-42',
+      number: 'JDB-042',
+      title: '默认导航影片',
+      coverUrl: '',
+    );
+    final controller = PaginationController<MovieSummary>(
+      fetch: (_) async =>
+          PagedResult(items: [movie], currentPage: 1, totalPages: 1, total: 1),
+    );
+    addTearDown(controller.dispose);
+    await controller.fetchMore();
+
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) =>
+              Scaffold(body: MovieGridView(controller: controller)),
+        ),
+        GoRoute(
+          path: '/movie/:id',
+          builder: (context, state) =>
+              Scaffold(body: Text('详情 ${state.pathParameters['id']}')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.tap(find.byType(MovieCard));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+
+    expect(router.state.uri.path, '/movie/movie-42');
+    expect(find.text('详情 movie-42'), findsOneWidget);
+  });
+
   testWidgets('空数据首次加载时显示居中进度环', (tester) async {
     final pending = Completer<PagedResult<MovieSummary>>();
     final controller = PaginationController<MovieSummary>(
@@ -97,16 +139,13 @@ void main() {
     );
 
     final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
-    final gesture = await tester.startGesture(
-      tester.getCenter(find.byType(CustomScrollView)),
-    );
-    await gesture.moveBy(
-      Offset(0, -(scrollable.position.maxScrollExtent - 399)),
+    await tester.drag(
+      find.byType(CustomScrollView),
+      Offset(0, -(scrollable.position.maxScrollExtent - 300)),
     );
     await tester.pump();
 
     expect(requestedPages, contains(2));
-    await gesture.up();
   });
 
   testWidgets('已有列表加载失败时可点击重试并追加下一页', (tester) async {
