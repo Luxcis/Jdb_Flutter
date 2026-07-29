@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
+import 'package:jade/core/widgets/movie_card.dart';
+import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/features/categories/models/category_filter.dart';
 import 'package:jade/features/categories/models/category_tag.dart';
+import 'package:jade/features/categories/screens/categories_screen.dart';
 import 'package:jade/features/categories/services/category_service.dart';
 import 'package:jade/features/categories/services/category_tab_controller.dart';
 import 'package:jade/features/categories/widgets/category_filter_sheet.dart';
@@ -23,6 +26,7 @@ class _MovieFilterRequest {
 }
 
 class _FakeSource implements CategoryDataSource {
+  final tagTypes = <int>[];
   final movieRequests = <_MovieFilterRequest>[];
   Completer<List<CategoryTagGroup>>? pendingTags;
   List<CategoryTagGroup> tagsResult = _groups;
@@ -33,6 +37,7 @@ class _FakeSource implements CategoryDataSource {
 
   @override
   Future<List<CategoryTagGroup>> getTags({required int type}) async {
+    tagTypes.add(type);
     if (tagFailuresRemaining > 0) {
       tagFailuresRemaining--;
       throw StateError('标签加载失败');
@@ -56,11 +61,18 @@ class _FakeSource implements CategoryDataSource {
         orderBy: filter.orderBy,
       ),
     );
-    return const PagedResult(
-      items: [],
+    return PagedResult(
+      items: [
+        MovieSummary(
+          id: '$type-$page',
+          number: 'JDB-$type',
+          title: '影片 $type',
+          coverUrl: 'http://example.test/$type.jpg',
+        ),
+      ],
       currentPage: 1,
       totalPages: 1,
-      total: 0,
+      total: 1,
     );
   }
 }
@@ -118,7 +130,88 @@ String _filterBy(CategoryTabController controller) =>
       controller.groups.map((group) => group.categoryId).toList(),
     );
 
+Future<_FakeSource> _pumpCategories(WidgetTester tester) async {
+  tester.view.physicalSize = const Size(390, 844);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+  final source = _FakeSource();
+  await tester.pumpWidget(
+    MaterialApp(home: CategoriesPage(dataSource: source)),
+  );
+  await tester.pump();
+  await tester.pump();
+  return source;
+}
+
+Future<void> _pumpPageTransition(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 500));
+  await tester.pump();
+}
+
 void main() {
+  testWidgets('首页为有码且首次 filter_by 为 0:t:::::', (tester) async {
+    final source = await _pumpCategories(tester);
+
+    expect(source.movieFilters.first, '0:t:::::');
+    expect(source.tagTypes, [0]);
+    expect(find.byType(MovieCard), findsWidgets);
+    final grid = find.byKey(const Key('category-tab-grid-0'));
+    expect(grid, findsOneWidget);
+    expect(tester.widget<MovieGridView>(grid).crossAxisCount, 3);
+  });
+
+  testWidgets('筛选面板内容来自当前 Tab 标签接口且点击后保持打开', (tester) async {
+    final source = await _pumpCategories(tester);
+
+    await tester.tap(find.byKey(const Key('categories-filter-button')));
+    await _pumpPageTransition(tester);
+
+    expect(find.text('题材'), findsOneWidget);
+    expect(source.tagTypes, [0]);
+    expect(
+      tester.getSize(find.byType(BottomSheet)).height,
+      closeTo(844 * .9, 1),
+    );
+
+    await tester.tap(find.byKey(const Key('category-filter-subject-23')));
+    await tester.pump();
+
+    expect(source.movieFilters.last, '0:t::23:::');
+    expect(find.text('筛选'), findsOneWidget);
+  });
+
+  testWidgets('切换 Tab 使用 1:t::::: 且切回恢复有码选择', (tester) async {
+    final source = await _pumpCategories(tester);
+
+    await tester.tap(find.byKey(const Key('categories-filter-button')));
+    await _pumpPageTransition(tester);
+    await tester.tap(find.byKey(const Key('category-filter-main-p')));
+    await tester.pump();
+    await tester.tapAt(const Offset(8, 8));
+    await _pumpPageTransition(tester);
+
+    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+    tabBar.controller!.animateTo(1);
+    await _pumpPageTransition(tester);
+
+    expect(source.movieFilters, contains('1:t:::::'));
+    expect(source.tagTypes, [0, 1]);
+    expect(find.byKey(const Key('category-tab-grid-1')), findsOneWidget);
+
+    tabBar.controller!.animateTo(0);
+    await _pumpPageTransition(tester);
+    expect(source.tagTypes, [0, 1]);
+    await tester.tap(find.byKey(const Key('categories-filter-button')));
+    await _pumpPageTransition(tester);
+
+    final chip = tester.widget<FilterChip>(
+      find.byKey(const Key('category-filter-main-p')),
+    );
+    expect(chip.selected, isTrue);
+  });
+
   testWidgets('动态标签以紧凑 Chip 渲染且点击立即更新筛选', (tester) async {
     final source = _FakeSource();
     final controller = CategoryTabController(type: 0, source: source);

@@ -17,6 +17,26 @@ abstract interface class CategoryDataSource {
   });
 }
 
+class UnavailableCategoryDataSource implements CategoryDataSource {
+  const UnavailableCategoryDataSource();
+
+  @override
+  Future<List<CategoryTagGroup>> getTags({required int type}) async => const [];
+
+  @override
+  Future<PagedResult<MovieSummary>> getMovies({
+    required int type,
+    required CategoryFilter filter,
+    required List<String> categoryOrder,
+    int page = 1,
+  }) async => PagedResult(
+    items: const [],
+    currentPage: page,
+    totalPages: page,
+    total: 0,
+  );
+}
+
 class CategoryService implements CategoryDataSource {
   CategoryService(this._api);
   final ApiClient _api;
