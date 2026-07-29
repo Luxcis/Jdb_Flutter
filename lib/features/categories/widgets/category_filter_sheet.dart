@@ -69,6 +69,12 @@ class _FilterBody extends StatelessWidget {
         ),
       );
     }
+    if (controller.groups.isEmpty) {
+      return const Center(
+        key: Key('category-filter-empty'),
+        child: Text('暂无筛选项'),
+      );
+    }
     return ListView.separated(
       key: const Key('category-filter-list'),
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
