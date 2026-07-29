@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/widgets/cached_image.dart';
 import 'package:jade/core/widgets/movie_card.dart';
@@ -108,23 +109,36 @@ void main() {
     expect(image.fallbackAsset, 'assets/images/noimage_147x200.jpg');
   });
 
-  testWidgets('MovieCard onTap 回调', (tester) async {
-    var tapped = false;
+  testWidgets('MovieCard 点击后默认打开对应影片详情页', (tester) async {
     final movie = MovieSummary(
-      id: '1',
-      number: 'ABC-001',
-      title: 'Tap Me',
-      coverUrl: 'x.jpg',
+      id: 'movie-42',
+      number: 'JDB-042',
+      title: '默认导航影片',
+      coverUrl: '',
     );
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: MovieCard(movie: movie, onTap: () => tapped = true),
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) => Scaffold(body: MovieCard(movie: movie)),
         ),
-      ),
+        GoRoute(
+          path: '/movie/:id',
+          builder: (context, state) =>
+              Scaffold(body: Text('详情 ${state.pathParameters['id']}')),
+        ),
+      ],
     );
-    await tester.tap(find.text('Tap Me'));
-    expect(tapped, isTrue);
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.tap(find.byType(MovieCard));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+
+    expect(router.state.uri.path, '/movie/movie-42');
+    expect(find.text('详情 movie-42'), findsOneWidget);
   });
 
   testWidgets('StarRating 渲染固定 5 颗星并按 10 分制折算', (tester) async {

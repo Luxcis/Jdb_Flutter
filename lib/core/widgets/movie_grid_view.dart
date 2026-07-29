@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/movie_card.dart';
@@ -56,13 +55,8 @@ class MovieGridView extends StatelessWidget {
                           childAspectRatio: 0.56,
                         ),
                         itemCount: controller.items.length,
-                        itemBuilder: (context, index) {
-                          final movie = controller.items[index];
-                          return MovieCard(
-                            movie: movie,
-                            onTap: () => context.push('/movie/${movie.id}'),
-                          );
-                        },
+                        itemBuilder: (context, index) =>
+                            MovieCard(movie: controller.items[index]),
                       ),
                     ),
                     if (controller.error != null && controller.items.isNotEmpty)

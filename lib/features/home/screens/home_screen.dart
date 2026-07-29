@@ -163,10 +163,7 @@ class _HomePageState extends State<HomePage> {
           childAspectRatio: 0.56,
         ),
         delegate: SliverChildBuilderDelegate(
-          (_, i) => MovieCard(
-            movie: items[i],
-            onTap: () => context.push('/movie/${items[i].id}'),
-          ),
+          (_, index) => MovieCard(movie: items[index]),
           childCount: items.length > 9 ? 9 : items.length,
         ),
       ),
