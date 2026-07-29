@@ -1,16 +1,17 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:jade/core/device/login_device_info_service.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/api_exception.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/providers/auth_provider.dart';
-import 'package:jade/core/storage/storage_keys.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  const LoginPage({super.key, this.deviceParametersProvider});
+
+  final LoginDeviceParametersProvider? deviceParametersProvider;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -29,18 +30,6 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  Future<String> _getDeviceUuid() async {
-    final prefs = await SharedPreferences.getInstance();
-    var uuid = prefs.getString(StorageKeys.deviceUuid);
-    if (uuid == null || uuid.isEmpty) {
-      uuid =
-          '${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}'
-          '${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
-      await prefs.setString(StorageKeys.deviceUuid, uuid);
-    }
-    return uuid;
-  }
-
   void _login() async {
     final api = ApiClient.instanceOrNull;
     if (api == null) return;
@@ -49,19 +38,16 @@ class _LoginPageState extends State<LoginPage> {
       _error = null;
     });
     try {
+      final deviceProvider =
+          widget.deviceParametersProvider ??
+          await LoginDeviceInfoService.createDefault();
+      final deviceParameters = await deviceProvider.load();
       final resp = await api.post(
         Endpoints.sessions,
         data: FormData.fromMap({
           'username': _emailCtrl.text.trim(),
           'password': _passCtrl.text,
-          'device_uuid': await _getDeviceUuid(),
-          'device_name': 'Jade',
-          'device_model': 'Flutter',
-          'platform': 'android',
-          'system_version': '14',
-          'app_channel': 'google',
-          'app_version': '1.9.35',
-          'app_version_number': '35',
+          ...deviceParameters.toMap(),
         }),
       );
       final data = resp.data;
