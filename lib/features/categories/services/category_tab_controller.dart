@@ -38,8 +38,14 @@ class CategoryTabController extends ChangeNotifier {
   bool get tagsLoading => _tagsLoading;
   Object? get tagsError => _tagsError;
 
-  List<String> get _categoryOrder =>
-      _groups.map((group) => group.categoryId).toList(growable: false);
+  List<CategoryFilterGroupOrder> get _groupOrder => _groups
+      .map(
+        (group) => (
+          categoryId: group.categoryId,
+          tagIds: group.tags.map((tag) => tag.id).toList(growable: false),
+        ),
+      )
+      .toList(growable: false);
 
   Future<void> initialize() {
     if (_disposed) return Future.value();
@@ -79,14 +85,19 @@ class CategoryTabController extends ChangeNotifier {
 
   Future<void> _loadTags(Completer<void> completion) async {
     try {
-      _groups = await _source.getTags(type: type);
+      final groups = await _source.getTags(type: type);
+      if (_disposed) return;
+      _groups = groups;
       _tagsLoaded = true;
     } catch (error) {
+      if (_disposed) return;
       _tagsError = error;
     } finally {
-      _tagsLoading = false;
-      _tagsFuture = null;
-      _notify();
+      if (!_disposed) {
+        _tagsLoading = false;
+        _tagsFuture = null;
+        _notify();
+      }
       completion.complete();
     }
   }
@@ -117,7 +128,7 @@ class CategoryTabController extends ChangeNotifier {
   Future<PagedResult<MovieSummary>> _fetchPage(int page) => _source.getMovies(
     type: type,
     filter: _filter,
-    categoryOrder: _categoryOrder,
+    groupOrder: _groupOrder,
     page: page,
   );
 

@@ -41,14 +41,30 @@ void main() {
 
     expect(
       filter.toFilterBy(0, const [
-        'main',
-        'role',
-        'subject',
-        'year',
-        'duration',
-        'month',
+        (categoryId: 'main', tagIds: <String>['p', 'm']),
+        (categoryId: 'role', tagIds: <String>['158']),
+        (categoryId: 'subject', tagIds: <String>['23']),
+        (categoryId: 'year', tagIds: <String>['2024']),
+        (categoryId: 'duration', tagIds: <String>['120']),
+        (categoryId: 'month', tagIds: <String>['01']),
       ]),
       '0:t:m:158,23:2024:120:01',
+    );
+  });
+
+  test('extra 忽略反向点击顺序并按接口分组及组内 tag 顺序输出', () {
+    final filter = const CategoryFilter()
+        .toggle('subject', '51')
+        .toggle('subject', '23')
+        .toggle('role', '159')
+        .toggle('role', '158');
+
+    expect(
+      filter.toFilterBy(0, const [
+        (categoryId: 'role', tagIds: <String>['158', '159']),
+        (categoryId: 'subject', tagIds: <String>['23', '51']),
+      ]),
+      '0:t::158,159,23,51:::',
     );
   });
 

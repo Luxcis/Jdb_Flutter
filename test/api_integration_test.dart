@@ -363,7 +363,7 @@ void main() {
       final result = await service.getMovies(
         type: 0,
         filter: const CategoryFilter(),
-        categoryOrder: const [],
+        groupOrder: const [],
       );
 
       expect(adapter.requests.last.uri.queryParameters, {
@@ -388,7 +388,7 @@ void main() {
       await service.getMovies(
         type: 4,
         filter: filter,
-        categoryOrder: const [],
+        groupOrder: const [],
         page: 2,
       );
 

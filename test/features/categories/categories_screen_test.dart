@@ -15,17 +15,24 @@ import 'package:jade/features/categories/widgets/category_filter_sheet.dart';
 
 class _MovieFilterRequest {
   const _MovieFilterRequest({
+    required this.type,
     required this.filterBy,
     required this.sort,
     required this.orderBy,
+    required this.page,
   });
 
+  final int type;
   final String filterBy;
   final CategorySort sort;
   final String orderBy;
+  final int page;
 }
 
 class _FakeSource implements CategoryDataSource {
+  _FakeSource({this.hasMultiplePages = false});
+
+  final bool hasMultiplePages;
   final tagTypes = <int>[];
   final movieRequests = <_MovieFilterRequest>[];
   Completer<List<CategoryTagGroup>>? pendingTags;
@@ -51,16 +58,36 @@ class _FakeSource implements CategoryDataSource {
   Future<PagedResult<MovieSummary>> getMovies({
     required int type,
     required CategoryFilter filter,
-    required List<String> categoryOrder,
+    required List<CategoryFilterGroupOrder> groupOrder,
     int page = 1,
   }) async {
     movieRequests.add(
       _MovieFilterRequest(
-        filterBy: filter.toFilterBy(type, categoryOrder),
+        type: type,
+        filterBy: filter.toFilterBy(type, groupOrder),
         sort: filter.sort,
         orderBy: filter.orderBy,
+        page: page,
       ),
     );
+    if (hasMultiplePages) {
+      final totalPages = type == 0 ? 2 : 1;
+      final itemCount = type == 0 && page == 2 ? 12 : 24;
+      return PagedResult(
+        items: [
+          for (var index = 0; index < itemCount; index++)
+            MovieSummary(
+              id: '$type-$page-$index',
+              number: 'JDB-$type-$page-$index',
+              title: '影片 $type-$page-$index',
+              coverUrl: '',
+            ),
+        ],
+        currentPage: page,
+        totalPages: totalPages,
+        total: type == 0 ? 36 : 24,
+      );
+    }
     return PagedResult(
       items: [
         MovieSummary(
@@ -127,7 +154,14 @@ Widget _sheet(CategoryTabController controller) => MaterialApp(
 String _filterBy(CategoryTabController controller) =>
     controller.filter.toFilterBy(
       controller.type,
-      controller.groups.map((group) => group.categoryId).toList(),
+      controller.groups
+          .map(
+            (group) => (
+              categoryId: group.categoryId,
+              tagIds: group.tags.map((tag) => tag.id).toList(growable: false),
+            ),
+          )
+          .toList(growable: false),
     );
 
 Future<_FakeSource> _pumpCategories(WidgetTester tester) async {
@@ -212,6 +246,99 @@ void main() {
     expect(chip.selected, isTrue);
   });
 
+  testWidgets('Tab 0 的第二页和滚动位置在切换 Tab 后独立保留', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final source = _FakeSource(hasMultiplePages: true);
+    await tester.pumpWidget(
+      MaterialApp(home: CategoriesPage(dataSource: source)),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final tab0Grid = find.byKey(const Key('category-tab-grid-0'));
+    final tab0ScrollView = find.descendant(
+      of: tab0Grid,
+      matching: find.byType(CustomScrollView),
+    );
+    final tab0Scrollable = tester.state<ScrollableState>(
+      find.descendant(of: tab0Grid, matching: find.byType(Scrollable)),
+    );
+    final distanceToPrefetch = tab0Scrollable.position.maxScrollExtent - 200;
+    await tester.drag(tab0ScrollView, Offset(0, -distanceToPrefetch));
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      source.movieRequests
+          .where((request) => request.type == 0)
+          .map((request) => request.page),
+      [1, 2],
+    );
+    expect(
+      tester.widget<MovieGridView>(tab0Grid).controller.items,
+      hasLength(36),
+    );
+    final tab0Offset = tab0Scrollable.position.pixels;
+    expect(tab0Offset, greaterThan(0));
+
+    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+    tabBar.controller!.animateTo(1);
+    await _pumpPageTransition(tester);
+
+    final tab1Grid = find.byKey(const Key('category-tab-grid-1'));
+    final tab1Scrollable = tester.state<ScrollableState>(
+      find.descendant(of: tab1Grid, matching: find.byType(Scrollable)),
+    );
+    expect(
+      source.movieRequests
+          .where((request) => request.type == 1)
+          .map((request) => request.page),
+      [1],
+    );
+    expect(
+      tester.widget<MovieGridView>(tab1Grid).controller.items,
+      hasLength(24),
+    );
+    expect(tab1Scrollable.position.pixels, 0);
+
+    tabBar.controller!.animateTo(0);
+    await _pumpPageTransition(tester);
+
+    final restoredScrollable = tester.state<ScrollableState>(
+      find.descendant(of: tab0Grid, matching: find.byType(Scrollable)),
+    );
+    expect(
+      tester.widget<MovieGridView>(tab0Grid).controller.items,
+      hasLength(36),
+    );
+    expect(
+      source.movieRequests
+          .where((request) => request.type == 0)
+          .map((request) => request.page),
+      [1, 2],
+    );
+    expect(restoredScrollable.position.pixels, closeTo(tab0Offset, 0.1));
+  });
+
+  testWidgets('欧美 FC2 动漫首次请求分别映射 type 2 3 4', (tester) async {
+    final source = await _pumpCategories(tester);
+    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+
+    for (final type in [2, 3, 4]) {
+      tabBar.controller!.animateTo(type);
+      await _pumpPageTransition(tester);
+
+      final firstRequest = source.movieRequests.firstWhere(
+        (request) => request.type == type,
+      );
+      expect(firstRequest.filterBy, '$type:t:::::');
+      expect(firstRequest.page, 1);
+    }
+  });
+
   testWidgets('动态标签以紧凑 Chip 渲染且点击立即更新筛选', (tester) async {
     final source = _FakeSource();
     final controller = CategoryTabController(type: 0, source: source);
@@ -253,9 +380,9 @@ void main() {
     await tester.pump();
     await tester.tap(find.byKey(const Key('category-filter-main-m')));
     await tester.pump();
-    await tester.tap(find.byKey(const Key('category-filter-subject-23')));
-    await tester.pump();
     await tester.tap(find.byKey(const Key('category-filter-subject-51')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('category-filter-subject-23')));
     await tester.pump();
 
     expect(source.movieFilters.last, '0:t:m:23,51:::');

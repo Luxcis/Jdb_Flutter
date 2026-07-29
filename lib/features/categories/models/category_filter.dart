@@ -2,6 +2,8 @@ import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
 
+typedef CategoryFilterGroupOrder = ({String categoryId, List<String> tagIds});
+
 enum CategorySort {
   release('发布日期', 'release'),
   update('更新时间', 'update'),
@@ -105,13 +107,17 @@ class CategoryFilter {
     orderBy: orderBy ?? this.orderBy,
   );
 
-  String toFilterBy(int type, List<String> categoryOrder) {
+  String toFilterBy(int type, List<CategoryFilterGroupOrder> groupOrder) {
     if (type < 0 || type > 4) {
       throw RangeError.range(type, 0, 4, 'type');
     }
     final extras = <String>{};
-    for (final categoryId in categoryOrder) {
-      extras.addAll(extraByCategory[categoryId] ?? const {});
+    for (final group in groupOrder) {
+      final selected = extraByCategory[group.categoryId];
+      if (selected == null) continue;
+      for (final tagId in group.tagIds) {
+        if (selected.contains(tagId)) extras.add(tagId);
+      }
     }
     return [
       '$type',

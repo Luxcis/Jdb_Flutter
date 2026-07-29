@@ -49,13 +49,13 @@ class _FakeSource implements CategoryDataSource {
   Future<PagedResult<MovieSummary>> getMovies({
     required int type,
     required CategoryFilter filter,
-    required List<String> categoryOrder,
+    required List<CategoryFilterGroupOrder> groupOrder,
     int page = 1,
   }) {
     movieRequests.add(
       _MovieRequest(
         type: type,
-        filterBy: filter.toFilterBy(type, categoryOrder),
+        filterBy: filter.toFilterBy(type, groupOrder),
         page: page,
       ),
     );
@@ -73,7 +73,10 @@ const _tagGroups = [
   CategoryTagGroup(
     category: '题材',
     categoryId: 'subject',
-    tags: [CategoryTagItem(id: '23', name: '剧情', videosCount: 1)],
+    tags: [
+      CategoryTagItem(id: '23', name: '剧情', videosCount: 1),
+      CategoryTagItem(id: '51', name: '喜剧', videosCount: 1),
+    ],
   ),
   CategoryTagGroup(
     category: '系列',
@@ -233,6 +236,18 @@ void main() {
     expect(source.movieRequests.last.page, 1);
   });
 
+  test('动态 extra 反向点击时仍按接口组内 tag 顺序映射', () async {
+    final source = _FakeSource();
+    final controller = CategoryTabController(type: 0, source: source);
+    addTearDown(controller.dispose);
+    await controller.initialize();
+
+    await controller.toggleFilter('subject', '51');
+    await controller.toggleFilter('subject', '23');
+
+    expect(source.movieRequests.last.filterBy, '0:t::23,51:::');
+  });
+
   test('更改排序和排序方向都会立即从第一页重载', () async {
     final source = _FakeSource();
     final controller = CategoryTabController(type: 0, source: source);
@@ -284,7 +299,7 @@ void main() {
     await expectLater(reload, completes);
   });
 
-  test('标签请求在释放后完成不会通知 listener', () async {
+  test('释放后的标签成功结果不会写入 groups 或通知 listener', () async {
     final source = _FakeSource();
     final tags = Completer<List<CategoryTagGroup>>();
     source.pendingTags = tags;
@@ -300,5 +315,22 @@ void main() {
     await retry;
 
     expect(notifications, 1);
+    expect(controller.groups, isEmpty);
+    expect(controller.tagsError, isNull);
+  });
+
+  test('释放后的标签失败结果不会写入 error', () async {
+    final source = _FakeSource();
+    final tags = Completer<List<CategoryTagGroup>>();
+    source.pendingTags = tags;
+    final controller = CategoryTabController(type: 0, source: source);
+
+    final retry = controller.retryTags();
+    controller.dispose();
+    tags.completeError(StateError('迟到的标签失败'));
+    await retry;
+
+    expect(controller.groups, isEmpty);
+    expect(controller.tagsError, isNull);
   });
 }

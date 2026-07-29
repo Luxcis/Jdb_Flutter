@@ -12,7 +12,7 @@ abstract interface class CategoryDataSource {
   Future<PagedResult<MovieSummary>> getMovies({
     required int type,
     required CategoryFilter filter,
-    required List<String> categoryOrder,
+    required List<CategoryFilterGroupOrder> groupOrder,
     int page = 1,
   });
 }
@@ -27,7 +27,7 @@ class UnavailableCategoryDataSource implements CategoryDataSource {
   Future<PagedResult<MovieSummary>> getMovies({
     required int type,
     required CategoryFilter filter,
-    required List<String> categoryOrder,
+    required List<CategoryFilterGroupOrder> groupOrder,
     int page = 1,
   }) async => PagedResult(
     items: const [],
@@ -56,11 +56,11 @@ class CategoryService implements CategoryDataSource {
   Future<PagedResult<MovieSummary>> getMovies({
     required int type,
     required CategoryFilter filter,
-    required List<String> categoryOrder,
+    required List<CategoryFilterGroupOrder> groupOrder,
     int page = 1,
   }) async {
     final query = <String, dynamic>{
-      'filter_by': filter.toFilterBy(type, categoryOrder),
+      'filter_by': filter.toFilterBy(type, groupOrder),
       'sort_by': filter.sort.value,
       if (filter.sort == CategorySort.release) 'order_by': filter.orderBy,
       'page': page,
