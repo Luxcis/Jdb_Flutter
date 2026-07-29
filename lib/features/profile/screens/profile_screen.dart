@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/router/routes.dart';
+import 'package:jade/core/storage/login_credential_store.dart';
+import 'package:provider/provider.dart';
 
 class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
+  const ProfilePage({super.key, this.credentialStore});
+
+  final LoginCredentialStore? credentialStore;
 
   @override
   Widget build(BuildContext context) {
@@ -121,6 +124,13 @@ class ProfilePage extends StatelessWidget {
             title: const Text('退出登录'),
             leading: const Icon(Icons.logout),
             onTap: () async {
+              final store =
+                  credentialStore ?? SecureLoginCredentialStore.createDefault();
+              try {
+                await store.clearPassword();
+              } catch (_) {
+                // 缓存清理失败不应阻止用户退出当前会话。
+              }
               await auth.logout();
               if (context.mounted) context.go('/home');
             },
