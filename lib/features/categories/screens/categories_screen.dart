@@ -48,7 +48,7 @@ class _CategoriesPageState extends State<CategoriesPage>
   }
 
   void _showFilter() {
-    final height = MediaQuery.sizeOf(context).height * .9;
+    final height = MediaQuery.sizeOf(context).height * 2 / 3;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,

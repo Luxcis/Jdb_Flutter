@@ -206,7 +206,7 @@ void main() {
     expect(source.tagTypes, [0]);
     expect(
       tester.getSize(find.byType(BottomSheet)).height,
-      closeTo(844 * .9, 1),
+      closeTo(844 * 2 / 3, 1),
     );
 
     await tester.tap(find.byKey(const Key('category-filter-subject-23')));
