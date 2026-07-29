@@ -8,7 +8,8 @@
 
 ## 约束
 
-- 以 `docs/main/api/jdb_api_openapi.json` 为唯一接口契约。
+- 接口路径、分页和排序参数以 `docs/main/api/jdb_api_openapi.json` 为准；
+  `filter_by` 的段位、默认值和月份格式以本设计记录的最新产品确认覆盖文件中的旧描述。
 - Tab 类型严格使用 `0` 到 `4`：
   - `0`：有码
   - `1`：无码
@@ -18,6 +19,10 @@
 - 标签字典使用 `GET /api/v2/tags?type={type}`。
 - 分类影片使用 `GET /api/v1/movies/tags`。
 - 筛选面板的分组、分组名称和筛选项全部来自 `/api/v2/tags`，客户端不硬编码筛选内容。
+- `filter_by` 固定为 `{type}:t:{main}:{extra}:{year}:{duration}:{month}`，
+  其格式本身与标签 ID 无关，段位含义不随标签分组改变。
+- 五个 Tab 首次请求依次使用 `0:t:::::`、`1:t:::::`、`2:t:::::`、
+  `3:t:::::`、`4:t:::::`。
 - 每页固定请求 `limit=48`。
 - 影片区域使用三列等高网格，不引入 Masonry 依赖。
 - 影片卡片必须复用现有 `MovieCard`，不新增分类专用卡片，也不在本功能中改变共享卡片契约。
@@ -40,24 +45,33 @@
 
 定义不可变筛选值对象，包含：
 
-- `tagIds`：从标签字典选择的标签 ID 集合。
+- `main`：`main` 分组当前选中值，空值表示全部。
+- `extraValues`：除 `main/year/duration/month` 外其他动态分组选中值的集合。
+- `year`：`year` 分组当前选中值，空值表示全部。
+- `duration`：`duration` 分组当前选中值，空值表示全部。
+- `month`：`month` 分组当前选中值，空值表示全部。
 - `sortBy`：排序字段。
 - `orderBy`：发布日期排序方向。
 
-模型负责稳定地生成 OpenAPI 规定的七段 `filter_by`：
+模型负责稳定地生成固定七段 `filter_by`：
 
 ```text
-{type}:t:{main_filter}:{tag_ids}:{year}:{duration}:{month}
+{type}:t:{main}:{extra}:{year}:{duration}:{month}
 ```
 
-当前筛选 UI 只消费 `/api/v2/tags` 返回的标签 ID，因此 `main_filter`、`year`、
-`duration` 和 `month` 段保持为空，实际格式为：
+字段映射：
 
-```text
-{type}:t::{tag_ids}:::
-```
+- `type`：当前 Tab 类型 `0` 到 `4`。
+- 第二段：固定字面值 `t`。
+- `main`：`p` 可播放、`m` 可下载、`c` 有字幕、`s` 单体系列、
+  `i` 预告图、`v` 预告片，或空值。
+- `extra`：附加筛选值，多个值用英文逗号连接，或空值。
+- `year`：年份值，例如 `2024`，或空值。
+- `duration`：时长值，例如 `120`，或空值。
+- `month`：月份值，例如 `01`，或空值。
 
-空段必须保留冒号。标签 ID 使用稳定顺序输出，保证请求和测试可预测。
+空段必须保留冒号。`extra` 使用接口分组顺序和分组内选项顺序稳定输出，
+保证请求和测试可预测。首次进入页面时所有可选段均为空。
 
 排序字段：
 
@@ -78,7 +92,16 @@
 - 标签项包含 `id`、`name` 和 `videos_count`。
 
 筛选面板直接遍历接口返回的标签分组，并按接口顺序展示 `category` 和 `tags`。
-客户端不预设分组名称、不补充本地分组，也不根据名称猜测年份、月份或其他语义。
+客户端不预设分组名称或补充本地分组。每个选项使用接口返回的 `id` 作为筛选值，
+但写入哪个 `filter_by` 段由稳定的 `category_id` 决定，而不是把所有 ID
+统一写入同一段：
+
+- `category_id=main` 写入 `main`。
+- `category_id=year` 写入 `year`。
+- `category_id=duration` 写入 `duration`。
+- `category_id=month` 写入 `month`。
+- 其他 `category_id` 的选中值合并写入 `extra`。
+
 接口对不同 Tab 返回不同分组时，各 Tab 按自己的响应独立构建面板。
 
 `CategoryService` 提供：
@@ -140,7 +163,8 @@
 - 标题左侧显示“筛选”，右侧显示当前排序；发布日期排序可切换升降序。
 - 分组名使用固定宽度窄列，选项区域使用紧凑 `FilterChip` 和 `Wrap`。
 - 面板仅展示 `/api/v2/tags` 返回的动态分组和筛选项。
-- 每个动态分组允许多选，选中的标签 ID 合并进入 `filter_by` 的 `tag_ids` 段。
+- `main`、`year`、`duration`、`month` 分组单选；再次点击已选项时清空该段。
+- 其他动态分组允许多选，其选中值跨分组合并进入 `extra` 段。
 - 客户端不硬编码“基础、年份、月份、时长”等分组或选项。
 - 点击任何选项后立即更新当前 Tab 并刷新第一页，面板保持打开。
 - 面板关闭后选择保持；再次打开显示当前 Tab 的已选值。
@@ -161,7 +185,10 @@
 
 ### 模型和服务测试
 
-- `filter_by` 使用 `{type}:t::{tag_ids}:::`，保留所有空段并按稳定顺序拼接标签 ID。
+- `filter_by` 固定使用 `{type}:t:{main}:{extra}:{year}:{duration}:{month}`。
+- 五个 Tab 的首次请求分别为 `0:t:::::` 到 `4:t:::::`，不默认选择 `main`。
+- `main/year/duration/month` 根据 `category_id` 写入各自段位。
+- 其他动态分组选中值跨分组稳定拼接到 `extra`，多个值使用英文逗号。
 - Tab 类型使用 `0` 到 `4`。
 - 影片请求发送正确的 `sort_by`、条件化 `order_by`、`page` 和 `limit=48`。
 - 标签请求发送正确的 `type` 并解析标签分组。
@@ -203,6 +230,7 @@ flutter analyze
 - 五个 Tab 与 OpenAPI 的 `0` 到 `4` 类型映射一致。
 - 每个 Tab 的筛选、排序、标签、影片、分页和滚动状态完全独立。
 - 筛选点击后立即生效，不需要确认按钮。
+- 首次进入各 Tab 时，`filter_by` 仅包含对应类型和固定 `t`，其余五段为空。
 - 请求参数符合 OpenAPI，分页固定为每页 48 条。
 - 三列等高网格接近底部时自动加载下一页。
 - 筛选面板采用参考截图的紧凑底部面板布局。
