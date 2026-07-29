@@ -39,6 +39,9 @@ class UnavailableCategoryDataSource implements CategoryDataSource {
 
 class CategoryService implements CategoryDataSource {
   CategoryService(this._api);
+
+  static const _pageSize = 48;
+
   final ApiClient _api;
 
   @override
@@ -64,7 +67,7 @@ class CategoryService implements CategoryDataSource {
       'sort_by': filter.sort.value,
       if (filter.sort == CategorySort.release) 'order_by': filter.orderBy,
       'page': page,
-      'limit': 48,
+      'limit': _pageSize,
     };
     final response = await _api.get(
       Endpoints.moviesTags,
@@ -75,10 +78,14 @@ class CategoryService implements CategoryDataSource {
         .map(normalizeMovieSummaryJson)
         .map(MovieSummary.fromJson)
         .toList(growable: false);
+    final currentPage = apiInt(data['current_page'], page);
+    final totalPages = data['total_pages'] == null
+        ? currentPage + (items.length >= _pageSize ? 1 : 0)
+        : apiInt(data['total_pages'], currentPage);
     return PagedResult(
       items: items,
-      currentPage: apiInt(data['current_page'], page),
-      totalPages: apiInt(data['total_pages'], page),
+      currentPage: currentPage,
+      totalPages: totalPages,
       total: apiInt(data['total_count'] ?? data['total'], items.length),
     );
   }

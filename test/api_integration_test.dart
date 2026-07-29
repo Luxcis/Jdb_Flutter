@@ -376,6 +376,30 @@ void main() {
       expect(result.total, 49);
     });
 
+    test('影片标签接口省略总页数时满 48 条仍允许请求下一页', () async {
+      ok(adapter, Endpoints.moviesTags, {
+        'movies': List.generate(
+          48,
+          (index) => {
+            'id': 'm$index',
+            'number': 'N$index',
+            'title': 'T$index',
+            'cover_url': 'c.jpg',
+          },
+        ),
+        'current_page': 1,
+      });
+
+      final result = await service.getMovies(
+        type: 0,
+        filter: const CategoryFilter(),
+        groupOrder: const [],
+      );
+
+      expect(result.currentPage, 1);
+      expect(result.totalPages, 2);
+    });
+
     test('非 release 排序不发送 order_by', () async {
       ok(adapter, Endpoints.moviesTags, {
         'movies': <Map<String, dynamic>>[],

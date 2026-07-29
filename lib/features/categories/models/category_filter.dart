@@ -126,7 +126,16 @@ class CategoryFilter {
       extras.join(','),
       year ?? '',
       duration ?? '',
-      month ?? '',
+      _serializedMonth,
     ].join(':');
+  }
+
+  String get _serializedMonth {
+    final value = month;
+    if (value == null) return '';
+    final number = int.tryParse(value);
+    return number != null && number >= 1 && number <= 9
+        ? number.toString().padLeft(2, '0')
+        : value;
   }
 }

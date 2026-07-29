@@ -52,6 +52,18 @@ void main() {
     );
   });
 
+  test('月份接口返回单数字 ID 时按两位格式输出', () {
+    final filter = const CategoryFilter().toggle('month', '1');
+
+    expect(
+      filter.toFilterBy(4, const [
+        (categoryId: 'month', tagIds: <String>['1', '2']),
+      ]),
+      '4:t:::::01',
+    );
+    expect(filter.selectedValues('month'), {'1'});
+  });
+
   test('extra 忽略反向点击顺序并按接口分组及组内 tag 顺序输出', () {
     final filter = const CategoryFilter()
         .toggle('subject', '51')
