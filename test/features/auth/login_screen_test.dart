@@ -52,8 +52,8 @@ void main() {
     await tester.pumpAndSettle();
 
     final fields = find.byType(TextField);
-    await tester.enterText(fields.at(0), 'zzj1999@yahoo.com');
-    await tester.enterText(fields.at(1), '949527zzj');
+    await tester.enterText(fields.at(0), 'masked-user@example.invalid');
+    await tester.enterText(fields.at(1), '********');
     await tester.tap(find.widgetWithText(ElevatedButton, '登录'));
     await tester.pumpAndSettle();
 
@@ -72,8 +72,8 @@ void main() {
       'app_channel': 'google',
       'app_version': '1.9.35',
       'app_version_number': '35',
-      'username': 'zzj1999@yahoo.com',
-      'password': '949527zzj',
+      'username': 'masked-user@example.invalid',
+      'password': '********',
     });
   });
 }
