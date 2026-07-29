@@ -71,12 +71,14 @@ lib/
    3. 在代码托管平台创建对应版本的正式 Release，变更说明严格按以下格式生成：自动梳理两次版本之间的所有提交内容，分类整理为
       feat、fix 等类型的变更条目，并附上版本间的完整变更日志链接。示例格式：
 
-   ```
-   What's Changed
-   fix: forward DeepSeek V4+ reasoning_effort for openai-compatible providers
-   fix(models): add Anthropic native /v1/models fetcher(target V1 branch)
-   feat(models): add Kimi K2.7 Code support
-   Full Changelog: v1.9.11...v1.9.12
+   ```md
+   ## What's Changed
+   * fix: forward DeepSeek V4+ reasoning_effort for openai-compatible providers
+   * fix(models): add Anthropic native /v1/models fetcher(target V1 branch)
+   * feat(models): add Kimi K2.7 Code support
+
+
+   **Full Changelog: [v1.9.11...v1.9.12](https://github.com/luxcis/Jdb_Flutter/compare/v1.9.11...v1.9.12)**
    ```
 
 ### 版本约定

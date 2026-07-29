@@ -3,7 +3,7 @@
   "info": {
     "title": "JDB API",
     "description": "JDB (JavDB) 移动版完整 API 规范（基于 Flutter APK 逆向分析）。\n\n## 签名机制 (jdsignature)\n\n所有请求必须携带 `jdsignature` 请求头，格式为：`{timestamp}.{d2}.{md5_hash}`\n\n### 签名生成步骤\n1. `timestamp` = 当前 Unix 时间戳（秒）\n2. `d1` = 硬编码的 128 字符十六进制字符串（从 libapp.so 逆向解密得到）\n3. `d2` = `\"lpw6vgqzsp\"`（从 libapp.so 逆向解密得到）\n4. `md5_hash` = MD5(`\"{timestamp}{d1}\"`)\n5. `jdsignature` = `\"{timestamp}.{d2}.{md5_hash}\"`\n\n### 逆向过程\n- `libsecurity.so` 的 `getSecret()` 返回 APK 签名证书 DER hex 前 5 字符 `\"30820\"`\n- `libapp.so` 中存储两个 Base64 编码的加密数组（s1, s2）\n- 解密算法：`md5_hex = MD5(secret)`，然后 `result[i] = arr[i] - ord(md5_hex[min(i,31)])`\n- 解密结果再做 Base64 解码即得 `d1` 和 `d2`\n\n## 认证方式\n- 登录 `POST /api/v1/sessions` 获取 Bearer Token（JWT）\n- 需认证的接口携带 `Authorization: Bearer <token>`\n\n## 自定义请求头\n- `jdsignature`: 动态签名（所有请求必须）\n- `authorization`: Bearer Token（需认证的接口）\n- `accept-language`: 语言（如 zh-CN）\n- `connection`: keep-alive\n\n## 统一响应格式\n```json\n{\n  \"success\": 1,\n  \"action\": null,\n  \"message\": null,\n  \"data\": {}\n}\n```\n`success` 为 1 表示成功，0 表示失败。`data` 可能是对象或数组。\n\n## 2026-07-20 实测修正\n- 修正了7个接口的认证标注（实际需要Bearer但文档标注为公开）\n- 修正了16+个接口的必填参数标注\n- 标记了5个服务端Bug接口（tags, makers, collected_lists等）\n- search_image从GET改为POST（支持文件上传）\n- codes接口标记为不可用",
-    "version": "1.9.35-verified-20260727",
+    "version": "1.9.35-verified-20260729",
     "contact": {
       "name": "JDB"
     }
@@ -1207,11 +1207,11 @@
         "tags": [
           "Movie"
         ],
-        "summary": "按标签获取影片",
-        "description": "按标签筛选影片列表（分页）。filter_by 格式: {type}:t:{main}:{extra}:{year}:{duration}:{month}，其中 type=0~4（0=有码,1=无码,2=欧美,3=FC2,4=动漫），main=p(可播放)|m(可下载)|c(有字幕)|s(单体系列)|i(预告图)|v(预告片)，如 0:t:p::::",
+        "summary": "按标签筛选影片",
+        "description": "分类页面的核心筛选接口。根据 Tab 类型、已选标签、排序方式筛选影片列表（分页）。\n\n## Tab 类型映射\n\n| type 值 | Tab 名称 | 中文 | i18n Key |\n|---------|---------|------|----------|\n| 0 | Censored | 有码 | homeTabMosaic |\n| 1 | Uncensored | 无码 | homeTabClear |\n| 2 | Western | 欧美 | homeTabWestern |\n| 3 | FC2 | FC2 | homeTabFC2 |\n| 4 | Carton | 动漫 | homeTabCarton |\n\n## filter_by 格式详解\n\n```\n{type}:t:{main_filter}:{tag_ids}:{year}:{duration}:{month}\n```\n\n| 段位 | 名称 | 必填 | 说明 | 示例 |\n|------|------|------|------|------|\n| 第1段 | type | 是 | Tab 类型数字 0~4 | `0` |\n| 第2段 | 固定 | 是 | 固定值 `t` | `t` |\n| 第3段 | main_filter | 否 | 筛选标志位（多值可组合）：`p`=可播放, `m`=可下载, `c`=有字幕, `s`=单体系列, `i`=预告图, `v`=预告片 | `p` 或 `m` 或 `pc` |\n| 第4段 | tag_ids | 否 | 从 /api/v2/tags 获取的标签 ID，多个用 `,` 分隔 | `12,34,56` |\n| 第5段 | year | 否 | 年份筛选 | `2024` |\n| 第6段 | duration | 否 | 时长筛选（分钟） | `120` |\n| 第7段 | month | 否 | 月份筛选（格式 YYYY-MM） | `2024-01` |\n\n> **注意**：即使某段为空，也要保留冒号分隔符（如 `0:t:::::` 表示有码+全部影片+无筛选）。\n\n## 数据流\n\n1. 用户切换 Tab → `GET /api/v2/tags?type={n}` 获取该 Tab 的标签字典（TagsEntity）\n2. 用户选择标签/排序 → 组装 `filter_by` 参数 → `GET /api/v1/movies/tags` 获取筛选结果\n3. 下拉刷新：重置 page=1，清空列表后重新请求\n4. 上拉加载更多：page++，追加数据到列表末尾\n\n## 排序选项\n\n> 对应客户端 i18n: sortRelease / sortUpdate / sortScore / sortHit / sortWantWatch / sortWatched\n\n- `order_by` 仅在 `sort_by=release` 时有效\n- 其他排序字段（score, hit 等）默认为降序，无需传 order_by",
         "responses": {
           "200": {
-            "description": "成功，data 为 MovieEntity（含 has_collected 字段）",
+            "description": "成功，返回影片列表（分页）。首次请求（page=1）返回完整 data，后续分页请求追加到 list 末尾。空数据时 data.movies 为空数组",
             "content": {
               "application/json": {
                 "schema": {
@@ -1223,7 +1223,29 @@
                       "type": "object",
                       "properties": {
                         "data": {
-                          "$ref": "#/components/schemas/MovieEntity"
+                          "type": "object",
+                          "description": "分页影片列表",
+                          "properties": {
+                            "movies": {
+                              "type": "array",
+                              "description": "影片列表",
+                              "items": {
+                                "$ref": "#/components/schemas/MovieEntity"
+                              }
+                            },
+                            "current_page": {
+                              "type": "integer",
+                              "description": "当前页码"
+                            },
+                            "total_pages": {
+                              "type": "integer",
+                              "description": "总页数"
+                            },
+                            "total_count": {
+                              "type": "integer",
+                              "description": "总影片数"
+                            }
+                          }
                         }
                       }
                     }
@@ -1237,7 +1259,7 @@
           {
             "name": "filter_by",
             "in": "query",
-            "description": "筛选条件（必填）。格式: {type}:t:{main}:{extra}:{year}:{duration}:{month}。示例: 0:t:p::::",
+            "description": "筛选条件（必填）。格式: {type}:t:{main}:{tag_ids}:{year}:{duration}:{month}。示例: 0:t:p:::: （有码+可播放）、1:t::98,132::: （无码+指定标签）、2:t:::2024:: （欧美+2024年）",
             "required": true,
             "schema": {
               "type": "string"
@@ -1246,7 +1268,7 @@
           {
             "name": "sort_by",
             "in": "query",
-            "description": "排序字段。release=发布日期, update=更新时间, score=评分, hit=热度, want_watch_count=想看数, watched_count=看过数",
+            "description": "排序字段。release=发布日期, update=更新时间, score=评分, hit=热度, want_watch_count=想看人数, watched_count=看过人数",
             "required": false,
             "schema": {
               "type": "string",
@@ -1276,7 +1298,7 @@
           {
             "name": "page",
             "in": "query",
-            "description": "页码，从 1 开始",
+            "description": "页码，从 1 开始（默认 1）",
             "required": false,
             "schema": {
               "type": "integer",
@@ -1287,7 +1309,7 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "每页条数",
+            "description": "每页条数。客户端分类列表页硬编码 48",
             "required": false,
             "schema": {
               "type": "integer",
@@ -1297,7 +1319,7 @@
           {
             "name": "filter_by_tags",
             "in": "query",
-            "description": "额外标签筛选（演员详情页专用）",
+            "description": "额外标签筛选（演员详情页专用，用于在演员页面按标签进一步过滤）",
             "required": false,
             "schema": {
               "type": "string"
@@ -3899,10 +3921,10 @@
           "Tag"
         ],
         "summary": "标签字典",
-        "description": "获取分类标签字典（用于构建筛选UI）。type 参数为必填: 0=有码, 1=无码, 2=欧美, 3=FC2, 4=动漫。返回按 category_id 分组的标签列表",
+        "description": "获取分类标签字典（用于构建筛选 UI）。\n\n## 用途\n\n用户切换分类页面的 Tab（有码/无码/欧美/FC2/动漫）时，客户端调用此接口获取该 Tab 下可用的标签筛选选项。\n\n返回的 TagsEntity 按 `category_id` 分组，每个分组对应筛选面板中的一个可展开区域（如 演员、系列、标签、类别 等）。\n\n## 数据流\n\n1. 用户进入分类页或切换 Tab → `GET /api/v2/tags?type={n}`\n2. 返回 TagsEntity → 渲染标签选择 UI（_getTagsContainer）\n3. 用户选中标签 → 标签 ID 拼入 `/api/v1/movies/tags` 的 `filter_by` 参数\n\n## type 参数映射\n\n| type 值 | Tab 名称 | 中文 |\n|---------|---------|------|\n| 0 | Censored | 有码 |\n| 1 | Uncensored | 无码 |\n| 2 | Western | 欧美 |\n| 3 | FC2 | FC2 |\n| 4 | Carton | 动漫 |\n\n## 响应示例\n\n```json\n{\n  \"success\": 1,\n  \"data\": {\n    \"tags\": [\n      {\n        \"category\": \"演员\",\n        \"category_id\": \"1\",\n        \"tags\": [\n          { \"id\": \"12\", \"name\": \"三上悠亚\", \"videos_count\": 45 },\n          { \"id\": \"34\", \"name\": \"河北彩花\", \"videos_count\": 32 }\n        ]\n      },\n      {\n        \"category\": \"系列\",\n        \"category_id\": \"2\",\n        \"tags\": [\n          { \"id\": \"56\", \"name\": \"SSIS\", \"videos_count\": 120 }\n        ]\n      },\n      {\n        \"category\": \"标签\",\n        \"category_id\": \"3\",\n        \"tags\": [\n          { \"id\": \"78\", \"name\": \"中出\", \"videos_count\": 890 },\n          { \"id\": \"90\", \"name\": \"巨乳\", \"videos_count\": 567 }\n        ]\n      }\n    ]\n  }\n}\n```",
         "responses": {
           "200": {
-            "description": "成功，data 为 TagsEntity",
+            "description": "成功，data 为 TagsEntity（按 category_id 分组的标签列表）",
             "content": {
               "application/json": {
                 "schema": {
@@ -3928,10 +3950,12 @@
           {
             "name": "type",
             "in": "query",
-            "description": "分类（必填）。0=有码, 1=无码, 2=欧美, 3=FC2, 4=动漫",
+            "description": "Tab 分类（必填）。0=有码(Censored), 1=无码(Uncensored), 2=欧美(Western), 3=FC2, 4=动漫(Carton)",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
             }
           }
         ],
@@ -7011,15 +7035,54 @@
       },
       "TagsEntity": {
         "type": "object",
-        "description": "标签列表实体（分页）",
+        "description": "标签列表实体（用于 /api/v2/tags 响应）。按 category_id 分组的标签字典，每个分组对应 UI 中的一个可展开的筛选分类区域",
         "additionalProperties": true,
         "properties": {
           "tags": {
             "type": "array",
-            "description": "标签分类列表",
+            "description": "标签分类列表。每个元素是一个分组（如 演员、系列、标签、类别等）",
             "items": {
-              "type": "object"
+              "$ref": "#/components/schemas/TagCategory"
             }
+          }
+        }
+      },
+      "TagCategory": {
+        "type": "object",
+        "description": "标签分类分组。对应筛选面板中的一个可展开区域",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "分类名称（如 演员、系列、标签、类别、导演、制作商、发行商 等）"
+          },
+          "category_id": {
+            "type": "string",
+            "description": "分类 ID，后端用于区分不同分类组"
+          },
+          "tags": {
+            "type": "array",
+            "description": "该分类下的标签列表",
+            "items": {
+              "$ref": "#/components/schemas/TagItem"
+            }
+          }
+        }
+      },
+      "TagItem": {
+        "type": "object",
+        "description": "单个标签项。用户选择标签后，标签 ID 会被拼入 /api/v1/movies/tags 的 filter_by 参数中",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "标签 ID（拼接 filter_by 时使用此值）"
+          },
+          "name": {
+            "type": "string",
+            "description": "标签名称（显示用）"
+          },
+          "videos_count": {
+            "type": "integer",
+            "description": "该标签关联的影片数量"
           }
         }
       },
