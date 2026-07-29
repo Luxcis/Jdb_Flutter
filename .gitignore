@@ -47,5 +47,4 @@ app.*.map.json
 
 .trae/
 .superpowers/
-docs/superpowers
 .worktrees/
