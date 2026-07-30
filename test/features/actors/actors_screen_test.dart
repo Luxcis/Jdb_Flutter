@@ -8,6 +8,7 @@ import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/interceptors/response_interceptor.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/widgets/actor_card.dart';
+import 'package:jade/core/widgets/empty_state.dart';
 import 'package:jade/features/actors/screens/actors_screen.dart';
 import 'package:jade/features/actors/services/actor_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -73,6 +74,18 @@ void main() {
     expect(find.text('无码'), findsOneWidget);
     expect(find.text('欧美(女)'), findsOneWidget);
     expect(find.text('欧美(男)'), findsOneWidget);
+  });
+
+  testWidgets('匿名推荐三个数组全空时显示共享空状态', (tester) async {
+    final fixture = await createActorService();
+    enqueueEmptyRecommend(fixture.adapter);
+
+    await tester.pumpWidget(
+      MaterialApp(home: ActorsPage(service: fixture.service)),
+    );
+    await pumpAsyncUi(tester);
+
+    expect(find.byType(EmptyState), findsOneWidget);
   });
 
   testWidgets('未登录推荐页展示三个独立推荐分区', (tester) async {
@@ -393,7 +406,7 @@ void main() {
     expect(find.text('演员详情 n1'), findsOneWidget);
   });
 
-  testWidgets('窄屏暗色推荐页无布局溢出', (tester) async {
+  testWidgets('320px 暗色大字体推荐页无布局溢出', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(320, 640);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -417,12 +430,30 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData.dark(useMaterial3: true),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
         home: ActorsPage(service: fixture.service),
       ),
     );
     await pumpAsyncUi(tester);
 
     expect(tester.takeException(), isNull);
-    expect(find.byType(ActorCard), findsNWidgets(3));
+    expect(find.byType(ActorCard), findsWidgets);
+
+    await tester.scrollUntilVisible(
+      find.text('很长很长的推荐演员名称'),
+      300,
+      scrollable: find.descendant(
+        of: find.byType(CustomScrollView),
+        matching: find.byType(Scrollable),
+      ),
+    );
+
+    expect(find.text('很长很长的推荐演员名称'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

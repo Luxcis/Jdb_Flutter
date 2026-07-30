@@ -5,6 +5,7 @@ import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/storage/storage_keys.dart';
+import 'package:jade/core/widgets/actor_card.dart';
 import 'package:jade/core/widgets/movie_cover_image.dart';
 import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/movie_screenshot_image.dart';
@@ -263,6 +264,52 @@ void main() {
       scrollable: innerScrollable,
     );
     expect(find.text('剧情'), findsOneWidget);
+  });
+
+  testWidgets('320px 暗色大字体下非空演员区域不溢出', (tester) async {
+    tester.view.physicalSize = const Size(320, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final adapter = await _setupApiClient();
+    adapter.enqueue('/api/v4/movies/m1', {
+      'success': 1,
+      'data': {
+        'movie': {
+          'id': 'm1',
+          'number': 'A-1',
+          'title': '测试影片',
+          'cover_url': '',
+          'actors': [
+            {'id': 'a1', 'name': '很长很长的演员名称', 'avatar_url': ''},
+          ],
+          'tags': <Map<String, dynamic>>[],
+        },
+      },
+    });
+    adapter.enqueue('/api/v1/movies/m1/reviews', {
+      'success': 1,
+      'data': {'reviews': <Map<String, dynamic>>[]},
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(useMaterial3: true),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: const MovieDetailPage(id: 'm1'),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.byType(ActorCard), findsOneWidget);
+    expect(find.text('很长很长的演员名称'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('影片详情按参考顺序展示且正文不被常驻抽屉遮挡', (tester) async {

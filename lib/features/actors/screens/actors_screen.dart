@@ -5,6 +5,7 @@ import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/actor_card.dart';
 import 'package:jade/core/widgets/actor_grid_view.dart';
+import 'package:jade/core/widgets/empty_state.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 import 'package:jade/core/widgets/section_header.dart';
@@ -157,6 +158,11 @@ class _RecommendTabState extends State<_RecommendTab> {
     if (data == null) {
       return ErrorRetryWidget(message: '演员推荐数据不可用', onRetry: _retry);
     }
+    if (data.newActors.isEmpty &&
+        data.monthlyActors.isEmpty &&
+        data.recommendActors.isEmpty) {
+      return const EmptyState(message: '暂无演员推荐');
+    }
 
     return CustomScrollView(
       slivers: [
@@ -176,14 +182,21 @@ class _RecommendTabState extends State<_RecommendTab> {
         final crossAxisCount = (constraints.crossAxisExtent / 120)
             .floor()
             .clamp(3, 6);
+        const horizontalPadding = 16.0;
+        const crossAxisSpacing = 12.0;
+        final tileWidth =
+            (constraints.crossAxisExtent -
+                horizontalPadding * 2 -
+                crossAxisSpacing * (crossAxisCount - 1)) /
+            crossAxisCount;
         return SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: horizontalPadding),
           sliver: SliverGrid(
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: crossAxisCount,
               mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.7,
+              crossAxisSpacing: crossAxisSpacing,
+              mainAxisExtent: ActorCard.mainAxisExtent(context, tileWidth),
             ),
             delegate: SliverChildBuilderDelegate(
               (context, index) => ActorCard(

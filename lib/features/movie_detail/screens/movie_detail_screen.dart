@@ -879,9 +879,10 @@ class _ActorSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final actorCardHeight = ActorCard.mainAxisExtent(context, 80);
     return _Section(
       title: '演员',
-      height: 112,
+      height: actorCardHeight < 112 ? 112 : actorCardHeight,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,

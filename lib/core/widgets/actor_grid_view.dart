@@ -21,15 +21,32 @@ class ActorGridView extends StatelessWidget {
             onRetry: controller.refresh,
           );
         }
+        if (controller.isLoading && controller.items.isEmpty) {
+          return const Center(
+            child: SizedBox.square(
+              key: Key('actor-grid-initial-loading'),
+              dimension: 36,
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
         return LayoutBuilder(
           builder: (context, constraints) {
             final crossAxisCount = (constraints.maxWidth / 120).floor().clamp(
               3,
               6,
             );
+            const horizontalPadding = 16.0;
+            const crossAxisSpacing = 12.0;
+            final tileWidth =
+                (constraints.maxWidth -
+                    horizontalPadding * 2 -
+                    crossAxisSpacing * (crossAxisCount - 1)) /
+                crossAxisCount;
             final hasTail =
                 controller.items.isNotEmpty &&
-                (controller.isLoading || controller.error != null);
+                ((!controller.isRefreshing && controller.isLoading) ||
+                    controller.error != null);
 
             return NotificationListener<ScrollNotification>(
               onNotification: (notification) {
@@ -41,48 +58,64 @@ class ActorGridView extends StatelessWidget {
                 return false;
               },
               child: RefreshIndicator(
-                onRefresh: controller.refresh,
-                child: GridView.builder(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 0.7,
-                  ),
-                  itemCount: controller.items.length + (hasTail ? 1 : 0),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  itemBuilder: (_, index) {
-                    if (index < controller.items.length) {
-                      return ActorCard(
-                        actor: controller.items[index],
-                        onTap: onActorTap != null
-                            ? () => onActorTap!(controller.items[index])
-                            : null,
-                      );
-                    }
-
-                    if (controller.isLoading) {
-                      return const Center(
-                        child: SizedBox.square(
-                          key: Key('actor-grid-tail-loading'),
-                          dimension: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                onRefresh: () => controller.refresh(preserveItems: true),
+                child: Stack(
+                  children: [
+                    GridView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: crossAxisSpacing,
+                        mainAxisExtent: ActorCard.mainAxisExtent(
+                          context,
+                          tileWidth,
                         ),
-                      );
-                    }
-
-                    return Center(
-                      child: TextButton(
-                        key: const Key('actor-grid-tail-retry'),
-                        onPressed: controller.fetchMore,
-                        child: const Text('重试'),
                       ),
-                    );
-                  },
+                      itemCount: controller.items.length + (hasTail ? 1 : 0),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: horizontalPadding,
+                        vertical: 12,
+                      ),
+                      itemBuilder: (_, index) {
+                        if (index < controller.items.length) {
+                          return ActorCard(
+                            actor: controller.items[index],
+                            onTap: onActorTap != null
+                                ? () => onActorTap!(controller.items[index])
+                                : null,
+                          );
+                        }
+
+                        if (controller.isLoading) {
+                          return const Center(
+                            child: SizedBox.square(
+                              key: Key('actor-grid-tail-loading'),
+                              dimension: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          );
+                        }
+
+                        return Center(
+                          child: TextButton(
+                            key: const Key('actor-grid-tail-retry'),
+                            onPressed: controller.fetchMore,
+                            child: const Text('重试'),
+                          ),
+                        );
+                      },
+                    ),
+                    if (controller.isRefreshing)
+                      const Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: LinearProgressIndicator(
+                          key: Key('actor-grid-refreshing'),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             );

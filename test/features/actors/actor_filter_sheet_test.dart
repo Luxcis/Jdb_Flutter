@@ -1,9 +1,68 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/features/actors/models/actor_filter.dart';
 import 'package:jade/features/actors/widgets/actor_filter_sheet.dart';
 
 void main() {
+  testWidgets('六个范围滑块语义播报实际端点和单位', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(800, 1000);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final semanticsHandle = tester.ensureSemantics();
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ActorFilterSheet(
+            initialValue: ActorFilter(
+              age: ActorRange(20, 40),
+              height: ActorRange(131, 184),
+              cup: ActorRange(1, 14),
+              bust: ActorRange(71, 119),
+              waist: ActorRange(51, 89),
+              hips: ActorRange(72, 118),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final semanticValues = <String>{};
+    void collectValues(SemanticsNode node) {
+      final value = node.getSemanticsData().value;
+      if (value.isNotEmpty) semanticValues.add(value);
+      node.visitChildren((child) {
+        collectValues(child);
+        return true;
+      });
+    }
+
+    for (var index = 0; index < 6; index++) {
+      collectValues(tester.getSemantics(find.byType(RangeSlider).at(index)));
+    }
+
+    for (final value in [
+      '20岁',
+      '40岁',
+      '131厘米',
+      '184厘米',
+      'B罩杯',
+      'O罩杯',
+      '71厘米',
+      '119厘米',
+      '51厘米',
+      '89厘米',
+      '72厘米',
+      '118厘米',
+    ]) {
+      expect(semanticValues, contains(value));
+    }
+
+    semanticsHandle.dispose();
+  });
+
   testWidgets('筛选面板紧凑展示六个范围并可重置', (tester) async {
     final semanticsHandle = tester.ensureSemantics();
 

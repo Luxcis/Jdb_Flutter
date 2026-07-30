@@ -37,10 +37,12 @@ class SectionHeader extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title,
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: bold ? FontWeight.w800 : FontWeight.w700,
+          Expanded(
+            child: Text(
+              title,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: bold ? FontWeight.w800 : FontWeight.w700,
+              ),
             ),
           ),
           if (trailing != null)

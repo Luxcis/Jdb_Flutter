@@ -8,6 +8,68 @@ import 'package:jade/core/widgets/actor_grid_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 
 void main() {
+  testWidgets('首屏无内容加载时显示居中进度', (tester) async {
+    final firstPage = Completer<PagedResult<ActorSummary>>();
+    final controller = PaginationController<ActorSummary>(
+      fetch: (_) => firstPage.future,
+    );
+    addTearDown(controller.dispose);
+    final fetch = controller.fetchMore();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: ActorGridView(controller: controller)),
+      ),
+    );
+
+    expect(find.byKey(const Key('actor-grid-initial-loading')), findsOneWidget);
+    expect(
+      find.ancestor(
+        of: find.byKey(const Key('actor-grid-initial-loading')),
+        matching: find.byType(Center),
+      ),
+      findsOneWidget,
+    );
+
+    firstPage.complete(
+      const PagedResult(items: [], currentPage: 1, totalPages: 1, total: 0),
+    );
+    await fetch;
+  });
+
+  testWidgets('320px 暗色大字体下演员网格不溢出', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 640);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final controller = PaginationController<ActorSummary>(
+      fetch: (_) async => const PagedResult(
+        items: [ActorSummary(id: 'a1', name: '很长很长的演员名称', avatarUrl: '')],
+        currentPage: 1,
+        totalPages: 1,
+        total: 1,
+      ),
+    );
+    addTearDown(controller.dispose);
+    await controller.fetchMore();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(useMaterial3: true),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: Scaffold(body: ActorGridView(controller: controller)),
+      ),
+    );
+
+    expect(find.text('很长很长的演员名称'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('滚动接近底部自动加载下一页', (tester) async {
     final requestedPages = <int>[];
     final controller = PaginationController<ActorSummary>(
@@ -89,6 +151,105 @@ void main() {
       ),
     );
     await fetch;
+  });
+
+  testWidgets('保留内容刷新时显示顶部进度而非页尾进度', (tester) async {
+    var requestCount = 0;
+    final refreshedPage = Completer<PagedResult<ActorSummary>>();
+    final controller = PaginationController<ActorSummary>(
+      fetch: (_) {
+        requestCount++;
+        if (requestCount == 1) {
+          return Future.value(
+            const PagedResult(
+              items: [ActorSummary(id: 'old', name: '原演员', avatarUrl: '')],
+              currentPage: 1,
+              totalPages: 1,
+              total: 1,
+            ),
+          );
+        }
+        return refreshedPage.future;
+      },
+    );
+    addTearDown(controller.dispose);
+    await controller.fetchMore();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: ActorGridView(controller: controller)),
+      ),
+    );
+
+    final refresh = tester
+        .widget<RefreshIndicator>(find.byType(RefreshIndicator))
+        .onRefresh();
+    await tester.pump();
+
+    expect(find.text('原演员'), findsOneWidget);
+    expect(find.byKey(const Key('actor-grid-refreshing')), findsOneWidget);
+    expect(find.byKey(const Key('actor-grid-tail-loading')), findsNothing);
+
+    refreshedPage.complete(
+      const PagedResult(
+        items: [ActorSummary(id: 'new', name: '新演员', avatarUrl: '')],
+        currentPage: 1,
+        totalPages: 1,
+        total: 1,
+      ),
+    );
+    await refresh;
+    await tester.pump();
+
+    expect(find.text('原演员'), findsNothing);
+    expect(find.text('新演员'), findsOneWidget);
+    expect(find.byKey(const Key('actor-grid-refreshing')), findsNothing);
+  });
+
+  testWidgets('下拉刷新失败保留旧演员并允许重试', (tester) async {
+    var requestCount = 0;
+    final controller = PaginationController<ActorSummary>(
+      fetch: (_) async {
+        requestCount++;
+        if (requestCount == 1) {
+          return const PagedResult(
+            items: [ActorSummary(id: 'old', name: '原演员', avatarUrl: '')],
+            currentPage: 1,
+            totalPages: 1,
+            total: 1,
+          );
+        }
+        if (requestCount == 2) throw StateError('刷新失败');
+        return const PagedResult(
+          items: [ActorSummary(id: 'new', name: '重试演员', avatarUrl: '')],
+          currentPage: 1,
+          totalPages: 1,
+          total: 1,
+        );
+      },
+    );
+    addTearDown(controller.dispose);
+    await controller.fetchMore();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: ActorGridView(controller: controller)),
+      ),
+    );
+
+    await tester
+        .widget<RefreshIndicator>(find.byType(RefreshIndicator))
+        .onRefresh();
+    await tester.pump();
+
+    expect(find.text('原演员'), findsOneWidget);
+    expect(find.byKey(const Key('actor-grid-tail-retry')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('actor-grid-tail-retry')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('原演员'), findsNothing);
+    expect(find.text('重试演员'), findsOneWidget);
+    expect(find.byKey(const Key('actor-grid-tail-retry')), findsNothing);
   });
 
   testWidgets('下一页失败时保留演员并显示可重试页尾', (tester) async {

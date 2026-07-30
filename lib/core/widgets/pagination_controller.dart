@@ -69,7 +69,8 @@ class PaginationController<T> extends ChangeNotifier {
     await fetchMore();
   }
 
-  Future<void> refresh() => reloadWith(_fetch);
+  Future<void> refresh({bool preserveItems = false}) =>
+      reloadWith(_fetch, preserveItems: preserveItems);
 
   void reshuffle() {
     _items.shuffle();

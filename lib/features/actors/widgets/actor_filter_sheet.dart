@@ -81,6 +81,7 @@ class _ActorFilterSheetState extends State<ActorFilterSheet> {
       label: '年龄',
       range: _draft.age,
       bounds: ActorFilter.defaultAge,
+      semanticValueLabel: _ageSemanticLabel,
       onChanged: (range) => setState(() {
         _draft = _draft.copyWith(age: range);
       }),
@@ -89,6 +90,7 @@ class _ActorFilterSheetState extends State<ActorFilterSheet> {
       label: '身高',
       range: _draft.height,
       bounds: ActorFilter.defaultHeight,
+      semanticValueLabel: _centimeterSemanticLabel,
       onChanged: (range) => setState(() {
         _draft = _draft.copyWith(height: range);
       }),
@@ -98,6 +100,7 @@ class _ActorFilterSheetState extends State<ActorFilterSheet> {
       range: _draft.cup,
       bounds: ActorFilter.defaultCup,
       valueLabel: cupLabel,
+      semanticValueLabel: _cupSemanticLabel,
       onChanged: (range) => setState(() {
         _draft = _draft.copyWith(cup: range);
       }),
@@ -106,6 +109,7 @@ class _ActorFilterSheetState extends State<ActorFilterSheet> {
       label: '胸围',
       range: _draft.bust,
       bounds: ActorFilter.defaultBust,
+      semanticValueLabel: _centimeterSemanticLabel,
       onChanged: (range) => setState(() {
         _draft = _draft.copyWith(bust: range);
       }),
@@ -114,6 +118,7 @@ class _ActorFilterSheetState extends State<ActorFilterSheet> {
       label: '腰围',
       range: _draft.waist,
       bounds: ActorFilter.defaultWaist,
+      semanticValueLabel: _centimeterSemanticLabel,
       onChanged: (range) => setState(() {
         _draft = _draft.copyWith(waist: range);
       }),
@@ -122,6 +127,7 @@ class _ActorFilterSheetState extends State<ActorFilterSheet> {
       label: '臀围',
       range: _draft.hips,
       bounds: ActorFilter.defaultHips,
+      semanticValueLabel: _centimeterSemanticLabel,
       onChanged: (range) => setState(() {
         _draft = _draft.copyWith(hips: range);
       }),
@@ -136,6 +142,7 @@ class _ActorRangeRow extends StatelessWidget {
     required this.range,
     required this.bounds,
     required this.onChanged,
+    required this.semanticValueLabel,
     this.valueLabel = _numericRangeLabel,
   });
 
@@ -144,6 +151,7 @@ class _ActorRangeRow extends StatelessWidget {
   final ActorRange bounds;
   final ValueChanged<ActorRange> onChanged;
   final String Function(ActorRange) valueLabel;
+  final String Function(double) semanticValueLabel;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -157,6 +165,7 @@ class _ActorRangeRow extends StatelessWidget {
             min: bounds.min.toDouble(),
             max: bounds.max.toDouble(),
             divisions: bounds.max - bounds.min,
+            semanticFormatterCallback: semanticValueLabel,
             onChanged: (values) =>
                 onChanged(ActorRange(values.start.round(), values.end.round())),
           ),
@@ -178,3 +187,10 @@ String cupLabel(ActorRange range) =>
     '${String.fromCharCode(65 + range.min)}–${String.fromCharCode(65 + range.max)}';
 
 String _numericRangeLabel(ActorRange range) => '${range.min}–${range.max}';
+
+String _ageSemanticLabel(double value) => '${value.round()}岁';
+
+String _centimeterSemanticLabel(double value) => '${value.round()}厘米';
+
+String _cupSemanticLabel(double value) =>
+    '${String.fromCharCode(65 + value.round())}罩杯';
