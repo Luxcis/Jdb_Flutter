@@ -10,6 +10,7 @@ import 'package:jade/core/widgets/filter_drawer.dart';
 import 'package:jade/core/widgets/login_guide_card.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 import 'package:jade/core/widgets/section_header.dart';
+import 'package:jade/features/actors/models/actor_filter.dart';
 import 'package:jade/features/actors/services/actor_service.dart';
 import 'package:provider/provider.dart';
 
@@ -50,11 +51,14 @@ class _ActorsPageState extends State<ActorsPage> with TickerProviderStateMixin {
         controller: _tabController,
         children: [
           const _RecommendTab(),
-          const _ActorListTab(type: 'censored_female', showFilter: true),
-          const _ActorListTab(type: 'censored_male'),
-          const _ActorListTab(type: 'uncensored'),
-          const _ActorListTab(type: 'western_female'),
-          const _ActorListTab(type: 'western_male'),
+          const _ActorListTab(
+            category: ActorListCategory.censoredFemale,
+            showFilter: true,
+          ),
+          const _ActorListTab(category: ActorListCategory.censoredMale),
+          const _ActorListTab(category: ActorListCategory.uncensored),
+          const _ActorListTab(category: ActorListCategory.westernFemale),
+          const _ActorListTab(category: ActorListCategory.westernMale),
         ],
       ),
     );
@@ -82,11 +86,14 @@ class _RecommendTabState extends State<_RecommendTab> {
     final api = ApiClient.instanceOrNull;
     if (api == null) return;
     final svc = ActorService(api);
-    final all = await svc.getRecommends();
+    final recommends = await svc.getRecommends();
     setState(() {
-      _newcomers = all.sublist(0, all.length > 9 ? 9 : all.length);
-      _monthly = all;
-      _dmm = all;
+      _newcomers = recommends.newActors.sublist(
+        0,
+        recommends.newActors.length > 9 ? 9 : recommends.newActors.length,
+      );
+      _monthly = recommends.monthlyActors;
+      _dmm = recommends.recommendActors;
     });
   }
 
@@ -135,9 +142,9 @@ class _RecommendTabState extends State<_RecommendTab> {
 }
 
 class _ActorListTab extends StatefulWidget {
-  final String type;
+  final ActorListCategory category;
   final bool showFilter;
-  const _ActorListTab({required this.type, this.showFilter = false});
+  const _ActorListTab({required this.category, this.showFilter = false});
   @override
   State<_ActorListTab> createState() => _ActorListTabState();
 }
@@ -154,7 +161,7 @@ class _ActorListTabState extends State<_ActorListTab> {
           total: 0,
         );
       }
-      return ActorService(api).getActors(type: widget.type, page: page);
+      return ActorService(api).getActors(category: widget.category, page: page);
     },
   );
 

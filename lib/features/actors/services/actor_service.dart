@@ -4,49 +4,43 @@ import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
+import 'package:jade/features/actors/models/actor_filter.dart';
+import 'package:jade/features/actors/models/actor_recommend.dart';
 
 class ActorService {
   ActorService(this._api);
   final ApiClient _api;
 
   Future<PagedResult<ActorSummary>> getActors({
-    required String type,
-    int page = 1,
-    int limit = 20,
+    required ActorListCategory category,
+    required int page,
+    ActorFilter filter = const ActorFilter(),
   }) async {
-    final resp = await _api.get(
-      Endpoints.actors,
-      queryParameters: {'type': type, 'limit': limit},
-    );
-    final m = resp.data as Map<String, dynamic>;
+    final query = <String, dynamic>{
+      'type': category.type,
+      'gender': category.gender,
+      'page': page,
+      'limit': 60,
+      if (category.supportsFilter) ...filter.toQueryParameters(),
+    };
+    final response = await _api.get(Endpoints.actors, queryParameters: query);
+    final data = apiMap(response.data);
+    final items = apiList(data, const ['actors'])
+        .map(normalizeActorSummaryJson)
+        .map(ActorSummary.fromJson)
+        .toList(growable: false);
+    final currentPage = apiInt(data['current_page'], page);
     return PagedResult(
-      items: apiList(m, const ['actors', 'items'])
-          .map((j) => ActorSummary.fromJson(normalizeActorSummaryJson(j)))
-          .toList(),
-      currentPage: apiInt(m['current_page'], 1),
-      totalPages: apiInt(m['total_pages'], 1),
-      total: apiInt(m['total'], 0),
+      items: items,
+      currentPage: currentPage,
+      totalPages: currentPage + (items.length == 60 ? 1 : 0),
+      total: apiInt(data['total'], 0),
     );
   }
 
-  Future<List<ActorSummary>> getRecommends() async {
-    final resp = await _api.get(Endpoints.actorsRecommend);
-    if (resp.data is Map) {
-      final actors = [
-        ...apiList(resp.data, const ['new_actors']),
-        ...apiList(resp.data, const ['monthly_actors']),
-        ...apiList(resp.data, const ['recommend_actors']),
-      ];
-      if (actors.isNotEmpty) {
-        return actors
-            .map((j) => ActorSummary.fromJson(normalizeActorSummaryJson(j)))
-            .toList();
-      }
-    }
-    return apiList(resp.data, const [
-      'actors',
-      'items',
-    ]).map((j) => ActorSummary.fromJson(normalizeActorSummaryJson(j))).toList();
+  Future<ActorRecommend> getRecommends() async {
+    final response = await _api.get(Endpoints.actorsRecommend);
+    return ActorRecommend.fromJson(apiMap(response.data));
   }
 
   Future<PagedResult<ActorSummary>> getRankingActors({

@@ -8,6 +8,7 @@ import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/features/home/services/home_service.dart';
 import 'package:jade/features/rankings/services/ranking_service.dart';
 import 'package:jade/features/actors/services/actor_service.dart';
+import 'package:jade/features/actors/models/actor_filter.dart';
 import 'package:jade/features/categories/models/category_filter.dart';
 import 'package:jade/features/categories/services/category_service.dart';
 import 'package:jade/features/movie_detail/services/movie_detail_service.dart';
@@ -259,33 +260,106 @@ void main() {
       svc = ActorService(api);
     });
 
-    test('GET /api/v1/actors → 带 type/page 参数', () async {
+    test('GET /api/v1/actors 固定发送分类、性别、页码和 60 条', () async {
       ok(adapter, Endpoints.actors, {
         'actors': [
           {'id': 'a1', 'name': 'Actor1', 'avatar_url': 'a.jpg'},
         ],
-        'current_page': 1,
-        'total_pages': 3,
-        'total': 30,
+        'current_page': 2,
       });
-      final r = await svc.getActors(type: 'hot', page: 2, limit: 10);
-      final q = adapter.requests.last.uri.queryParameters;
-      expect(q['type'], 'hot');
-      expect(q.containsKey('page'), isFalse);
-      expect(r.items.first.name, 'Actor1');
+      final result = await svc.getActors(
+        category: ActorListCategory.censoredMale,
+        page: 2,
+      );
+
+      final query = adapter.requests.last.uri.queryParameters;
+      expect(query, containsPair('type', '0'));
+      expect(query, containsPair('gender', '1'));
+      expect(query, containsPair('page', '2'));
+      expect(query, containsPair('limit', '60'));
+      expect(result.items.single.name, 'Actor1');
+      expect(result.totalPages, 2);
     });
 
-    test('GET /api/v1/actors/recommend → 推荐演员', () async {
+    test('只有有码女发送非默认筛选范围', () async {
+      ok(adapter, Endpoints.actors, {'actors': [], 'current_page': 1});
+      final filter = const ActorFilter().copyWith(
+        age: const ActorRange(20, 40),
+        height: const ActorRange(150, 170),
+      );
+
+      await svc.getActors(
+        category: ActorListCategory.censoredFemale,
+        page: 1,
+        filter: filter,
+      );
+
+      final query = adapter.requests.last.uri.queryParameters;
+      expect(query['age'], '20,40');
+      expect(query['height'], '150,170');
+      expect(query.containsKey('cup'), isFalse);
+    });
+
+    test('非有码女忽略筛选对象', () async {
+      ok(adapter, Endpoints.actors, {'actors': [], 'current_page': 1});
+
+      await svc.getActors(
+        category: ActorListCategory.westernFemale,
+        page: 1,
+        filter: const ActorFilter(age: ActorRange(20, 40)),
+      );
+
+      expect(
+        adapter.requests.last.uri.queryParameters.containsKey('age'),
+        isFalse,
+      );
+    });
+
+    test('不足 60 条停止分页，满 60 条允许下一页', () async {
+      ok(adapter, Endpoints.actors, {
+        'actors': List.generate(
+          60,
+          (index) => {'id': '$index', 'name': 'Actor $index', 'avatar_url': ''},
+        ),
+        'current_page': 3,
+      });
+
+      final fullPage = await svc.getActors(
+        category: ActorListCategory.uncensored,
+        page: 3,
+      );
+      expect(fullPage.totalPages, 4);
+
+      ok(adapter, Endpoints.actors, {
+        'actors': [
+          {'id': 'last', 'name': 'Last', 'avatar_url': ''},
+        ],
+        'current_page': 4,
+      });
+      final lastPage = await svc.getActors(
+        category: ActorListCategory.uncensored,
+        page: 4,
+      );
+      expect(lastPage.totalPages, 4);
+    });
+
+    test('GET /api/v1/actors/recommend 保留三个独立分区', () async {
       ok(adapter, Endpoints.actorsRecommend, {
         'new_actors': [
-          {'id': 'a1', 'name': '新人A', 'avatar_url': 'a.jpg'},
+          {'id': 'n1', 'name': '新人', 'avatar_url': ''},
         ],
-        'monthly_actors': [],
-        'recommend_actors': [],
+        'monthly_actors': [
+          {'id': 'm1', 'name': '月榜', 'avatar_url': ''},
+        ],
+        'recommend_actors': [
+          {'id': 'd1', 'name': 'DMM', 'avatar_url': ''},
+        ],
       });
-      final list = await svc.getRecommends();
-      expect(list.length, 1);
-      expect(list.first.name, '新人A');
+
+      final result = await svc.getRecommends();
+      expect(result.newActors.single.id, 'n1');
+      expect(result.monthlyActors.single.id, 'm1');
+      expect(result.recommendActors.single.id, 'd1');
     });
 
     test('GET /api/v1/actors/{id} → 演员详情', () async {
