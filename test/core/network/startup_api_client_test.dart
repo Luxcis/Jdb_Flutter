@@ -23,8 +23,8 @@ void main() {
       'last_ad_id': '',
       'platform': 'android',
       'app_channel': 'google',
-      'app_version': '1.9.29',
-      'app_version_number': '35',
+      'app_version': 'official',
+      'app_version_number': '1.9.29',
     });
     expect(request.headers['jdsignature'], isNotEmpty);
   });

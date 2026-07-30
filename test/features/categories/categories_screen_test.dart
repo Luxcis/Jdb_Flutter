@@ -221,10 +221,10 @@ void main() {
     expect(find.byKey(const Key('category-tab-grid-0')), findsOneWidget);
   });
 
-  testWidgets('首页为有码且首次 filter_by 为 0:t:::::', (tester) async {
+  testWidgets('首页为有码且首次 filter_by 为 0:t:m::::', (tester) async {
     final source = await _pumpCategories(tester);
 
-    expect(source.movieFilters.first, '0:t:::::');
+    expect(source.movieFilters.first, '0:t:m::::');
     expect(source.tagTypes, [0]);
     expect(find.byType(MovieCard), findsWidgets);
     final grid = find.byKey(const Key('category-tab-grid-0'));
@@ -248,7 +248,7 @@ void main() {
     await tester.tap(find.byKey(const Key('category-filter-subject-23')));
     await tester.pump();
 
-    expect(source.movieFilters.last, '0:t::23:::');
+    expect(source.movieFilters.last, '0:t:m:23:::');
     expect(find.text('筛选'), findsOneWidget);
   });
 
@@ -266,7 +266,7 @@ void main() {
     tabBar.controller!.animateTo(1);
     await _pumpPageTransition(tester);
 
-    expect(source.movieFilters, contains('1:t:::::'));
+    expect(source.movieFilters, contains('1:t:m::::'));
     expect(source.tagTypes, [0, 1]);
     expect(find.byKey(const Key('category-tab-grid-1')), findsOneWidget);
 
@@ -370,7 +370,7 @@ void main() {
       final firstRequest = source.movieRequests.firstWhere(
         (request) => request.type == type,
       );
-      expect(firstRequest.filterBy, '$type:t:::::');
+      expect(firstRequest.filterBy, '$type:t:m::::');
       expect(firstRequest.page, 1);
     }
   });
@@ -505,16 +505,16 @@ void main() {
     await tester.tap(year2025);
     await tester.pump();
     expect(tester.widget<FilterChip>(year2025).selected, isTrue);
-    expect(_filterBy(controller), '0:t:::2025::');
+    expect(_filterBy(controller), '0:t:m::2025::');
     await tester.tap(year2024);
     await tester.pump();
     expect(tester.widget<FilterChip>(year2025).selected, isFalse);
     expect(tester.widget<FilterChip>(year2024).selected, isTrue);
-    expect(_filterBy(controller), '0:t:::2024::');
+    expect(_filterBy(controller), '0:t:m::2024::');
     await tester.tap(year2024);
     await tester.pump();
     expect(tester.widget<FilterChip>(year2024).selected, isFalse);
-    expect(_filterBy(controller), '0:t:::::');
+    expect(_filterBy(controller), '0:t:m::::');
 
     final list = find.byKey(const Key('category-filter-list'));
     final duration60 = find.byKey(const Key('category-filter-duration-60'));
@@ -527,16 +527,16 @@ void main() {
     await tester.tap(duration60);
     await tester.pump();
     expect(tester.widget<FilterChip>(duration60).selected, isTrue);
-    expect(_filterBy(controller), '0:t::::60:');
+    expect(_filterBy(controller), '0:t:m:::60:');
     await tester.tap(duration120);
     await tester.pump();
     expect(tester.widget<FilterChip>(duration60).selected, isFalse);
     expect(tester.widget<FilterChip>(duration120).selected, isTrue);
-    expect(_filterBy(controller), '0:t::::120:');
+    expect(_filterBy(controller), '0:t:m:::120:');
     await tester.tap(duration120);
     await tester.pump();
     expect(tester.widget<FilterChip>(duration120).selected, isFalse);
-    expect(_filterBy(controller), '0:t:::::');
+    expect(_filterBy(controller), '0:t:m::::');
 
     final month01 = find.byKey(const Key('category-filter-month-01'));
     final month02 = find.byKey(const Key('category-filter-month-02'));
@@ -548,16 +548,16 @@ void main() {
     await tester.tap(month01);
     await tester.pump();
     expect(tester.widget<FilterChip>(month01).selected, isTrue);
-    expect(_filterBy(controller), '0:t:::::01');
+    expect(_filterBy(controller), '0:t:m::::01');
     await tester.tap(month02);
     await tester.pump();
     expect(tester.widget<FilterChip>(month01).selected, isFalse);
     expect(tester.widget<FilterChip>(month02).selected, isTrue);
-    expect(_filterBy(controller), '0:t:::::02');
+    expect(_filterBy(controller), '0:t:m::::02');
     await tester.tap(month02);
     await tester.pump();
     expect(tester.widget<FilterChip>(month02).selected, isFalse);
-    expect(_filterBy(controller), '0:t:::::');
+    expect(_filterBy(controller), '0:t:m::::');
   });
 
   testWidgets('排序菜单和发布日期升降序可即时触达', (tester) async {

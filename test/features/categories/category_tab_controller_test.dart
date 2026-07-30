@@ -113,7 +113,7 @@ void main() {
     await controller.initialize();
 
     expect(source.tagsCalls, [1]);
-    expect(source.movieRequests.single.filterBy, '1:t:::::');
+    expect(source.movieRequests.single.filterBy, '1:t:m::::');
     expect(source.movieRequests.single.page, 1);
   });
 
@@ -218,7 +218,7 @@ void main() {
     await first.toggleFilter('main', 'p');
 
     expect(first.filter.main, 'p');
-    expect(second.filter.main, isNull);
+    expect(second.filter.main, 'm');
     expect(source.movieRequests.last.type, 0);
     expect(source.movieRequests.last.filterBy, '0:t:p::::');
   });
@@ -232,7 +232,7 @@ void main() {
     await controller.toggleFilter('series', '99');
     await controller.toggleFilter('subject', '23');
 
-    expect(source.movieRequests.last.filterBy, '0:t::23,99:::');
+    expect(source.movieRequests.last.filterBy, '0:t:m:23,99:::');
     expect(source.movieRequests.last.page, 1);
   });
 
@@ -245,7 +245,7 @@ void main() {
     await controller.toggleFilter('subject', '51');
     await controller.toggleFilter('subject', '23');
 
-    expect(source.movieRequests.last.filterBy, '0:t::23,51:::');
+    expect(source.movieRequests.last.filterBy, '0:t:m:23,51:::');
   });
 
   test('更改排序和排序方向都会立即从第一页重载', () async {

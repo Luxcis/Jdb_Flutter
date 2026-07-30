@@ -23,7 +23,7 @@ class CategoryTabController extends ChangeNotifier {
   final CategoryDataSource _source;
   final PaginationController<MovieSummary> movies;
 
-  CategoryFilter _filter = const CategoryFilter();
+  CategoryFilter _filter = const CategoryFilter(main: 'm');
   List<CategoryTagGroup> _groups = const [];
   bool _initialized = false;
   bool _tagsLoaded = false;
