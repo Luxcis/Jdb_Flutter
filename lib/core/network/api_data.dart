@@ -95,7 +95,7 @@ Map<String, dynamic> normalizeActorSummaryJson(Map<String, dynamic> json) {
         _nonEmptyApiString(json['name']) ??
         _nonEmptyApiString(json['title']) ??
         '',
-    'gender': apiString(json['gender']),
+    'gender': apiIntOrNull(json['gender']),
     'avatar_url':
         apiString(json['avatar_url'] ?? json['avatar'] ?? json['image_url']) ??
         '',

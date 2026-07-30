@@ -48,7 +48,7 @@ void main() {
       id: 'a1',
       name: '测试男演员',
       avatarUrl: 'avatars/missing.jpg',
-      gender: 'male',
+      gender: 1,
     );
 
     await tester.pumpWidget(

@@ -5,7 +5,7 @@ import 'package:jade/core/widgets/actor_avatar_image.dart';
 import 'package:jade/core/widgets/cached_image.dart';
 
 void main() {
-  Future<String?> fallbackFor(WidgetTester tester, String? gender) async {
+  Future<String?> fallbackFor(WidgetTester tester, int? gender) async {
     final actor = ActorSummary(
       id: 'a1',
       name: '测试演员',
@@ -18,21 +18,14 @@ void main() {
 
   testWidgets('male 性别使用男性占位图', (tester) async {
     expect(
-      await fallbackFor(tester, 'male'),
-      'assets/images/actor_unknow_male_200x200.jpg',
-    );
-  });
-
-  testWidgets('MALE 性别忽略大小写使用男性占位图', (tester) async {
-    expect(
-      await fallbackFor(tester, 'MALE'),
+      await fallbackFor(tester, 1),
       'assets/images/actor_unknow_male_200x200.jpg',
     );
   });
 
   testWidgets('female 性别使用通用演员占位图', (tester) async {
     expect(
-      await fallbackFor(tester, 'female'),
+      await fallbackFor(tester, 0),
       'assets/images/actor_unknow_200x200.jpg',
     );
   });

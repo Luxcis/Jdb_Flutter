@@ -1,8 +1,8 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/list_model.dart';
@@ -875,10 +875,18 @@ class _ActorSection extends StatelessWidget {
   const _ActorSection({required this.actors, required this.onActorTap});
 
   final List<ActorSummary> actors;
+
+  List<ActorSummary> get _sortedActors {
+    final sorted = [...actors]
+      ..sort((a, b) => (a.gender ?? 0).compareTo(b.gender ?? 0));
+    return sorted;
+  }
+
   final ValueChanged<ActorSummary> onActorTap;
 
   @override
   Widget build(BuildContext context) {
+    final sorted = _sortedActors;
     final actorCardHeight = ActorCard.mainAxisExtent(context, 80);
     return _Section(
       title: '演员',
@@ -886,13 +894,13 @@ class _ActorSection extends StatelessWidget {
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
-        itemCount: actors.length,
+        itemCount: sorted.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (_, index) => SizedBox(
           width: 80,
           child: ActorCard(
-            actor: actors[index],
-            onTap: () => onActorTap(actors[index]),
+            actor: sorted[index],
+            onTap: () => onActorTap(sorted[index]),
           ),
         ),
       ),

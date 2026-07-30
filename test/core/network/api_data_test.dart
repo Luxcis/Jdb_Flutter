@@ -53,11 +53,11 @@ void main() {
         'id': 'a1',
         'name': '演员',
         'avatar_url': '',
-        'gender': 'male',
+        'gender': 1,
       }),
     );
 
-    expect(actor.gender, 'male');
+    expect(actor.gender, 1);
   });
 
   test('normalizeActorSummaryJson 优先使用非空 name_zht', () {

@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+
 part 'actor.g.dart';
 
 @JsonSerializable(fieldRename: FieldRename.snake)
@@ -12,7 +13,7 @@ class ActorSummary {
   final String id;
   final String name;
   final String avatarUrl;
-  final String? gender;
+  final int? gender;
   factory ActorSummary.fromJson(Map<String, dynamic> json) =>
       _$ActorSummaryFromJson(json);
   Map<String, dynamic> toJson() => _$ActorSummaryToJson(this);

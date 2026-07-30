@@ -16,7 +16,7 @@ class ActorAvatarImage extends StatelessWidget {
   final double? height;
   final BoxFit fit;
 
-  String get fallbackAsset => actor.gender?.toLowerCase() == 'male'
+  String get fallbackAsset => actor.gender == 1
       ? 'assets/images/actor_unknow_male_200x200.jpg'
       : 'assets/images/actor_unknow_200x200.jpg';
 

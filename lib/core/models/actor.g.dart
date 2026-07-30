@@ -10,7 +10,7 @@ ActorSummary _$ActorSummaryFromJson(Map<String, dynamic> json) => ActorSummary(
   id: json['id'] as String,
   name: json['name'] as String,
   avatarUrl: json['avatar_url'] as String,
-  gender: json['gender'] as String?,
+  gender: (json['gender'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$ActorSummaryToJson(ActorSummary instance) =>
@@ -25,7 +25,7 @@ ActorDetail _$ActorDetailFromJson(Map<String, dynamic> json) => ActorDetail(
   id: json['id'] as String,
   name: json['name'] as String,
   avatarUrl: json['avatar_url'] as String,
-  gender: json['gender'] as String?,
+  gender: (json['gender'] as num?)?.toInt(),
   birthday: json['birthday'] as String?,
   age: (json['age'] as num?)?.toInt(),
   height: json['height'] as String?,
