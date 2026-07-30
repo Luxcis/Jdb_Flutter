@@ -43,4 +43,21 @@ void main() {
       'assets/images/actor_unknow_200x200.jpg',
     );
   });
+
+  testWidgets('演员头像由组件自身使用 8px 圆角裁切', (tester) async {
+    const actor = ActorSummary(
+      id: 'a1',
+      name: '测试演员',
+      avatarUrl: 'actors/test.jpg',
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: SizedBox.square(dimension: 80, child: ActorAvatarImage(actor)),
+      ),
+    );
+
+    final clip = tester.widget<ClipRRect>(find.byType(ClipRRect));
+    expect(clip.borderRadius, BorderRadius.circular(8));
+  });
 }

@@ -21,32 +21,72 @@ class ActorGridView extends StatelessWidget {
             onRetry: controller.refresh,
           );
         }
-        return NotificationListener<ScrollNotification>(
-          onNotification: (n) {
-            if (n is ScrollEndNotification && n.metrics.extentAfter < 200) {
-              controller.fetchMore();
-            }
-            return false;
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final crossAxisCount = (constraints.maxWidth / 120).floor().clamp(
+              3,
+              6,
+            );
+            final hasTail =
+                controller.items.isNotEmpty &&
+                (controller.isLoading || controller.error != null);
+
+            return NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if ((notification is ScrollUpdateNotification ||
+                        notification is ScrollEndNotification) &&
+                    notification.metrics.extentAfter < 200) {
+                  controller.fetchMore();
+                }
+                return false;
+              },
+              child: RefreshIndicator(
+                onRefresh: controller.refresh,
+                child: GridView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 0.7,
+                  ),
+                  itemCount: controller.items.length + (hasTail ? 1 : 0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  itemBuilder: (_, index) {
+                    if (index < controller.items.length) {
+                      return ActorCard(
+                        actor: controller.items[index],
+                        onTap: onActorTap != null
+                            ? () => onActorTap!(controller.items[index])
+                            : null,
+                      );
+                    }
+
+                    if (controller.isLoading) {
+                      return const Center(
+                        child: SizedBox.square(
+                          key: Key('actor-grid-tail-loading'),
+                          dimension: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      );
+                    }
+
+                    return Center(
+                      child: TextButton(
+                        key: const Key('actor-grid-tail-retry'),
+                        onPressed: controller.fetchMore,
+                        child: const Text('重试'),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            );
           },
-          child: RefreshIndicator(
-            onRefresh: controller.refresh,
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                childAspectRatio: 0.7,
-              ),
-              itemCount: controller.items.length,
-              padding: const EdgeInsets.all(8),
-              itemBuilder: (_, i) => ActorCard(
-                actor: controller.items[i],
-                onTap: onActorTap != null
-                    ? () => onActorTap!(controller.items[i])
-                    : null,
-              ),
-            ),
-          ),
         );
       },
     );

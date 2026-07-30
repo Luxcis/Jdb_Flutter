@@ -9,23 +9,33 @@ class ActorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          SizedBox(
-            width: 72,
-            height: 72,
-            child: ClipOval(child: ActorAvatarImage(actor)),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            actor.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
+    return Semantics(
+      button: onTap != null,
+      label: actor.name,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AspectRatio(
+              aspectRatio: 1,
+              child: ActorAvatarImage(
+                actor,
+                width: double.infinity,
+                height: double.infinity,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              actor.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
+        ),
       ),
     );
   }

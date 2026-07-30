@@ -98,7 +98,7 @@ class _ActorDetailPageState extends State<ActorDetailPage> {
                 SizedBox(
                   width: 84,
                   height: 84,
-                  child: ClipOval(child: ActorAvatarImage(detail)),
+                  child: ActorAvatarImage(detail),
                 ),
                 const SizedBox(width: 16),
                 Expanded(

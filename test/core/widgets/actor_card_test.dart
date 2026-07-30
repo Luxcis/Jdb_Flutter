@@ -13,7 +13,9 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: ActorCard(actor: actor)),
+        home: Scaffold(
+          body: SizedBox(width: 120, child: ActorCard(actor: actor)),
+        ),
       ),
     );
     await tester.pump();
@@ -30,7 +32,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: ActorCard(actor: actor, onTap: () => tapped = true),
+          body: SizedBox(
+            width: 120,
+            child: ActorCard(actor: actor, onTap: () => tapped = true),
+          ),
         ),
       ),
     );
@@ -48,11 +53,35 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: ActorCard(actor: actor)),
+        home: Scaffold(
+          body: SizedBox(width: 120, child: ActorCard(actor: actor)),
+        ),
       ),
     );
 
     final image = tester.widget<CachedImage>(find.byType(CachedImage));
     expect(image.fallbackAsset, 'assets/images/actor_unknow_male_200x200.jpg');
+  });
+
+  testWidgets('ActorCard 使用父级宽度渲染方形头像且名称单行省略', (tester) async {
+    const actor = ActorSummary(
+      id: 'a1',
+      name: '很长很长很长很长的演员名称',
+      avatarUrl: 'actors/test.jpg',
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SizedBox(width: 120, child: ActorCard(actor: actor)),
+        ),
+      ),
+    );
+
+    expect(find.byType(AspectRatio), findsOneWidget);
+    expect(tester.widget<AspectRatio>(find.byType(AspectRatio)).aspectRatio, 1);
+    final name = tester.widget<Text>(find.text(actor.name));
+    expect(name.maxLines, 1);
+    expect(name.overflow, TextOverflow.ellipsis);
   });
 }

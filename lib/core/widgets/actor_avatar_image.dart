@@ -22,13 +22,16 @@ class ActorAvatarImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CachedImage(
-      actor.avatarUrl,
-      width: width,
-      height: height,
-      fit: fit,
-      fallbackAsset: fallbackAsset,
-      semanticLabel: actor.name,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: CachedImage(
+        actor.avatarUrl,
+        width: width,
+        height: height,
+        fit: fit,
+        fallbackAsset: fallbackAsset,
+        semanticLabel: actor.name,
+      ),
     );
   }
 }
