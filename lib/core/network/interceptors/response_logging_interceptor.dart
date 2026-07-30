@@ -10,7 +10,8 @@ class ResponseLoggingInterceptor extends Interceptor {
     void Function(String message)? output,
   }) : _enabled = enabled ?? kDebugMode,
        _logger = Logger(
-         filter: _DebugOnlyLogFilter(enabled ?? kDebugMode),
+         filter: ProductionFilter(),
+         // filter: DevelopmentFilter(),
          printer: PrettyPrinter(
            methodCount: 0,
            errorMethodCount: 0,
@@ -102,22 +103,6 @@ class ResponseLoggingInterceptor extends Interceptor {
       }
     }
     return value.toString();
-  }
-}
-
-class _DebugOnlyLogFilter extends LogFilter {
-  _DebugOnlyLogFilter(this.enabled);
-
-  final bool enabled;
-
-  @override
-  bool shouldLog(LogEvent event) {
-    var shouldLog = false;
-    assert(() {
-      shouldLog = enabled && event.level >= level!;
-      return true;
-    }());
-    return shouldLog;
   }
 }
 
