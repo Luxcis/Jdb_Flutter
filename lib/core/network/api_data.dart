@@ -66,6 +66,11 @@ String? apiString(dynamic value) {
   return value.toString();
 }
 
+String? _nonEmptyApiString(dynamic value) {
+  final text = apiString(value)?.trim();
+  return text == null || text.isEmpty ? null : text;
+}
+
 Map<String, dynamic> normalizeMovieSummaryJson(Map<String, dynamic> json) {
   return {
     ...json,
@@ -85,7 +90,11 @@ Map<String, dynamic> normalizeActorSummaryJson(Map<String, dynamic> json) {
   return {
     ...json,
     'id': apiString(json['id']) ?? '',
-    'name': apiString(json['name'] ?? json['title']) ?? '',
+    'name':
+        _nonEmptyApiString(json['name_zht']) ??
+        _nonEmptyApiString(json['name']) ??
+        _nonEmptyApiString(json['title']) ??
+        '',
     'gender': apiString(json['gender']),
     'avatar_url':
         apiString(json['avatar_url'] ?? json['avatar'] ?? json['image_url']) ??

@@ -60,6 +60,32 @@ void main() {
     expect(actor.gender, 'male');
   });
 
+  test('normalizeActorSummaryJson 优先使用非空 name_zht', () {
+    final actor = ActorSummary.fromJson(
+      normalizeActorSummaryJson({
+        'id': 'a1',
+        'name': '日本語名',
+        'name_zht': '繁體中文名',
+        'avatar_url': '',
+      }),
+    );
+
+    expect(actor.name, '繁體中文名');
+  });
+
+  test('normalizeActorSummaryJson 在 name_zht 为空时回退到 name', () {
+    final actor = ActorSummary.fromJson(
+      normalizeActorSummaryJson({
+        'id': 'a1',
+        'name': '日本語名',
+        'name_zht': '   ',
+        'avatar_url': '',
+      }),
+    );
+
+    expect(actor.name, '日本語名');
+  });
+
   test('normalizeMovieDetailJson 标准化详情中的演员和数字字段', () {
     final movie = MovieDetail.fromJson(
       normalizeMovieDetailJson({
