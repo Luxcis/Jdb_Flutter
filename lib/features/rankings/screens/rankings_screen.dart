@@ -513,12 +513,7 @@ class _HotPlayTabState extends State<_HotPlayTab>
             ],
           ),
         ),
-        Expanded(
-          child: MovieGridView(
-            controller: _controller,
-            onMovieTap: (movie) => context.push('/movie/${movie.id}'),
-          ),
-        ),
+        Expanded(child: MovieGridView(controller: _controller)),
       ],
     );
   }
@@ -589,12 +584,7 @@ class _RankTabState extends State<_RankTab> with AutomaticKeepAliveClientMixin {
             onChanged: _updatePeriod,
           ),
         ),
-        Expanded(
-          child: MovieGridView(
-            controller: _controller,
-            onMovieTap: (movie) => context.push('/movie/${movie.id}'),
-          ),
-        ),
+        Expanded(child: MovieGridView(controller: _controller)),
       ],
     );
   }

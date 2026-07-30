@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/widgets/movie_card.dart';
@@ -185,6 +186,41 @@ Future<void> _pumpPageTransition(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('点击分类影片进入详情且返回后保留当前网格', (tester) async {
+    final source = _FakeSource();
+    final router = GoRouter(
+      initialLocation: '/categories',
+      routes: [
+        GoRoute(
+          path: '/categories',
+          builder: (context, state) => CategoriesPage(dataSource: source),
+        ),
+        GoRoute(
+          path: '/movie/:id',
+          builder: (context, state) =>
+              Scaffold(body: Text('详情 ${state.pathParameters['id']}')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byType(MovieCard).first);
+    await _pumpPageTransition(tester);
+
+    expect(router.state.uri.path, '/movie/0-1');
+    expect(find.text('详情 0-1'), findsOneWidget);
+
+    router.pop();
+    await _pumpPageTransition(tester);
+
+    expect(router.state.uri.path, '/categories');
+    expect(find.byKey(const Key('category-tab-grid-0')), findsOneWidget);
+  });
+
   testWidgets('首页为有码且首次 filter_by 为 0:t:::::', (tester) async {
     final source = await _pumpCategories(tester);
 

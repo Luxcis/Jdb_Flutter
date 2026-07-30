@@ -8,12 +8,10 @@ class MovieGridView extends StatelessWidget {
   const MovieGridView({
     super.key,
     required this.controller,
-    this.onMovieTap,
     this.showShuffle = false,
     this.crossAxisCount = 3,
   });
   final PaginationController<MovieSummary> controller;
-  final void Function(MovieSummary)? onMovieTap;
   final bool showShuffle;
   final int crossAxisCount;
 
@@ -57,12 +55,8 @@ class MovieGridView extends StatelessWidget {
                           childAspectRatio: 0.56,
                         ),
                         itemCount: controller.items.length,
-                        itemBuilder: (_, i) => MovieCard(
-                          movie: controller.items[i],
-                          onTap: onMovieTap != null
-                              ? () => onMovieTap!(controller.items[i])
-                              : null,
-                        ),
+                        itemBuilder: (context, index) =>
+                            MovieCard(movie: controller.items[index]),
                       ),
                     ),
                     if (controller.error != null && controller.items.isNotEmpty)

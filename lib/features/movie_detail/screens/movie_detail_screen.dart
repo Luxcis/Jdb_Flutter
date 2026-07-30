@@ -274,7 +274,6 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
               onRetryRelatedLists: _retryRelatedLists,
               onSaveToList: _openSaveToListSheet,
               onActorTap: (actor) => context.push('/actor/${actor.id}'),
-              onMovieTap: (movie) => context.push('/movie/${movie.id}'),
             ),
           ),
         ),
@@ -336,7 +335,6 @@ class _MovieDetailTabs extends StatelessWidget {
     required this.onRetryRelatedLists,
     required this.onSaveToList,
     required this.onActorTap,
-    required this.onMovieTap,
   });
 
   final MovieDetail detail;
@@ -354,7 +352,6 @@ class _MovieDetailTabs extends StatelessWidget {
   final VoidCallback onRetryRelatedLists;
   final VoidCallback onSaveToList;
   final ValueChanged<ActorSummary> onActorTap;
-  final ValueChanged<MovieSummary> onMovieTap;
 
   @override
   Widget build(BuildContext context) {
@@ -385,7 +382,6 @@ class _MovieDetailTabs extends StatelessWidget {
             detail: detail,
             onSaveToList: onSaveToList,
             onActorTap: onActorTap,
-            onMovieTap: onMovieTap,
           ),
           _MagnetList(
             magnets: magnets,
@@ -416,13 +412,11 @@ class _BasicInfoTab extends StatelessWidget {
     required this.detail,
     required this.onSaveToList,
     required this.onActorTap,
-    required this.onMovieTap,
   });
 
   final MovieDetail detail;
   final VoidCallback onSaveToList;
   final ValueChanged<ActorSummary> onActorTap;
-  final ValueChanged<MovieSummary> onMovieTap;
 
   @override
   Widget build(BuildContext context) {
@@ -440,17 +434,9 @@ class _BasicInfoTab extends StatelessWidget {
         if (detail.screenshots.isNotEmpty)
           _ScreenshotSection(urls: detail.screenshots),
         if (detail.actorMovies.isNotEmpty)
-          _MovieRowSection(
-            title: 'TA还出演过',
-            movies: detail.actorMovies,
-            onMovieTap: onMovieTap,
-          ),
+          _MovieRowSection(title: 'TA还出演过', movies: detail.actorMovies),
         if (detail.relativeMovies.isNotEmpty)
-          _MovieRowSection(
-            title: '你可能也喜欢',
-            movies: detail.relativeMovies,
-            onMovieTap: onMovieTap,
-          ),
+          _MovieRowSection(title: '你可能也喜欢', movies: detail.relativeMovies),
       ],
     );
   }
@@ -1178,15 +1164,10 @@ class _ZoomableScreenshotState extends State<_ZoomableScreenshot> {
 }
 
 class _MovieRowSection extends StatelessWidget {
-  const _MovieRowSection({
-    required this.title,
-    required this.movies,
-    required this.onMovieTap,
-  });
+  const _MovieRowSection({required this.title, required this.movies});
 
   final String title;
   final List<MovieSummary> movies;
-  final ValueChanged<MovieSummary> onMovieTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1200,11 +1181,7 @@ class _MovieRowSection extends StatelessWidget {
         separatorBuilder: (_, _) => const SizedBox(width: 4),
         itemBuilder: (_, index) => SizedBox(
           width: 140,
-          child: MovieCard(
-            movie: movies[index],
-            showTitle: false,
-            onTap: () => onMovieTap(movies[index]),
-          ),
+          child: MovieCard(movie: movies[index], showTitle: false),
         ),
       ),
     );

@@ -1,17 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/widgets/movie_cover_image.dart';
 
 class MovieCard extends StatelessWidget {
-  const MovieCard({
-    super.key,
-    required this.movie,
-    this.onTap,
-    this.showTitle = true,
-  });
+  const MovieCard({super.key, required this.movie, this.showTitle = true});
 
   final MovieSummary movie;
-  final VoidCallback? onTap;
   final bool showTitle;
 
   String get _coverImageUrl {
@@ -24,7 +19,7 @@ class MovieCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     return GestureDetector(
-      onTap: onTap,
+      onTap: () => context.push('/movie/${movie.id}'),
       child: Card(
         clipBehavior: Clip.antiAlias,
         child: Column(

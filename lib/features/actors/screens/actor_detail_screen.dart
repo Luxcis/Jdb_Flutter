@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
@@ -126,12 +125,7 @@ class _ActorDetailPageState extends State<ActorDetailPage> {
               ],
             ),
           ),
-          Expanded(
-            child: MovieGridView(
-              controller: _moviesController,
-              onMovieTap: (movie) => context.push('/movie/${movie.id}'),
-            ),
-          ),
+          Expanded(child: MovieGridView(controller: _moviesController)),
         ],
       ),
     );
