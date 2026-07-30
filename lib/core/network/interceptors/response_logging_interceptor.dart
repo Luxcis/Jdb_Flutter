@@ -10,8 +10,7 @@ class ResponseLoggingInterceptor extends Interceptor {
     void Function(String message)? output,
   }) : _enabled = enabled ?? kDebugMode,
        _logger = Logger(
-         filter: ProductionFilter(),
-         // filter: DevelopmentFilter(),
+         filter: DevelopmentFilter(),
          printer: PrettyPrinter(
            methodCount: 0,
            errorMethodCount: 0,
