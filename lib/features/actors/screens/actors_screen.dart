@@ -3,31 +3,37 @@ import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/network/api_client.dart';
-import 'package:jade/core/providers/auth_provider.dart';
-import 'package:jade/core/widgets/actor_avatar_image.dart';
+import 'package:jade/core/widgets/actor_card.dart';
 import 'package:jade/core/widgets/actor_grid_view.dart';
-import 'package:jade/core/widgets/filter_drawer.dart';
-import 'package:jade/core/widgets/login_guide_card.dart';
+import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 import 'package:jade/core/widgets/section_header.dart';
 import 'package:jade/features/actors/models/actor_filter.dart';
+import 'package:jade/features/actors/models/actor_recommend.dart';
 import 'package:jade/features/actors/services/actor_service.dart';
-import 'package:provider/provider.dart';
+import 'package:jade/features/actors/widgets/actor_filter_sheet.dart';
 
 class ActorsPage extends StatefulWidget {
-  const ActorsPage({super.key});
+  const ActorsPage({super.key, this.service});
+
+  final ActorService? service;
+
   @override
   State<ActorsPage> createState() => _ActorsPageState();
 }
 
 class _ActorsPageState extends State<ActorsPage> with TickerProviderStateMixin {
+  static const _tabs = ['推荐', '有码(女)', '有码(男)', '无码', '欧美(女)', '欧美(男)'];
+
   late final TabController _tabController;
-  static const tabs = ['推荐', '有码(女)', '有码(男)', '无码', '欧美(女)', '欧美(男)'];
+  late final ActorService? _service;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: tabs.length, vsync: this);
+    _tabController = TabController(length: _tabs.length, vsync: this);
+    final api = ApiClient.instanceOrNull;
+    _service = widget.service ?? (api == null ? null : ActorService(api));
   }
 
   @override
@@ -44,21 +50,33 @@ class _ActorsPageState extends State<ActorsPage> with TickerProviderStateMixin {
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
-          tabs: tabs.map((t) => Tab(text: t)).toList(),
+          tabs: _tabs.map((label) => Tab(text: label)).toList(),
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
-          const _RecommendTab(),
-          const _ActorListTab(
+          _RecommendTab(service: _service),
+          _ActorListTab(
+            service: _service,
             category: ActorListCategory.censoredFemale,
-            showFilter: true,
           ),
-          const _ActorListTab(category: ActorListCategory.censoredMale),
-          const _ActorListTab(category: ActorListCategory.uncensored),
-          const _ActorListTab(category: ActorListCategory.westernFemale),
-          const _ActorListTab(category: ActorListCategory.westernMale),
+          _ActorListTab(
+            service: _service,
+            category: ActorListCategory.censoredMale,
+          ),
+          _ActorListTab(
+            service: _service,
+            category: ActorListCategory.uncensored,
+          ),
+          _ActorListTab(
+            service: _service,
+            category: ActorListCategory.westernFemale,
+          ),
+          _ActorListTab(
+            service: _service,
+            category: ActorListCategory.westernMale,
+          ),
         ],
       ),
     );
@@ -66,158 +84,197 @@ class _ActorsPageState extends State<ActorsPage> with TickerProviderStateMixin {
 }
 
 class _RecommendTab extends StatefulWidget {
-  const _RecommendTab();
+  const _RecommendTab({required this.service});
+
+  final ActorService? service;
+
   @override
   State<_RecommendTab> createState() => _RecommendTabState();
 }
 
 class _RecommendTabState extends State<_RecommendTab> {
-  List<ActorSummary> _newcomers = [];
-  List<ActorSummary> _monthly = [];
-  List<ActorSummary> _dmm = [];
+  ActorRecommend? _data;
+  bool _loading = true;
+  Object? _error;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    if (widget.service == null) {
+      _loading = false;
+      _error = StateError('演员服务尚未就绪');
+    } else {
+      _load();
+    }
   }
 
-  void _load() async {
-    final api = ApiClient.instanceOrNull;
-    if (api == null) return;
-    final svc = ActorService(api);
-    final recommends = await svc.getRecommends();
+  Future<void> _load() async {
+    final service = widget.service;
+    if (service == null) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = StateError('演员服务尚未就绪');
+      });
+      return;
+    }
+
+    try {
+      final data = await service.getRecommends();
+      if (!mounted) return;
+      setState(() {
+        _data = data;
+        _loading = false;
+        _error = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = error;
+      });
+    }
+  }
+
+  void _retry() {
     setState(() {
-      _newcomers = recommends.newActors.sublist(
-        0,
-        recommends.newActors.length > 9 ? 9 : recommends.newActors.length,
-      );
-      _monthly = recommends.monthlyActors;
-      _dmm = recommends.recommendActors;
+      _loading = true;
+      _error = null;
     });
+    _load();
   }
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-    if (!auth.isLogged) {
-      return const LoginGuideCard(message: '登录后可查看演员推荐', loginPath: '/actors');
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
     }
+    final error = _error;
+    if (error != null) {
+      return ErrorRetryWidget(message: error.toString(), onRetry: _retry);
+    }
+    final data = _data;
+    if (data == null) {
+      return ErrorRetryWidget(message: '演员推荐数据不可用', onRetry: _retry);
+    }
+
     return CustomScrollView(
       slivers: [
-        SectionHeader(title: '新人', bold: true).sliver,
-        _actorSliverGrid(_newcomers),
-        SectionHeader(title: '月排名', trailing: '全部').sliver,
-        _actorSliverGrid(_monthly),
-        SectionHeader(title: 'Fanza(DMM)推荐', bold: true).sliver,
-        _actorSliverGrid(_dmm),
+        const SectionHeader(title: '新人', bold: true).sliver,
+        _actorSliverGrid(data.newActors),
+        SectionHeader(title: '月排名', trailing: '全部', onTrailing: () {}).sliver,
+        _actorSliverGrid(data.monthlyActors),
+        const SectionHeader(title: 'Fanza(DMM)推荐', bold: true).sliver,
+        _actorSliverGrid(data.recommendActors),
       ],
     );
   }
 
   Widget _actorSliverGrid(List<ActorSummary> actors) {
-    return SliverGrid(
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 0.8,
-      ),
-      delegate: SliverChildBuilderDelegate(
-        (_, i) => GestureDetector(
-          onTap: () => context.push('/actor/${actors[i].id}'),
-          child: Column(
-            children: [
-              SizedBox(
-                width: 40,
-                height: 40,
-                child: ClipOval(child: ActorAvatarImage(actors[i])),
+    return SliverLayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = (constraints.crossAxisExtent / 120)
+            .floor()
+            .clamp(3, 6);
+        return SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          sliver: SliverGrid(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 0.7,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => ActorCard(
+                actor: actors[index],
+                onTap: () => context.push('/actor/${actors[index].id}'),
               ),
-              Text(actors[i].name),
-            ],
+              childCount: actors.length,
+            ),
           ),
-        ),
-        childCount: actors.length,
-      ),
+        );
+      },
     );
   }
 }
 
 class _ActorListTab extends StatefulWidget {
+  const _ActorListTab({required this.service, required this.category});
+
+  final ActorService? service;
   final ActorListCategory category;
-  final bool showFilter;
-  const _ActorListTab({required this.category, this.showFilter = false});
+
   @override
   State<_ActorListTab> createState() => _ActorListTabState();
 }
 
-class _ActorListTabState extends State<_ActorListTab> {
-  late final _ctrl = PaginationController<ActorSummary>(
-    fetch: (page) async {
-      final api = ApiClient.instanceOrNull;
-      if (api == null) {
-        return const PagedResult(
-          items: [],
-          currentPage: 1,
-          totalPages: 1,
-          total: 0,
-        );
-      }
-      return ActorService(api).getActors(category: widget.category, page: page);
-    },
-  );
+class _ActorListTabState extends State<_ActorListTab>
+    with AutomaticKeepAliveClientMixin {
+  late final PaginationController<ActorSummary> _controller;
+  ActorFilter _filter = const ActorFilter();
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-    _ctrl.fetchMore();
+    _controller = PaginationController<ActorSummary>(fetch: _fetchPage);
+    _controller.fetchMore();
+  }
+
+  Future<PagedResult<ActorSummary>> _fetchPage(int page) {
+    final service = widget.service;
+    if (service == null) {
+      return Future.error(StateError('演员服务尚未就绪'));
+    }
+    return service.getActors(
+      category: widget.category,
+      page: page,
+      filter: _filter,
+    );
+  }
+
+  Future<void> _openFilter() async {
+    final next = await showModalBottomSheet<ActorFilter>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => ActorFilterSheet(initialValue: _filter),
+    );
+    if (!mounted || next == null || next == _filter) return;
+    setState(() => _filter = next);
+    await _controller.reloadWith(_fetchPage, preserveItems: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final grid = ActorGridView(
-      controller: _ctrl,
+      controller: _controller,
       onActorTap: (actor) => context.push('/actor/${actor.id}'),
     );
-    if (!widget.showFilter) return grid;
+    if (!widget.category.supportsFilter) return grid;
 
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        actions: [
-          Builder(
-            builder: (context) => IconButton(
-              icon: const Icon(Icons.filter_list),
-              tooltip: '筛选',
-              onPressed: () => Scaffold.of(context).openEndDrawer(),
-            ),
+    return Column(
+      children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: IconButton(
+            onPressed: _openFilter,
+            icon: const Icon(Icons.filter_list),
+            tooltip: '筛选演员',
           ),
-        ],
-      ),
-      endDrawer: const FilterDrawer(
-        schema: FilterSchema(
-          groups: [
-            FilterGroup(
-              label: '排序',
-              items: [
-                (label: '人气', value: 'popular'),
-                (label: '最新', value: 'new'),
-                (label: '影片数', value: 'movie_count'),
-              ],
-            ),
-            FilterGroup(
-              label: '地区',
-              items: [
-                (label: '全部', value: 'all'),
-                (label: '日本', value: 'jp'),
-                (label: '欧美', value: 'western'),
-              ],
-            ),
-          ],
         ),
-        onChanged: _noopActorFilter,
-      ),
-      body: grid,
+        Expanded(child: grid),
+      ],
     );
   }
 }
-
-void _noopActorFilter(Map<String, String> _) {}
