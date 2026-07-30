@@ -72,6 +72,19 @@ class ActorFilter {
     hips: hips ?? this.hips,
   );
 
+  @override
+  bool operator ==(Object other) =>
+      other is ActorFilter &&
+      other.age == age &&
+      other.height == height &&
+      other.cup == cup &&
+      other.bust == bust &&
+      other.waist == waist &&
+      other.hips == hips;
+
+  @override
+  int get hashCode => Object.hash(age, height, cup, bust, waist, hips);
+
   Map<String, dynamic> toQueryParameters() => {
     if (age != defaultAge) 'age': age.queryValue,
     if (height != defaultHeight) 'height': height.queryValue,

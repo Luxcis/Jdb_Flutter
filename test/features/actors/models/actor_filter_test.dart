@@ -25,6 +25,39 @@ void main() {
     expect(const ActorFilter().toQueryParameters(), isEmpty);
   });
 
+  test('六个范围相同时筛选条件值相等', () {
+    final filter = ActorFilter(
+      age: const ActorRange(20, 40),
+      height: const ActorRange(150, 170),
+      cup: const ActorRange(2, 8),
+      bust: const ActorRange(80, 100),
+      waist: const ActorRange(55, 75),
+      hips: const ActorRange(85, 105),
+    );
+    final equalFilter = ActorFilter(
+      age: const ActorRange(20, 40),
+      height: const ActorRange(150, 170),
+      cup: const ActorRange(2, 8),
+      bust: const ActorRange(80, 100),
+      waist: const ActorRange(55, 75),
+      hips: const ActorRange(85, 105),
+    );
+
+    expect(filter, equalFilter);
+    expect(filter.hashCode, equals(equalFilter.hashCode));
+  });
+
+  test('任一范围不同则筛选条件不相等', () {
+    const filter = ActorFilter();
+
+    expect(filter, isNot(filter.copyWith(age: const ActorRange(20, 65))));
+    expect(filter, isNot(filter.copyWith(height: const ActorRange(131, 185))));
+    expect(filter, isNot(filter.copyWith(cup: const ActorRange(1, 15))));
+    expect(filter, isNot(filter.copyWith(bust: const ActorRange(71, 120))));
+    expect(filter, isNot(filter.copyWith(waist: const ActorRange(51, 90))));
+    expect(filter, isNot(filter.copyWith(hips: const ActorRange(71, 120))));
+  });
+
   test('只编码偏离默认值的范围', () {
     final filter = const ActorFilter().copyWith(
       age: const ActorRange(20, 40),
