@@ -5,6 +5,7 @@ import 'package:jade/core/widgets/actor_avatar_image.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/features/actors/services/actor_movie_controller.dart';
 import 'package:jade/features/actors/services/actor_service.dart';
+import 'package:jade/features/actors/widgets/actor_info_sheet.dart';
 import 'package:jade/features/actors/widgets/actor_movie_filter_sheet.dart';
 
 class ActorDetailPage extends StatefulWidget {
@@ -74,14 +75,7 @@ class _ActorDetailPageState extends State<ActorDetailPage> {
   void _showInfo() {
     final detail = _detail;
     if (detail == null) return;
-    final height = MediaQuery.sizeOf(context).height / 3;
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      constraints: BoxConstraints.tightFor(height: height),
-      builder: (_) => _ActorInfoContent(detail: detail),
-    );
+    showActorInfoSheet(context, actor: detail);
   }
 
   void _showFilter() {
@@ -173,66 +167,6 @@ class _ActorDetailPageState extends State<ActorDetailPage> {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// 演员更多信息的底部面板内容。
-class _ActorInfoContent extends StatelessWidget {
-  const _ActorInfoContent({required this.detail});
-
-  final ActorDetail detail;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final style = theme.textTheme.bodyMedium;
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      children: [
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                detail.name,
-                style: theme.textTheme.titleMedium,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            Text('出演过${detail.movieCount}部影片', style: style),
-          ],
-        ),
-        const SizedBox(height: 14),
-        _row(style, '生日', detail.birthday, '年龄', detail.age?.toString()),
-        const SizedBox(height: 8),
-        _row(style, '出生地', detail.birthplace, null, null),
-        const SizedBox(height: 8),
-        _row(style, '罩杯', detail.cup, '胸围', detail.bust),
-        const SizedBox(height: 8),
-        _row(style, '腰围', detail.waist, '臀围', detail.hip),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-
-  Widget _row(
-    TextStyle? style,
-    String label1,
-    String? value1,
-    String? label2,
-    String? value2,
-  ) {
-    final text1 = '$label1:${value1 ?? "-"}';
-    if (label2 == null) {
-      return Text(text1, style: style);
-    }
-    return Row(
-      children: [
-        Expanded(child: Text(text1, style: style)),
-        Text('$label2:${value2 ?? "-"}', style: style),
-      ],
     );
   }
 }
