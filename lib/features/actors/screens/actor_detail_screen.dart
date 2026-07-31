@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/actor.dart';
-import 'package:jade/core/models/movie.dart';
-import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/actor_avatar_image.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
-import 'package:jade/core/widgets/pagination_controller.dart';
+import 'package:jade/features/actors/services/actor_movie_controller.dart';
 import 'package:jade/features/actors/services/actor_service.dart';
+import 'package:jade/features/actors/widgets/actor_movie_filter_sheet.dart';
 
 class ActorDetailPage extends StatefulWidget {
   const ActorDetailPage({super.key, required this.id});
@@ -18,7 +17,7 @@ class ActorDetailPage extends StatefulWidget {
 }
 
 class _ActorDetailPageState extends State<ActorDetailPage> {
-  late final PaginationController<MovieSummary> _moviesController;
+  ActorMovieController? _controller;
   ActorDetail? _detail;
   bool _isLoading = true;
   String? _error;
@@ -26,28 +25,19 @@ class _ActorDetailPageState extends State<ActorDetailPage> {
   @override
   void initState() {
     super.initState();
-    _moviesController = PaginationController<MovieSummary>(
-      fetch: (page) async {
-        final api = ApiClient.instanceOrNull;
-        if (api == null) {
-          return const PagedResult(
-            items: [],
-            currentPage: 1,
-            totalPages: 1,
-            total: 0,
-          );
-        }
-        return ActorService(api).getActorMovies(widget.id, page: page);
-      },
-    );
     _load();
   }
 
   Future<void> _load() async {
     final api = ApiClient.instanceOrNull;
     if (api == null) {
+      if (!mounted) return;
       setState(() {
-        _detail = ActorDetail(id: widget.id, name: '演员详情', avatarUrl: '');
+        _detail = ActorDetail(
+          id: widget.id,
+          name: '演员详情',
+          avatarUrl: '',
+        );
         _isLoading = false;
       });
       return;
@@ -56,11 +46,22 @@ class _ActorDetailPageState extends State<ActorDetailPage> {
     try {
       final detail = await ActorService(api).getDetail(widget.id);
       if (!mounted) return;
+      final type = detail.type;
       setState(() {
         _detail = detail;
         _isLoading = false;
       });
-      await _moviesController.fetchMore();
+      if (type != null) {
+        final controller = ActorMovieController(
+          actorId: widget.id,
+          type: type,
+          filterTags: detail.filterTags,
+          tags: detail.tags,
+          service: ActorService(api),
+        );
+        _controller = controller;
+        await controller.initialize();
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -70,10 +71,45 @@ class _ActorDetailPageState extends State<ActorDetailPage> {
     }
   }
 
+  void _showInfo() {
+    final detail = _detail;
+    if (detail == null) return;
+    final height = MediaQuery.sizeOf(context).height / 3;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      constraints: BoxConstraints.tightFor(height: height),
+      builder: (_) => _ActorInfoContent(detail: detail),
+    );
+  }
+
+  void _showFilter() {
+    final controller = _controller;
+    if (controller == null) return;
+    final height = MediaQuery.sizeOf(context).height * 2 / 3;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      constraints: BoxConstraints.tightFor(height: height),
+      builder: (_) => ActorMovieFilterSheet(controller: controller),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (_error != null) {
@@ -84,11 +120,18 @@ class _ActorDetailPageState extends State<ActorDetailPage> {
     }
 
     final detail = _detail!;
+    final controller = _controller;
     return Scaffold(
       appBar: AppBar(
-        title: Text(detail.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+        title: const Text('演员详情'),
+        actions: [
+          IconButton(
+            tooltip: '筛选',
+            onPressed: _showFilter,
+            icon: const Icon(Icons.filter_alt_outlined),
+          ),
+        ],
       ),
-      endDrawer: _ActorInfoDrawer(detail: detail),
       body: Column(
         children: [
           Padding(
@@ -116,24 +159,27 @@ class _ActorDetailPageState extends State<ActorDetailPage> {
                     ],
                   ),
                 ),
-                Builder(
-                  builder: (context) => TextButton(
-                    onPressed: () => Scaffold.of(context).openEndDrawer(),
-                    child: const Text('更多信息'),
-                  ),
+                TextButton(
+                  onPressed: _showInfo,
+                  child: const Text('更多信息'),
                 ),
               ],
             ),
           ),
-          Expanded(child: MovieGridView(controller: _moviesController)),
+          Expanded(
+            child: controller != null
+                ? MovieGridView(controller: controller.movies)
+                : const Center(child: Text('暂无影片数据')),
+          ),
         ],
       ),
     );
   }
 }
 
-class _ActorInfoDrawer extends StatelessWidget {
-  const _ActorInfoDrawer({required this.detail});
+/// 演员更多信息的底部面板内容。
+class _ActorInfoContent extends StatelessWidget {
+  const _ActorInfoContent({required this.detail});
 
   final ActorDetail detail;
 
@@ -151,17 +197,13 @@ class _ActorInfoDrawer extends StatelessWidget {
       ('臀围', detail.hip ?? '-'),
       ('出生地', detail.birthplace ?? '-'),
     ];
-    return Drawer(
-      child: SafeArea(
-        child: ListView(
-          children: [
-            const ListTile(title: Text('更多信息')),
-            ...rows.map(
-              (row) => ListTile(title: Text(row.$1), subtitle: Text(row.$2)),
-            ),
-          ],
+    return ListView(
+      children: [
+        const ListTile(title: Text('更多信息')),
+        ...rows.map(
+          (row) => ListTile(title: Text(row.$1), subtitle: Text(row.$2)),
         ),
-      ),
+      ],
     );
   }
 }
