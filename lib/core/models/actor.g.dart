@@ -35,6 +35,17 @@ ActorDetail _$ActorDetailFromJson(Map<String, dynamic> json) => ActorDetail(
   hip: json['hip'] as String?,
   birthplace: json['birthplace'] as String?,
   movieCount: (json['movie_count'] as num?)?.toInt() ?? 0,
+  type: (json['type'] as num?)?.toInt(),
+  filterTags:
+      (json['filter_tags'] as List<dynamic>?)
+          ?.map((e) => ActorTagItem.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
+  tags:
+      (json['tags'] as List<dynamic>?)
+          ?.map((e) => ActorTagItem.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
 );
 
 Map<String, dynamic> _$ActorDetailToJson(ActorDetail instance) =>
@@ -52,4 +63,7 @@ Map<String, dynamic> _$ActorDetailToJson(ActorDetail instance) =>
       'hip': instance.hip,
       'birthplace': instance.birthplace,
       'movie_count': instance.movieCount,
+      'type': instance.type,
+      'filter_tags': instance.filterTags,
+      'tags': instance.tags,
     };
