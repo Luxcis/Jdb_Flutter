@@ -1207,8 +1207,8 @@
         "tags": [
           "Movie"
         ],
-        "summary": "按标签筛选影片",
-        "description": "分类页面的核心筛选接口。根据 Tab 类型、已选标签、排序方式筛选影片列表（分页）。\n\n## Tab 类型映射\n\n| type 值 | Tab 名称 | 中文 | i18n Key |\n|---------|---------|------|----------|\n| 0 | Censored | 有码 | homeTabMosaic |\n| 1 | Uncensored | 无码 | homeTabClear |\n| 2 | Western | 欧美 | homeTabWestern |\n| 3 | FC2 | FC2 | homeTabFC2 |\n| 4 | Carton | 动漫 | homeTabCarton |\n\n## filter_by 格式详解\n\n```\n{type}:t:{main_filter}:{tag_ids}:{year}:{duration}:{month}\n```\n\n| 段位 | 名称 | 必填 | 说明 | 示例 |\n|------|------|------|------|------|\n| 第1段 | type | 是 | Tab 类型数字 0~4 | `0` |\n| 第2段 | 固定 | 是 | 固定值 `t` | `t` |\n| 第3段 | main_filter | 否 | 筛选标志位（多值可组合）：`p`=可播放, `m`=可下载, `c`=有字幕, `s`=单体系列, `i`=预告图, `v`=预告片 | `p` 或 `m` 或 `pc` |\n| 第4段 | tag_ids | 否 | 从 /api/v2/tags 获取的标签 ID，多个用 `,` 分隔 | `12,34,56` |\n| 第5段 | year | 否 | 年份筛选 | `2024` |\n| 第6段 | duration | 否 | 时长筛选（分钟） | `120` |\n| 第7段 | month | 否 | 月份筛选（格式 YYYY-MM） | `2024-01` |\n\n> **注意**：即使某段为空，也要保留冒号分隔符（如 `0:t:::::` 表示有码+全部影片+无筛选）。\n\n## 数据流\n\n1. 用户切换 Tab → `GET /api/v2/tags?type={n}` 获取该 Tab 的标签字典（TagsEntity）\n2. 用户选择标签/排序 → 组装 `filter_by` 参数 → `GET /api/v1/movies/tags` 获取筛选结果\n3. 下拉刷新：重置 page=1，清空列表后重新请求\n4. 上拉加载更多：page++，追加数据到列表末尾\n\n## 排序选项\n\n> 对应客户端 i18n: sortRelease / sortUpdate / sortScore / sortHit / sortWantWatch / sortWatched\n\n- `order_by` 仅在 `sort_by=release` 时有效\n- 其他排序字段（score, hit 等）默认为降序，无需传 order_by",
+        "summary": "按标签/演员筛选影片",
+        "description": "核心筛选接口，支持两种使用场景：\n\n**1. 分类页筛选**：根据 Tab 类型、已选标签、排序方式筛选影片列表（分页）。\n\n## Tab 类型映射\n\n| type 值 | Tab 名称 | 中文 | i18n Key |\n|---------|---------|------|----------|\n| 0 | Censored | 有码 | homeTabMosaic |\n| 1 | Uncensored | 无码 | homeTabClear |\n| 2 | Western | 欧美 | homeTabWestern |\n| 3 | FC2 | FC2 | homeTabFC2 |\n| 4 | Carton | 动漫 | homeTabCarton |\n\n**2. 演员详情页**：根据演员 ID 筛选该演员的影片列表（分页）。filter_by 格式为 `{type}:a:{actor_id}`，配合 `filter_by_tags` 参数可进一步按标签过滤。\n\n## 数据流\n\n1. 用户切换 Tab → `GET /api/v2/tags?type={n}` 获取该 Tab 的标签字典（TagsEntity）\n2. 用户选择标签/排序 → 组装 `filter_by` 参数 → `GET /api/v1/movies/tags` 获取筛选结果\n3. 下拉刷新：重置 page=1，清空列表后重新请求\n4. 上拉加载更多：page++，追加数据到列表末尾\n5. 演员详情页：先 `GET /api/v1/actors/{id}` 获取演员 type，再组装 `filter_by={type}:a:{id}` 调用本接口\n\n## 排序选项\n\n> 对应客户端 i18n: sortRelease / sortUpdate / sortScore / sortHit / sortWantWatch / sortWatched\n\n- `order_by` 仅在 `sort_by=release` 时有效\n- 其他排序字段（score, hit 等）默认为降序，无需传 order_by\n\n## 分页说明\n\n- `limit` 客户端硬编码为 48\n- 首次请求（page=1）返回完整 data.movies 列表\n- 分类页响应含 `total_pages`/`total_count` 分页元数据\n- 演员详情页响应同样为分页格式，按发布日期降序排列",
         "responses": {
           "200": {
             "description": "成功，返回影片列表（分页）。首次请求（page=1）返回完整 data，后续分页请求追加到 list 末尾。空数据时 data.movies 为空数组",
@@ -1259,7 +1259,7 @@
           {
             "name": "filter_by",
             "in": "query",
-            "description": "筛选条件（必填）。格式: {type}:t:{main}:{tag_ids}:{year}:{duration}:{month}。示例: 0:t:p:::: （有码+可播放）、1:t::98,132::: （无码+指定标签）、2:t:::2024:: （欧美+2024年）",
+            "description": "筛选条件（必填）。根据使用场景有两种格式：\n\n**分类页格式**: `{type}:t:{main_filter}:{tag_ids}:{year}:{duration}:{month}`\n\n| 段位 | 名称 | 说明 | 示例 |\n|------|------|------|------|\n| type | Tab类型 | 0=有码, 1=无码, 2=欧美, 3=FC2, 4=动漫 | `0` |\n| t | 固定值 | 固定字符 `t` | `t` |\n| main_filter | 主筛选 | 标志位（可组合）：p=可播放, m=可下载, c=有字幕, s=单体系列, i=预告图, v=预告片 | `p` 或 `pc` |\n| tag_ids | 标签 | 从 /api/v2/tags 获取的标签ID，逗号分隔 | `12,34,56` |\n| year | 年份 | 年份筛选 | `2024` |\n| duration | 时长 | 时长筛选（分钟） | `120` |\n| month | 月份 | 月份筛选（YYYY-MM） | `2024-01` |\n\n示例: `0:t:p::::` (有码+可播放)、`1:t::98,132:::` (无码+标签)、`2:t:::2024::` (欧美+2024年)\n\n**演员详情页格式**: `{type}:a:{actor_id}`\n\n| 段位 | 名称 | 说明 | 示例 |\n|------|------|------|------|\n| type | 演员类别 | 0=有码, 1=无码, 2=欧美（来自 ActorInfo.type） | `0` |\n| a | 固定值 | 固定字符 `a`（表示 actor 模式） | `a` |\n| actor_id | 演员ID | 演员唯一标识 | `EvkJ` |\n\n示例: `0:a:EvkJ` (有码演员河北彩花的影片列表)\n\n> 注意：即使某段为空，也要保留冒号分隔符。演员详情页配合 filter_by_tags 参数进一步筛选。",
             "required": true,
             "schema": {
               "type": "string"
@@ -1319,7 +1319,7 @@
           {
             "name": "filter_by_tags",
             "in": "query",
-            "description": "额外标签筛选（演员详情页专用，用于在演员页面按标签进一步过滤）",
+            "description": "额外标签筛选（演员详情页专用），用于在演员页面按标签进一步过滤。值为逗号分隔的标签 ID，来源于演员详情页的 tags/filter_tags 列表。首次加载传空字符串。示例: `8,28`（筛选标签 8 和 28 的影片）",
             "required": false,
             "schema": {
               "type": "string"
@@ -2177,7 +2177,7 @@
           "Actor"
         ],
         "summary": "演员详情",
-        "description": "获取演员详情及其出演影片列表（分页）",
+        "description": "获取演员基本信息、标签列表和分享信息。注意：此接口不返回影片列表，影片列表需通过 GET /api/v1/movies/tags?filter_by={type}:a:{actor_id} 单独请求。",
         "responses": {
           "200": {
             "description": "成功，data 为 ActorInfoEntity",
@@ -2213,39 +2213,16 @@
             }
           },
           {
-            "name": "sort_by",
+            "name": "from_rankings",
             "in": "query",
-            "description": "排序字段",
+            "description": "是否从排行榜入口进入。客户端固定传 \"false\"",
             "required": false,
             "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "order_by",
-            "in": "query",
-            "description": "排序方向 (asc/desc)",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "description": "页码，从 1 开始",
-            "required": false,
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "每页条数",
-            "required": false,
-            "schema": {
-              "type": "integer"
+              "type": "string",
+              "enum": [
+                "false",
+                "true"
+              ]
             }
           }
         ],
