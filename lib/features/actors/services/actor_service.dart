@@ -76,25 +76,47 @@ class ActorService {
     return ActorDetail.fromJson(normalizeActorDetailJson(resp.data));
   }
 
+  /// 获取演员出演的影片列表（分页）。
+  ///
+  /// 使用 [Endpoints.moviesTags] 端点，以演员模式
+  /// `filter_by={type}:a:{id}` 查询该演员的影片。
+  /// 配合 [filterByTags] 可进一步按标签过滤。
   Future<PagedResult<MovieSummary>> getActorMovies(
     String id, {
+    required int type,
+    String? filterByTags,
     int page = 1,
-    int limit = 20,
+    int limit = 48,
+    String sortBy = 'release',
+    String orderBy = 'desc',
   }) async {
-    final resp = await _api.get(
-      '${Endpoints.actors}/$id',
-      queryParameters: {'page': page, 'limit': limit},
+    final query = <String, dynamic>{
+      'filter_by': '$type:a:$id',
+      'sort_by': sortBy,
+      'order_by': orderBy,
+      'page': page,
+      'limit': limit,
+      if (filterByTags != null && filterByTags.isNotEmpty)
+        'filter_by_tags': filterByTags,
+    };
+    final response = await _api.get(
+      Endpoints.moviesTags,
+      queryParameters: query,
     );
-    final m = resp.data as Map<String, dynamic>;
-    final movies = apiList(m, const [
-      'movies',
-      'items',
-    ]).map((j) => MovieSummary.fromJson(normalizeMovieSummaryJson(j))).toList();
+    final data = apiMap(response.data);
+    final items = apiList(data, const ['movies', 'items'])
+        .map(normalizeMovieSummaryJson)
+        .map(MovieSummary.fromJson)
+        .toList(growable: false);
+    final currentPage = apiInt(data['current_page'], page);
+    final totalPages = data['total_pages'] == null
+        ? currentPage + (items.length >= limit ? 1 : 0)
+        : apiInt(data['total_pages'], currentPage);
     return PagedResult(
-      items: movies,
-      currentPage: apiInt(m['current_page'], 1),
-      totalPages: apiInt(m['total_pages'], 1),
-      total: apiInt(m['total'], 0),
+      items: items,
+      currentPage: currentPage,
+      totalPages: totalPages,
+      total: apiInt(data['total_count'] ?? data['total'], items.length),
     );
   }
 }
