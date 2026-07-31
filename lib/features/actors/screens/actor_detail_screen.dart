@@ -185,24 +185,53 @@ class _ActorInfoContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rows = [
-      ('姓名', detail.name),
-      ('出演过', '${detail.movieCount} 部影片'),
-      ('生日', detail.birthday ?? '-'),
-      ('年龄', detail.age?.toString() ?? '-'),
-      ('身高', detail.height ?? '-'),
-      ('罩杯', detail.cup ?? '-'),
-      ('胸围', detail.bust ?? '-'),
-      ('腰围', detail.waist ?? '-'),
-      ('臀围', detail.hip ?? '-'),
-      ('出生地', detail.birthplace ?? '-'),
-    ];
+    final theme = Theme.of(context);
+    final style = theme.textTheme.bodyMedium;
     return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       children: [
-        const ListTile(title: Text('更多信息')),
-        ...rows.map(
-          (row) => ListTile(title: Text(row.$1), subtitle: Text(row.$2)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                detail.name,
+                style: theme.textTheme.titleMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Text('出演过${detail.movieCount}部影片', style: style),
+          ],
         ),
+        const SizedBox(height: 14),
+        _row(style, '生日', detail.birthday, '年龄', detail.age?.toString()),
+        const SizedBox(height: 8),
+        _row(style, '出生地', detail.birthplace, null, null),
+        const SizedBox(height: 8),
+        _row(style, '罩杯', detail.cup, '胸围', detail.bust),
+        const SizedBox(height: 8),
+        _row(style, '腰围', detail.waist, '臀围', detail.hip),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _row(
+    TextStyle? style,
+    String label1,
+    String? value1,
+    String? label2,
+    String? value2,
+  ) {
+    final text1 = '$label1:${value1 ?? "-"}';
+    if (label2 == null) {
+      return Text(text1, style: style);
+    }
+    return Row(
+      children: [
+        Expanded(child: Text(text1, style: style)),
+        Text('$label2:${value2 ?? "-"}', style: style),
       ],
     );
   }
