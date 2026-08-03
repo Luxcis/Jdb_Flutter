@@ -49,6 +49,7 @@ dependencies:
   device_info_plus: ^11.5.0
   uuid: ^4.6.0
   flutter_secure_storage: ^10.3.1
+  photo_view: ^0.15.0
 
 dev_dependencies:
   flutter_test:

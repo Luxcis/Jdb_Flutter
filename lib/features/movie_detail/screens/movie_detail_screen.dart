@@ -4,6 +4,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:photo_view/photo_view.dart';
+import 'package:photo_view/photo_view_gallery.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/list_model.dart';
 import 'package:jade/core/models/magnet.dart';
@@ -961,7 +963,7 @@ class _ScreenshotViewer extends StatefulWidget {
 
 class _ScreenshotViewerState extends State<_ScreenshotViewer> {
   late final PageController _controller;
-  final Map<int, bool> _zoomedPages = {};
+  late final List<PhotoViewController> _photoViewControllers;
   late int _currentIndex;
 
   @override
@@ -969,33 +971,19 @@ class _ScreenshotViewerState extends State<_ScreenshotViewer> {
     super.initState();
     _currentIndex = widget.initialIndex;
     _controller = PageController(initialPage: widget.initialIndex);
+    _photoViewControllers = List.generate(
+      widget.urls.length,
+      (_) => PhotoViewController(),
+    );
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    for (final controller in _photoViewControllers) {
+      controller.dispose();
+    }
     super.dispose();
-  }
-
-  void _handleZoomChanged(int index, bool zoomed) {
-    if (_zoomedPages[index] == zoomed) return;
-    setState(() => _zoomedPages[index] = zoomed);
-  }
-
-  bool _handleBoundarySwipe(int index, _ScreenshotPageDirection direction) {
-    final targetIndex = switch (direction) {
-      _ScreenshotPageDirection.previous => index - 1,
-      _ScreenshotPageDirection.next => index + 1,
-    };
-    if (targetIndex < 0 || targetIndex >= widget.urls.length) return false;
-    unawaited(
-      _controller.animateToPage(
-        targetIndex,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOutCubic,
-      ),
-    );
-    return true;
   }
 
   @override
@@ -1015,157 +1003,35 @@ class _ScreenshotViewerState extends State<_ScreenshotViewer> {
           title: Text('${_currentIndex + 1} / ${widget.urls.length}'),
           centerTitle: true,
         ),
-        body: PageView.builder(
-          key: const Key('movie-screenshot-pages'),
-          controller: _controller,
-          physics: _zoomedPages[_currentIndex] ?? false
-              ? const NeverScrollableScrollPhysics()
-              : const PageScrollPhysics(),
-          itemCount: widget.urls.length,
-          onPageChanged: (index) => setState(() => _currentIndex = index),
-          itemBuilder: (_, index) => _ZoomableScreenshot(
-            key: ValueKey(widget.urls[index]),
-            url: widget.urls[index],
-            index: index,
-            onZoomChanged: (zoomed) => _handleZoomChanged(index, zoomed),
-            onBoundarySwipe: (direction) =>
-                _handleBoundarySwipe(index, direction),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-enum _ScreenshotPageDirection { previous, next }
-
-class _ZoomableScreenshot extends StatefulWidget {
-  const _ZoomableScreenshot({
-    super.key,
-    required this.url,
-    required this.index,
-    required this.onZoomChanged,
-    required this.onBoundarySwipe,
-  });
-
-  final String url;
-  final int index;
-  final ValueChanged<bool> onZoomChanged;
-  final bool Function(_ScreenshotPageDirection direction) onBoundarySwipe;
-
-  @override
-  State<_ZoomableScreenshot> createState() => _ZoomableScreenshotState();
-}
-
-class _ZoomableScreenshotState extends State<_ZoomableScreenshot> {
-  late final TransformationController _transformationController;
-  Offset? _doubleTapPosition;
-  bool _isZoomed = false;
-  bool _pageSwitchTriggered = false;
-  double _boundaryDragDistance = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _transformationController = TransformationController();
-    _transformationController.addListener(_handleTransformationChanged);
-  }
-
-  @override
-  void dispose() {
-    _transformationController.removeListener(_handleTransformationChanged);
-    _transformationController.dispose();
-    super.dispose();
-  }
-
-  void _handleTransformationChanged() {
-    final zoomed = _transformationController.value.getMaxScaleOnAxis() > 1.01;
-    if (_isZoomed == zoomed) return;
-    _isZoomed = zoomed;
-    widget.onZoomChanged(zoomed);
-  }
-
-  void _handleDoubleTapDown(TapDownDetails details) {
-    _doubleTapPosition = details.localPosition;
-  }
-
-  void _handleDoubleTap() {
-    if (_isZoomed) {
-      _transformationController.value = Matrix4.identity();
-      return;
-    }
-    final size = context.size;
-    final position = _doubleTapPosition;
-    if (size == null || position == null) return;
-    const scale = 2.5;
-    final translationX = (-position.dx * (scale - 1)).clamp(
-      size.width * (1 - scale),
-      0.0,
-    );
-    final translationY = (-position.dy * (scale - 1)).clamp(
-      size.height * (1 - scale),
-      0.0,
-    );
-    _transformationController.value = Matrix4.identity()
-      ..setEntry(0, 0, scale)
-      ..setEntry(1, 1, scale)
-      ..setEntry(0, 3, translationX)
-      ..setEntry(1, 3, translationY);
-  }
-
-  void _handleInteractionUpdate(ScaleUpdateDetails details) {
-    if (!_isZoomed || _pageSwitchTriggered) return;
-    final size = context.size;
-    if (size == null) return;
-    final matrix = _transformationController.value;
-    final scale = matrix.getMaxScaleOnAxis();
-    final translationX = matrix.storage[12];
-    final minimumTranslationX = size.width * (1 - scale);
-    final horizontalDelta = details.focalPointDelta.dx;
-    const edgeTolerance = 1.0;
-    final draggingPastPrevious =
-        translationX >= -edgeTolerance && horizontalDelta > 0;
-    final draggingPastNext =
-        translationX <= minimumTranslationX + edgeTolerance &&
-        horizontalDelta < 0;
-
-    if (!draggingPastPrevious && !draggingPastNext) {
-      _boundaryDragDistance = 0;
-      return;
-    }
-    _boundaryDragDistance += horizontalDelta.abs();
-    if (_boundaryDragDistance < 48) return;
-    final direction = draggingPastPrevious
-        ? _ScreenshotPageDirection.previous
-        : _ScreenshotPageDirection.next;
-    _pageSwitchTriggered = widget.onBoundarySwipe(direction);
-    _boundaryDragDistance = 0;
-  }
-
-  void _handleInteractionEnd(ScaleEndDetails details) {
-    _boundaryDragDistance = 0;
-    _pageSwitchTriggered = false;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onDoubleTapDown: _handleDoubleTapDown,
-      onDoubleTap: _handleDoubleTap,
-      child: InteractiveViewer(
-        key: Key('movie-screenshot-zoom-${widget.index}'),
-        transformationController: _transformationController,
-        minScale: 1,
-        maxScale: 4,
-        onInteractionUpdate: _handleInteractionUpdate,
-        onInteractionEnd: _handleInteractionEnd,
-        child: SizedBox.expand(
-          child: MovieScreenshotImage(
-            widget.url,
-            key: Key('movie-screenshot-page-${widget.index}'),
-            fit: BoxFit.contain,
-          ),
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            final childSize = Size(
+              constraints.maxWidth * 2,
+              constraints.maxHeight * 2,
+            );
+            return PhotoViewGallery.builder(
+              key: const Key('movie-screenshot-pages'),
+              pageController: _controller,
+              itemCount: widget.urls.length,
+              backgroundDecoration: const BoxDecoration(color: Colors.black),
+              customSize: constraints.biggest,
+              onPageChanged: (index) => setState(() => _currentIndex = index),
+              builder: (_, index) => PhotoViewGalleryPageOptions.customChild(
+                childSize: childSize,
+                controller: _photoViewControllers[index],
+                initialScale: PhotoViewComputedScale.contained,
+                minScale: PhotoViewComputedScale.contained,
+                maxScale: PhotoViewComputedScale.contained * 4,
+                child: SizedBox.expand(
+                  child: MovieScreenshotImage(
+                    widget.urls[index],
+                    key: Key('movie-screenshot-page-$index'),
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

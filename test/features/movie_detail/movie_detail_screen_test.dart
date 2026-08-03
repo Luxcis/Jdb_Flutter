@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:photo_view/photo_view.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
@@ -12,6 +13,7 @@ import 'package:jade/core/widgets/movie_screenshot_image.dart';
 import 'package:jade/core/widgets/star_rating.dart';
 import 'package:jade/core/widgets/tag_chip.dart';
 import 'package:jade/features/movie_detail/screens/movie_detail_screen.dart';
+import 'package:photo_view/photo_view_gallery.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _TokenProvider implements TokenProvider {
@@ -878,5 +880,77 @@ void main() {
       adapter.requests.where((request) => request.path == '/api/v4/movies/m1'),
       hasLength(1),
     );
+  });
+
+  testWidgets('从第二张剧照打开 PhotoView 图库并可翻页关闭', (tester) async {
+    _mockPathProvider(tester);
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(adapter);
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final innerScrollable = find
+        .descendant(
+          of: find.byType(TabBarView),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Scrollable &&
+                widget.axisDirection == AxisDirection.down,
+          ),
+        )
+        .first;
+    await tester.scrollUntilVisible(
+      find.text('预告片 / 剧照'),
+      300,
+      scrollable: innerScrollable,
+    );
+
+    await tester.tap(find.byKey(const Key('movie-detail-screenshot-1')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byKey(const Key('movie-screenshot-viewer')), findsOneWidget);
+    expect(find.text('2 / 2'), findsOneWidget);
+    expect(find.byType(PhotoViewGallery), findsOneWidget);
+    expect(find.byType(InteractiveViewer), findsNothing);
+
+    final currentScreenshot = find.byKey(const Key('movie-screenshot-page-1'));
+    expect(currentScreenshot, findsOneWidget);
+    final currentPhotoView = find.ancestor(
+      of: currentScreenshot,
+      matching: find.byType(PhotoView),
+    );
+    expect(currentPhotoView, findsOneWidget);
+    final controller = tester.widget<PhotoView>(currentPhotoView).controller!;
+    final initialScale = controller.value.scale!;
+    expect(initialScale, closeTo(0.5, 0.01));
+
+    Future<void> doubleTapScreenshot() async {
+      await tester.tap(currentPhotoView);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(currentPhotoView);
+      for (var frame = 0; frame < 30; frame++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
+    await doubleTapScreenshot();
+
+    expect(controller.value.scale, closeTo(initialScale * 2, 0.01));
+
+    await doubleTapScreenshot();
+
+    expect(controller.value.scale, closeTo(initialScale, 0.01));
+
+    await tester.drag(find.byType(PhotoViewGallery), const Offset(500, 0));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('1 / 2'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('关闭'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byKey(const Key('movie-screenshot-viewer')), findsNothing);
   });
 }
