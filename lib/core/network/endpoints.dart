@@ -26,7 +26,8 @@ class Endpoints {
   static const String usersChangeUsername = '/api/v1/users/change_username';
   static const String usersCollectedActors = '/api/v1/users/collected_actors';
   static const String usersCollectedCodes = '/api/v1/users/collected_codes';
-  static const String usersCollectedDirectors = '/api/v1/users/collected_directors';
+  static const String usersCollectedDirectors =
+      '/api/v1/users/collected_directors';
   // ⚠️ 服务端Bug: 该接口返回 HTTP 500
   static const String usersCollectedLists = '/api/v1/users/collected_lists';
   static const String usersCollectedMakers = '/api/v1/users/collected_makers';
@@ -37,13 +38,15 @@ class Endpoints {
   // ── 影片 ──
   static const String moviesLatest = '/api/v1/movies/latest';
   static const String moviesRecommend = '/api/v1/movies/recommend';
-  static const String moviesRecommendPeriods = '/api/v1/movies/recommend_periods';
+  static const String moviesRecommendPeriods =
+      '/api/v1/movies/recommend_periods';
   static const String moviesTop = '/api/v1/movies/top';
   static const String moviesMayAlsoLike = '/api/v1/movies/may_also_like';
   static const String moviesTags = '/api/v1/movies/tags';
 
   // ── 搜索 ──
   static const String searchV2 = '/api/v2/search';
+  static const String searchMagnet = '/api/v1/search_magnet';
 
   // ── 演员 ──
   static const String actors = '/api/v1/actors';
