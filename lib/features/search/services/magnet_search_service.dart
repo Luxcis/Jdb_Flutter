@@ -46,7 +46,7 @@ class MagnetSearchService implements MagnetSearchDataSource {
     return PagedResult(
       items: items,
       currentPage: currentPage,
-      totalPages: items.length >= pageSize ? currentPage + 1 : currentPage,
+      totalPages: items.isNotEmpty ? currentPage + 1 : currentPage,
       total: apiInt(data['total_count'] ?? data['total'], items.length),
     );
   }

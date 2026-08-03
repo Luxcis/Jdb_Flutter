@@ -65,7 +65,7 @@ void main() {
     expect(result.items.single.filesCount, 3);
     expect(result.items.single.publishDate, '2026-08-03');
     expect(result.currentPage, 2);
-    expect(result.totalPages, 2);
+    expect(result.totalPages, 3);
   });
 
   test('满 48 条时推断存在下一页', () async {
@@ -82,9 +82,9 @@ void main() {
     expect(result.totalPages, 2);
   });
 
-  test('少于 48 条时当前页为末页', () async {
+  test('服务端返回 40 条时仍继续探测下一页', () async {
     final fixture = await _createFixture();
-    _enqueuePage(fixture.adapter, itemCount: 47);
+    _enqueuePage(fixture.adapter, itemCount: 40);
 
     final result = await fixture.service.getMagnets(
       query: '桥本香菜',
@@ -93,7 +93,22 @@ void main() {
     );
 
     expect(result.currentPage, 1);
-    expect(result.totalPages, 1);
+    expect(result.totalPages, 2);
+  });
+
+  test('空页停止继续分页', () async {
+    final fixture = await _createFixture();
+    _enqueuePage(fixture.adapter, itemCount: 0, currentPage: 2);
+
+    final result = await fixture.service.getMagnets(
+      query: '桥本香菜',
+      sort: MagnetSearchSort.relevance,
+      fromRecent: false,
+      page: 2,
+    );
+
+    expect(result.currentPage, 2);
+    expect(result.totalPages, 2);
   });
 }
 
@@ -109,7 +124,11 @@ _createFixture() async {
   return (adapter: adapter, service: MagnetSearchService(api));
 }
 
-void _enqueuePage(FakeAdapter adapter, {required int itemCount}) {
+void _enqueuePage(
+  FakeAdapter adapter, {
+  required int itemCount,
+  int currentPage = 1,
+}) {
   adapter.enqueue(Endpoints.searchMagnet, {
     'success': 1,
     'data': {
@@ -122,7 +141,7 @@ void _enqueuePage(FakeAdapter adapter, {required int itemCount}) {
             'files_count': 1,
           },
       ],
-      'current_page': 1,
+      'current_page': currentPage,
     },
   });
 }
