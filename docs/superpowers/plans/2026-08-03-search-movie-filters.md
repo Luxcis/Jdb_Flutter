@@ -32,7 +32,7 @@
 - Produces: `SearchMovieType`、`SearchMovieAvailability`、`SearchMovieSort` enhanced enums，均提供 `label` 和 `value`。
 - Produces: `SearchMovieFilter`，包含 `type`、`availability`、`sort`，默认值为 `all / all / relevance`，并提供 `copyWith`。
 
-- [ ] **Step 1: 写筛选值映射失败测试**
+- [x] **Step 1: 写筛选值映射失败测试**
 
 ```dart
 import 'package:flutter_test/flutter_test.dart';
@@ -90,13 +90,13 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: 运行测试并确认因模型不存在而失败**
+- [x] **Step 2: 运行测试并确认因模型不存在而失败**
 
 Run: `flutter test test/features/search/search_movie_filter_test.dart`
 
 Expected: FAIL，提示 `search_movie_filter.dart` 或筛选类型未定义。
 
-- [ ] **Step 3: 实现筛选模型**
+- [x] **Step 3: 实现筛选模型**
 
 ```dart
 enum SearchMovieType {
@@ -158,7 +158,7 @@ class SearchMovieFilter {
 }
 ```
 
-- [ ] **Step 4: 格式化并运行模型测试**
+- [x] **Step 4: 格式化并运行模型测试**
 
 Run: `dart format lib/features/search/models/search_movie_filter.dart test/features/search/search_movie_filter_test.dart`
 
@@ -166,7 +166,7 @@ Run: `flutter test test/features/search/search_movie_filter_test.dart`
 
 Expected: PASS，2 项测试通过。
 
-- [ ] **Step 5: 提交筛选模型**
+- [x] **Step 5: 提交筛选模型**
 
 ```bash
 git add lib/features/search/models/search_movie_filter.dart test/features/search/search_movie_filter_test.dart
@@ -185,7 +185,7 @@ git commit -m "feat: model search movie filters"
 - Produces: `SearchMovieService(ApiClient api)`，实现完整请求参数与分页回退。
 - Produces: `UnavailableSearchMovieDataSource`，在未初始化 API 时返回当前页空结果。
 
-- [ ] **Step 1: 写完整请求参数和响应解析失败测试**
+- [x] **Step 1: 写完整请求参数和响应解析失败测试**
 
 测试创建 `Dio`、`FakeAdapter` 和 `ApiClient`，为 `Endpoints.searchV2` 入队成功响应，然后调用：
 
@@ -231,17 +231,17 @@ expect(result.items.single.number, 'ABP-001');
 }
 ```
 
-- [ ] **Step 2: 写缺失 `total_pages` 的分页推断失败测试**
+- [x] **Step 2: 写缺失 `total_pages` 的分页推断失败测试**
 
 同一测试文件增加两个用例：返回 48 条时期待 `totalPages == 2`；返回 47 条时期待 `totalPages == 1`。两个用例均传 `page: 1`，并断言 `currentPage == 1`。
 
-- [ ] **Step 3: 运行服务测试并确认因服务不存在而失败**
+- [x] **Step 3: 运行服务测试并确认因服务不存在而失败**
 
 Run: `flutter test test/features/search/search_movie_service_test.dart`
 
 Expected: FAIL，提示 `SearchMovieService` 或 `SearchMovieDataSource` 未定义。
 
-- [ ] **Step 4: 实现数据源和请求解析**
+- [x] **Step 4: 实现数据源和请求解析**
 
 ```dart
 abstract interface class SearchMovieDataSource {
@@ -311,7 +311,7 @@ class UnavailableSearchMovieDataSource implements SearchMovieDataSource {
 }
 ```
 
-- [ ] **Step 5: 格式化并运行模型和服务测试**
+- [x] **Step 5: 格式化并运行模型和服务测试**
 
 Run: `dart format lib/features/search/services/search_movie_service.dart test/features/search/search_movie_service_test.dart`
 
@@ -319,7 +319,7 @@ Run: `flutter test test/features/search/search_movie_filter_test.dart test/featu
 
 Expected: PASS，筛选映射、`single` 请求、影片解析和分页回退全部通过。
 
-- [ ] **Step 6: 提交影片搜索服务**
+- [x] **Step 6: 提交影片搜索服务**
 
 ```bash
 git add lib/features/search/services/search_movie_service.dart test/features/search/search_movie_service_test.dart
@@ -340,7 +340,7 @@ git commit -m "feat: add search movie service"
 - Extends: `SearchResultsPage` 增加可选参数 `SearchMovieDataSource? movieDataSource`。
 - Changes: `_MovieSearchTab` 接收 `SearchMovieDataSource dataSource`，筛选变化时调用 `_controller.reloadWith(_fetchPage)`。
 
-- [ ] **Step 1: 写筛选栏布局、默认选中和窄屏失败测试**
+- [x] **Step 1: 写筛选栏布局、默认选中和窄屏失败测试**
 
 在 `search_movie_filter_bar_test.dart` 中以 320px 宽、`textScaler: TextScaler.linear(1.5)` 构建控件，并断言：
 
@@ -365,13 +365,13 @@ expect(tester.takeException(), isNull);
 
 测试还断言所有 `ChoiceChip` 使用 `VisualDensity.compact`、`showCheckmark == false`，且每行右侧包含横向 `SingleChildScrollView`。
 
-- [ ] **Step 2: 运行筛选栏测试并确认因控件不存在而失败**
+- [x] **Step 2: 运行筛选栏测试并确认因控件不存在而失败**
 
 Run: `flutter test test/features/search/search_movie_filter_bar_test.dart`
 
 Expected: FAIL，提示 `SearchMovieFilterBar` 未定义。
 
-- [ ] **Step 3: 实现三行紧凑筛选控件**
+- [x] **Step 3: 实现三行紧凑筛选控件**
 
 `SearchMovieFilterBar` 使用 `Column` 组合三个 `_FilterRow<T>`。每个 `_FilterRow` 左侧固定宽度标题，右侧为：
 
@@ -400,7 +400,7 @@ Expanded(
 
 三个回调分别通过 `value.copyWith(type: ...)`、`copyWith(availability: ...)`、`copyWith(sort: ...)` 生成新值。控件内部在新值等于当前值时不调用 `onChanged`。
 
-- [ ] **Step 4: 运行筛选栏测试确认通过**
+- [x] **Step 4: 运行筛选栏测试确认通过**
 
 Run: `dart format lib/features/search/widgets/search_movie_filter_bar.dart test/features/search/search_movie_filter_bar_test.dart`
 
@@ -408,7 +408,7 @@ Run: `flutter test test/features/search/search_movie_filter_bar_test.dart`
 
 Expected: PASS，三行布局、全部标签、默认选中、紧凑样式和窄屏无溢出均通过。
 
-- [ ] **Step 5: 写结果页数据源注入和筛选刷新失败测试**
+- [x] **Step 5: 写结果页数据源注入和筛选刷新失败测试**
 
 在 `search_screen_test.dart` 增加 `_RecordingSearchMovieDataSource`，记录 `(query, filter, page)` 并返回空的 `PagedResult`。使用它构建：
 
@@ -451,13 +451,13 @@ expect(dataSource.calls.map((call) => call.page), containsAllInOrder([1, 2]));
 expect(find.text('PAGE2-001'), findsOneWidget);
 ```
 
-- [ ] **Step 6: 运行结果页测试并确认因数据源参数或筛选栏缺失而失败**
+- [x] **Step 6: 运行结果页测试并确认因数据源参数或筛选栏缺失而失败**
 
 Run: `flutter test test/features/search/search_screen_test.dart`
 
 Expected: FAIL，提示 `movieDataSource` 参数不存在、找不到筛选标签，或搜索影片 Tab 尚未通过注入数据源自动加载第 2 页。
 
-- [ ] **Step 7: 接入搜索服务和筛选刷新**
+- [x] **Step 7: 接入搜索服务和筛选刷新**
 
 `SearchResultsPage` 增加 `movieDataSource`，默认解析为：
 
@@ -502,7 +502,7 @@ Column(
 
 移除 `_MovieSearchTab` 中原有的内联 `/api/v2/search` 请求解析，其他六个 Tab 保持不变，并在 `dispose` 中释放影片分页控制器。
 
-- [ ] **Step 8: 格式化并运行搜索 UI 定向测试**
+- [x] **Step 8: 格式化并运行搜索 UI 定向测试**
 
 Run: `dart format lib/features/search/screens/search_results_screen.dart lib/features/search/widgets/search_movie_filter_bar.dart test/features/search/search_screen_test.dart test/features/search/search_movie_filter_bar_test.dart`
 
@@ -510,7 +510,7 @@ Run: `flutter test test/features/search/search_movie_filter_bar_test.dart test/f
 
 Expected: PASS，原有搜索结果页行为和新增筛选交互全部通过。
 
-- [ ] **Step 9: 提交筛选 UI 和结果页接入**
+- [x] **Step 9: 提交筛选 UI 和结果页接入**
 
 ```bash
 git add lib/features/search/widgets/search_movie_filter_bar.dart lib/features/search/screens/search_results_screen.dart test/features/search/search_movie_filter_bar_test.dart test/features/search/search_screen_test.dart
@@ -525,11 +525,11 @@ git commit -m "feat: filter search movie results"
 **Interfaces:**
 - Changes: OpenAPI `movie_filter_by` enum 增加 `single`，描述补充“单体”。
 
-- [ ] **Step 1: 将 `single` 补入仓库 OpenAPI**
+- [x] **Step 1: 将 `single` 补入仓库 OpenAPI**
 
 在 `/api/v2/search` 的 `movie_filter_by` 描述末尾增加 `single=单体`，并在 enum 的 `subtitle` 后增加 `single`。只修改该端点，不调整其他接口。
 
-- [ ] **Step 2: 运行搜索模块完整测试**
+- [x] **Step 2: 运行搜索模块完整测试**
 
 Run: `dart format lib/features/search test/features/search`
 
@@ -537,7 +537,7 @@ Run: `flutter test test/features/search test/app_router_test.dart`
 
 Expected: PASS，搜索历史、入口页、结果页、筛选服务、筛选 UI 和路由测试全部通过。
 
-- [ ] **Step 3: 运行全量验证**
+- [x] **Step 3: 运行全量验证**
 
 Run: `flutter test`
 
@@ -551,14 +551,14 @@ Run: `git diff --check`
 
 Expected: 无输出。
 
-- [ ] **Step 4: 提交契约更新和最终实现**
+- [x] **Step 4: 提交契约更新和最终实现**
 
 ```bash
 git add docs/main/api/jdb_api_openapi.json docs/superpowers/plans/2026-08-03-search-movie-filters.md
 git commit -m "docs: align search movie filters contract"
 ```
 
-- [ ] **Step 5: 复核最终提交范围**
+- [x] **Step 5: 复核最终提交范围**
 
 Run: `git status --short --branch`
 

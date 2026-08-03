@@ -1926,7 +1926,7 @@
           {
             "name": "movie_filter_by",
             "in": "query",
-            "description": "筛选条件（type=movie 时有效）。all=全部, can_play=可播放, magnets=可下载, subtitle=含字幕",
+            "description": "筛选条件（type=movie 时有效）。all=全部, can_play=可播放, magnets=可下载, subtitle=含字幕, single=单体",
             "required": false,
             "schema": {
               "type": "string",
@@ -1934,7 +1934,8 @@
                 "all",
                 "can_play",
                 "magnets",
-                "subtitle"
+                "subtitle",
+                "single"
               ]
             }
           },
