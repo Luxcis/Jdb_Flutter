@@ -54,4 +54,37 @@ void main() {
     expect(find.text('历史搜索'), findsNothing);
     expect(find.text('近期热搜'), findsNothing);
   });
+
+  testWidgets('磁链搜索路由渲染搜索首页', (tester) async {
+    final router = AppRouter.buildForTest(
+      initialLocation: AppRoutes.magnetSearch,
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<_FakeAuth>(
+        create: (_) => _FakeAuth.create(),
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(TextField, '搜索磁链...'), findsOneWidget);
+  });
+
+  testWidgets('磁链结果路由空查询时返回磁链搜索首页', (tester) async {
+    final router = AppRouter.buildForTest(
+      initialLocation: '/search/magnet/results?q=%20',
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<_FakeAuth>(
+        create: (_) => _FakeAuth.create(),
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(router.state.uri.path, AppRoutes.magnetSearch);
+    expect(find.widgetWithText(TextField, '搜索磁链...'), findsOneWidget);
+  });
 }

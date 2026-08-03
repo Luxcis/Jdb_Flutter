@@ -30,10 +30,12 @@ class StartupProvider extends ChangeNotifier {
   StartupStatus _status = StartupStatus.idle;
   String? _errorMessage;
   List<String> _recentKeywords = const [];
+  List<String> _recentMagnetKeywords = const [];
 
   StartupStatus get status => _status;
   String? get errorMessage => _errorMessage;
   List<String> get recentKeywords => _recentKeywords;
+  List<String> get recentMagnetKeywords => _recentMagnetKeywords;
 
   static StartupProvider create({
     required StartupApi startupApi,
@@ -70,6 +72,9 @@ class StartupProvider extends ChangeNotifier {
       await _domainManager.applyStartup(domains);
       _apiClient.swapBaseUrl(_domainManager.currentUrl);
       _recentKeywords = List<String>.unmodifiable(startup.recentKeywords);
+      _recentMagnetKeywords = List<String>.unmodifiable(
+        startup.recentMagnetKeywords,
+      );
       _status = StartupStatus.success;
       notifyListeners();
       return true;

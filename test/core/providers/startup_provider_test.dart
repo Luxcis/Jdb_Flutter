@@ -88,6 +88,7 @@ void main() {
       () => const StartupData(
         backupDomainsData: 'ciphertext',
         recentKeywords: ['演员', 'ABP-001'],
+        recentMagnetKeywords: ['桥本香菜'],
       ),
     ]);
     final subject = await _createSubject(api);
@@ -96,6 +97,7 @@ void main() {
 
     expect(succeeded, isTrue);
     expect(subject.provider.recentKeywords, ['演员', 'ABP-001']);
+    expect(subject.provider.recentMagnetKeywords, ['桥本香菜']);
   });
 
   test('缺少域名数据时失败并保留在启动状态', () async {

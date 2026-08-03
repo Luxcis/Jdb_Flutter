@@ -10,6 +10,7 @@ class StorageKeys {
   static const String defaultFilterTags = 'key_default_filter_tags';
   static const String blurMovieImages = 'key_blur_movie_images';
   static const String searchHistory = 'key_search_history';
+  static const String magnetSearchHistory = 'key_magnet_search_history';
   static const String line = 'key_line';
   static const String deviceUuid = 'key_device_uuid';
 }

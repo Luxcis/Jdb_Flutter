@@ -5,12 +5,16 @@ import 'package:jade/core/storage/storage_keys.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SearchHistoryStore extends ChangeNotifier {
-  SearchHistoryStore(this._prefs);
+  SearchHistoryStore(
+    this._prefs, {
+    this.storageKey = StorageKeys.searchHistory,
+  });
 
   final SharedPreferences _prefs;
+  final String storageKey;
 
   List<String> load() {
-    final raw = _prefs.getString(StorageKeys.searchHistory);
+    final raw = _prefs.getString(storageKey);
     if (raw == null) return const [];
     try {
       final decoded = jsonDecode(raw);
@@ -29,13 +33,13 @@ class SearchHistoryStore extends ChangeNotifier {
     final history = load().toList()..remove(keyword);
     history.insert(0, keyword);
     final limited = history.take(20).toList(growable: false);
-    await _prefs.setString(StorageKeys.searchHistory, jsonEncode(limited));
+    await _prefs.setString(storageKey, jsonEncode(limited));
     notifyListeners();
     return limited;
   }
 
   Future<void> clear() async {
-    await _prefs.remove(StorageKeys.searchHistory);
+    await _prefs.remove(storageKey);
     notifyListeners();
   }
 }

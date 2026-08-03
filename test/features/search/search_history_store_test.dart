@@ -60,4 +60,23 @@ void main() {
     expect(store.load(), isEmpty);
     expect(prefs.containsKey(StorageKeys.searchHistory), isFalse);
   });
+
+  test('磁链历史独立且清空不影响普通历史', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final ordinary = SearchHistoryStore(prefs);
+    final magnet = SearchHistoryStore(
+      prefs,
+      storageKey: StorageKeys.magnetSearchHistory,
+    );
+
+    await ordinary.save('ABP-001');
+    await magnet.save('桥本香菜');
+
+    expect(ordinary.load(), ['ABP-001']);
+    expect(magnet.load(), ['桥本香菜']);
+    await magnet.clear();
+    expect(ordinary.load(), ['ABP-001']);
+    expect(magnet.load(), isEmpty);
+  });
 }
