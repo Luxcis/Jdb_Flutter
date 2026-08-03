@@ -12,10 +12,10 @@
 - 为系列、片商、导演、番号建立通用列表行组件。
 - 为清单建立与影片详情相关清单一致的分页列表。
 - 为实体结果接入点击行为：演员进入演员详情，其余实体进入 `CommonListPage`。
-- 调整 `CommonListPage` 的数据源契约，使筛选、排序和分页真正参与请求。
+- 在 `CommonListPage` 展示实体标题、筛选排序控件和影片瀑布流容器，但本期不接入公共页影片接口。
 - 为所有 Tab 提供首屏加载、空状态、首屏错误重试、尾部加载和尾部错误重试。
 
-本次不新增独立的系列、片商、导演、番号或清单详情页面，也不改变影片 Tab 已确认的筛选行为。
+本次不新增独立的系列、片商、导演、番号或清单详情页面，不实现公共页影片接口调用，也不改变影片 Tab 已确认的筛选行为。
 
 ## 搜索接口契约
 
@@ -100,48 +100,23 @@ SearchEntityListTile({
 
 ## 公共列表页导航
 
-演员之外的实体结果点击后，通过 `MaterialPageRoute` 打开 `CommonListPage`。页面标题使用搜索结果名称，数据源通过 `/api/v1/movies/tags` 请求影片。
+演员之外的实体结果点击后，通过 `MaterialPageRoute` 打开 `CommonListPage`。导航栏标题固定使用“类型 - 名称”格式：
 
-实体过滤条件前缀：
-
-| 实体 | `filter_by` 基础值 |
+| 实体 | 标题示例 |
 | --- | --- |
-| 系列 | `{type}:s:{id}` |
-| 片商 | `{type}:m:{id}` |
-| 导演 | `{type}:d:{id}` |
-| 番号 | `0:c:{id}` |
-| 清单 | `0:l:{id}` |
+| 系列 | `系列 - Madonna` |
+| 片商 | `片商 - S1` |
+| 导演 | `导演 - 山田太郎` |
+| 番号 | `番号 - IPZZ` |
+| 清单 | `清单 - 收藏精选` |
 
-基础筛选后缀：
+公共页从上到下包含：
 
-| 选择项 | 后缀 |
-| --- | --- |
-| 全部 | `:` |
-| 可播放 | `:p` |
-| 含磁链 | `:m` |
-| 字幕 | `:c` |
+1. 导航栏和上述标题。
+2. 同一行筛选控件：左侧使用 `SortSegmented` 展示“全部、可播放、含磁链、字幕”，右侧保留现有“最新、热门、评分”排序下拉选项。
+3. `MovieGridView` 影片卡片列表，保留 `PaginationController` 和接近底部自动加载的结构。
 
-`CommonListPage` 的数据源接口调整为同时接收 `page`、`filter` 和 `sort`：
-
-```dart
-typedef CommonListDataSource = Future<PagedResult<MovieSummary>> Function({
-  required int page,
-  required String filter,
-  required String sort,
-});
-```
-
-页面保留现有四个筛选项和三个排序项。筛选值 `all/playable/magnet/subtitle` 分别映射到上表中的 `:`、`:p`、`:m`、`:c`。排序值按以下规则映射到 `/api/v1/movies/tags` 的 `sort_by`：
-
-| 页面值 | 接口值 |
-| --- | --- |
-| `date` | `release` |
-| `hot` | `hit` |
-| `rating` | `score` |
-
-发布日期排序额外发送 `order_by=desc`，每页固定发送 `limit=48`。为保持公共页当前行为，默认筛选继续使用 `magnet`，默认排序继续使用 `date`。筛选或排序变化时通过 `reloadWith` 从第一页重新加载，滚动分页继续由 `MovieGridView` 和 `PaginationController` 完成。实体搜索结果中的 `type` 用于系列、片商和导演的过滤条件前缀；番号和清单固定使用类型 `0`。
-
-`/api/v1/movies/tags` 响应按 `movies`、`current_page`、`total_pages` 和 `total` 解析；缺少总页数时沿用每页 48 条的终止规则。
+本期公共页暂时不发起任何影片接口调用。导航时传入返回空 `PagedResult<MovieSummary>` 的本地数据源，因此影片网格展示空结果，筛选和排序仅更新页面本地选中状态，不触发 `ApiClient`。公共页影片接口、筛选参数映射和真实分页留待后续需求实现。
 
 ## 状态与错误处理
 
@@ -164,7 +139,7 @@ typedef CommonListDataSource = Future<PagedResult<MovieSummary>> Function({
 - 通用实体分页列表：只负责列表状态、滚动触发和尾部状态。
 - 共享清单行：统一搜索清单与影片详情相关清单外观。
 - `SearchResultsPage`：组装各 Tab、服务和导航闭包，不再直接解析动态 Map。
-- `CommonListPage`：接收筛选感知的数据源并展示影片网格。
+- `CommonListPage`：展示实体标题、筛选排序控件和影片网格；本期使用空数据源，不连接业务接口。
 
 ## 测试与验收
 
@@ -184,10 +159,12 @@ typedef CommonListDataSource = Future<PagedResult<MovieSummary>> Function({
 - 演员 Tab 使用 `ActorGridView` 并进入演员详情。
 - 系列、片商、导演、番号进入对应 `CommonListPage`。
 - 清单样式与相关清单一致并进入 `CommonListPage`。
+- 公共页导航栏显示“类型 - 名称”。
+- 公共页同一行显示四项 `SortSegmented` 筛选和排序下拉选项。
+- 公共页包含 `MovieGridView` 和自动分页结构，但不会发送影片接口请求。
 - 首屏加载、空状态、首屏错误重试、尾部加载和尾部错误重试均可见且可操作。
 - 滚动接近底部后发送下一页请求，切换 Tab 后保留已加载状态。
-- `CommonListPage` 的筛选、排序变更会以新条件从第一页重新加载，滚动会加载后续页。
 
 ### 最终验证
 
-运行搜索相关聚焦测试、公共列表页测试、影片详情相关清单回归测试、完整 `flutter test` 和 `flutter analyze`。最后使用 ADB 在模拟器上验证六个 Tab 请求、滚动追加、实体点击和公共列表页筛选分页。
+运行搜索相关聚焦测试、公共列表页测试、影片详情相关清单回归测试、完整 `flutter test` 和 `flutter analyze`。最后使用 ADB 在模拟器上验证六个 Tab 请求、滚动追加、实体点击，以及公共列表页标题、筛选排序控件和无接口请求行为。
