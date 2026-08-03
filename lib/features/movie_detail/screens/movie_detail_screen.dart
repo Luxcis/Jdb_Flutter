@@ -963,6 +963,7 @@ class _ScreenshotViewer extends StatefulWidget {
 
 class _ScreenshotViewerState extends State<_ScreenshotViewer> {
   late final PageController _controller;
+  late final List<PhotoViewController> _photoViewControllers;
   late int _currentIndex;
 
   @override
@@ -970,11 +971,18 @@ class _ScreenshotViewerState extends State<_ScreenshotViewer> {
     super.initState();
     _currentIndex = widget.initialIndex;
     _controller = PageController(initialPage: widget.initialIndex);
+    _photoViewControllers = List.generate(
+      widget.urls.length,
+      (_) => PhotoViewController(),
+    );
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    for (final controller in _photoViewControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -995,24 +1003,35 @@ class _ScreenshotViewerState extends State<_ScreenshotViewer> {
           title: Text('${_currentIndex + 1} / ${widget.urls.length}'),
           centerTitle: true,
         ),
-        body: PhotoViewGallery.builder(
-          key: const Key('movie-screenshot-pages'),
-          pageController: _controller,
-          itemCount: widget.urls.length,
-          backgroundDecoration: const BoxDecoration(color: Colors.black),
-          onPageChanged: (index) => setState(() => _currentIndex = index),
-          builder: (_, index) => PhotoViewGalleryPageOptions.customChild(
-            initialScale: PhotoViewComputedScale.contained,
-            minScale: PhotoViewComputedScale.contained,
-            maxScale: PhotoViewComputedScale.contained * 4,
-            child: SizedBox.expand(
-              child: MovieScreenshotImage(
-                widget.urls[index],
-                key: Key('movie-screenshot-page-$index'),
-                fit: BoxFit.contain,
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            final childSize = Size(
+              constraints.maxWidth * 2,
+              constraints.maxHeight * 2,
+            );
+            return PhotoViewGallery.builder(
+              key: const Key('movie-screenshot-pages'),
+              pageController: _controller,
+              itemCount: widget.urls.length,
+              backgroundDecoration: const BoxDecoration(color: Colors.black),
+              customSize: constraints.biggest,
+              onPageChanged: (index) => setState(() => _currentIndex = index),
+              builder: (_, index) => PhotoViewGalleryPageOptions.customChild(
+                childSize: childSize,
+                controller: _photoViewControllers[index],
+                initialScale: PhotoViewComputedScale.contained,
+                minScale: PhotoViewComputedScale.contained,
+                maxScale: PhotoViewComputedScale.contained * 4,
+                child: SizedBox.expand(
+                  child: MovieScreenshotImage(
+                    widget.urls[index],
+                    key: Key('movie-screenshot-page-$index'),
+                    fit: BoxFit.contain,
+                  ),
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );

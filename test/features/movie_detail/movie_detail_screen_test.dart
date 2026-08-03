@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:photo_view/photo_view.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
@@ -908,11 +909,40 @@ void main() {
 
     await tester.tap(find.byKey(const Key('movie-detail-screenshot-1')));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.byKey(const Key('movie-screenshot-viewer')), findsOneWidget);
     expect(find.text('2 / 2'), findsOneWidget);
     expect(find.byType(PhotoViewGallery), findsOneWidget);
     expect(find.byType(InteractiveViewer), findsNothing);
+
+    final currentScreenshot = find.byKey(const Key('movie-screenshot-page-1'));
+    expect(currentScreenshot, findsOneWidget);
+    final currentPhotoView = find.ancestor(
+      of: currentScreenshot,
+      matching: find.byType(PhotoView),
+    );
+    expect(currentPhotoView, findsOneWidget);
+    final controller = tester.widget<PhotoView>(currentPhotoView).controller!;
+    final initialScale = controller.value.scale!;
+    expect(initialScale, closeTo(0.5, 0.01));
+
+    Future<void> doubleTapScreenshot() async {
+      await tester.tap(currentPhotoView);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(currentPhotoView);
+      for (var frame = 0; frame < 30; frame++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
+    await doubleTapScreenshot();
+
+    expect(controller.value.scale, closeTo(initialScale * 2, 0.01));
+
+    await doubleTapScreenshot();
+
+    expect(controller.value.scale, closeTo(initialScale, 0.01));
 
     await tester.drag(find.byType(PhotoViewGallery), const Offset(500, 0));
     await tester.pump(const Duration(milliseconds: 500));
