@@ -159,7 +159,23 @@ class AppRouter {
     ),
     GoRoute(
       path: AppRoutes.magnetSearch,
-      builder: (c, s) => const _SimpleListPage(title: '找磁链'),
+      builder: (context, state) => const MagnetSearchPage(),
+      routes: [
+        GoRoute(
+          path: 'results',
+          redirect: (context, state) {
+            final query = state.uri.queryParameters['q']?.trim() ?? '';
+            return query.isEmpty ? AppRoutes.magnetSearch : null;
+          },
+          builder: (context, state) => MagnetSearchResultsPage(
+            key: state.pageKey,
+            query: state.uri.queryParameters['q']!.trim(),
+            fromRecent:
+                state.uri.queryParameters['from_recent']?.toLowerCase() ==
+                'true',
+          ),
+        ),
+      ],
     ),
     GoRoute(
       path: AppRoutes.imageSearch,

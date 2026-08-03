@@ -2,22 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/providers/startup_provider.dart';
 import 'package:jade/core/router/routes.dart';
+import 'package:jade/core/storage/storage_keys.dart';
 import 'package:jade/features/search/services/search_history_store.dart';
 import 'package:jade/features/search/widgets/search_keyword_section.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class SearchPage extends StatefulWidget {
-  const SearchPage({super.key, this.historyStore, this.recentKeywords});
+class MagnetSearchPage extends StatefulWidget {
+  const MagnetSearchPage({super.key, this.historyStore, this.recentKeywords});
 
   final SearchHistoryStore? historyStore;
   final List<String>? recentKeywords;
 
   @override
-  State<SearchPage> createState() => _SearchPageState();
+  State<MagnetSearchPage> createState() => _MagnetSearchPageState();
 }
 
-class _SearchPageState extends State<SearchPage> {
+class _MagnetSearchPageState extends State<MagnetSearchPage> {
   final _controller = TextEditingController();
   SearchHistoryStore? _historyStore;
   List<String> _history = const [];
@@ -46,13 +47,11 @@ class _SearchPageState extends State<SearchPage> {
   Future<SearchHistoryStore> _resolveHistoryStore() async {
     final existing = _historyStore;
     if (existing != null) return existing;
-    final provided = context.read<SearchHistoryStore?>();
-    if (provided != null) {
-      _attachHistoryStore(provided);
-      return provided;
-    }
     final prefs = await SharedPreferences.getInstance();
-    final store = SearchHistoryStore(prefs);
+    final store = SearchHistoryStore(
+      prefs,
+      storageKey: StorageKeys.magnetSearchHistory,
+    );
     _attachHistoryStore(store);
     return store;
   }
@@ -64,7 +63,7 @@ class _SearchPageState extends State<SearchPage> {
     setState(() => _history = history);
   }
 
-  Future<void> _search(String value) async {
+  Future<void> _search(String value, {required bool fromRecent}) async {
     final keyword = value.trim();
     if (keyword.isEmpty) return;
     final store = await _resolveHistoryStore();
@@ -73,8 +72,8 @@ class _SearchPageState extends State<SearchPage> {
     setState(() => _history = history);
     await context.push(
       Uri(
-        path: AppRoutes.searchResults,
-        queryParameters: {'q': keyword},
+        path: AppRoutes.magnetSearchResults,
+        queryParameters: {'q': keyword, 'from_recent': fromRecent.toString()},
       ).toString(),
     );
     if (!mounted) return;
@@ -99,7 +98,7 @@ class _SearchPageState extends State<SearchPage> {
   Widget build(BuildContext context) {
     final recentKeywords =
         widget.recentKeywords ??
-        context.watch<StartupProvider?>()?.recentKeywords ??
+        context.watch<StartupProvider?>()?.recentMagnetKeywords ??
         const <String>[];
     return Scaffold(
       appBar: AppBar(
@@ -108,10 +107,10 @@ class _SearchPageState extends State<SearchPage> {
           autofocus: true,
           textInputAction: TextInputAction.search,
           decoration: const InputDecoration(
-            hintText: '搜索...',
+            hintText: '搜索磁链...',
             border: InputBorder.none,
           ),
-          onSubmitted: _search,
+          onSubmitted: (value) => _search(value, fromRecent: false),
         ),
       ),
       body: ListView(
@@ -125,13 +124,13 @@ class _SearchPageState extends State<SearchPage> {
                 onPressed: _clearHistory,
                 child: const Text('清空'),
               ),
-              onSelected: _search,
+              onSelected: (value) => _search(value, fromRecent: true),
             ),
           if (recentKeywords.isNotEmpty)
             SearchKeywordSection(
               title: '近期热搜',
               keywords: recentKeywords,
-              onSelected: _search,
+              onSelected: (value) => _search(value, fromRecent: false),
             ),
         ],
       ),
