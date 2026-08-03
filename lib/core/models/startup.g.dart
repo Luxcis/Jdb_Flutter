@@ -30,6 +30,11 @@ StartupData _$StartupDataFromJson(Map<String, dynamic> json) => StartupData(
           ?.map((e) => e as String)
           .toList() ??
       const [],
+  recentMagnetKeywords:
+      (json['recent_magnet_keywords'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const [],
   settings: json['settings'] as Map<String, dynamic>?,
   user: json['user'] as Map<String, dynamic>?,
 );

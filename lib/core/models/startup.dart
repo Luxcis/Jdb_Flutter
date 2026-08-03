@@ -31,11 +31,13 @@ class StartupData {
   const StartupData({
     this.backupDomainsData,
     this.recentKeywords = const [],
+    this.recentMagnetKeywords = const [],
     this.settings,
     this.user,
   });
   final String? backupDomainsData;
   final List<String> recentKeywords;
+  final List<String> recentMagnetKeywords;
   final Map<String, dynamic>? settings;
   final Map<String, dynamic>? user;
   factory StartupData.fromJson(Map<String, dynamic> json) =>
