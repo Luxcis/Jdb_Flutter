@@ -10,15 +10,24 @@ import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/widgets/actor_grid_view.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
+import 'package:jade/features/search/models/search_movie_filter.dart';
 import 'package:jade/features/search/services/search_history_store.dart';
+import 'package:jade/features/search/services/search_movie_service.dart';
+import 'package:jade/features/search/widgets/search_movie_filter_bar.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SearchResultsPage extends StatefulWidget {
-  const SearchResultsPage({super.key, required this.query, this.historyStore});
+  const SearchResultsPage({
+    super.key,
+    required this.query,
+    this.historyStore,
+    this.movieDataSource,
+  });
 
   final String query;
   final SearchHistoryStore? historyStore;
+  final SearchMovieDataSource? movieDataSource;
 
   @override
   State<SearchResultsPage> createState() => _SearchResultsPageState();
@@ -70,6 +79,12 @@ class _SearchResultsPageState extends State<SearchResultsPage>
 
   @override
   Widget build(BuildContext context) {
+    final movieDataSource =
+        widget.movieDataSource ??
+        switch (ApiClient.instanceOrNull) {
+          final api? => SearchMovieService(api),
+          null => const UnavailableSearchMovieDataSource(),
+        };
     return Scaffold(
       appBar: AppBar(
         title: TextField(
@@ -101,7 +116,10 @@ class _SearchResultsPageState extends State<SearchResultsPage>
             child: TabBarView(
               controller: _tab,
               children: [
-                _MovieSearchTab(query: widget.query),
+                _MovieSearchTab(
+                  query: widget.query,
+                  dataSource: movieDataSource,
+                ),
                 _ActorSearchTab(query: widget.query),
                 _EntitySearchTab(
                   query: widget.query,
@@ -217,57 +235,54 @@ class _EntitySearchTabState extends State<_EntitySearchTab> {
 }
 
 class _MovieSearchTab extends StatefulWidget {
-  const _MovieSearchTab({required this.query});
+  const _MovieSearchTab({required this.query, required this.dataSource});
 
   final String query;
+  final SearchMovieDataSource dataSource;
 
   @override
   State<_MovieSearchTab> createState() => _MovieSearchTabState();
 }
 
 class _MovieSearchTabState extends State<_MovieSearchTab> {
-  late final _controller = PaginationController<MovieSummary>(
-    fetch: (page) async {
-      final api = ApiClient.instanceOrNull;
-      if (api == null) {
-        return const PagedResult(
-          items: [],
-          currentPage: 1,
-          totalPages: 1,
-          total: 0,
-        );
-      }
-      final resp = await api.get(
-        Endpoints.searchV2,
-        queryParameters: {'q': widget.query, 'page': page},
-      );
-      final data = resp.data as Map<String, dynamic>;
-      return PagedResult(
-        items:
-            (data['movies'] as List?)
-                ?.whereType<Map>()
-                .map((json) => Map<String, dynamic>.from(json))
-                .map(
-                  (json) =>
-                      MovieSummary.fromJson(normalizeMovieSummaryJson(json)),
-                )
-                .toList() ??
-            [],
-        currentPage: apiInt(data['current_page'], 1),
-        totalPages: apiInt(data['total_pages'], 1),
-        total: apiInt(data['total'], 0),
-      );
-    },
-  );
+  late final PaginationController<MovieSummary> _controller;
+  SearchMovieFilter _filter = const SearchMovieFilter();
+
+  Future<PagedResult<MovieSummary>> _fetchPage(int page) => widget.dataSource
+      .getMovies(query: widget.query, filter: _filter, page: page);
+
+  Future<void> _changeFilter(SearchMovieFilter value) async {
+    if (value.type == _filter.type &&
+        value.availability == _filter.availability &&
+        value.sort == _filter.sort) {
+      return;
+    }
+    setState(() => _filter = value);
+    await _controller.reloadWith(_fetchPage);
+  }
 
   @override
   void initState() {
     super.initState();
+    _controller = PaginationController<MovieSummary>(fetch: _fetchPage);
     _controller.fetchMore();
   }
 
   @override
-  Widget build(BuildContext context) => MovieGridView(controller: _controller);
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SearchMovieFilterBar(value: _filter, onChanged: _changeFilter),
+        Expanded(child: MovieGridView(controller: _controller)),
+      ],
+    );
+  }
 }
 
 class _ActorSearchTab extends StatefulWidget {
