@@ -3,12 +3,71 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:jade/core/models/movie.dart';
+import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/storage/storage_keys.dart';
+import 'package:jade/features/search/models/search_movie_filter.dart';
 import 'package:jade/features/search/screens/search_results_screen.dart';
 import 'package:jade/features/search/screens/search_screen.dart';
 import 'package:jade/features/search/services/search_history_store.dart';
+import 'package:jade/features/search/services/search_movie_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+typedef _SearchMovieCall = ({String query, SearchMovieFilter filter, int page});
+
+class _RecordingSearchMovieDataSource implements SearchMovieDataSource {
+  _RecordingSearchMovieDataSource({this.hasSecondPage = false});
+
+  final bool hasSecondPage;
+  final calls = <_SearchMovieCall>[];
+
+  @override
+  Future<PagedResult<MovieSummary>> getMovies({
+    required String query,
+    required SearchMovieFilter filter,
+    int page = 1,
+  }) async {
+    calls.add((query: query, filter: filter, page: page));
+    if (!hasSecondPage) {
+      return PagedResult(
+        items: const [],
+        currentPage: page,
+        totalPages: page,
+        total: 0,
+      );
+    }
+    if (page == 1) {
+      return PagedResult(
+        items: [
+          for (var index = 0; index < 48; index++)
+            MovieSummary(
+              id: 'page-1-$index',
+              number: 'PAGE1-${index.toString().padLeft(3, '0')}',
+              title: '第一页影片 $index',
+              coverUrl: '',
+            ),
+        ],
+        currentPage: 1,
+        totalPages: 2,
+        total: 49,
+      );
+    }
+    return const PagedResult(
+      items: [
+        MovieSummary(
+          id: 'page-2-1',
+          number: 'PAGE2-001',
+          title: '第二页影片',
+          coverUrl: '',
+        ),
+      ],
+      currentPage: 2,
+      totalPages: 2,
+      total: 49,
+    );
+  }
+}
 
 Future<SearchHistoryStore> _storeWithHistory(List<String> history) async {
   SharedPreferences.setMockInitialValues({
@@ -190,6 +249,101 @@ void main() {
       tester.widget<TextField>(find.byType(TextField)).controller?.text,
       'ABP-001',
     );
+  });
+
+  testWidgets('影片筛选变化从第一页刷新且重复点击当前选项不请求', (tester) async {
+    final store = await _storeWithHistory(const []);
+    final dataSource = _RecordingSearchMovieDataSource();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SearchResultsPage(
+          query: 'ABP-001',
+          historyStore: store,
+          movieDataSource: dataSource,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(dataSource.calls, hasLength(1));
+    expect(dataSource.calls.single.query, 'ABP-001');
+    expect(dataSource.calls.single.page, 1);
+    expect(dataSource.calls.single.filter.type, SearchMovieType.all);
+    expect(
+      dataSource.calls.single.filter.availability,
+      SearchMovieAvailability.all,
+    );
+    expect(dataSource.calls.single.filter.sort, SearchMovieSort.relevance);
+
+    await tester.tap(find.text('无码'));
+    await tester.pumpAndSettle();
+    expect(dataSource.calls.last.page, 1);
+    expect(dataSource.calls.last.filter.type, SearchMovieType.uncensored);
+    expect(
+      dataSource.calls.last.filter.availability,
+      SearchMovieAvailability.all,
+    );
+    expect(dataSource.calls.last.filter.sort, SearchMovieSort.relevance);
+
+    await tester.tap(find.text('单体'));
+    await tester.pumpAndSettle();
+    expect(dataSource.calls.last.page, 1);
+    expect(dataSource.calls.last.filter.type, SearchMovieType.uncensored);
+    expect(
+      dataSource.calls.last.filter.availability,
+      SearchMovieAvailability.single,
+    );
+    expect(dataSource.calls.last.filter.sort, SearchMovieSort.relevance);
+
+    await tester.tap(find.text('评分'));
+    await tester.pumpAndSettle();
+    expect(dataSource.calls.last.page, 1);
+    expect(dataSource.calls.last.filter.type, SearchMovieType.uncensored);
+    expect(
+      dataSource.calls.last.filter.availability,
+      SearchMovieAvailability.single,
+    );
+    expect(dataSource.calls.last.filter.sort, SearchMovieSort.score);
+
+    final requestCount = dataSource.calls.length;
+    await tester.tap(find.text('评分'));
+    await tester.pumpAndSettle();
+    expect(dataSource.calls, hasLength(requestCount));
+  });
+
+  testWidgets('影片 Tab 滚动到底部自动加载下一页', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final store = await _storeWithHistory(const []);
+    final dataSource = _RecordingSearchMovieDataSource(hasSecondPage: true);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TickerMode(
+          enabled: false,
+          child: SearchResultsPage(
+            query: 'ABP-001',
+            historyStore: store,
+            movieDataSource: dataSource,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.fling(
+      find.byType(CustomScrollView),
+      const Offset(0, -3000),
+      2000,
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      dataSource.calls.map((call) => call.page),
+      containsAllInOrder([1, 2]),
+    );
+    expect(find.text('PAGE2-001'), findsOneWidget);
   });
 
   testWidgets('结果页重新搜索时替换当前路由', (tester) async {
