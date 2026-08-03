@@ -28,8 +28,14 @@ class BackupDomains {
 
 @JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
 class StartupData {
-  const StartupData({this.backupDomainsData, this.settings, this.user});
+  const StartupData({
+    this.backupDomainsData,
+    this.recentKeywords = const [],
+    this.settings,
+    this.user,
+  });
   final String? backupDomainsData;
+  final List<String> recentKeywords;
   final Map<String, dynamic>? settings;
   final Map<String, dynamic>? user;
   factory StartupData.fromJson(Map<String, dynamic> json) =>

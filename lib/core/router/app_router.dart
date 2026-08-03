@@ -132,7 +132,23 @@ class AppRouter {
       path: AppRoutes.actorDetail,
       builder: (c, s) => ActorDetailPage(id: s.pathParameters['id']!),
     ),
-    GoRoute(path: AppRoutes.search, builder: (c, s) => const SearchPage()),
+    GoRoute(
+      path: AppRoutes.search,
+      builder: (c, s) => const SearchPage(),
+      routes: [
+        GoRoute(
+          path: 'results',
+          redirect: (context, state) {
+            final query = state.uri.queryParameters['q']?.trim() ?? '';
+            return query.isEmpty ? AppRoutes.search : null;
+          },
+          builder: (context, state) => SearchResultsPage(
+            key: state.pageKey,
+            query: state.uri.queryParameters['q']!.trim(),
+          ),
+        ),
+      ],
+    ),
     GoRoute(
       path: AppRoutes.articles,
       builder: (c, s) => const _SimpleListPage(title: 'AV资讯'),

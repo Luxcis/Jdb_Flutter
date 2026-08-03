@@ -12,6 +12,7 @@ import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/providers/startup_provider.dart';
 import 'package:jade/core/providers/theme_provider.dart';
 import 'package:jade/core/router/app_router.dart';
+import 'package:jade/features/search/services/search_history_store.dart';
 
 export 'package:jade/app.dart' show MyApp;
 
@@ -57,6 +58,7 @@ Future<Widget> _buildEntry({
       ChangeNotifierProvider.value(value: authProvider),
       ChangeNotifierProvider.value(value: settingsProvider),
       ChangeNotifierProvider.value(value: startupProvider),
+      ChangeNotifierProvider(create: (_) => SearchHistoryStore(prefs)),
     ],
     child: const MyApp(),
   );

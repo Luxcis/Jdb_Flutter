@@ -1,417 +1,187 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:jade/core/providers/startup_provider.dart';
+import 'package:jade/core/router/routes.dart';
+import 'package:jade/features/search/services/search_history_store.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
-import 'package:jade/core/widgets/movie_grid_view.dart';
-import 'package:jade/core/widgets/actor_grid_view.dart';
-import 'package:jade/core/widgets/pagination_controller.dart';
-import 'package:jade/core/network/api_client.dart';
-import 'package:jade/core/network/api_data.dart';
-import 'package:jade/core/models/movie.dart';
-import 'package:jade/core/models/actor.dart';
-import 'package:jade/core/models/paged_result.dart';
-import 'package:jade/core/network/endpoints.dart';
-import 'package:jade/core/storage/storage_keys.dart';
 
 class SearchPage extends StatefulWidget {
-  const SearchPage({super.key});
+  const SearchPage({super.key, this.historyStore, this.recentKeywords});
+
+  final SearchHistoryStore? historyStore;
+  final List<String>? recentKeywords;
+
   @override
   State<SearchPage> createState() => _SearchPageState();
 }
 
 class _SearchPageState extends State<SearchPage> {
   final _controller = TextEditingController();
-  List<String> _history = [];
-  bool _showingResults = false;
-  String _query = '';
+  SearchHistoryStore? _historyStore;
+  List<String> _history = const [];
 
   @override
   void initState() {
     super.initState();
+    final historyStore = widget.historyStore;
+    if (historyStore != null) _attachHistoryStore(historyStore);
     _loadHistory();
   }
 
-  void _loadHistory() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(StorageKeys.searchHistory);
-    if (raw != null) {
-      setState(() => _history = List<String>.from(jsonDecode(raw)));
+  void _attachHistoryStore(SearchHistoryStore store) {
+    if (identical(_historyStore, store)) return;
+    _historyStore?.removeListener(_handleHistoryChanged);
+    _historyStore = store;
+    store.addListener(_handleHistoryChanged);
+  }
+
+  void _handleHistoryChanged() {
+    final store = _historyStore;
+    if (!mounted || store == null) return;
+    setState(() => _history = store.load());
+  }
+
+  Future<SearchHistoryStore> _resolveHistoryStore() async {
+    final existing = _historyStore;
+    if (existing != null) return existing;
+    final provided = context.read<SearchHistoryStore?>();
+    if (provided != null) {
+      _attachHistoryStore(provided);
+      return provided;
     }
-  }
-
-  void _saveQuery(String q) async {
-    _history.remove(q);
-    _history.insert(0, q);
-    if (_history.length > 20) _history = _history.sublist(0, 20);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(StorageKeys.searchHistory, jsonEncode(_history));
-    setState(() {});
+    final store = SearchHistoryStore(prefs);
+    _attachHistoryStore(store);
+    return store;
   }
 
-  void _search(String q) {
-    final keyword = q.trim();
+  Future<void> _loadHistory() async {
+    final store = await _resolveHistoryStore();
+    final history = store.load();
+    if (!mounted) return;
+    setState(() => _history = history);
+  }
+
+  Future<void> _search(String value) async {
+    final keyword = value.trim();
     if (keyword.isEmpty) return;
-    _saveQuery(keyword);
-    setState(() {
-      _query = keyword;
-      _showingResults = true;
-    });
+    final store = await _resolveHistoryStore();
+    final history = await store.save(keyword);
+    if (!mounted) return;
+    setState(() => _history = history);
+    await context.push(
+      Uri(
+        path: AppRoutes.searchResults,
+        queryParameters: {'q': keyword},
+      ).toString(),
+    );
+    if (!mounted) return;
+    setState(() => _history = store.load());
+  }
+
+  Future<void> _clearHistory() async {
+    final store = await _resolveHistoryStore();
+    await store.clear();
+    if (!mounted) return;
+    setState(() => _history = const []);
+  }
+
+  @override
+  void dispose() {
+    _historyStore?.removeListener(_handleHistoryChanged);
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final recentKeywords =
+        widget.recentKeywords ??
+        context.watch<StartupProvider?>()?.recentKeywords ??
+        const <String>[];
     return Scaffold(
       appBar: AppBar(
         title: TextField(
           controller: _controller,
-          autofocus: !_showingResults,
+          autofocus: true,
+          textInputAction: TextInputAction.search,
           decoration: const InputDecoration(
             hintText: '搜索...',
             border: InputBorder.none,
           ),
-          onSubmitted: (v) => _search(v),
+          onSubmitted: _search,
         ),
       ),
-      body: _showingResults
-          ? _ResultView(query: _query)
-          : _HistoryView(
-              history: _history,
-              onTap: _search,
-              onClear: () async {
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.remove(StorageKeys.searchHistory);
-                setState(() => _history = []);
-              },
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+        children: [
+          if (_history.isNotEmpty)
+            _KeywordSection(
+              title: '历史搜索',
+              keywords: _history,
+              trailing: TextButton(
+                onPressed: _clearHistory,
+                child: const Text('清空'),
+              ),
+              onSelected: _search,
             ),
+          if (recentKeywords.isNotEmpty)
+            _KeywordSection(
+              title: '近期热搜',
+              keywords: recentKeywords,
+              onSelected: _search,
+            ),
+        ],
+      ),
     );
   }
 }
 
-class _HistoryView extends StatelessWidget {
-  final List<String> history;
-  final ValueChanged<String> onTap;
-  final VoidCallback onClear;
-  const _HistoryView({
-    required this.history,
-    required this.onTap,
-    required this.onClear,
+class _KeywordSection extends StatelessWidget {
+  const _KeywordSection({
+    required this.title,
+    required this.keywords,
+    required this.onSelected,
+    this.trailing,
   });
 
+  final String title;
+  final List<String> keywords;
+  final ValueChanged<String> onSelected;
+  final Widget? trailing;
+
   @override
-  Widget build(BuildContext context) => ListView(
-    children: [
-      const Padding(
-        padding: EdgeInsets.fromLTRB(12, 16, 12, 8),
-        child: Text('近期热搜', style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: const ['SSIS', 'FC2', '无码', '新人', '字幕']
-              .map((word) => ActionChip(label: Text(word), onPressed: null))
-              .toList(),
-        ),
-      ),
-      if (history.isNotEmpty)
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
+  Widget build(BuildContext context) {
+    final titleStyle = Theme.of(
+      context,
+    ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 8,
+        children: [
+          Row(
             children: [
-              const Text('历史搜索', style: TextStyle(fontWeight: FontWeight.bold)),
-              const Spacer(),
-              TextButton(onPressed: onClear, child: const Text('清空')),
+              Text(title, style: titleStyle),
+              if (trailing != null) ...[const Spacer(), trailing!],
             ],
           ),
-        ),
-      ...history.map((h) => ListTile(title: Text(h), onTap: () => onTap(h))),
-    ],
-  );
-}
-
-class _ResultView extends StatefulWidget {
-  final String query;
-  const _ResultView({required this.query});
-  @override
-  State<_ResultView> createState() => _ResultViewState();
-}
-
-class _ResultViewState extends State<_ResultView>
-    with TickerProviderStateMixin {
-  late final TabController _tab = TabController(length: 7, vsync: this);
-
-  @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      TabBar(
-        controller: _tab,
-        tabs: const [
-          Tab(text: '影片'),
-          Tab(text: '演员'),
-          Tab(text: '系列'),
-          Tab(text: '片商'),
-          Tab(text: '导演'),
-          Tab(text: '清单'),
-          Tab(text: '番号'),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final keyword in keywords)
+                ActionChip(
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  label: Text(keyword),
+                  onPressed: () => onSelected(keyword),
+                ),
+            ],
+          ),
         ],
-        isScrollable: true,
-      ),
-      Expanded(
-        child: TabBarView(
-          controller: _tab,
-          children: [
-            _MovieSearchTab(query: widget.query),
-            _ActorSearchTab(query: widget.query),
-            _EntitySearchTab(
-              query: widget.query,
-              type: 'series',
-              collectionKey: 'series',
-              titleKey: 'name',
-              countKey: 'movie_count',
-              countSuffix: '部影片',
-            ),
-            _EntitySearchTab(
-              query: widget.query,
-              type: 'maker',
-              collectionKey: 'makers',
-              titleKey: 'name',
-              countKey: 'movie_count',
-              countSuffix: '部影片',
-            ),
-            _EntitySearchTab(
-              query: widget.query,
-              type: 'director',
-              collectionKey: 'directors',
-              titleKey: 'name',
-              countKey: 'movie_count',
-              countSuffix: '部影片',
-            ),
-            _EntitySearchTab(
-              query: widget.query,
-              type: 'list',
-              collectionKey: 'lists',
-              titleKey: 'name',
-              countKey: 'movie_count',
-              countSuffix: '部影片',
-            ),
-            _CodeSearchTab(query: widget.query),
-          ],
-        ),
-      ),
-    ],
-  );
-}
-
-class _EntitySearchTab extends StatefulWidget {
-  final String query;
-  final String type;
-  final String collectionKey;
-  final String titleKey;
-  final String countKey;
-  final String countSuffix;
-
-  const _EntitySearchTab({
-    required this.query,
-    required this.type,
-    required this.collectionKey,
-    required this.titleKey,
-    required this.countKey,
-    required this.countSuffix,
-  });
-
-  @override
-  State<_EntitySearchTab> createState() => _EntitySearchTabState();
-}
-
-class _EntitySearchTabState extends State<_EntitySearchTab> {
-  List<Map<String, dynamic>> _items = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final api = ApiClient.instanceOrNull;
-    if (api == null) {
-      setState(() => _isLoading = false);
-      return;
-    }
-    final resp = await api.get(
-      Endpoints.searchV2,
-      queryParameters: {'q': widget.query, 'type': widget.type},
-    );
-    final m = resp.data as Map<String, dynamic>;
-    setState(() {
-      _items = List<Map<String, dynamic>>.from(m[widget.collectionKey] ?? []);
-      _isLoading = false;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    return ListView.builder(
-      itemCount: _items.length,
-      itemBuilder: (_, i) {
-        final item = _items[i];
-        final count = item[widget.countKey] ?? 0;
-        return ListTile(
-          title: Text('${item[widget.titleKey] ?? item['number'] ?? '-'}'),
-          subtitle: Text('$count${widget.countSuffix}'),
-          trailing: const Icon(Icons.chevron_right),
-        );
-      },
-    );
-  }
-}
-
-class _MovieSearchTab extends StatefulWidget {
-  final String query;
-  const _MovieSearchTab({required this.query});
-  @override
-  State<_MovieSearchTab> createState() => _MovieSearchTabState();
-}
-
-class _MovieSearchTabState extends State<_MovieSearchTab> {
-  late final _ctrl = PaginationController<MovieSummary>(
-    fetch: (page) async {
-      final api = ApiClient.instanceOrNull;
-      if (api == null) {
-        return const PagedResult(
-          items: [],
-          currentPage: 1,
-          totalPages: 1,
-          total: 0,
-        );
-      }
-      final resp = await api.get(
-        Endpoints.searchV2,
-        queryParameters: {'q': widget.query, 'page': page},
-      );
-      final m = resp.data as Map<String, dynamic>;
-      return PagedResult(
-        items:
-            (m['movies'] as List?)
-                ?.whereType<Map>()
-                .map((j) => Map<String, dynamic>.from(j))
-                .map((j) => MovieSummary.fromJson(normalizeMovieSummaryJson(j)))
-                .toList() ??
-            [],
-        currentPage: apiInt(m['current_page'], 1),
-        totalPages: apiInt(m['total_pages'], 1),
-        total: apiInt(m['total'], 0),
-      );
-    },
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl.fetchMore();
-  }
-
-  @override
-  Widget build(BuildContext context) => MovieGridView(controller: _ctrl);
-}
-
-class _ActorSearchTab extends StatefulWidget {
-  final String query;
-  const _ActorSearchTab({required this.query});
-  @override
-  State<_ActorSearchTab> createState() => _ActorSearchTabState();
-}
-
-class _ActorSearchTabState extends State<_ActorSearchTab> {
-  late final _ctrl = PaginationController<ActorSummary>(
-    fetch: (page) async {
-      final api = ApiClient.instanceOrNull;
-      if (api == null) {
-        return const PagedResult(
-          items: [],
-          currentPage: 1,
-          totalPages: 1,
-          total: 0,
-        );
-      }
-      final resp = await api.get(
-        Endpoints.searchV2,
-        queryParameters: {'q': widget.query, 'type': 'actor', 'page': page},
-      );
-      final m = resp.data as Map<String, dynamic>;
-      return PagedResult(
-        items:
-            (m['actors'] as List?)
-                ?.whereType<Map>()
-                .map((j) => Map<String, dynamic>.from(j))
-                .map((j) => ActorSummary.fromJson(normalizeActorSummaryJson(j)))
-                .toList() ??
-            [],
-        currentPage: apiInt(m['current_page'], 1),
-        totalPages: apiInt(m['total_pages'], 1),
-        total: apiInt(m['total'], 0),
-      );
-    },
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl.fetchMore();
-  }
-
-  @override
-  Widget build(BuildContext context) => ActorGridView(controller: _ctrl);
-}
-
-class _CodeSearchTab extends StatefulWidget {
-  final String query;
-  const _CodeSearchTab({required this.query});
-  @override
-  State<_CodeSearchTab> createState() => _CodeSearchTabState();
-}
-
-class _CodeSearchTabState extends State<_CodeSearchTab> {
-  List<Map<String, dynamic>> _items = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  void _load() async {
-    final api = ApiClient.instanceOrNull;
-    if (api == null) {
-      setState(() => _isLoading = false);
-      return;
-    }
-    final resp = await api.get(
-      Endpoints.searchV2,
-      queryParameters: {'q': widget.query, 'type': 'code'},
-    );
-    final m = resp.data as Map<String, dynamic>;
-    setState(() {
-      _items = List<Map<String, dynamic>>.from(m['codes'] ?? []);
-      _isLoading = false;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    return ListView.builder(
-      itemCount: _items.length,
-      itemBuilder: (_, i) => ListTile(
-        title: Text('${_items[i]['number']}'),
-        subtitle: Text('${_items[i]['movie_count'] ?? 0}部影片'),
       ),
     );
   }

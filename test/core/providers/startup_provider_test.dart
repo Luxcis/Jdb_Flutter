@@ -83,6 +83,21 @@ void main() {
     );
   });
 
+  test('成功时暴露 startup 近期热词', () async {
+    final api = _FakeStartupApi([
+      () => const StartupData(
+        backupDomainsData: 'ciphertext',
+        recentKeywords: ['演员', 'ABP-001'],
+      ),
+    ]);
+    final subject = await _createSubject(api);
+
+    final succeeded = await subject.provider.load();
+
+    expect(succeeded, isTrue);
+    expect(subject.provider.recentKeywords, ['演员', 'ABP-001']);
+  });
+
   test('缺少域名数据时失败并保留在启动状态', () async {
     final api = _FakeStartupApi([() => const StartupData()]);
     final subject = await _createSubject(api);

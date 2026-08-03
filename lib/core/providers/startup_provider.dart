@@ -29,9 +29,11 @@ class StartupProvider extends ChangeNotifier {
 
   StartupStatus _status = StartupStatus.idle;
   String? _errorMessage;
+  List<String> _recentKeywords = const [];
 
   StartupStatus get status => _status;
   String? get errorMessage => _errorMessage;
+  List<String> get recentKeywords => _recentKeywords;
 
   static StartupProvider create({
     required StartupApi startupApi,
@@ -67,6 +69,7 @@ class StartupProvider extends ChangeNotifier {
       }
       await _domainManager.applyStartup(domains);
       _apiClient.swapBaseUrl(_domainManager.currentUrl);
+      _recentKeywords = List<String>.unmodifiable(startup.recentKeywords);
       _status = StartupStatus.success;
       notifyListeners();
       return true;

@@ -25,6 +25,11 @@ BackupDomains _$BackupDomainsFromJson(Map<String, dynamic> json) =>
 
 StartupData _$StartupDataFromJson(Map<String, dynamic> json) => StartupData(
   backupDomainsData: json['backup_domains_data'] as String?,
+  recentKeywords:
+      (json['recent_keywords'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const [],
   settings: json['settings'] as Map<String, dynamic>?,
   user: json['user'] as Map<String, dynamic>?,
 );
