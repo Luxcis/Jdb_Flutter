@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
+import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/features/categories/models/category_filter.dart';
@@ -186,6 +187,41 @@ Future<void> _pumpPageTransition(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('类别页顶部搜索按钮进入搜索页且位于筛选按钮右侧', (tester) async {
+    final source = _FakeSource();
+    final router = GoRouter(
+      initialLocation: AppRoutes.categories,
+      routes: [
+        GoRoute(
+          path: AppRoutes.categories,
+          builder: (_, _) => CategoriesPage(dataSource: source),
+        ),
+        GoRoute(
+          path: AppRoutes.search,
+          builder: (_, _) => const Scaffold(body: Text('搜索页')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byTooltip('搜索'), findsOneWidget);
+    expect(
+      tester.getCenter(find.byTooltip('搜索')).dx,
+      greaterThan(
+        tester.getCenter(find.byKey(const Key('categories-filter-button'))).dx,
+      ),
+    );
+
+    await tester.tap(find.byTooltip('搜索'));
+    await _pumpPageTransition(tester);
+
+    expect(router.state.uri.path, AppRoutes.search);
+  });
+
   testWidgets('点击分类影片进入详情且返回后保留当前网格', (tester) async {
     final source = _FakeSource();
     final router = GoRouter(

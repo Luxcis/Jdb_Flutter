@@ -7,6 +7,7 @@ import 'package:jade/core/network/domain_manager.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/interceptors/response_interceptor.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
+import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/widgets/actor_card.dart';
 import 'package:jade/core/widgets/empty_state.dart';
 import 'package:jade/features/actors/screens/actors_screen.dart';
@@ -58,6 +59,36 @@ Future<void> switchTab(WidgetTester tester, String label) async {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('演员页顶部搜索按钮进入搜索页', (tester) async {
+    final fixture = await createActorService();
+    enqueueEmptyRecommend(fixture.adapter);
+    final router = GoRouter(
+      initialLocation: AppRoutes.actors,
+      routes: [
+        GoRoute(
+          path: AppRoutes.actors,
+          builder: (_, _) => ActorsPage(service: fixture.service),
+        ),
+        GoRoute(
+          path: AppRoutes.search,
+          builder: (_, _) => const Scaffold(body: Text('搜索页')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await pumpAsyncUi(tester);
+
+    expect(find.byTooltip('搜索'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('搜索'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(router.state.uri.path, AppRoutes.search);
+  });
 
   testWidgets('演员页展示设计需求中的六个 Tab', (tester) async {
     final fixture = await createActorService();

@@ -9,6 +9,7 @@ import 'package:jade/core/widgets/login_guide_card.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/movie_list_tile.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
+import 'package:jade/core/widgets/search_entry.dart';
 import 'package:jade/core/widgets/sort_segmented.dart';
 import 'package:jade/features/rankings/services/ranking_service.dart';
 import 'package:provider/provider.dart';
@@ -93,6 +94,7 @@ class _RankingsPageState extends State<RankingsPage>
               onPressed: _showTop250Filter,
               icon: const Icon(Icons.filter_alt_outlined),
             ),
+          const SearchIconButton(),
         ],
         bottom: TabBar(
           controller: _tabController,

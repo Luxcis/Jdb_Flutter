@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
+import 'package:jade/core/widgets/search_entry.dart';
 import 'package:jade/features/categories/services/category_service.dart';
 import 'package:jade/features/categories/services/category_tab_controller.dart';
 import 'package:jade/features/categories/widgets/category_filter_sheet.dart';
@@ -82,6 +83,7 @@ class _CategoriesPageState extends State<CategoriesPage>
             onPressed: _showFilter,
             icon: const Icon(Icons.filter_alt_outlined),
           ),
+          const SearchIconButton(),
         ],
         bottom: TabBar(
           controller: _tabController,

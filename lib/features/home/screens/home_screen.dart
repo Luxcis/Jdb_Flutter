@@ -5,6 +5,7 @@ import 'package:jade/core/widgets/empty_state.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/movie_cover_image.dart';
+import 'package:jade/core/widgets/search_entry.dart';
 import 'package:jade/core/widgets/section_header.dart';
 import 'package:jade/features/home/providers/home_provider.dart';
 import 'package:jade/features/home/services/home_service.dart';
@@ -88,6 +89,7 @@ class _HomePageState extends State<HomePage> {
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
+            const SliverToBoxAdapter(child: HomeSearchBar()),
             const SliverToBoxAdapter(child: TofuScroll()),
             SliverToBoxAdapter(
               child: SectionHeader(title: '佳片推荐', trailing: '往期推荐', bold: true),

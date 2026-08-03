@@ -5,6 +5,7 @@ import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/providers/auth_provider.dart';
+import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/widgets/movie_list_tile.dart';
 import 'package:jade/core/widgets/rating_badge.dart';
 import 'package:jade/features/rankings/screens/rankings_screen.dart';
@@ -124,6 +125,10 @@ Future<_RankingFixture> _pumpRankings(
                 ),
               ),
             ),
+            GoRoute(
+              path: AppRoutes.search,
+              builder: (_, _) => const Scaffold(body: Text('搜索页')),
+            ),
           ],
         )
       : null;
@@ -171,6 +176,26 @@ Future<void> _scrollFilterSheetToBottom(WidgetTester tester) async {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('排行榜顶部搜索按钮进入搜索页且位于筛选按钮右侧', (tester) async {
+    final fixture = await _pumpRankings(
+      tester,
+      withRouter: true,
+      initialTabIndex: 0,
+    );
+
+    expect(find.byTooltip('筛选 Top250'), findsOneWidget);
+    expect(find.byTooltip('搜索'), findsOneWidget);
+    expect(
+      tester.getCenter(find.byTooltip('搜索')).dx,
+      greaterThan(tester.getCenter(find.byTooltip('筛选 Top250')).dx),
+    );
+
+    await tester.tap(find.byTooltip('搜索'));
+    await tester.pumpAndSettle();
+
+    expect(fixture.router!.state.uri.path, AppRoutes.search);
+  });
 
   testWidgets('指定 initialTabIndex 1 时首帧打开看热播', (tester) async {
     final fixture = await _pumpRankings(tester, initialTabIndex: 1);
@@ -413,7 +438,11 @@ void main() {
   });
 
   testWidgets('Top250 未登录时不请求且登录后自动加载', (tester) async {
-    final fixture = await _pumpRankings(tester, loggedIn: false, initialTabIndex: 0);
+    final fixture = await _pumpRankings(
+      tester,
+      loggedIn: false,
+      initialTabIndex: 0,
+    );
     await _pumpRankingFrame(tester);
 
     expect(
@@ -629,7 +658,11 @@ void main() {
   });
 
   testWidgets('Top250 列表影片点击进入详情页', (tester) async {
-    final fixture = await _pumpRankings(tester, withRouter: true, initialTabIndex: 0);
+    final fixture = await _pumpRankings(
+      tester,
+      withRouter: true,
+      initialTabIndex: 0,
+    );
     await _pumpRankingFrame(tester);
 
     await tester.tap(find.text('Ranked Movie'));

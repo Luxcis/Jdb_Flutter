@@ -4,7 +4,9 @@ import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/providers/auth_provider.dart';
+import 'package:jade/core/widgets/search_entry.dart';
 import 'package:jade/features/home/screens/home_screen.dart';
+import 'package:jade/features/home/widgets/tofu_scroll.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<FakeAdapter> _pumpHome(WidgetTester tester) async {
@@ -81,6 +83,16 @@ void main() {
     expect(find.text('近期磁链更新'), findsOneWidget);
     expect(find.text('换一组'), findsNWidgets(2));
     expect(find.byIcon(Icons.refresh), findsNWidgets(2));
+  });
+
+  testWidgets('首页豆腐块上方显示整行搜索入口', (tester) async {
+    await _pumpHome(tester);
+
+    expect(find.byType(HomeSearchBar), findsOneWidget);
+    expect(find.text('输入演员或番号等关键字'), findsOneWidget);
+    final searchTop = tester.getTopLeft(find.byType(HomeSearchBar)).dy;
+    final tofuTop = tester.getTopLeft(find.byType(TofuScroll)).dy;
+    expect(searchTop, lessThan(tofuTop));
   });
 
   testWidgets('最新上架换一组仅请求 can_play 第 2 页', (tester) async {

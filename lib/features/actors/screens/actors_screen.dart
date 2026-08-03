@@ -9,6 +9,7 @@ import 'package:jade/core/widgets/empty_state.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 import 'package:jade/core/widgets/section_header.dart';
+import 'package:jade/core/widgets/search_entry.dart';
 import 'package:jade/features/actors/models/actor_filter.dart';
 import 'package:jade/features/actors/models/actor_recommend.dart';
 import 'package:jade/features/actors/services/actor_service.dart';
@@ -48,6 +49,7 @@ class _ActorsPageState extends State<ActorsPage> with TickerProviderStateMixin {
     return Scaffold(
       appBar: AppBar(
         title: const Text('演员'),
+        actions: const [SearchIconButton()],
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
