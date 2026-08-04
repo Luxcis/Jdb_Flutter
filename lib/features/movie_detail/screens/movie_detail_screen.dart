@@ -15,6 +15,7 @@ import 'package:jade/core/network/api_exception.dart';
 import 'package:jade/core/widgets/actor_card.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/magnet_list_tile.dart';
+import 'package:jade/core/widgets/list_summary_tile.dart';
 import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/movie_cover_image.dart';
 import 'package:jade/core/widgets/movie_screenshot_image.dart';
@@ -1156,23 +1157,7 @@ class _RelatedListList extends StatelessWidget {
       separatorBuilder: (context, index) => _detailTabDivider(context),
       itemBuilder: (_, index) {
         final list = lists[index];
-        return ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 10,
-          ),
-          title: Text(
-            list.name,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          subtitle: Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text('${list.movieCount} 部影片，被查看 ${list.viewedCount} 次'),
-          ),
-          trailing: const Icon(Icons.chevron_right),
-        );
+        return ListSummaryTile(list: list);
       },
     );
   }

@@ -10,6 +10,7 @@ import 'package:jade/core/widgets/actor_card.dart';
 import 'package:jade/core/widgets/movie_cover_image.dart';
 import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/movie_screenshot_image.dart';
+import 'package:jade/core/widgets/list_summary_tile.dart';
 import 'package:jade/core/widgets/star_rating.dart';
 import 'package:jade/core/widgets/tag_chip.dart';
 import 'package:jade/features/movie_detail/screens/movie_detail_screen.dart';
@@ -569,6 +570,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('测试相关清单'), findsOneWidget);
     expect(find.text('12 部影片，被查看 34 次'), findsOneWidget);
+    expect(find.byType(ListSummaryTile), findsNWidgets(2));
     expect(find.byIcon(Icons.chevron_right), findsNWidgets(2));
     expect(
       tester.getTopLeft(find.text('测试相关清单')).dy,
