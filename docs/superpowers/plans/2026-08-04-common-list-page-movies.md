@@ -35,7 +35,7 @@
 - Consumes: 现有 `json_serializable` 模型与 `_namedEntityJson`/`_codeJson`。
 - Produces: `Series/Maker/Director/Code` 新增 `int type` 字段（默认 0），搜索解析保留 type。
 
-- [ ] **Step 1: 写 type 字段解析失败测试**
+- [x] **Step 1: 写 type 字段解析失败测试**
 
 在 `test/features/search/search_entity_service_test.dart` 末尾追加：
 
@@ -66,12 +66,12 @@ test('搜索结果实体缺失 type 时默认为 0', () async {
 });
 ```
 
-- [ ] **Step 2: 运行服务测试并确认 RED**
+- [x] **Step 2: 运行服务测试并确认 RED**
 
 Run: `flutter test test/features/search/search_entity_service_test.dart`
 Expected: FAIL，原因是 `Series/Code/Maker/Director` 尚不存在 `type` 属性。
 
-- [ ] **Step 3: 为四个模型增加 type 字段**
+- [x] **Step 3: 为四个模型增加 type 字段**
 
 `lib/core/models/series.dart`：
 
@@ -153,7 +153,7 @@ class Code {
 }
 ```
 
-- [ ] **Step 4: 搜索服务规范化保留 type**
+- [x] **Step 4: 搜索服务规范化保留 type**
 
 `lib/features/search/services/search_entity_service.dart` 的 `_namedEntityJson`：
 
@@ -185,17 +185,17 @@ Map<String, dynamic> _codeJson(Map<String, dynamic> json) => {
 };
 ```
 
-- [ ] **Step 5: 重新生成序列化代码**
+- [x] **Step 5: 重新生成序列化代码**
 
 Run: `dart run build_runner build --delete-conflicting-outputs`
 Expected: 成功，重新生成 `series.g.dart`、`maker.g.dart`、`director.g.dart`、`code.g.dart`。
 
-- [ ] **Step 6: 运行服务测试并确认 GREEN**
+- [x] **Step 6: 运行服务测试并确认 GREEN**
 
 Run: `flutter test test/features/search/search_entity_service_test.dart`
 Expected: PASS，type 解析与默认值断言全部通过。
 
-- [ ] **Step 7: 提交 Task 1**
+- [x] **Step 7: 提交 Task 1**
 
 ```bash
 git add lib/core/models/series.dart lib/core/models/maker.dart \
@@ -219,7 +219,7 @@ git commit -m "feat: add type to search entities"
 - Consumes: `ApiClient.get`、`Endpoints.moviesTags`、`apiMap/apiList/apiInt`、`normalizeMovieSummaryJson`、`MovieSummary`、`PagedResult`。
 - Produces: `TagMoviesDataSource`、`TagMoviesService`、`UnavailableTagMoviesDataSource`。
 
-- [ ] **Step 1: 写服务请求与解析失败测试**
+- [x] **Step 1: 写服务请求与解析失败测试**
 
 ```dart
 // test/features/common/tag_movies_service_test.dart
@@ -412,12 +412,12 @@ Map<String, dynamic> tagMoviesResponse() => {
 
 注意：`partial.totalPages` 预期为 2 是因为第二页返回 1 条不满 48 但接口无 `total_pages`，推断逻辑为 `currentPage + (items.length >= 48 ? 1 : 0)`，第二页 items=1 时推断为 2（保持 currentPage）。此断言验证"不满 48 停止增长"的语义由 `PaginationController.hasMore` 在页面层终止。
 
-- [ ] **Step 2: 运行服务测试并确认 RED**
+- [x] **Step 2: 运行服务测试并确认 RED**
 
 Run: `flutter test test/features/common/tag_movies_service_test.dart`
 Expected: FAIL，原因是 `tag_movies_service.dart`、`TagMoviesService` 尚不存在。
 
-- [ ] **Step 3: 实现强类型数据源**
+- [x] **Step 3: 实现强类型数据源**
 
 ```dart
 // lib/features/common/services/tag_movies_service.dart
@@ -509,12 +509,12 @@ class UnavailableTagMoviesDataSource implements TagMoviesDataSource {
 }
 ```
 
-- [ ] **Step 4: 运行服务测试并确认 GREEN**
+- [x] **Step 4: 运行服务测试并确认 GREEN**
 
 Run: `flutter test test/features/common/tag_movies_service_test.dart`
 Expected: PASS。
 
-- [ ] **Step 5: 提交 Task 2**
+- [x] **Step 5: 提交 Task 2**
 
 ```bash
 git add lib/features/common/services/tag_movies_service.dart \
@@ -534,7 +534,7 @@ git commit -m "feat: add tag movies data source"
 - Consumes: Task 2 的 `TagMoviesDataSource/TagMoviesService/UnavailableTagMoviesDataSource`，现有 `SortSegmented/SortSelect/MovieGridView/PaginationController/ApiClient`。
 - Produces: `CommonListPage(type, category, id, dataSource?)`，两行布局、按类别排序选项、方向切换按钮。
 
-- [ ] **Step 1: 重写页面失败测试**
+- [x] **Step 1: 重写页面失败测试**
 
 将 `test/features/common/common_list_page_test.dart` 整体替换为：
 
@@ -788,12 +788,12 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: 运行页面测试并确认 RED**
+- [x] **Step 2: 运行页面测试并确认 RED**
 
 Run: `flutter test test/features/common/common_list_page_test.dart`
 Expected: FAIL，原因是 `CommonListPage` 构造参数与布局尚未实现。
 
-- [ ] **Step 3: 实现 CommonListPage**
+- [x] **Step 3: 实现 CommonListPage**
 
 将 `lib/features/common/screens/common_list_page.dart` 整体替换为：
 
@@ -971,12 +971,12 @@ class _CommonListPageState extends State<CommonListPage> {
 }
 ```
 
-- [ ] **Step 4: 运行页面测试并确认 GREEN**
+- [x] **Step 4: 运行页面测试并确认 GREEN**
 
 Run: `flutter test test/features/common/common_list_page_test.dart`
 Expected: PASS。
 
-- [ ] **Step 5: 提交 Task 3**
+- [x] **Step 5: 提交 Task 3**
 
 ```bash
 git add lib/features/common/screens/common_list_page.dart \
@@ -996,7 +996,7 @@ git commit -m "feat: wire common list movies data source"
 - Consumes: Task 1 的实体 `type` 字段、Task 3 的 `CommonListPage` 新签名。
 - Produces: 各实体 Tab 导航携带 `type/category/id`；删除 `_emptyMoviePage`。
 
-- [ ] **Step 1: 更新导航闭包**
+- [x] **Step 1: 更新导航闭包**
 
 `lib/features/search/screens/search_results_screen.dart` 的 `_openCommonList` 与占位数据源替换为：
 
@@ -1049,7 +1049,7 @@ onTap: () =>
     _openCommonList(context, '番号', item.number, item.type, 'c', item.id),
 ```
 
-- [ ] **Step 2: 更新搜索页面测试**
+- [x] **Step 2: 更新搜索页面测试**
 
 `test/features/search/search_screen_test.dart` 中"非演员实体进入类型减名称公共页且不请求搜索或影片接口"测试的现有断言**无需修改**：新布局下 `find.byKey(const Key('common-list-filter'))`、`find.byKey(const Key('common-list-sort'))`、`find.byType(MovieGridView)` 依然成立；导航进入的 `CommonListPage` 在测试环境因 `ApiClient.instanceOrNull` 为 null 使用 `UnavailableTagMoviesDataSource`，不发起影片请求，因此 `source.totalCalls` 与 `movieSource.calls` 断言保持不变。
 
@@ -1068,12 +1068,12 @@ seriesPages: const {
 
 （`Series` 构造的 `type` 参数来自 Task 1，默认 0 已满足编译，此补充仅为断言导航来源。）
 
-- [ ] **Step 3: 运行聚焦测试并确认 GREEN**
+- [x] **Step 3: 运行聚焦测试并确认 GREEN**
 
 Run: `flutter test test/features/search/search_screen_test.dart test/features/common/common_list_page_test.dart test/features/common/tag_movies_service_test.dart test/features/search/search_entity_service_test.dart`
 Expected: PASS。
 
-- [ ] **Step 4: 提交 Task 4**
+- [x] **Step 4: 提交 Task 4**
 
 ```bash
 git add lib/features/search/screens/search_results_screen.dart \
@@ -1089,7 +1089,7 @@ git commit -m "feat: pass entity params to common list"
 - Modify only if a real regression is found: files already owned by Tasks 1-4 and their tests.
 - Update checklist: `docs/superpowers/plans/2026-08-04-common-list-page-movies.md`
 
-- [ ] **Step 1: 运行聚焦测试**
+- [x] **Step 1: 运行聚焦测试**
 
 Run:
 
@@ -1105,7 +1105,7 @@ flutter test \
 
 Expected: PASS，无测试失败和未处理异常。
 
-- [ ] **Step 2: 格式化并检查差异**
+- [x] **Step 2: 格式化并检查差异**
 
 Run:
 
@@ -1117,7 +1117,7 @@ git status --short
 
 Expected: `dart format` 成功，`git diff --check` 无输出；状态中只有本计划相关文件。
 
-- [ ] **Step 3: 运行全量自动化验证**
+- [x] **Step 3: 运行全量自动化验证**
 
 Run:
 
@@ -1128,7 +1128,7 @@ flutter analyze
 
 Expected: 全部测试通过；静态分析输出 `No issues found!`。
 
-- [ ] **Step 4: 更新计划勾选并提交验证记录**
+- [x] **Step 4: 更新计划勾选并提交验证记录**
 
 将本计划实际完成的步骤改为 `[x]`，只提交计划勾选变化：
 

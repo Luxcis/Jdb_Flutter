@@ -4,7 +4,7 @@ import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/sort_segmented.dart';
-import 'package:jade/core/widgets/sort_select.dart';
+
 import 'package:jade/features/common/screens/common_list_page.dart';
 import 'package:jade/features/common/services/tag_movies_service.dart';
 
@@ -69,12 +69,16 @@ void main() {
     final filterRow = tester.getTopLeft(
       find.byKey(const Key('common-list-filter')),
     );
-    final sortRow = tester.getTopLeft(find.byKey(const Key('common-list-sort')));
+    final sortRow = tester.getTopLeft(
+      find.byKey(const Key('common-list-sort')),
+    );
     expect(sortRow.dy, greaterThan(filterRow.dy));
     expect(
-      tester.widget<SortSegmented<String>>(
-        find.byKey(const Key('common-list-filter')),
-      ).value,
+      tester
+          .widget<SortSegmented<String>>(
+            find.byKey(const Key('common-list-filter')),
+          )
+          .value,
       'magnet',
     );
     final call = source.calls.single;
