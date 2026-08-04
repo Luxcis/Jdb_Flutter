@@ -67,7 +67,7 @@ limit=48
 | UI 选项 | sort_by | 方向 |
 | --- | --- | --- |
 | 存入时间（默认） | `update` | 倒序 |
-| 创建时间 | `release` | 可切正序/倒序（默认倒序） |
+| 创建时间 | `release` | 倒序（不可切换） |
 | 评分 | `score` | 倒序 |
 
 筛选映射（UI → filter 段，默认含磁链）：
@@ -127,7 +127,7 @@ CommonListPage({
   2. 第二行：排序下拉 `SortSelect` 占满整行，右侧方向切换按钮。
 - 排序选项由 `category` 决定：普通实体五项、番号六项（含"番号"）、清单三项（存入时间/创建时间/评分）。
 - 排序默认值：普通实体与番号默认热度（`hit`），清单默认存入时间（`update`）。
-- 方向切换按钮（`IconButton`，如 `arrow_downward`/`arrow_upward`）：仅当当前排序 `sort_by == 'release'` 时可用，点击在 `asc`/`desc` 间切换；其他排序禁用或隐藏。
+- 方向切换按钮（`IconButton`，如 `arrow_downward`/`arrow_upward`）：仅当当前排序为普通实体的"发布日期"（`sortBy == 'release'` 且 `category != 'l'`）时可用，点击在 `asc`/`desc` 间切换；清单"创建时间"虽映射 `release` 但固定倒序不可切换，其他排序禁用或隐藏。
 - fetch 闭包按当前 `_filter`/`_sort`/`_orderBy` 映射为 API 参数调用 `dataSource.getMovies`；筛选/排序/方向变化后 `setState` 并 `_ctrl.reloadWith(_fetchPage)`。
 - 保留 `MovieGridView`（瀑布流 + 接近底部自动分页 + 下拉刷新 + 尾部加载/重试）。
 - `dispose` 释放 `PaginationController`。
@@ -162,7 +162,7 @@ CommonListPage({
 - 排序选项按类别正确：番号含"番号"（`digit`）、清单仅三项。
 - 切换筛选（如全部）后 `filter_by` 去掉第 4 段并重新从第一页加载。
 - 切换排序（如评分）后 `sort_by=score` 且不携带 `order_by`。
-- 选中"发布日期"（或清单"创建时间"）时方向按钮可用，点击后请求 `order_by=asc`；其他排序方向按钮不可用。
+- 选中普通实体"发布日期"时方向按钮可用，点击后请求 `order_by=asc`；清单"创建时间"及所有其他排序方向按钮不可用。
 - 瀑布流 `MovieGridView` 接近底部自动加载下一页。
 - 首屏加载、空状态、首屏重试、尾部加载与尾部重试沿用现有行为。
 - 搜索结果页各实体点击后进入 `CommonListPage` 并携带正确 `type/category/id`。
