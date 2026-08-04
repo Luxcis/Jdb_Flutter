@@ -46,12 +46,14 @@ class _CommonListPageState extends State<CommonListPage> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             child: Row(
               children: [
                 Expanded(
                   child: SortSegmented<String>(
                     key: const Key('common-list-filter'),
+                    compact: true,
+                    expanded: true,
                     options: const [
                       (label: '全部', value: 'all'),
                       (label: '可播放', value: 'playable'),
