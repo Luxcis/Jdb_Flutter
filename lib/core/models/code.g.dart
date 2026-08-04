@@ -10,4 +10,5 @@ Code _$CodeFromJson(Map<String, dynamic> json) => Code(
   id: json['id'] as String,
   number: json['number'] as String,
   movieCount: (json['movie_count'] as num?)?.toInt() ?? 0,
+  type: (json['type'] as num?)?.toInt() ?? 0,
 );

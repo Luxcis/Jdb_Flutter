@@ -11,4 +11,5 @@ Maker _$MakerFromJson(Map<String, dynamic> json) => Maker(
   name: json['name'] as String,
   avatarUrl: json['avatar_url'] as String?,
   movieCount: (json['movie_count'] as num?)?.toInt() ?? 0,
+  type: (json['type'] as num?)?.toInt() ?? 0,
 );

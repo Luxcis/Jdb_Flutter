@@ -143,6 +143,7 @@ Map<String, dynamic> _namedEntityJson(Map<String, dynamic> json) => {
   ...json,
   'id': apiString(json['id']) ?? '',
   'name': apiString(json['name']) ?? '',
+  'type': apiInt(json['type'], 0),
   'movie_count': apiInt(
     json['movie_count'] ?? json['movies_count'] ?? json['videos_count'],
     0,
@@ -153,6 +154,7 @@ Map<String, dynamic> _codeJson(Map<String, dynamic> json) => {
   ...json,
   'id': apiString(json['id'] ?? json['name'] ?? json['number']) ?? '',
   'number': apiString(json['number'] ?? json['name'] ?? json['id']) ?? '',
+  'type': apiInt(json['type'], 0),
   'movie_count': apiInt(
     json['movie_count'] ?? json['movies_count'] ?? json['videos_count'],
     0,

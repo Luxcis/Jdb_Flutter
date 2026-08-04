@@ -10,4 +10,5 @@ Series _$SeriesFromJson(Map<String, dynamic> json) => Series(
   id: json['id'] as String,
   name: json['name'] as String,
   movieCount: (json['movie_count'] as num?)?.toInt() ?? 0,
+  type: (json['type'] as num?)?.toInt() ?? 0,
 );
