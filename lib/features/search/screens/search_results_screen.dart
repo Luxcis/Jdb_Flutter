@@ -152,7 +152,8 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                   itemBuilder: (context, item) => SearchEntityListTile(
                     name: item.name,
                     count: item.movieCount,
-                    onTap: () => _openCommonList(context, '系列', item.name),
+                    onTap: () =>
+                        _openCommonList(context, '系列', item.name, item.type, 's', item.id),
                   ),
                 ),
                 _PaginatedEntitySearchTab<Maker>(
@@ -165,7 +166,8 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                   itemBuilder: (context, item) => SearchEntityListTile(
                     name: item.name,
                     count: item.movieCount,
-                    onTap: () => _openCommonList(context, '片商', item.name),
+                    onTap: () =>
+                        _openCommonList(context, '片商', item.name, item.type, 'm', item.id),
                   ),
                 ),
                 _PaginatedEntitySearchTab<Director>(
@@ -178,7 +180,8 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                   itemBuilder: (context, item) => SearchEntityListTile(
                     name: item.name,
                     count: item.movieCount,
-                    onTap: () => _openCommonList(context, '导演', item.name),
+                    onTap: () =>
+                        _openCommonList(context, '导演', item.name, item.type, 'd', item.id),
                   ),
                 ),
                 _PaginatedEntitySearchTab<ListModel>(
@@ -191,7 +194,8 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                   itemBuilder: (context, item) => ListSummaryTile(
                     list: item,
                     showViewCount: false,
-                    onTap: () => _openCommonList(context, '清单', item.name),
+                    onTap: () =>
+                        _openCommonList(context, '清单', item.name, 0, 'l', item.id),
                   ),
                 ),
                 _PaginatedEntitySearchTab<Code>(
@@ -204,7 +208,8 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                   itemBuilder: (context, item) => SearchEntityListTile(
                     name: item.number,
                     count: item.movieCount,
-                    onTap: () => _openCommonList(context, '番号', item.number),
+                    onTap: () =>
+                        _openCommonList(context, '番号', item.number, item.type, 'c', item.id),
                   ),
                 ),
               ],
@@ -367,15 +372,21 @@ class _ActorSearchTabState extends State<_ActorSearchTab>
   }
 }
 
-Future<PagedResult<MovieSummary>> _emptyMoviePage(int page) async =>
-    PagedResult(items: const [], currentPage: page, totalPages: page, total: 0);
-
-void _openCommonList(BuildContext context, String typeLabel, String name) {
+void _openCommonList(
+  BuildContext context,
+  String typeLabel,
+  String name,
+  int type,
+  String category,
+  String id,
+) {
   Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (_) => CommonListPage(
         title: '$typeLabel - $name',
-        dataSource: _emptyMoviePage,
+        type: type,
+        category: category,
+        id: id,
       ),
     ),
   );
