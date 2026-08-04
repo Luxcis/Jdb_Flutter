@@ -46,7 +46,7 @@ class _CommonListPageState extends State<CommonListPage> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            padding: const EdgeInsets.all(8),
             child: Row(
               children: [
                 Expanded(
