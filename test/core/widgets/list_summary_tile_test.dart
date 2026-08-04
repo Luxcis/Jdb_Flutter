@@ -47,4 +47,26 @@ void main() {
     final tile = tester.widget<ListTile>(find.byType(ListTile));
     expect(tile.onTap, isNull);
   });
+
+  testWidgets('showViewCount 为 false 时副标题不显示被查看次数', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ListSummaryTile(
+            list: ListModel(
+              id: 'l1',
+              name: '收藏精选',
+              movieCount: 12,
+              viewedCount: 34,
+            ),
+            showViewCount: false,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('12 部影片'), findsOneWidget);
+    expect(find.text('12 部影片，被查看 34 次'), findsNothing);
+    expect(find.textContaining('被查看'), findsNothing);
+  });
 }

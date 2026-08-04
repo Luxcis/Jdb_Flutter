@@ -190,6 +190,7 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                   emptyMessage: '暂无清单',
                   itemBuilder: (context, item) => ListSummaryTile(
                     list: item,
+                    showViewCount: false,
                     onTap: () => _openCommonList(context, '清单', item.name),
                   ),
                 ),
