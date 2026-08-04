@@ -74,9 +74,9 @@ void main() {
       orderBy: 'asc',
     );
 
-    final params = fixture.adapter.requests.map(
-      (request) => request.queryParameters,
-    ).toList();
+    final params = fixture.adapter.requests
+        .map((request) => request.queryParameters)
+        .toList();
     expect(params[0].containsKey('order_by'), isFalse);
     expect(params[1]['order_by'], 'desc');
     expect(params[2]['order_by'], 'asc');
@@ -128,7 +128,12 @@ void main() {
         'data': {
           'movies': [
             for (var index = 0; index < 48; index++)
-              {'id': 'm$index', 'number': 'N$index', 'title': 'T', 'cover_url': ''},
+              {
+                'id': 'm$index',
+                'number': 'N$index',
+                'title': 'T',
+                'cover_url': '',
+              },
           ],
           'current_page': 1,
         },
@@ -178,8 +183,5 @@ buildTagMoviesFixture() async {
 
 Map<String, dynamic> tagMoviesResponse() => {
   'success': 1,
-  'data': {
-    'movies': [],
-    'current_page': 1,
-  },
+  'data': {'movies': [], 'current_page': 1},
 };

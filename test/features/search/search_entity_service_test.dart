@@ -144,23 +144,58 @@ void main() {
   test('搜索结果实体保留 type 字段', () async {
     final fixture = await buildSearchEntityFixture();
     fixture.adapter.enqueueSequence(Endpoints.searchV2, [
-      {'success': 1, 'data': {'series': [{'id': 's1', 'name': 'S', 'type': 2, 'videos_count': 1}]}},
-      {'success': 1, 'data': {'codes': [{'id': 'C', 'name': 'C', 'type': 3, 'videos_count': 1}]}},
-      {'success': 1, 'data': {'makers': [{'id': 'm1', 'name': 'M', 'type': 1, 'videos_count': 1}]}},
-      {'success': 1, 'data': {'directors': [{'id': 'd1', 'name': 'D', 'type': 4, 'videos_count': 1}]}},
+      {
+        'success': 1,
+        'data': {
+          'series': [
+            {'id': 's1', 'name': 'S', 'type': 2, 'videos_count': 1},
+          ],
+        },
+      },
+      {
+        'success': 1,
+        'data': {
+          'codes': [
+            {'id': 'C', 'name': 'C', 'type': 3, 'videos_count': 1},
+          ],
+        },
+      },
+      {
+        'success': 1,
+        'data': {
+          'makers': [
+            {'id': 'm1', 'name': 'M', 'type': 1, 'videos_count': 1},
+          ],
+        },
+      },
+      {
+        'success': 1,
+        'data': {
+          'directors': [
+            {'id': 'd1', 'name': 'D', 'type': 4, 'videos_count': 1},
+          ],
+        },
+      },
     ]);
 
     expect((await fixture.service.getSeries(query: 'q')).items.single.type, 2);
     expect((await fixture.service.getCodes(query: 'q')).items.single.type, 3);
     expect((await fixture.service.getMakers(query: 'q')).items.single.type, 1);
-    expect((await fixture.service.getDirectors(query: 'q')).items.single.type, 4);
+    expect(
+      (await fixture.service.getDirectors(query: 'q')).items.single.type,
+      4,
+    );
   });
 
   test('搜索结果实体缺失 type 时默认为 0', () async {
     final fixture = await buildSearchEntityFixture();
     fixture.adapter.enqueue(Endpoints.searchV2, {
       'success': 1,
-      'data': {'series': [{'id': 's1', 'name': 'S', 'videos_count': 1}]},
+      'data': {
+        'series': [
+          {'id': 's1', 'name': 'S', 'videos_count': 1},
+        ],
+      },
     });
 
     expect((await fixture.service.getSeries(query: 'q')).items.single.type, 0);

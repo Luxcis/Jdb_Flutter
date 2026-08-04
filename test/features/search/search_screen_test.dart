@@ -588,9 +588,7 @@ class _FakeSearchEntityDataSource implements SearchEntityDataSource {
       _FakeSearchEntityDataSource(
         seriesPages: const {
           1: PagedResult(
-            items: [
-              Series(id: 's1', name: '测试系列', movieCount: 1, type: 2),
-            ],
+            items: [Series(id: 's1', name: '测试系列', movieCount: 1, type: 2)],
             currentPage: 1,
             totalPages: 1,
             total: 1,

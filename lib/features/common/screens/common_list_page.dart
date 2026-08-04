@@ -87,15 +87,16 @@ class _CommonListPageState extends State<CommonListPage> {
 
   bool get _canToggleOrder => _sort == 'release' && widget.category != 'l';
 
-  Future<PagedResult<MovieSummary>> _fetchPage(int page) => _dataSource.getMovies(
-    type: widget.type,
-    category: widget.category,
-    id: widget.id,
-    filter: _filterApi,
-    sortBy: _sort,
-    orderBy: _orderBy,
-    page: page,
-  );
+  Future<PagedResult<MovieSummary>> _fetchPage(int page) =>
+      _dataSource.getMovies(
+        type: widget.type,
+        category: widget.category,
+        id: widget.id,
+        filter: _filterApi,
+        sortBy: _sort,
+        orderBy: _orderBy,
+        page: page,
+      );
 
   void _changeFilter(String value) {
     if (value == _filter) return;
