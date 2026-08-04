@@ -13,13 +13,11 @@ class SearchPageSession<T> {
     final newItems = result.items
         .where((item) => _seenIds.add(idOf(item)))
         .toList(growable: false);
-    final stoppedByDuplicatePage = result.items.isNotEmpty && newItems.isEmpty;
+    final stoppedByEmptyPage = page > 1 && newItems.isEmpty;
     return PagedResult(
       items: newItems,
       currentPage: result.currentPage,
-      totalPages: stoppedByDuplicatePage
-          ? result.currentPage
-          : result.totalPages,
+      totalPages: stoppedByEmptyPage ? result.currentPage : result.totalPages,
       total: result.total,
     );
   }
