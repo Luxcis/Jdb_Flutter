@@ -145,6 +145,7 @@ class _CommonListPageState extends State<CommonListPage> {
                 Expanded(
                   child: SortSelect<String>(
                     key: const Key('common-list-sort'),
+                    compact: true,
                     options: _sortOptions,
                     value: _sort,
                     onChanged: _changeSort,
