@@ -34,6 +34,12 @@ class _CommonListPageState extends State<CommonListPage> {
   }
 
   @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(widget.title)),
@@ -45,6 +51,7 @@ class _CommonListPageState extends State<CommonListPage> {
               children: [
                 Expanded(
                   child: SortSegmented<String>(
+                    key: const Key('common-list-filter'),
                     options: const [
                       (label: '全部', value: 'all'),
                       (label: '可播放', value: 'playable'),
@@ -60,6 +67,7 @@ class _CommonListPageState extends State<CommonListPage> {
                 ),
                 const SizedBox(width: 8),
                 SortSelect<String>(
+                  key: const Key('common-list-sort'),
                   options: const [
                     (label: '最新', value: 'date'),
                     (label: '热门', value: 'hot'),

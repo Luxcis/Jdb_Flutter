@@ -1,19 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/actor.dart';
+import 'package:jade/core/models/code.dart';
+import 'package:jade/core/models/director.dart';
+import 'package:jade/core/models/list_model.dart';
+import 'package:jade/core/models/maker.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
+import 'package:jade/core/models/series.dart';
 import 'package:jade/core/network/api_client.dart';
-import 'package:jade/core/network/api_data.dart';
-import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/widgets/actor_grid_view.dart';
+import 'package:jade/core/widgets/list_summary_tile.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
+import 'package:jade/features/common/screens/common_list_page.dart';
 import 'package:jade/features/search/models/search_movie_filter.dart';
+import 'package:jade/features/search/services/search_entity_service.dart';
 import 'package:jade/features/search/services/search_history_store.dart';
 import 'package:jade/features/search/services/search_movie_service.dart';
+import 'package:jade/features/search/services/search_page_session.dart';
+import 'package:jade/features/search/widgets/search_entity_list_tile.dart';
 import 'package:jade/features/search/widgets/search_movie_filter_bar.dart';
+import 'package:jade/features/search/widgets/search_paginated_list_view.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -23,11 +32,13 @@ class SearchResultsPage extends StatefulWidget {
     required this.query,
     this.historyStore,
     this.movieDataSource,
+    this.entityDataSource,
   });
 
   final String query;
   final SearchHistoryStore? historyStore;
   final SearchMovieDataSource? movieDataSource;
+  final SearchEntityDataSource? entityDataSource;
 
   @override
   State<SearchResultsPage> createState() => _SearchResultsPageState();
@@ -37,6 +48,7 @@ class _SearchResultsPageState extends State<SearchResultsPage>
     with TickerProviderStateMixin {
   late final TextEditingController _controller;
   late final TabController _tab;
+  late final SearchEntityDataSource _entityDataSource;
   SearchHistoryStore? _historyStore;
 
   @override
@@ -44,6 +56,12 @@ class _SearchResultsPageState extends State<SearchResultsPage>
     super.initState();
     _controller = TextEditingController(text: widget.query);
     _tab = TabController(length: 7, vsync: this);
+    _entityDataSource =
+        widget.entityDataSource ??
+        switch (ApiClient.instanceOrNull) {
+          final api? => SearchEntityService(api),
+          null => const UnavailableSearchEntityDataSource(),
+        };
     _historyStore = widget.historyStore;
   }
 
@@ -120,40 +138,74 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                   query: widget.query,
                   dataSource: movieDataSource,
                 ),
-                _ActorSearchTab(query: widget.query),
-                _EntitySearchTab(
+                _ActorSearchTab(
                   query: widget.query,
-                  type: 'series',
-                  collectionKey: 'series',
-                  titleKey: 'name',
-                  countKey: 'movie_count',
-                  countSuffix: '部影片',
+                  dataSource: _entityDataSource,
                 ),
-                _EntitySearchTab(
-                  query: widget.query,
-                  type: 'maker',
-                  collectionKey: 'makers',
-                  titleKey: 'name',
-                  countKey: 'movie_count',
-                  countSuffix: '部影片',
+                _PaginatedEntitySearchTab<Series>(
+                  fetchPage: (page) => _entityDataSource.getSeries(
+                    query: widget.query,
+                    page: page,
+                  ),
+                  idOf: (item) => item.id,
+                  emptyMessage: '暂无系列',
+                  itemBuilder: (context, item) => SearchEntityListTile(
+                    name: item.name,
+                    count: item.movieCount,
+                    onTap: () => _openCommonList(context, '系列', item.name),
+                  ),
                 ),
-                _EntitySearchTab(
-                  query: widget.query,
-                  type: 'director',
-                  collectionKey: 'directors',
-                  titleKey: 'name',
-                  countKey: 'movie_count',
-                  countSuffix: '部影片',
+                _PaginatedEntitySearchTab<Maker>(
+                  fetchPage: (page) => _entityDataSource.getMakers(
+                    query: widget.query,
+                    page: page,
+                  ),
+                  idOf: (item) => item.id,
+                  emptyMessage: '暂无片商',
+                  itemBuilder: (context, item) => SearchEntityListTile(
+                    name: item.name,
+                    count: item.movieCount,
+                    onTap: () => _openCommonList(context, '片商', item.name),
+                  ),
                 ),
-                _EntitySearchTab(
-                  query: widget.query,
-                  type: 'list',
-                  collectionKey: 'lists',
-                  titleKey: 'name',
-                  countKey: 'movie_count',
-                  countSuffix: '部影片',
+                _PaginatedEntitySearchTab<Director>(
+                  fetchPage: (page) => _entityDataSource.getDirectors(
+                    query: widget.query,
+                    page: page,
+                  ),
+                  idOf: (item) => item.id,
+                  emptyMessage: '暂无导演',
+                  itemBuilder: (context, item) => SearchEntityListTile(
+                    name: item.name,
+                    count: item.movieCount,
+                    onTap: () => _openCommonList(context, '导演', item.name),
+                  ),
                 ),
-                _CodeSearchTab(query: widget.query),
+                _PaginatedEntitySearchTab<ListModel>(
+                  fetchPage: (page) => _entityDataSource.getLists(
+                    query: widget.query,
+                    page: page,
+                  ),
+                  idOf: (item) => item.id,
+                  emptyMessage: '暂无清单',
+                  itemBuilder: (context, item) => ListSummaryTile(
+                    list: item,
+                    onTap: () => _openCommonList(context, '清单', item.name),
+                  ),
+                ),
+                _PaginatedEntitySearchTab<Code>(
+                  fetchPage: (page) => _entityDataSource.getCodes(
+                    query: widget.query,
+                    page: page,
+                  ),
+                  idOf: (item) => item.id,
+                  emptyMessage: '暂无番号',
+                  itemBuilder: (context, item) => SearchEntityListTile(
+                    name: item.number,
+                    count: item.movieCount,
+                    onTap: () => _openCommonList(context, '番号', item.number),
+                  ),
+                ),
               ],
             ),
           ),
@@ -163,73 +215,57 @@ class _SearchResultsPageState extends State<SearchResultsPage>
   }
 }
 
-class _EntitySearchTab extends StatefulWidget {
-  const _EntitySearchTab({
-    required this.query,
-    required this.type,
-    required this.collectionKey,
-    required this.titleKey,
-    required this.countKey,
-    required this.countSuffix,
+typedef _EntityItemBuilder<T> = Widget Function(BuildContext context, T item);
+
+class _PaginatedEntitySearchTab<T> extends StatefulWidget {
+  const _PaginatedEntitySearchTab({
+    required this.fetchPage,
+    required this.idOf,
+    required this.itemBuilder,
+    required this.emptyMessage,
   });
 
-  final String query;
-  final String type;
-  final String collectionKey;
-  final String titleKey;
-  final String countKey;
-  final String countSuffix;
+  final Future<PagedResult<T>> Function(int page) fetchPage;
+  final String Function(T item) idOf;
+  final _EntityItemBuilder<T> itemBuilder;
+  final String emptyMessage;
 
   @override
-  State<_EntitySearchTab> createState() => _EntitySearchTabState();
+  State<_PaginatedEntitySearchTab<T>> createState() =>
+      _PaginatedEntitySearchTabState<T>();
 }
 
-class _EntitySearchTabState extends State<_EntitySearchTab> {
-  List<Map<String, dynamic>> _items = [];
-  bool _isLoading = true;
+class _PaginatedEntitySearchTabState<T>
+    extends State<_PaginatedEntitySearchTab<T>>
+    with AutomaticKeepAliveClientMixin {
+  late final PaginationController<T> _controller;
 
   @override
   void initState() {
     super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final api = ApiClient.instanceOrNull;
-    if (api == null) {
-      if (mounted) setState(() => _isLoading = false);
-      return;
-    }
-    final resp = await api.get(
-      Endpoints.searchV2,
-      queryParameters: {'q': widget.query, 'type': widget.type},
+    final session = SearchPageSession<T>(
+      fetchPage: widget.fetchPage,
+      idOf: widget.idOf,
     );
-    final data = resp.data as Map<String, dynamic>;
-    if (!mounted) return;
-    setState(() {
-      _items = List<Map<String, dynamic>>.from(
-        data[widget.collectionKey] ?? const [],
-      );
-      _isLoading = false;
-    });
+    _controller = PaginationController<T>(fetch: session.fetch)..fetchMore();
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    return ListView.builder(
-      itemCount: _items.length,
-      itemBuilder: (_, index) {
-        final item = _items[index];
-        final count = item[widget.countKey] ?? 0;
-        return ListTile(
-          title: Text('${item[widget.titleKey] ?? item['number'] ?? '-'}'),
-          subtitle: Text('$count${widget.countSuffix}'),
-          trailing: const Icon(Icons.chevron_right),
-        );
-      },
+    super.build(context);
+    return SearchPaginatedListView<T>(
+      controller: _controller,
+      itemBuilder: widget.itemBuilder,
+      emptyMessage: widget.emptyMessage,
     );
   }
 }
@@ -286,107 +322,60 @@ class _MovieSearchTabState extends State<_MovieSearchTab> {
 }
 
 class _ActorSearchTab extends StatefulWidget {
-  const _ActorSearchTab({required this.query});
+  const _ActorSearchTab({required this.query, required this.dataSource});
 
   final String query;
+  final SearchEntityDataSource dataSource;
 
   @override
   State<_ActorSearchTab> createState() => _ActorSearchTabState();
 }
 
-class _ActorSearchTabState extends State<_ActorSearchTab> {
-  late final _controller = PaginationController<ActorSummary>(
-    fetch: (page) async {
-      final api = ApiClient.instanceOrNull;
-      if (api == null) {
-        return const PagedResult(
-          items: [],
-          currentPage: 1,
-          totalPages: 1,
-          total: 0,
-        );
-      }
-      final resp = await api.get(
-        Endpoints.searchV2,
-        queryParameters: {'q': widget.query, 'type': 'actor', 'page': page},
-      );
-      final data = resp.data as Map<String, dynamic>;
-      return PagedResult(
-        items:
-            (data['actors'] as List?)
-                ?.whereType<Map>()
-                .map((json) => Map<String, dynamic>.from(json))
-                .map(
-                  (json) =>
-                      ActorSummary.fromJson(normalizeActorSummaryJson(json)),
-                )
-                .toList() ??
-            [],
-        currentPage: apiInt(data['current_page'], 1),
-        totalPages: apiInt(data['total_pages'], 1),
-        total: apiInt(data['total'], 0),
-      );
-    },
-  );
+class _ActorSearchTabState extends State<_ActorSearchTab>
+    with AutomaticKeepAliveClientMixin {
+  late final PaginationController<ActorSummary> _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller.fetchMore();
-  }
-
-  @override
-  Widget build(BuildContext context) => ActorGridView(controller: _controller);
-}
-
-class _CodeSearchTab extends StatefulWidget {
-  const _CodeSearchTab({required this.query});
-
-  final String query;
-
-  @override
-  State<_CodeSearchTab> createState() => _CodeSearchTabState();
-}
-
-class _CodeSearchTabState extends State<_CodeSearchTab> {
-  List<Map<String, dynamic>> _items = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final api = ApiClient.instanceOrNull;
-    if (api == null) {
-      if (mounted) setState(() => _isLoading = false);
-      return;
-    }
-    final resp = await api.get(
-      Endpoints.searchV2,
-      queryParameters: {'q': widget.query, 'type': 'code'},
+    final session = SearchPageSession<ActorSummary>(
+      fetchPage: (page) =>
+          widget.dataSource.getActors(query: widget.query, page: page),
+      idOf: (item) => item.id,
     );
-    final data = resp.data as Map<String, dynamic>;
-    if (!mounted) return;
-    setState(() {
-      _items = List<Map<String, dynamic>>.from(data['codes'] ?? const []);
-      _isLoading = false;
-    });
+    _controller = PaginationController<ActorSummary>(fetch: session.fetch)
+      ..fetchMore();
   }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    return ListView.builder(
-      itemCount: _items.length,
-      itemBuilder: (_, index) => ListTile(
-        title: Text('${_items[index]['number']}'),
-        subtitle: Text('${_items[index]['movie_count'] ?? 0}部影片'),
-      ),
+    super.build(context);
+    return ActorGridView(
+      controller: _controller,
+      onActorTap: (actor) => context.push('/actor/${actor.id}'),
     );
   }
+}
+
+Future<PagedResult<MovieSummary>> _emptyMoviePage(int page) async =>
+    PagedResult(items: const [], currentPage: page, totalPages: page, total: 0);
+
+void _openCommonList(BuildContext context, String typeLabel, String name) {
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => CommonListPage(
+        title: '$typeLabel - $name',
+        dataSource: _emptyMoviePage,
+      ),
+    ),
+  );
 }

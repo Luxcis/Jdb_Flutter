@@ -3,15 +3,26 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:jade/core/models/actor.dart';
+import 'package:jade/core/models/code.dart';
+import 'package:jade/core/models/director.dart';
+import 'package:jade/core/models/list_model.dart';
+import 'package:jade/core/models/maker.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
+import 'package:jade/core/models/series.dart';
 import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/storage/storage_keys.dart';
+import 'package:jade/core/widgets/actor_card.dart';
+import 'package:jade/core/widgets/list_summary_tile.dart';
+import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/features/search/models/search_movie_filter.dart';
 import 'package:jade/features/search/screens/search_results_screen.dart';
 import 'package:jade/features/search/screens/search_screen.dart';
+import 'package:jade/features/search/services/search_entity_service.dart';
 import 'package:jade/features/search/services/search_history_store.dart';
 import 'package:jade/features/search/services/search_movie_service.dart';
+import 'package:jade/features/search/widgets/search_entity_list_tile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 typedef _SearchMovieCall = ({String query, SearchMovieFilter filter, int page});
@@ -392,4 +403,303 @@ void main() {
         .toList();
     expect(historyLabels, contains('second'));
   });
+
+  testWidgets('系列 Tab 自动分页并保留已加载状态', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final source = _FakeSearchEntityDataSource(
+      seriesPages: {
+        1: PagedResult(
+          items: List.generate(
+            48,
+            (index) =>
+                Series(id: 's$index', name: '系列$index', movieCount: index),
+          ),
+          currentPage: 1,
+          totalPages: 2,
+          total: 49,
+        ),
+        2: const PagedResult(
+          items: [Series(id: 's48', name: '系列48', movieCount: 48)],
+          currentPage: 2,
+          totalPages: 2,
+          total: 49,
+        ),
+      },
+    );
+
+    await _pumpSearchResults(tester, entityDataSource: source);
+    await tester.tap(find.text('系列'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SearchEntityListTile), findsWidgets);
+    await tester.fling(find.byType(ListView), const Offset(0, -5000), 5000);
+    await tester.pumpAndSettle();
+    expect(source.seriesRequestedPages, [1, 2]);
+    expect(find.text('系列48'), findsOneWidget);
+
+    await tester.tap(find.text('片商'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('系列'));
+    await tester.pumpAndSettle();
+    expect(source.seriesRequestedPages, [1, 2]);
+  });
+
+  testWidgets('演员 Tab 使用演员卡片并进入演员详情', (tester) async {
+    final source = _FakeSearchEntityDataSource(
+      actors: const PagedResult(
+        items: [ActorSummary(id: 'a1', name: '演员A', avatarUrl: '')],
+        currentPage: 1,
+        totalPages: 1,
+        total: 1,
+      ),
+    );
+    final router = _buildSearchResultsRouter(source);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('演员'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(ActorCard), findsOneWidget);
+    await tester.tap(find.byType(ActorCard));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(router.state.uri.path, '/actor/a1');
+  });
+
+  testWidgets('非演员实体进入类型减名称公共页且不请求搜索或影片接口', (tester) async {
+    final cases = <({String tab, String expectedTitle, Type rowType})>[
+      (tab: '系列', expectedTitle: '系列 - 测试系列', rowType: SearchEntityListTile),
+      (tab: '片商', expectedTitle: '片商 - 测试片商', rowType: SearchEntityListTile),
+      (tab: '导演', expectedTitle: '导演 - 测试导演', rowType: SearchEntityListTile),
+      (tab: '清单', expectedTitle: '清单 - 测试清单', rowType: ListSummaryTile),
+      (tab: '番号', expectedTitle: '番号 - TEST', rowType: SearchEntityListTile),
+    ];
+
+    for (final item in cases) {
+      final source = _FakeSearchEntityDataSource.singleNamedResults();
+      final movieSource = _RecordingSearchMovieDataSource();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SearchResultsPage(
+            query: 'test',
+            entityDataSource: source,
+            movieDataSource: movieSource,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(item.tab));
+      await tester.pumpAndSettle();
+      final entityRequestCount = source.totalCalls;
+      final movieRequestCount = movieSource.calls.length;
+
+      await tester.tap(find.byType(item.rowType).first);
+      await tester.pumpAndSettle();
+
+      expect(find.text(item.expectedTitle), findsOneWidget);
+      expect(find.byKey(const Key('common-list-filter')), findsOneWidget);
+      expect(find.byKey(const Key('common-list-sort')), findsOneWidget);
+      expect(find.byType(MovieGridView), findsOneWidget);
+      expect(source.totalCalls, entityRequestCount);
+      expect(movieSource.calls, hasLength(movieRequestCount));
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+    }
+  });
+}
+
+Future<void> _pumpSearchResults(
+  WidgetTester tester, {
+  required SearchEntityDataSource entityDataSource,
+}) => tester.pumpWidget(
+  MaterialApp(
+    home: SearchResultsPage(
+      query: 'test',
+      entityDataSource: entityDataSource,
+      movieDataSource: _RecordingSearchMovieDataSource(),
+    ),
+  ),
+);
+
+GoRouter _buildSearchResultsRouter(SearchEntityDataSource entityDataSource) =>
+    GoRouter(
+      initialLocation: '/search/results',
+      routes: [
+        GoRoute(
+          path: '/search/results',
+          builder: (_, _) => SearchResultsPage(
+            query: 'test',
+            entityDataSource: entityDataSource,
+            movieDataSource: _RecordingSearchMovieDataSource(),
+          ),
+        ),
+        GoRoute(
+          path: '/actor/:id',
+          builder: (_, state) =>
+              Scaffold(body: Text('actor ${state.pathParameters['id']}')),
+        ),
+      ],
+    );
+
+class _FakeSearchEntityDataSource implements SearchEntityDataSource {
+  _FakeSearchEntityDataSource({
+    this.actors = const PagedResult(
+      items: [],
+      currentPage: 1,
+      totalPages: 1,
+      total: 0,
+    ),
+    this.seriesPages = const {},
+    this.makers = const PagedResult(
+      items: [],
+      currentPage: 1,
+      totalPages: 1,
+      total: 0,
+    ),
+    this.directors = const PagedResult(
+      items: [],
+      currentPage: 1,
+      totalPages: 1,
+      total: 0,
+    ),
+    this.lists = const PagedResult(
+      items: [],
+      currentPage: 1,
+      totalPages: 1,
+      total: 0,
+    ),
+    this.codes = const PagedResult(
+      items: [],
+      currentPage: 1,
+      totalPages: 1,
+      total: 0,
+    ),
+  });
+
+  factory _FakeSearchEntityDataSource.singleNamedResults() =>
+      _FakeSearchEntityDataSource(
+        seriesPages: const {
+          1: PagedResult(
+            items: [Series(id: 's1', name: '测试系列', movieCount: 1)],
+            currentPage: 1,
+            totalPages: 1,
+            total: 1,
+          ),
+        },
+        makers: const PagedResult(
+          items: [Maker(id: 'm1', name: '测试片商', movieCount: 2)],
+          currentPage: 1,
+          totalPages: 1,
+          total: 1,
+        ),
+        directors: const PagedResult(
+          items: [Director(id: 'd1', name: '测试导演', movieCount: 3)],
+          currentPage: 1,
+          totalPages: 1,
+          total: 1,
+        ),
+        lists: const PagedResult(
+          items: [
+            ListModel(id: 'l1', name: '测试清单', movieCount: 4, viewedCount: 5),
+          ],
+          currentPage: 1,
+          totalPages: 1,
+          total: 1,
+        ),
+        codes: const PagedResult(
+          items: [Code(id: 'TEST', number: 'TEST', movieCount: 6)],
+          currentPage: 1,
+          totalPages: 1,
+          total: 1,
+        ),
+      );
+
+  final PagedResult<ActorSummary> actors;
+  final Map<int, PagedResult<Series>> seriesPages;
+  final PagedResult<Maker> makers;
+  final PagedResult<Director> directors;
+  final PagedResult<ListModel> lists;
+  final PagedResult<Code> codes;
+  final actorRequestedPages = <int>[];
+  final seriesRequestedPages = <int>[];
+  final makerRequestedPages = <int>[];
+  final directorRequestedPages = <int>[];
+  final listRequestedPages = <int>[];
+  final codeRequestedPages = <int>[];
+
+  int get totalCalls =>
+      actorRequestedPages.length +
+      seriesRequestedPages.length +
+      makerRequestedPages.length +
+      directorRequestedPages.length +
+      listRequestedPages.length +
+      codeRequestedPages.length;
+
+  @override
+  Future<PagedResult<ActorSummary>> getActors({
+    required String query,
+    int page = 1,
+  }) async {
+    actorRequestedPages.add(page);
+    return actors;
+  }
+
+  @override
+  Future<PagedResult<Series>> getSeries({
+    required String query,
+    int page = 1,
+  }) async {
+    seriesRequestedPages.add(page);
+    return seriesPages[page] ??
+        PagedResult(
+          items: const [],
+          currentPage: page,
+          totalPages: page,
+          total: 0,
+        );
+  }
+
+  @override
+  Future<PagedResult<Maker>> getMakers({
+    required String query,
+    int page = 1,
+  }) async {
+    makerRequestedPages.add(page);
+    return makers;
+  }
+
+  @override
+  Future<PagedResult<Director>> getDirectors({
+    required String query,
+    int page = 1,
+  }) async {
+    directorRequestedPages.add(page);
+    return directors;
+  }
+
+  @override
+  Future<PagedResult<ListModel>> getLists({
+    required String query,
+    int page = 1,
+  }) async {
+    listRequestedPages.add(page);
+    return lists;
+  }
+
+  @override
+  Future<PagedResult<Code>> getCodes({
+    required String query,
+    int page = 1,
+  }) async {
+    codeRequestedPages.add(page);
+    return codes;
+  }
 }
