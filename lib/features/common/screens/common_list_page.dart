@@ -141,15 +141,14 @@ class _CommonListPageState extends State<CommonListPage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: SortSelect<String>(
-                    key: const Key('common-list-sort'),
-                    compact: true,
-                    options: _sortOptions,
-                    value: _sort,
-                    onChanged: _changeSort,
-                  ),
+                SortSelect<String>(
+                  key: const Key('common-list-sort'),
+                  compact: true,
+                  options: _sortOptions,
+                  value: _sort,
+                  onChanged: _changeSort,
                 ),
                 IconButton(
                   key: const Key('common-list-order-toggle'),
