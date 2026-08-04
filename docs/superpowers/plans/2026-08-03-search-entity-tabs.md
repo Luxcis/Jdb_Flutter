@@ -35,7 +35,7 @@
 - Consumes: `ApiClient.get`、`Endpoints.searchV2`、`apiMap/apiList/apiInt/apiString`、现有 `ActorSummary/Series/Maker/Director/ListModel/Code/PagedResult`。
 - Produces: `SearchEntityDataSource` 六个分页方法、`SearchEntityService`、`UnavailableSearchEntityDataSource`、`SearchPageSession<T>.fetch(int page)`。
 
-- [ ] **Step 1: 写服务请求与解析失败测试**
+- [x] **Step 1: 写服务请求与解析失败测试**
 
 ```dart
 // test/features/search/search_entity_service_test.dart
@@ -157,13 +157,13 @@ test('演员片商导演使用各自 type 和集合键', () async {
 });
 ```
 
-- [ ] **Step 2: 运行服务测试并确认 RED**
+- [x] **Step 2: 运行服务测试并确认 RED**
 
 Run: `flutter test test/features/search/search_entity_service_test.dart`
 
 Expected: FAIL，原因是 `search_entity_service.dart`、`SearchEntityService` 和六个方法尚不存在。
 
-- [ ] **Step 3: 实现六类强类型服务**
+- [x] **Step 3: 实现六类强类型服务**
 
 ```dart
 // lib/features/search/services/search_entity_service.dart
@@ -272,13 +272,13 @@ class UnavailableSearchEntityDataSource implements SearchEntityDataSource {
 }
 ```
 
-- [ ] **Step 4: 运行服务测试并确认 GREEN**
+- [x] **Step 4: 运行服务测试并确认 GREEN**
 
 Run: `flutter test test/features/search/search_entity_service_test.dart`
 
 Expected: PASS，六种 `type`、字段兼容和分页推断全部通过。
 
-- [ ] **Step 5: 写分页去重会话失败测试**
+- [x] **Step 5: 写分页去重会话失败测试**
 
 ```dart
 // test/features/search/search_page_session_test.dart
@@ -332,13 +332,13 @@ class _Item {
 }
 ```
 
-- [ ] **Step 6: 运行分页会话测试并确认 RED**
+- [x] **Step 6: 运行分页会话测试并确认 RED**
 
 Run: `flutter test test/features/search/search_page_session_test.dart`
 
 Expected: FAIL，原因是 `SearchPageSession` 尚不存在。
 
-- [ ] **Step 7: 实现分页会话并验证 GREEN**
+- [x] **Step 7: 实现分页会话并验证 GREEN**
 
 ```dart
 // lib/features/search/services/search_page_session.dart
@@ -372,7 +372,7 @@ Run: `flutter test test/features/search/search_entity_service_test.dart test/fea
 
 Expected: PASS。
 
-- [ ] **Step 8: 提交 Task 1**
+- [x] **Step 8: 提交 Task 1**
 
 ```bash
 git add lib/features/search/services/search_entity_service.dart \
@@ -400,7 +400,7 @@ git commit -m "feat: add typed search entity pagination"
 - Consumes: `PaginationController<T>`、`EmptyState`、`ErrorRetryWidget`、`ListModel`。
 - Produces: `SearchEntityListTile(name, count, onTap)`、`SearchPaginatedListView<T>(controller, itemBuilder, emptyMessage)`、`ListSummaryTile(list, onTap?)`。
 
-- [ ] **Step 1: 写名称数量行失败测试**
+- [x] **Step 1: 写名称数量行失败测试**
 
 ```dart
 // test/features/search/search_entity_list_tile_test.dart
@@ -444,13 +444,13 @@ testWidgets('相邻行使用相同背景而不是斑马纹', (tester) async {
 });
 ```
 
-- [ ] **Step 2: 运行名称数量行测试并确认 RED**
+- [x] **Step 2: 运行名称数量行测试并确认 RED**
 
 Run: `flutter test test/features/search/search_entity_list_tile_test.dart`
 
 Expected: FAIL，原因是 `SearchEntityListTile` 尚不存在。
 
-- [ ] **Step 3: 实现名称数量行并验证 GREEN**
+- [x] **Step 3: 实现名称数量行并验证 GREEN**
 
 ```dart
 // lib/features/search/widgets/search_entity_list_tile.dart
@@ -491,7 +491,7 @@ Run: `flutter test test/features/search/search_entity_list_tile_test.dart`
 
 Expected: PASS。
 
-- [ ] **Step 4: 写通用分页列表状态失败测试**
+- [x] **Step 4: 写通用分页列表状态失败测试**
 
 ```dart
 // test/features/search/search_paginated_list_view_test.dart
@@ -578,13 +578,13 @@ testWidgets('追加加载保留现有内容并显示尾部进度', (tester) asyn
 });
 ```
 
-- [ ] **Step 5: 运行分页列表测试并确认 RED**
+- [x] **Step 5: 运行分页列表测试并确认 RED**
 
 Run: `flutter test test/features/search/search_paginated_list_view_test.dart`
 
 Expected: FAIL，原因是 `SearchPaginatedListView` 尚不存在。
 
-- [ ] **Step 6: 实现通用分页列表并验证 GREEN**
+- [x] **Step 6: 实现通用分页列表并验证 GREEN**
 
 ```dart
 // lib/features/search/widgets/search_paginated_list_view.dart
@@ -648,7 +648,7 @@ Run: `flutter test test/features/search/search_paginated_list_view_test.dart`
 
 Expected: PASS。
 
-- [ ] **Step 7: 写并实现共享清单行**
+- [x] **Step 7: 写并实现共享清单行**
 
 先在 `test/core/widgets/list_summary_tile_test.dart` 写以下失败测试：
 
@@ -700,7 +700,7 @@ Run: `flutter test test/core/widgets/list_summary_tile_test.dart test/features/m
 
 Expected: PASS，相关清单视觉回归不变。
 
-- [ ] **Step 8: 提交 Task 2**
+- [x] **Step 8: 提交 Task 2**
 
 ```bash
 git add lib/features/search/widgets/search_entity_list_tile.dart \
@@ -728,7 +728,7 @@ git commit -m "feat: add paginated search entity lists"
 - Consumes: Task 1 的 `SearchEntityDataSource/SearchEntityService/SearchPageSession`，Task 2 的三个列表组件，现有 `ActorGridView/CommonListPage`。
 - Produces: `SearchResultsPage.entityDataSource` 测试注入口、六个独立分页 Tab、非演员实体的空数据公共页导航。
 
-- [ ] **Step 1: 写公共列表页内容失败测试**
+- [x] **Step 1: 写公共列表页内容失败测试**
 
 ```dart
 // test/features/common/common_list_page_test.dart
@@ -779,13 +779,13 @@ testWidgets('显示标题筛选排序和影片网格且本地数据源不访问 
 
 数据源始终为本地空页，测试不初始化 `ApiClient`。页面实现仍补充 `dispose` 释放内部 `PaginationController`。
 
-- [ ] **Step 2: 运行公共页测试并确认 RED**
+- [x] **Step 2: 运行公共页测试并确认 RED**
 
 Run: `flutter test test/features/common/common_list_page_test.dart`
 
 Expected: 当前页面内容主体大部分存在，但测试至少因控制器未释放或所需稳定 Key 缺失而 FAIL；确认失败点来自待实现的公共页契约，不修改断言绕过。
 
-- [ ] **Step 3: 最小调整公共列表页并验证 GREEN**
+- [x] **Step 3: 最小调整公共列表页并验证 GREEN**
 
 在 `CommonListPage` 为筛选区和排序控件增加稳定 Key，保留原有选项和回调：
 
@@ -837,7 +837,7 @@ Run: `flutter test test/features/common/common_list_page_test.dart`
 
 Expected: PASS。
 
-- [ ] **Step 4: 写搜索结果六 Tab 失败测试**
+- [x] **Step 4: 写搜索结果六 Tab 失败测试**
 
 ```dart
 // test/features/search/search_screen_test.dart
@@ -1017,13 +1017,13 @@ class FakeSearchEntityDataSource implements SearchEntityDataSource {
 
 在第一个系列分页测试末尾切换到“片商”再切回“系列”，断言 `seriesRequestedPages` 仍为 `[1, 2]`，证明 Tab 状态保留且第一页没有重复请求。公共列表导航的表驱动测试已经同时证明清单使用 `ListSummaryTile`、其他四类使用 `SearchEntityListTile`。首屏和尾部错误状态由 Task 2 的通用分页列表测试覆盖，不在页面测试重复相同状态机断言。
 
-- [ ] **Step 5: 运行搜索页面测试并确认 RED**
+- [x] **Step 5: 运行搜索页面测试并确认 RED**
 
 Run: `flutter test test/features/search/search_screen_test.dart`
 
 Expected: FAIL，原因包括 `entityDataSource` 注入口不存在、旧 `_EntitySearchTab/_CodeSearchTab` 不是分页组件、点击未导航。
 
-- [ ] **Step 6: 组装强类型分页 Tab**
+- [x] **Step 6: 组装强类型分页 Tab**
 
 在 `SearchResultsPage` 增加：
 
@@ -1054,7 +1054,7 @@ final controller = PaginationController<Series>(fetch: session.fetch)..fetchMore
 
 删除旧的内联 `_EntitySearchTab`、`_ActorSearchTab` API 解析和 `_CodeSearchTab` 一次性请求，确保 `SearchResultsPage` 不再直接处理响应 Map。
 
-- [ ] **Step 7: 实现公共页导航闭包**
+- [x] **Step 7: 实现公共页导航闭包**
 
 ```dart
 Future<PagedResult<MovieSummary>> _emptyMoviePage(int page) async =>
@@ -1072,13 +1072,13 @@ void _openCommonList(BuildContext context, String typeLabel, String name) {
 
 分别传入固定类型中文：`系列`、`片商`、`导演`、`番号`、`清单`。该闭包不得读取 `ApiClient`，不得调用 `/api/v1/movies/tags` 或实体详情接口。
 
-- [ ] **Step 8: 运行聚焦测试并确认 GREEN**
+- [x] **Step 8: 运行聚焦测试并确认 GREEN**
 
 Run: `flutter test test/features/search/search_screen_test.dart test/features/common/common_list_page_test.dart test/features/movie_detail/movie_detail_screen_test.dart`
 
 Expected: PASS，六个 Tab、公共页 UI 和相关清单回归全部通过。
 
-- [ ] **Step 9: 提交 Task 3**
+- [x] **Step 9: 提交 Task 3**
 
 ```bash
 git add lib/features/search/screens/search_results_screen.dart \
@@ -1100,7 +1100,7 @@ git commit -m "feat: complete search entity tabs"
 - Consumes: Tasks 1-3 的完成实现。
 - Produces: 可审计的聚焦测试、全量测试、静态分析和模拟器验收证据。
 
-- [ ] **Step 1: 运行搜索和共享组件聚焦测试**
+- [x] **Step 1: 运行搜索和共享组件聚焦测试**
 
 Run:
 
@@ -1118,7 +1118,7 @@ flutter test \
 
 Expected: PASS，无测试失败和未处理异常。
 
-- [ ] **Step 2: 格式化并检查差异**
+- [x] **Step 2: 格式化并检查差异**
 
 Run:
 
@@ -1132,7 +1132,7 @@ git status --short
 
 Expected: `dart format` 成功，`git diff --check` 无输出；状态中只有本计划相关文件。
 
-- [ ] **Step 3: 运行全量自动化验证**
+- [x] **Step 3: 运行全量自动化验证**
 
 Run:
 
@@ -1143,7 +1143,7 @@ flutter analyze
 
 Expected: 全部测试通过；静态分析输出 `No issues found!`。若 Flutter SDK 缓存写入被环境权限阻止，使用已授权的 Flutter 执行路径原样重跑，不把环境错误归因于代码。
 
-- [ ] **Step 4: 使用 ADB 验证真实交互和请求**
+- [x] **Step 4: 使用 ADB 验证真实交互和请求**
 
 在已连接模拟器上运行当前分支 Debug 应用，搜索一个能返回多类结果的关键词，逐项验证：
 
@@ -1156,7 +1156,7 @@ Expected: 全部测试通过；静态分析输出 `No issues found!`。若 Flutt
 
 Expected: 无崩溃、无布局溢出、请求参数与上述契约一致。
 
-- [ ] **Step 5: 更新计划勾选并提交验证记录**
+- [x] **Step 5: 更新计划勾选并提交验证记录**
 
 将本计划实际完成的步骤改为 `[x]`，只提交计划勾选变化：
 
