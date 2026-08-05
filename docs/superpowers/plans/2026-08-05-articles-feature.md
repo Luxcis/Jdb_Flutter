@@ -6,7 +6,7 @@
 
 **架构：** 新增 feature `lib/features/articles/`（models/services/screens/widgets/index），数据层参考 `TagMoviesService`（limit 48、无 total_pages 推断），列表页参考 `MovieGridView`/`ActorGridView` 的 `PaginationController` + `NotificationListener` + `RefreshIndicator` 状态机；`/articles` 路由由占位页替换为真实列表页，新增 `/articles/:id` 详情路由。
 
-**技术栈：** Flutter、Dio（ApiClient）、go_router、json_serializable、cached_network_image（CachedImage）、flutter_html + flutter_html_image（正文 HTML 渲染）。
+**技术栈：** Flutter、Dio（ApiClient）、go_router、json_serializable、cached_network_image（CachedImage）、flutter_html（正文 HTML 渲染，核心内置 img 标签支持）。
 
 **规格：** `docs/superpowers/specs/2026-08-05-articles-feature-design.md`
 
@@ -16,7 +16,7 @@
 
 | 操作 | 文件 | 职责 |
 |------|------|------|
-| 修改 | `pubspec.yaml` | 新增 `flutter_html`、`flutter_html_image` |
+| 修改 | `pubspec.yaml` | 新增 `flutter_html` |
 | 创建 | `lib/features/articles/models/article.dart` | `ArticleSummary`（列表项）+ `ArticleDetail`（详情） |
 | 生成 | `lib/features/articles/models/article.g.dart` | build_runner 生成 |
 | 修改 | `lib/core/network/api_data.dart` | `normalizeArticleSummaryJson` / `normalizeArticleDetailJson` / `_articleAuthor` |
@@ -43,8 +43,8 @@
 
 - [ ] **步骤 1：添加依赖**
 
-运行：`flutter pub add flutter_html flutter_html_image`
-预期：`pub get` 成功，`pubspec.yaml` 出现 `flutter_html: ^3.0.0` 与 `flutter_html_image: ^3.0.0`。若版本解析冲突，按 pub 提示使用兼容约束后重试。
+运行：`flutter pub add flutter_html`
+预期：`pub get` 成功，`pubspec.yaml` 出现 `flutter_html: ^3.0.0`。若版本解析冲突，按 pub 提示使用兼容约束后重试。
 
 - [ ] **步骤 2：Commit**
 
@@ -812,9 +812,14 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
 
-    // 滚动到接近底部触发 fetchMore
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -4000));
-    await tester.pump();
+    // 循环滚动到接近底部，直到第二页请求发出
+    for (var i = 0; i < 12 && adapter.requests.length < 2; i++) {
+      await tester.drag(
+        find.byType(CustomScrollView),
+        const Offset(0, -1600),
+      );
+      await tester.pump();
+    }
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
 
@@ -1138,7 +1143,6 @@ void main() {
 ```dart
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
-import 'package:flutter_html_image/flutter_html_image.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/features/articles/models/article.dart';
@@ -1268,7 +1272,6 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
               detail.content ?? '',
               detail.imageDomain,
             ),
-            extensions: [ImageExtension()],
             style: {
               'body': Style(
                 fontSize: FontSize(15),
