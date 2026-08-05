@@ -9,6 +9,7 @@ import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/domain_manager.dart';
 import 'package:jade/core/providers/settings_provider.dart';
+import 'package:jade/core/providers/theme_provider.dart';
 import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/widgets/actor_grid_view.dart';
 import 'package:jade/core/widgets/filter_drawer.dart';
@@ -322,15 +323,18 @@ class ProfileSettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = context.watch<ThemeProvider>().themeMode;
     final blurMovieImages = context.select<SettingsProvider, bool>(
       (settings) => settings.blurMovieImages,
     );
     final dm = context.watch<DomainManager>();
     final cells = <Widget>[
-      const _ProfileCell(
-        title: '外观模式',
-        subtitle: '跟随系统',
-        icon: Icons.brightness_6_outlined,
+      ListTile(
+        leading: const Icon(Icons.brightness_6_outlined),
+        title: const Text('外观模式'),
+        subtitle: Text(_themeModeLabel(themeMode)),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => _openAppearancePicker(context),
       ),
       SwitchListTile(
         secondary: const Icon(Icons.blur_on_outlined),
@@ -354,6 +358,39 @@ class ProfileSettingsPage extends StatelessWidget {
         itemCount: cells.length,
         separatorBuilder: (_, _) => const Divider(height: 1),
         itemBuilder: (_, index) => cells[index],
+      ),
+    );
+  }
+
+  /// 弹出外观模式选择弹窗；选中后立即生效并持久化。
+  void _openAppearancePicker(BuildContext context) {
+    final theme = context.read<ThemeProvider>();
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                '外观模式',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            for (final mode in ThemeMode.values)
+              ListTile(
+                title: Text(_themeModeLabel(mode)),
+                trailing: theme.themeMode == mode
+                    ? const Icon(Icons.check)
+                    : null,
+                onTap: () {
+                  theme.setThemeMode(mode);
+                  Navigator.pop(sheetContext);
+                },
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -480,6 +517,13 @@ class _ProfileCell extends StatelessWidget {
 }
 
 void _noopFilter(Map<String, String> _) {}
+
+/// 外观模式的展示文案。
+String _themeModeLabel(ThemeMode mode) => switch (mode) {
+  ThemeMode.system => '跟随系统',
+  ThemeMode.light => '浅色模式',
+  ThemeMode.dark => '深色模式',
+};
 
 /// 去掉 URL 的协议前缀，仅显示 host。
 String _hostOf(String url) => url.replaceFirst(RegExp(r'^https?://'), '');

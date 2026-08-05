@@ -6,6 +6,7 @@ import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/domain_manager.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/settings_provider.dart';
+import 'package:jade/core/providers/theme_provider.dart';
 import 'package:jade/core/storage/storage_keys.dart';
 import 'package:jade/features/profile/screens/profile_sub_pages.dart';
 import 'package:provider/provider.dart';
@@ -39,11 +40,13 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final settings = await SettingsProvider.create(prefs);
+    final theme = await ThemeProvider.create();
     final dm = await DomainManager.load(prefs);
     await tester.pumpWidget(
       MultiProvider(
         providers: [
           ChangeNotifierProvider.value(value: settings),
+          ChangeNotifierProvider.value(value: theme),
           ChangeNotifierProvider.value(value: dm),
         ],
         child: const MaterialApp(home: ProfileSettingsPage()),
@@ -70,6 +73,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final settings = await SettingsProvider.create(prefs);
+    final theme = await ThemeProvider.create();
     final auth = await AuthProvider.create(prefs);
     await ApiClient.create(
       prefs: prefs,
@@ -87,6 +91,7 @@ void main() {
       MultiProvider(
         providers: [
           ChangeNotifierProvider.value(value: settings),
+          ChangeNotifierProvider.value(value: theme),
           ChangeNotifierProvider.value(value: dm),
         ],
         child: const MaterialApp(home: ProfileSettingsPage()),
@@ -115,6 +120,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final settings = await SettingsProvider.create(prefs);
+    final theme = await ThemeProvider.create();
     final auth = await AuthProvider.create(prefs);
     await ApiClient.create(
       prefs: prefs,
@@ -133,6 +139,7 @@ void main() {
       MultiProvider(
         providers: [
           ChangeNotifierProvider.value(value: settings),
+          ChangeNotifierProvider.value(value: theme),
           ChangeNotifierProvider.value(value: dm),
         ],
         child: const MaterialApp(home: ProfileSettingsPage()),
@@ -157,6 +164,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final settings = await SettingsProvider.create(prefs);
+    final theme = await ThemeProvider.create();
     final auth = await AuthProvider.create(prefs);
     await ApiClient.create(
       prefs: prefs,
@@ -170,6 +178,7 @@ void main() {
       MultiProvider(
         providers: [
           ChangeNotifierProvider.value(value: settings),
+          ChangeNotifierProvider.value(value: theme),
           ChangeNotifierProvider.value(value: dm),
         ],
         child: const MaterialApp(home: ProfileSettingsPage()),
@@ -190,5 +199,40 @@ void main() {
     expect(dm.currentUrl, AppConstants.fallbackBaseUrl);
     expect(find.text('jdforrepam.com'), findsOneWidget); // subtitle 更新
     expect(find.text('已切换到 jdforrepam.com'), findsOneWidget);
+  });
+
+  testWidgets('外观模式：弹出弹窗选择深色后 themeMode 更新并持久化', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final settings = await SettingsProvider.create(prefs);
+    final theme = await ThemeProvider.create();
+    final dm = await DomainManager.load(prefs);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: settings),
+          ChangeNotifierProvider.value(value: theme),
+          ChangeNotifierProvider.value(value: dm),
+        ],
+        child: const MaterialApp(home: ProfileSettingsPage()),
+      ),
+    );
+
+    expect(find.text('外观模式'), findsOneWidget);
+    expect(find.text('跟随系统'), findsOneWidget); // subtitle
+
+    await tester.tap(find.text('外观模式'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('浅色模式'), findsOneWidget);
+    expect(find.text('深色模式'), findsOneWidget);
+
+    await tester.tap(find.text('深色模式'));
+    await tester.pumpAndSettle();
+
+    expect(theme.themeMode, ThemeMode.dark);
+    expect(prefs.getInt('theme-mode-index'), ThemeMode.dark.index);
+    expect(find.text('深色模式'), findsOneWidget); // subtitle 更新
   });
 }
