@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:jade/core/constants/app_constants.dart';
 import 'package:jade/core/models/startup.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/domain_manager.dart';
@@ -71,11 +72,17 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final settings = await SettingsProvider.create(prefs);
     final auth = await AuthProvider.create(prefs);
-    await ApiClient.create(prefs: prefs, tokenProvider: auth, onAuthError: () {});
+    await ApiClient.create(
+      prefs: prefs,
+      tokenProvider: auth,
+      onAuthError: () {},
+    );
     final dm = ApiClient.instance.domainManager;
-    await dm.applyStartup(BackupDomains(
-      apiDomains: ['https://jdforrepam.com', 'https://backup1.com'],
-    ));
+    await dm.applyStartup(
+      BackupDomains(
+        apiDomains: ['https://jdforrepam.com', 'https://backup1.com'],
+      ),
+    );
 
     await tester.pumpWidget(
       MultiProvider(
@@ -110,11 +117,17 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final settings = await SettingsProvider.create(prefs);
     final auth = await AuthProvider.create(prefs);
-    await ApiClient.create(prefs: prefs, tokenProvider: auth, onAuthError: () {});
+    await ApiClient.create(
+      prefs: prefs,
+      tokenProvider: auth,
+      onAuthError: () {},
+    );
     final dm = ApiClient.instance.domainManager;
-    await dm.applyStartup(BackupDomains(
-      apiDomains: ['https://jdforrepam.com', 'https://backup1.com'],
-    ));
+    await dm.applyStartup(
+      BackupDomains(
+        apiDomains: ['https://jdforrepam.com', 'https://backup1.com'],
+      ),
+    );
     await dm.select('https://backup1.com');
 
     await tester.pumpWidget(
@@ -139,5 +152,44 @@ void main() {
     expect(dm.currentUrl, 'https://jdforrepam.com');
     expect(find.text('自动'), findsOneWidget);
     expect(find.text('已切换到自动线路'), findsOneWidget);
+  });
+
+  testWidgets('线路选择：apiDomains 为空时仅显示兜底域名', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final settings = await SettingsProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs);
+    await ApiClient.create(
+      prefs: prefs,
+      tokenProvider: auth,
+      onAuthError: () {},
+    );
+    final dm = ApiClient.instance.domainManager;
+    // 不调用 applyStartup：apiDomains 保持为空，仅兜底域名可用。
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: settings),
+          ChangeNotifierProvider.value(value: dm),
+        ],
+        child: const MaterialApp(home: ProfileSettingsPage()),
+      ),
+    );
+
+    await tester.tap(find.text('线路选择'));
+    await tester.pumpAndSettle();
+
+    // 弹窗仅列出兜底域名一项
+    expect(find.text('jdforrepam.com'), findsOneWidget);
+    expect(find.text('backup1.com'), findsNothing);
+
+    await tester.tap(find.text('jdforrepam.com'));
+    await tester.pumpAndSettle();
+
+    expect(dm.lineMode, LineMode.manual);
+    expect(dm.currentUrl, AppConstants.fallbackBaseUrl);
+    expect(find.text('jdforrepam.com'), findsOneWidget); // subtitle 更新
+    expect(find.text('已切换到 jdforrepam.com'), findsOneWidget);
   });
 }

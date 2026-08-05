@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/constants/app_constants.dart';
@@ -368,17 +370,15 @@ class ProfileSettingsPage extends StatelessWidget {
           if (url == null) return;
           final isAuto = url == 'auto';
           if (isAuto) {
-            dm.selectAuto();
+            unawaited(dm.selectAuto());
           } else {
-            dm.select(url);
+            unawaited(dm.select(url));
           }
           ApiClient.instance.swapBaseUrl(dm.currentUrl);
           Navigator.pop(sheetContext);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                isAuto ? '已切换到自动线路' : '已切换到 ${_hostOf(url)}',
-              ),
+              content: Text(isAuto ? '已切换到自动线路' : '已切换到 ${_hostOf(url)}'),
             ),
           );
         },
@@ -389,7 +389,10 @@ class ProfileSettingsPage extends StatelessWidget {
 
 /// 线路选择底部弹窗：自动 + 各域名单选行。
 class _LinePickerSheet extends StatelessWidget {
-  const _LinePickerSheet({required this.domainManager, required this.onSelected});
+  const _LinePickerSheet({
+    required this.domainManager,
+    required this.onSelected,
+  });
 
   final DomainManager domainManager;
   final void Function(String? url) onSelected;
@@ -401,30 +404,37 @@ class _LinePickerSheet extends StatelessWidget {
         ? dm.apiDomains
         : const [AppConstants.fallbackBaseUrl];
     return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text('线路选择', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          ListTile(
-            title: const Text('自动（推荐）'),
-            subtitle: const Text('请求失败时自动切换可用线路'),
-            trailing: dm.isAutoMode ? const Icon(Icons.check) : null,
-            onTap: () => onSelected('auto'),
-          ),
-          const Divider(height: 1),
-          for (final url in domains)
-            ListTile(
-              title: Text(_hostOf(url)),
-              trailing:
-                  !dm.isAutoMode && dm.currentUrl == url
-                      ? const Icon(Icons.check)
-                      : null,
-              onTap: () => onSelected(url),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.6,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                '线路选择',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
-        ],
+            ListTile(
+              title: const Text('自动（推荐）'),
+              subtitle: const Text('请求失败时自动切换可用线路'),
+              trailing: dm.isAutoMode ? const Icon(Icons.check) : null,
+              onTap: () => onSelected('auto'),
+            ),
+            const Divider(height: 1),
+            for (final url in domains)
+              ListTile(
+                title: Text(_hostOf(url)),
+                trailing: !dm.isAutoMode && dm.currentUrl == url
+                    ? const Icon(Icons.check)
+                    : null,
+                onTap: () => onSelected(url),
+              ),
+          ],
+        ),
       ),
     );
   }
