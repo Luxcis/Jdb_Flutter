@@ -82,4 +82,91 @@ void main() {
     final dm = await DomainManager.load(prefs);
     expect(dm.isOnMainDomain, isFalse);
   });
+
+  test('select 切换到手动线路并持久化', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final dm = await DomainManager.load(prefs);
+    await dm.applyStartup(BackupDomains(
+      apiDomains: ['https://jdforrepam.com', 'https://b.com'],
+    ));
+    await dm.select('https://b.com');
+    expect(dm.lineMode, LineMode.manual);
+    expect(dm.isAutoMode, isFalse);
+    expect(dm.currentUrl, 'https://b.com');
+    expect(prefs.getString(StorageKeys.line), 'https://b.com');
+  });
+
+  test('selectAuto 恢复自动与主域名并持久化', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final dm = await DomainManager.load(prefs);
+    await dm.applyStartup(BackupDomains(
+      apiDomains: ['https://jdforrepam.com', 'https://b.com'],
+    ));
+    await dm.select('https://b.com');
+    await dm.selectAuto();
+    expect(dm.lineMode, LineMode.auto);
+    expect(dm.isAutoMode, isTrue);
+    expect(dm.currentUrl, 'https://jdforrepam.com');
+    expect(prefs.getString(StorageKeys.line), 'auto');
+  });
+
+  test('manual 模式下 rotate 返回 false 且不改动 currentUrl', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final dm = await DomainManager.load(prefs);
+    await dm.applyStartup(BackupDomains(
+      apiDomains: ['https://jdforrepam.com', 'https://b.com'],
+    ));
+    await dm.select('https://b.com');
+    expect(await dm.rotate(), isFalse);
+    expect(dm.currentUrl, 'https://b.com');
+  });
+
+  test('applyStartup 在手动域名仍存在时保持手动选择', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final dm = await DomainManager.load(prefs);
+    await dm.applyStartup(BackupDomains(
+      apiDomains: ['https://jdforrepam.com', 'https://b.com'],
+    ));
+    await dm.select('https://b.com');
+    await dm.applyStartup(BackupDomains(
+      apiDomains: ['https://jdforrepam.com', 'https://b.com', 'https://c.com'],
+    ));
+    expect(dm.lineMode, LineMode.manual);
+    expect(dm.currentUrl, 'https://b.com');
+  });
+
+  test('applyStartup 在手动域名失效时回退自动并切主域名', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final dm = await DomainManager.load(prefs);
+    await dm.applyStartup(BackupDomains(
+      apiDomains: ['https://jdforrepam.com', 'https://b.com'],
+    ));
+    await dm.select('https://b.com');
+    await dm.applyStartup(BackupDomains(
+      apiDomains: ['https://jdforrepam.com', 'https://c.com'],
+    ));
+    expect(dm.lineMode, LineMode.auto);
+    expect(dm.currentUrl, 'https://jdforrepam.com');
+    expect(prefs.getString(StorageKeys.line), 'auto');
+  });
+
+  test('load 从 SP 恢复手动模式与手动域名', () async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(StorageKeys.baseUrl, 'https://b.com');
+    await prefs.setStringList(StorageKeys.apiDomains, [
+      'https://jdforrepam.com',
+      'https://b.com',
+    ]);
+    await prefs.setString(StorageKeys.line, 'https://b.com');
+    final dm = await DomainManager.load(prefs);
+    expect(dm.lineMode, LineMode.manual);
+    expect(dm.currentUrl, 'https://b.com');
+  });
+
+  test('load 缺省 line 为 auto', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final dm = await DomainManager.load(prefs);
+    expect(dm.lineMode, LineMode.auto);
+    expect(dm.isAutoMode, isTrue);
+  });
 }
