@@ -62,7 +62,6 @@ GET /api/v1/startup?platform=android&app_channel=google&app_version=1.9.29&app_v
 | `key_token` | String | Bearer token |
 | `key_user` | String(JSON) | 用户信息 |
 | `key_theme_mode` | String | 外观模式 |
-| `key_default_filter_tags` | String(JSON) | 默认筛选标签 |
 | `key_search_history` | String(JSON) | 搜索历史 |
 
 ## 2. 认证与请求头

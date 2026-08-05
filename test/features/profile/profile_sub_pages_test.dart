@@ -66,7 +66,7 @@ void main() {
           ChangeNotifierProvider.value(value: theme),
           ChangeNotifierProvider.value(value: dm),
         ],
-        child: const MaterialApp(home: ProfileSettingsPage()),
+        child: MaterialApp(home: ProfileSettingsPage(cacheService: _FakeCacheService())),
       ),
     );
 
@@ -111,7 +111,7 @@ void main() {
           ChangeNotifierProvider.value(value: theme),
           ChangeNotifierProvider.value(value: dm),
         ],
-        child: const MaterialApp(home: ProfileSettingsPage()),
+        child: MaterialApp(home: ProfileSettingsPage(cacheService: _FakeCacheService())),
       ),
     );
 
@@ -159,7 +159,7 @@ void main() {
           ChangeNotifierProvider.value(value: theme),
           ChangeNotifierProvider.value(value: dm),
         ],
-        child: const MaterialApp(home: ProfileSettingsPage()),
+        child: MaterialApp(home: ProfileSettingsPage(cacheService: _FakeCacheService())),
       ),
     );
 
@@ -198,7 +198,7 @@ void main() {
           ChangeNotifierProvider.value(value: theme),
           ChangeNotifierProvider.value(value: dm),
         ],
-        child: const MaterialApp(home: ProfileSettingsPage()),
+        child: MaterialApp(home: ProfileSettingsPage(cacheService: _FakeCacheService())),
       ),
     );
 
@@ -232,7 +232,7 @@ void main() {
           ChangeNotifierProvider.value(value: theme),
           ChangeNotifierProvider.value(value: dm),
         ],
-        child: const MaterialApp(home: ProfileSettingsPage()),
+        child: MaterialApp(home: ProfileSettingsPage(cacheService: _FakeCacheService())),
       ),
     );
 
