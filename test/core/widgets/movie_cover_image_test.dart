@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/providers/settings_provider.dart';
@@ -65,10 +66,16 @@ void main() {
         variant: MovieImageVariant.thumbnail,
       ),
     );
-    expect(tester.widget<CachedImage>(find.byType(CachedImage)).blur, isTrue);
+    var networkImage = tester.widget<CachedNetworkImage>(
+      find.byType(CachedNetworkImage),
+    );
+    expect(networkImage.imageBuilder, isNotNull);
 
     await settings.setBlurMovieImages(false);
     await tester.pump();
-    expect(tester.widget<CachedImage>(find.byType(CachedImage)).blur, isFalse);
+    networkImage = tester.widget<CachedNetworkImage>(
+      find.byType(CachedNetworkImage),
+    );
+    expect(networkImage.imageBuilder, isNull);
   });
 }

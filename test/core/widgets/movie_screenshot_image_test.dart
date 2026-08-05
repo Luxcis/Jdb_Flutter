@@ -1,8 +1,8 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/storage/storage_keys.dart';
-import 'package:jade/core/widgets/cached_image.dart';
 import 'package:jade/core/widgets/movie_screenshot_image.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -35,10 +35,16 @@ void main() {
       const MovieScreenshotImage('screenshots/test.jpg'),
     );
 
-    expect(tester.widget<CachedImage>(find.byType(CachedImage)).blur, isFalse);
+    var networkImage = tester.widget<CachedNetworkImage>(
+      find.byType(CachedNetworkImage),
+    );
+    expect(networkImage.imageBuilder, isNull);
 
     await settings.setBlurMovieImages(true);
     await tester.pump();
-    expect(tester.widget<CachedImage>(find.byType(CachedImage)).blur, isTrue);
+    networkImage = tester.widget<CachedNetworkImage>(
+      find.byType(CachedNetworkImage),
+    );
+    expect(networkImage.imageBuilder, isNotNull);
   });
 }

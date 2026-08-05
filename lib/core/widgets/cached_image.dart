@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:jade/core/constants/app_constants.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/image_decryptor.dart';
+import 'package:jade/core/providers/settings_provider.dart';
+import 'package:provider/provider.dart';
 
 class CachedImage extends StatelessWidget {
   const CachedImage(
@@ -16,7 +18,6 @@ class CachedImage extends StatelessWidget {
     this.fit = BoxFit.cover,
     this.fallbackAsset,
     this.semanticLabel,
-    this.blur = false,
   });
 
   final String url;
@@ -26,7 +27,6 @@ class CachedImage extends StatelessWidget {
   final BoxFit fit;
   final String? fallbackAsset;
   final String? semanticLabel;
-  final bool blur;
 
   String get _fullUrl {
     if (url.startsWith('http')) return url;
@@ -38,6 +38,7 @@ class CachedImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final blur = context.watch<SettingsProvider?>()?.blurMovieImages ?? true;
     final image = CachedNetworkImage(
       imageUrl: _fullUrl,
       cacheManager: JdbImageCacheManager.instance,

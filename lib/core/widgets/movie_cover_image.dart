@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/widgets/cached_image.dart';
-import 'package:provider/provider.dart';
 
 enum MovieImageVariant { thumbnail, cover }
 
@@ -30,7 +28,6 @@ class MovieCoverImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final blur = context.watch<SettingsProvider?>()?.blurMovieImages ?? true;
     return CachedImage(
       url,
       width: width,
@@ -38,7 +35,6 @@ class MovieCoverImage extends StatelessWidget {
       fit: fit,
       fallbackAsset: fallbackAsset,
       semanticLabel: semanticLabel,
-      blur: blur,
     );
   }
 }

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/widgets/cached_image.dart';
-import 'package:provider/provider.dart';
 
 class MovieScreenshotImage extends StatelessWidget {
   const MovieScreenshotImage(
@@ -19,7 +17,6 @@ class MovieScreenshotImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final blur = context.watch<SettingsProvider?>()?.blurMovieImages ?? true;
-    return CachedImage(url, width: width, height: height, fit: fit, blur: blur);
+    return CachedImage(url, width: width, height: height, fit: fit);
   }
 }
