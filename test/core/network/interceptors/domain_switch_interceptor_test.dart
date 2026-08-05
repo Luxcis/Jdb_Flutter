@@ -69,4 +69,26 @@ void main() {
     await Future.delayed(Duration.zero);
     expect(errPassed, isTrue);
   });
+
+  test('manual 模式 608 不触发轮转', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final dm = await DomainManager.load(prefs);
+    await dm.applyStartup(BackupDomains(
+      apiDomains: ['https://jdforrepam.com', 'https://b.com'],
+    ));
+    await dm.select('https://b.com');
+    final adapter = FakeAdapter();
+    adapter.enqueueSequence('/x', [
+      {'success': 0, 'action': 'Blocked'},
+    ], codes: [608]);
+    final dio = Dio(BaseOptions(baseUrl: dm.currentUrl))
+      ..httpClientAdapter = adapter;
+    final ic = DomainSwitchInterceptor(domainManager: dm, dio: dio);
+    dio.interceptors.add(ic);
+    var rotated = false;
+    ic.onRotated = () => rotated = true;
+    await expectLater(dio.get('/x'), throwsA(isA<DioException>()));
+    expect(rotated, isFalse);
+    expect(dm.currentUrl, 'https://b.com');
+  });
 }
