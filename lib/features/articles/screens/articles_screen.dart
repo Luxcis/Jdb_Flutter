@@ -75,7 +75,7 @@ class _ArticlesPageState extends State<ArticlesPage> {
                         const SliverFillRemaining(child: EmptyState())
                       else
                         SliverPadding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          padding: const EdgeInsets.all(8),
                           sliver: SliverList.builder(
                             itemCount: _ctrl.items.length,
                             itemBuilder: (_, i) => Padding(
