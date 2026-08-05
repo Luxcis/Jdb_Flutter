@@ -47,6 +47,17 @@ class JdbImageCacheService implements CacheService {
   @override
   Future<void> clearAll() async {
     await _cacheManager.emptyCache();
+    // emptyCache 仅删除有数据库索引的缓存文件，磁盘上残留的孤儿文件
+    // 需手动删除整个缓存目录，确保彻底清除。
+    try {
+      final base = await _cacheDirectory();
+      final dir = Directory('${base.path}/${JdbImageCacheManager.key}');
+      if (await dir.exists()) {
+        await dir.delete(recursive: true);
+      }
+    } catch (_) {
+      // 目录删除失败不影响 emptyCache 结果。
+    }
     PaintingBinding.instance.imageCache.clear();
   }
 }

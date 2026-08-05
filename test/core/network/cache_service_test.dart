@@ -84,10 +84,14 @@ void main() {
       expect(await service.getCacheSizeBytes(), 300);
     });
 
-    test('clearAll 调用 emptyCache 并清空内存图片缓存', () async {
+    test('clearAll 调用 emptyCache 并删除缓存目录（含孤儿文件）', () async {
       final tmp = await Directory.systemTemp.createTemp('cache_service_test');
       addTearDown(() => tmp.delete(recursive: true));
       final manager = _FakeCacheManager();
+      // 模拟未被 emptyCache 索引到的孤儿文件。
+      final cacheDir = Directory('${tmp.path}/jdbImageCache');
+      await cacheDir.create(recursive: true);
+      await File('${cacheDir.path}/orphan.jpg').writeAsBytes(List.filled(10, 1));
 
       final service = JdbImageCacheService(
         cacheDirectory: () async => tmp,
@@ -97,6 +101,7 @@ void main() {
       await service.clearAll();
 
       expect(manager.emptyCacheCalls, 1);
+      expect(await cacheDir.exists(), isFalse);
     });
   });
 }
