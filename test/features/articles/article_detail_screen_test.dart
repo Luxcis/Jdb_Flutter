@@ -34,7 +34,10 @@ Future<FakeAdapter> _pumpDetail(WidgetTester tester) async {
       'category': '新作',
       'image_domain': 'https://img.example.com',
       'content': '<p>正文第一段</p><p>正文第二段</p>',
-      'released_at': '2026-08-05',
+      'released_at': DateTime.now()
+          .toUtc()
+          .subtract(const Duration(days: 2))
+          .toIso8601String(),
     },
   });
 
@@ -54,7 +57,7 @@ void main() {
     expect(find.text('详情标题'), findsOneWidget);
     expect(find.text('作者D'), findsOneWidget);
     expect(find.text('新作'), findsOneWidget);
-    expect(find.text('2026-08-05'), findsOneWidget);
+    expect(find.textContaining('天前'), findsOneWidget);
   });
 
   testWidgets('渲染正文 HTML', (tester) async {

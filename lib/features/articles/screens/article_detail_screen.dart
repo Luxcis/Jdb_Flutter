@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/utils/time_format.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/features/articles/models/article.dart';
 import 'package:jade/features/articles/services/article_service.dart';
@@ -123,9 +124,9 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
                 ),
                 const SizedBox(width: 12),
               ],
-              if (detail.releasedAt != null && detail.releasedAt!.isNotEmpty)
+              if (formatIsoRelativeTime(detail.releasedAt).isNotEmpty)
                 Text(
-                  detail.releasedAt!,
+                  formatIsoRelativeTime(detail.releasedAt),
                   style: textTheme.labelMedium?.copyWith(
                     color: Colors.grey.shade500,
                   ),

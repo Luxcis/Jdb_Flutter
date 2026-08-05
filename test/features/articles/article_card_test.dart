@@ -9,7 +9,7 @@ void main() {
     String title = '标题',
     String? author = '作者',
     String? category = '业界',
-    String? releasedAt = '2026-08-05',
+    String? releasedAt,
     String? coverUrl = 'cover.jpg',
   }) => ArticleSummary(
     id: id,
@@ -26,12 +26,16 @@ void main() {
     );
   }
 
-  testWidgets('渲染标题与作者时间', (tester) async {
-    await pumpCard(tester, article());
+  testWidgets('渲染标题作者与相对发布时间', (tester) async {
+    final releasedAt = DateTime.now()
+        .toUtc()
+        .subtract(const Duration(hours: 3))
+        .toIso8601String();
+    await pumpCard(tester, article(releasedAt: releasedAt));
 
     expect(find.text('标题'), findsOneWidget);
     expect(find.text('作者'), findsOneWidget);
-    expect(find.text('2026-08-05'), findsOneWidget);
+    expect(find.textContaining('小时前'), findsOneWidget);
   });
 
   testWidgets('渲染分类胶囊标签', (tester) async {

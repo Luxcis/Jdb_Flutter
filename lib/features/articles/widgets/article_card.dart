@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/router/routes.dart';
+import 'package:jade/core/utils/time_format.dart';
 import 'package:jade/core/widgets/cached_image.dart';
 import 'package:jade/features/articles/models/article.dart';
 
@@ -89,7 +90,7 @@ class ArticleCard extends StatelessWidget {
                         const SizedBox(width: 8),
                       ],
                       Text(
-                        article.releasedAt ?? '',
+                        formatIsoRelativeTime(article.releasedAt),
                         style: textTheme.labelSmall?.copyWith(
                           color: Colors.grey.shade500,
                         ),
