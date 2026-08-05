@@ -58,6 +58,7 @@ Future<Widget> _buildEntry({
       ChangeNotifierProvider.value(value: authProvider),
       ChangeNotifierProvider.value(value: settingsProvider),
       ChangeNotifierProvider.value(value: startupProvider),
+      ChangeNotifierProvider.value(value: apiClient.domainManager),
       ChangeNotifierProvider(create: (_) => SearchHistoryStore(prefs)),
     ],
     child: const MyApp(),
