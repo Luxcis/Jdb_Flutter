@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:jade/core/models/startup.dart';
+import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/network/domain_manager.dart';
+import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/storage/storage_keys.dart';
 import 'package:jade/features/profile/screens/profile_sub_pages.dart';
@@ -34,9 +38,13 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final settings = await SettingsProvider.create(prefs);
+    final dm = await DomainManager.load(prefs);
     await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: settings,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: settings),
+          ChangeNotifierProvider.value(value: dm),
+        ],
         child: const MaterialApp(home: ProfileSettingsPage()),
       ),
     );
@@ -56,5 +64,80 @@ void main() {
 
     expect(settings.blurMovieImages, isFalse);
     expect(prefs.getBool(StorageKeys.blurMovieImages), isFalse);
+  });
+
+  testWidgets('线路选择：点击弹出弹窗，选中域名后 subtitle 更新并提示', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final settings = await SettingsProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs);
+    await ApiClient.create(prefs: prefs, tokenProvider: auth, onAuthError: () {});
+    final dm = ApiClient.instance.domainManager;
+    await dm.applyStartup(BackupDomains(
+      apiDomains: ['https://jdforrepam.com', 'https://backup1.com'],
+    ));
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: settings),
+          ChangeNotifierProvider.value(value: dm),
+        ],
+        child: const MaterialApp(home: ProfileSettingsPage()),
+      ),
+    );
+
+    expect(find.text('线路选择'), findsOneWidget);
+    expect(find.text('自动'), findsOneWidget); // subtitle
+
+    await tester.tap(find.text('线路选择'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('自动（推荐）'), findsOneWidget);
+    expect(find.text('backup1.com'), findsOneWidget);
+
+    await tester.tap(find.text('backup1.com'));
+    await tester.pumpAndSettle();
+
+    expect(dm.lineMode, LineMode.manual);
+    expect(dm.currentUrl, 'https://backup1.com');
+    expect(find.text('backup1.com'), findsOneWidget); // subtitle 更新
+    expect(find.text('已切换到 backup1.com'), findsOneWidget); // SnackBar
+  });
+
+  testWidgets('线路选择：切回自动恢复 subtitle 与主域名', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final settings = await SettingsProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs);
+    await ApiClient.create(prefs: prefs, tokenProvider: auth, onAuthError: () {});
+    final dm = ApiClient.instance.domainManager;
+    await dm.applyStartup(BackupDomains(
+      apiDomains: ['https://jdforrepam.com', 'https://backup1.com'],
+    ));
+    await dm.select('https://backup1.com');
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: settings),
+          ChangeNotifierProvider.value(value: dm),
+        ],
+        child: const MaterialApp(home: ProfileSettingsPage()),
+      ),
+    );
+
+    expect(find.text('backup1.com'), findsOneWidget); // subtitle 为手动域名
+
+    await tester.tap(find.text('线路选择'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('自动（推荐）'));
+    await tester.pumpAndSettle();
+
+    expect(dm.isAutoMode, isTrue);
+    expect(dm.currentUrl, 'https://jdforrepam.com');
+    expect(find.text('自动'), findsOneWidget);
+    expect(find.text('已切换到自动线路'), findsOneWidget);
   });
 }

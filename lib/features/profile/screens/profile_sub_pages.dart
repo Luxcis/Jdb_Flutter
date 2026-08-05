@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:jade/core/constants/app_constants.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
+import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/network/domain_manager.dart';
 import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/widgets/actor_grid_view.dart';
@@ -320,6 +323,7 @@ class ProfileSettingsPage extends StatelessWidget {
     final blurMovieImages = context.select<SettingsProvider, bool>(
       (settings) => settings.blurMovieImages,
     );
+    final dm = context.watch<DomainManager>();
     final cells = <Widget>[
       const _ProfileCell(
         title: '外观模式',
@@ -333,7 +337,13 @@ class ProfileSettingsPage extends StatelessWidget {
         value: blurMovieImages,
         onChanged: context.read<SettingsProvider>().setBlurMovieImages,
       ),
-      const _ProfileCell(title: '线路选择', subtitle: '自动', icon: Icons.swap_horiz),
+      ListTile(
+        leading: const Icon(Icons.swap_horiz),
+        title: const Text('线路选择'),
+        subtitle: Text(dm.isAutoMode ? '自动' : _hostOf(dm.currentUrl)),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => _openLinePicker(context),
+      ),
       const _ProfileCell(title: '默认筛选标签', subtitle: '含磁链', icon: Icons.tune),
       const _ProfileCell(title: '清除缓存', icon: Icons.cleaning_services_outlined),
     ];
@@ -343,6 +353,78 @@ class ProfileSettingsPage extends StatelessWidget {
         itemCount: cells.length,
         separatorBuilder: (_, _) => const Divider(height: 1),
         itemBuilder: (_, index) => cells[index],
+      ),
+    );
+  }
+
+  /// 弹出线路选择弹窗；选中后立即生效并提示。
+  void _openLinePicker(BuildContext context) {
+    final dm = context.read<DomainManager>();
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => _LinePickerSheet(
+        domainManager: dm,
+        onSelected: (String? url) {
+          if (url == null) return;
+          final isAuto = url == 'auto';
+          if (isAuto) {
+            dm.selectAuto();
+          } else {
+            dm.select(url);
+          }
+          ApiClient.instance.swapBaseUrl(dm.currentUrl);
+          Navigator.pop(sheetContext);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                isAuto ? '已切换到自动线路' : '已切换到 ${_hostOf(url)}',
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// 线路选择底部弹窗：自动 + 各域名单选行。
+class _LinePickerSheet extends StatelessWidget {
+  const _LinePickerSheet({required this.domainManager, required this.onSelected});
+
+  final DomainManager domainManager;
+  final void Function(String? url) onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final dm = domainManager;
+    final domains = dm.apiDomains.isNotEmpty
+        ? dm.apiDomains
+        : const [AppConstants.fallbackBaseUrl];
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text('线路选择', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          ListTile(
+            title: const Text('自动（推荐）'),
+            subtitle: const Text('请求失败时自动切换可用线路'),
+            trailing: dm.isAutoMode ? const Icon(Icons.check) : null,
+            onTap: () => onSelected('auto'),
+          ),
+          const Divider(height: 1),
+          for (final url in domains)
+            ListTile(
+              title: Text(_hostOf(url)),
+              trailing:
+                  !dm.isAutoMode && dm.currentUrl == url
+                      ? const Icon(Icons.check)
+                      : null,
+              onTap: () => onSelected(url),
+            ),
+        ],
       ),
     );
   }
@@ -389,3 +471,6 @@ class _ProfileCell extends StatelessWidget {
 }
 
 void _noopFilter(Map<String, String> _) {}
+
+/// 去掉 URL 的协议前缀，仅显示 host。
+String _hostOf(String url) => url.replaceFirst(RegExp(r'^https?://'), '');
