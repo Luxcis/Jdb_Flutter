@@ -346,7 +346,6 @@ class ProfileSettingsPage extends StatelessWidget {
         trailing: const Icon(Icons.chevron_right),
         onTap: () => _openLinePicker(context),
       ),
-      const _ProfileCell(title: '默认筛选标签', subtitle: '含磁链', icon: Icons.tune),
       const _ProfileCell(title: '清除缓存', icon: Icons.cleaning_services_outlined),
     ];
     return Scaffold(

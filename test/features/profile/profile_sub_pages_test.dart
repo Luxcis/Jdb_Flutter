@@ -52,7 +52,6 @@ void main() {
 
     expect(find.text('外观模式'), findsOneWidget);
     expect(find.text('线路选择'), findsOneWidget);
-    expect(find.text('默认筛选标签'), findsOneWidget);
     expect(find.text('清除缓存'), findsOneWidget);
     expect(find.text('影片图片模糊'), findsOneWidget);
     expect(

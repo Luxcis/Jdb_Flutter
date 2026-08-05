@@ -7,7 +7,6 @@ class StorageKeys {
   static const String token = 'key_token';
   static const String user = 'key_user';
   static const String themeMode = 'key_theme_mode';
-  static const String defaultFilterTags = 'key_default_filter_tags';
   static const String blurMovieImages = 'key_blur_movie_images';
   static const String searchHistory = 'key_search_history';
   static const String magnetSearchHistory = 'key_magnet_search_history';
