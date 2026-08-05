@@ -14,6 +14,7 @@ class AppRoutes {
   static const String actorDetail = '/actor/:id';
   static const String movieDetail = '/movie/:id';
   static const String articles = '/articles';
+  static const String articleDetail = '/articles/:id';
   static const String reviews = '/reviews';
   static const String magnetSearch = '/search/magnet';
   static const String magnetSearchResults = '/search/magnet/results';

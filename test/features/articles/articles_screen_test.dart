@@ -1,10 +1,7 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/network/api_client.dart';
-import 'package:jade/core/network/domain_manager.dart';
 import 'package:jade/core/network/endpoints.dart';
-import 'package:jade/core/network/interceptors/response_interceptor.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/features/articles/screens/articles_screen.dart';

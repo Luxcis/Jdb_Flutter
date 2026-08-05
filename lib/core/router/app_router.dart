@@ -8,6 +8,8 @@ import 'package:jade/features/home/index.dart';
 import 'package:jade/features/rankings/index.dart';
 import 'package:jade/features/categories/index.dart';
 import 'package:jade/features/actors/index.dart';
+import 'package:jade/features/articles/screens/article_detail_screen.dart';
+import 'package:jade/features/articles/screens/articles_screen.dart';
 import 'package:jade/features/profile/index.dart';
 import 'package:jade/features/movie_detail/index.dart';
 import 'package:jade/features/search/index.dart';
@@ -151,7 +153,13 @@ class AppRouter {
     ),
     GoRoute(
       path: AppRoutes.articles,
-      builder: (c, s) => const _SimpleListPage(title: 'AV资讯'),
+      builder: (c, s) => const ArticlesPage(),
+      routes: [
+        GoRoute(
+          path: ':id',
+          builder: (c, s) => ArticleDetailPage(id: s.pathParameters['id']!),
+        ),
+      ],
     ),
     GoRoute(
       path: AppRoutes.reviews,

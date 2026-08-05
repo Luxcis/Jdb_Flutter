@@ -20,7 +20,6 @@ class _ArticlesPageState extends State<ArticlesPage> {
   @override
   void initState() {
     super.initState();
-    final api = ApiClient.instanceOrNull;
     _ctrl = PaginationController<ArticleSummary>(fetch: _fetchPage)
       ..fetchMore();
   }
