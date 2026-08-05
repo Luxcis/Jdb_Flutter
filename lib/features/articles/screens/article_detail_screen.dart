@@ -12,9 +12,10 @@ String resolveArticleImageUrls(String content, String? imageDomain) {
   final domain = imageDomain?.trim();
   if (domain == null || domain.isEmpty) return content;
   final base = domain.startsWith('//') ? 'https:$domain' : domain;
-  final pattern = RegExp(r'src="(?![a-z]+:)([^"]+)"');
+  final pattern = RegExp(r'src="(?![a-zA-Z]+:)([^"]+)"');
   return content.replaceAllMapped(pattern, (m) {
     final src = m[1]!;
+    if (src.startsWith('//')) return 'src="https:$src"';
     final url = src.startsWith('/') ? '$base$src' : '$base/$src';
     return 'src="$url"';
   });
@@ -39,16 +40,20 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
   }
 
   Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     final api = ApiClient.instanceOrNull;
     if (api == null) {
-      setState(() {
-        _loading = false;
-        _error = '网络未就绪';
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = '网络未就绪';
+        });
+      }
       return;
     }
     try {
@@ -101,9 +106,13 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
           Row(
             children: [
               if (detail.author != null && detail.author!.isNotEmpty) ...[
-                Text(
-                  detail.author!,
-                  style: textTheme.labelMedium?.copyWith(color: Colors.grey),
+                Expanded(
+                  child: Text(
+                    detail.author!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.labelMedium?.copyWith(color: Colors.grey),
+                  ),
                 ),
                 const SizedBox(width: 12),
               ],

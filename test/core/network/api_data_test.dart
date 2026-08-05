@@ -3,6 +3,7 @@ import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/magnet.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/network/api_data.dart';
+import 'package:jade/features/articles/models/article.dart';
 
 void main() {
   test('normalizeMovieSummaryJson 将数字字符串转为模型可解析的数字', () {
@@ -215,6 +216,47 @@ void main() {
       expect(json['id'], '123');
       expect(json['category'], isNull);
       expect(json['cover_url'], isNull);
+    });
+  });
+
+  group('normalizeArticleDetailJson', () {
+    test('{article: ...} wrapper 展开并解析新字段', () {
+      final detail = ArticleDetail.fromJson(
+        normalizeArticleDetailJson({
+          'article': {
+            'id': 1,
+            'title': '标题',
+            'origin_name': '原题名',
+            'origin_url': 'https://origin.example.com/post/1',
+            'cover_url': 'cover.jpg',
+            'author': {'username': '作者U'},
+            'category': '业界',
+            'image_domain': 'https://img.example.com',
+            'content': '<p>正文</p>',
+            'released_at': '2026-08-05',
+          },
+        }),
+      );
+
+      expect(detail.id, '1');
+      expect(detail.title, '标题');
+      expect(detail.originName, '原题名');
+      expect(detail.originUrl, 'https://origin.example.com/post/1');
+      expect(detail.coverUrl, 'cover.jpg');
+      expect(detail.author, '作者U');
+      expect(detail.category, '业界');
+      expect(detail.imageDomain, 'https://img.example.com');
+      expect(detail.content, '<p>正文</p>');
+      expect(detail.releasedAt, '2026-08-05');
+    });
+
+    test('无 wrapper 时直接使用根字段，缺失字段为 null', () {
+      final json = normalizeArticleDetailJson({'id': 2, 'title': '标题2'});
+
+      expect(json['origin_name'], isNull);
+      expect(json['origin_url'], isNull);
+      expect(json['image_domain'], isNull);
+      expect(json['content'], isNull);
     });
   });
 }

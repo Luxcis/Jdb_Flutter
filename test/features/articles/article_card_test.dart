@@ -62,5 +62,6 @@ void main() {
     await pumpCard(tester, article(coverUrl: null));
 
     expect(find.byType(AspectRatio), findsOneWidget);
+    expect(find.byIcon(Icons.image_outlined), findsOneWidget);
   });
 }

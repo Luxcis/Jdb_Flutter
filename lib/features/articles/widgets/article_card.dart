@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/widgets/cached_image.dart';
 import 'package:jade/features/articles/models/article.dart';
 
@@ -17,7 +18,7 @@ class ArticleCard extends StatelessWidget {
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.push('/articles/${article.id}'),
+        onTap: () => context.push('${AppRoutes.articles}/${article.id}'),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -67,7 +68,8 @@ class ArticleCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (article.category != null) ...[
+                      if (article.category != null &&
+                          article.category!.isNotEmpty) ...[
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,

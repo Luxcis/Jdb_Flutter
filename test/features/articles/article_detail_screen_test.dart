@@ -136,5 +136,26 @@ void main() {
       resolveArticleImageUrls('<img src="/a.jpg">', null),
       '<img src="/a.jpg">',
     );
+    expect(
+      resolveArticleImageUrls(
+        '<img src="//cdn.x.com/a.jpg">',
+        'https://img.example.com',
+      ),
+      '<img src="https://cdn.x.com/a.jpg">',
+    );
+    expect(
+      resolveArticleImageUrls(
+        '<img src="data:image/png;base64,abc">',
+        'https://img.example.com',
+      ),
+      '<img src="data:image/png;base64,abc">',
+    );
+    expect(
+      resolveArticleImageUrls(
+        '<img src="HTTPS://img.example.com/a.jpg">',
+        'https://img.example.com',
+      ),
+      '<img src="HTTPS://img.example.com/a.jpg">',
+    );
   });
 }
