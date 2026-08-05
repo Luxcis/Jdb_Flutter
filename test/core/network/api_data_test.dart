@@ -187,4 +187,34 @@ void main() {
     expect(magnet.publishDate, '2026-07-22');
     expect(magnet.isHighDefinition, isFalse);
   });
+
+  group('normalizeArticleSummaryJson', () {
+    test('author 支持字符串/对象/缺失三种形态', () {
+      expect(
+        normalizeArticleSummaryJson({'id': 1, 'title': 't', 'author': '作者'})['author'],
+        '作者',
+      );
+      expect(
+        normalizeArticleSummaryJson(
+          {'id': 1, 'title': 't', 'author': {'name': '作者'}},
+        )['author'],
+        '作者',
+      );
+      expect(
+        normalizeArticleSummaryJson({'id': 1, 'title': 't'})['author'],
+        isNull,
+      );
+    });
+
+    test('id 归一化为字符串，空 category 归一化为 null', () {
+      final json = normalizeArticleSummaryJson({
+        'id': 123,
+        'title': '标题',
+        'category': '  ',
+      });
+      expect(json['id'], '123');
+      expect(json['category'], isNull);
+      expect(json['cover_url'], isNull);
+    });
+  });
 }

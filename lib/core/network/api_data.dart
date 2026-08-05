@@ -207,6 +207,40 @@ Map<String, dynamic> normalizeReviewJson(Map<String, dynamic> json) {
   };
 }
 
+String? _articleAuthor(dynamic author) {
+  if (author is String) return _nonEmptyApiString(author);
+  if (author is Map) {
+    return _nonEmptyApiString(author['name'] ?? author['username']);
+  }
+  return _nonEmptyApiString(author);
+}
+
+Map<String, dynamic> normalizeArticleSummaryJson(Map<String, dynamic> json) {
+  return {
+    ...json,
+    'id': apiString(json['id']) ?? '',
+    'title': apiString(json['title']) ?? '',
+    'cover_url': apiString(json['cover_url']),
+    'author': _articleAuthor(json['author']),
+    'category': _nonEmptyApiString(json['category']),
+    'released_at': apiString(json['released_at']),
+  };
+}
+
+Map<String, dynamic> normalizeArticleDetailJson(dynamic data) {
+  final root = apiMap(data);
+  final article = apiMap(root['article']).isNotEmpty
+      ? apiMap(root['article'])
+      : root;
+  return {
+    ...normalizeArticleSummaryJson(article),
+    'origin_name': apiString(article['origin_name']),
+    'origin_url': apiString(article['origin_url']),
+    'image_domain': apiString(article['image_domain']),
+    'content': apiString(article['content']),
+  };
+}
+
 List<String> _tagLabels(dynamic tags) {
   if (tags is! List) return const [];
   return tags
