@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/constants/app_constants.dart';
 import 'package:jade/core/models/startup.dart';
 import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/network/cache_service.dart';
 import 'package:jade/core/network/domain_manager.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/settings_provider.dart';
@@ -11,6 +12,22 @@ import 'package:jade/core/storage/storage_keys.dart';
 import 'package:jade/features/profile/screens/profile_sub_pages.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+class _FakeCacheService implements CacheService {
+  _FakeCacheService({this.size = 0});
+
+  int size;
+  int clearAllCalls = 0;
+
+  @override
+  Future<int> getCacheSizeBytes() async => size;
+
+  @override
+  Future<void> clearAll() async {
+    clearAllCalls++;
+    size = 0;
+  }
+}
 
 void main() {
   testWidgets('个人资料页展示资料与账号操作 cell', (tester) async {
@@ -234,5 +251,43 @@ void main() {
     expect(theme.themeMode, ThemeMode.dark);
     expect(prefs.getInt('theme-mode-index'), ThemeMode.dark.index);
     expect(find.text('深色模式'), findsOneWidget); // subtitle 更新
+  });
+
+  testWidgets('清除缓存：显示大小，确认后调用 clearAll 并归零提示', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final settings = await SettingsProvider.create(prefs);
+    final theme = await ThemeProvider.create();
+    final dm = await DomainManager.load(prefs);
+    final cacheService = _FakeCacheService(size: (24 * 1024 + 512) * 1024);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: settings),
+          ChangeNotifierProvider.value(value: theme),
+          ChangeNotifierProvider.value(value: dm),
+        ],
+        child: MaterialApp(
+          home: ProfileSettingsPage(cacheService: cacheService),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('清除缓存'), findsOneWidget);
+    expect(find.text('24.5 MB'), findsOneWidget);
+
+    await tester.tap(find.text('清除缓存'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('清除图片缓存？'), findsOneWidget);
+
+    await tester.tap(find.text('清除'));
+    await tester.pumpAndSettle();
+
+    expect(cacheService.clearAllCalls, 1);
+    expect(find.text('0 B'), findsOneWidget);
+    expect(find.text('缓存已清除'), findsOneWidget);
   });
 }

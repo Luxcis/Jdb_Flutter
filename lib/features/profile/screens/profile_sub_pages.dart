@@ -7,6 +7,7 @@ import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/network/cache_service.dart';
 import 'package:jade/core/network/domain_manager.dart';
 import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/providers/theme_provider.dart';
@@ -318,16 +319,73 @@ class ProfileInfoPage extends StatelessWidget {
   }
 }
 
-class ProfileSettingsPage extends StatelessWidget {
-  const ProfileSettingsPage({super.key});
+class ProfileSettingsPage extends StatefulWidget {
+  const ProfileSettingsPage({super.key, this.cacheService});
+
+  final CacheService? cacheService;
+
+  @override
+  State<ProfileSettingsPage> createState() => _ProfileSettingsPageState();
+}
+
+class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
+  late final CacheService _cacheService =
+      widget.cacheService ?? JdbImageCacheService();
+  int? _cacheSizeBytes;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCacheSize();
+  }
+
+  Future<void> _loadCacheSize() async {
+    final size = await _cacheService.getCacheSizeBytes();
+    if (!mounted) return;
+    setState(() => _cacheSizeBytes = size);
+  }
+
+  Future<void> _confirmAndClearCache() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('清除图片缓存？'),
+        content: const Text('将删除已下载的图片封面与剧照。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('清除'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await _cacheService.clearAll();
+      if (!mounted) return;
+      setState(() => _cacheSizeBytes = 0);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('缓存已清除')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('清除失败，请稍后重试')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final themeMode = context.watch<ThemeProvider>().themeMode;
     final blurMovieImages = context.select<SettingsProvider, bool>(
       (settings) => settings.blurMovieImages,
     );
     final dm = context.watch<DomainManager>();
+    final themeMode = context.watch<ThemeProvider>().themeMode;
     final cells = <Widget>[
       ListTile(
         leading: const Icon(Icons.brightness_6_outlined),
@@ -350,7 +408,15 @@ class ProfileSettingsPage extends StatelessWidget {
         trailing: const Icon(Icons.chevron_right),
         onTap: () => _openLinePicker(context),
       ),
-      const _ProfileCell(title: '清除缓存', icon: Icons.cleaning_services_outlined),
+      ListTile(
+        leading: const Icon(Icons.cleaning_services_outlined),
+        title: const Text('清除缓存'),
+        subtitle: Text(
+          _cacheSizeBytes == null ? '计算中…' : formatCacheSize(_cacheSizeBytes!),
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: _confirmAndClearCache,
+      ),
     ];
     return Scaffold(
       appBar: AppBar(title: const Text('设置')),
