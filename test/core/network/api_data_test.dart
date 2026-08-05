@@ -217,6 +217,16 @@ void main() {
       expect(json['category'], isNull);
       expect(json['cover_url'], isNull);
     });
+
+    test('category 为 {id, name} 对象时提取 name', () {
+      final json = normalizeArticleSummaryJson({
+        'id': 1,
+        'title': 't',
+        'category': {'id': 1, 'name': '發片'},
+      });
+
+      expect(json['category'], '發片');
+    });
   });
 
   group('normalizeArticleDetailJson', () {

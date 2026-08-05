@@ -215,6 +215,12 @@ String? _articleAuthor(dynamic author) {
   return _nonEmptyApiString(author);
 }
 
+String? _articleCategory(dynamic category) {
+  if (category is String) return _nonEmptyApiString(category);
+  if (category is Map) return _nonEmptyApiString(category['name']);
+  return _nonEmptyApiString(category);
+}
+
 Map<String, dynamic> normalizeArticleSummaryJson(Map<String, dynamic> json) {
   return {
     ...json,
@@ -222,7 +228,7 @@ Map<String, dynamic> normalizeArticleSummaryJson(Map<String, dynamic> json) {
     'title': apiString(json['title']) ?? '',
     'cover_url': apiString(json['cover_url']),
     'author': _articleAuthor(json['author']),
-    'category': _nonEmptyApiString(json['category']),
+    'category': _articleCategory(json['category']),
     'released_at': apiString(json['released_at']),
   };
 }
