@@ -3,12 +3,13 @@
 ## 目标
 
 将资讯详情正文渲染从已归档的 `flutter_html ^3.0.0` 迁移到活跃维护的
-`flutter_widget_from_html ^0.17.2`，并补齐两个图片能力：正文图片跟随全局
+`flutter_widget_from_html_core ^0.17.2` + 图片增强扩展包，并补齐两个图片能力：正文图片跟随全局
 "模糊图片"开关（`blurMovieImages`），点击图片打开支持缩放与左右切换的全屏大图预览。
 
 ## 已确认需求
 
-- 用 `flutter_widget_from_html ^0.17.2`（增强包）替换 `flutter_html ^3.0.0` 渲染资讯详情正文。
+- 用 `flutter_widget_from_html_core ^0.17.2` + 增强扩展包（按需选装）替换
+  `flutter_html ^3.0.0` 渲染资讯详情正文；不引入全量增强包。
 - 正文网络图片跟随全局 `blurMovieImages` 开关（默认开启），复用 `CachedImage` 现有的
   模糊与 `JdbImageCacheManager` 解密缓存能力，不重复实现模糊逻辑。
 - 点击正文图片打开全屏大图预览：黑底、缩放（1x~4x）、PageView 左右切换、计数标题、关闭按钮。
@@ -19,15 +20,23 @@
 
 ### 依赖
 
-`pubspec.yaml`：删除 `flutter_html: ^3.0.0`，新增 `flutter_widget_from_html: ^0.17.2`
-（增强包自带 core + `fwfh_cached_network_image` + svg/url/webview/音视频等 mixin）。
-环境 Flutter 3.44.8 / Dart 3.12.2 满足其 Flutter >= 3.32 / Dart >= 3.4 要求。
+`pubspec.yaml`：删除 `flutter_html: ^3.0.0`，新增：
+
+- `flutter_widget_from_html_core: ^0.17.2`：核心渲染，含 `HtmlWidget`、
+  `WidgetFactory`、`ImageSource`、`onTapImage` 等。
+- `fwfh_cached_network_image: ^0.16.1`：网络图片渲染扩展
+  （`CachedNetworkImageFactory` mixin），作为非接管图片的兜底渲染。
+
+不引入全量增强包（`flutter_widget_from_html`）及其附带依赖
+（chewie/just_audio/webview/svg/url_launcher），避免不必要的依赖体积。
+环境 Flutter 3.44.8 / Dart 3.12.2 满足 Flutter >= 3.32 / Dart >= 3.4 要求。
 
 ### 图片渲染（模糊跟随）
 
 新增 `lib/features/articles/widgets/article_widget_factory.dart`：
 
-- `class ArticleWidgetFactory extends WidgetFactory`，仅覆写
+- `class ArticleWidgetFactory extends WidgetFactory with CachedNetworkImageFactory`
+  （import 来自 `flutter_widget_from_html_core` 与 `fwfh_cached_network_image`），仅覆写
   `Widget? buildImageWidget(BuildTree tree, ImageSource src)`。
 - 网络图片（`src.url` 为 `http`/`https` 且路径不以 `.svg` 结尾，含带查询参数的 svg）
   返回 `CachedImage(src.url, fit: BoxFit.fill)`；`CachedImage` 内部已通过
@@ -114,4 +123,3 @@
 - 正文图片统一遵守全局模糊开关，非网络图片与失败占位不被误模糊。
 - 点击正文图片可打开全屏预览并缩放/切换。
 - 公共预览组件被电影详情与资讯详情共用，行为一致。
-
