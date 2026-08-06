@@ -3,8 +3,6 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:photo_view/photo_view.dart';
-import 'package:photo_view/photo_view_gallery.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/list_model.dart';
 import 'package:jade/core/models/magnet.dart';
@@ -14,6 +12,7 @@ import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/api_exception.dart';
 import 'package:jade/core/widgets/actor_card.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
+import 'package:jade/core/widgets/image_gallery_viewer.dart';
 import 'package:jade/core/widgets/magnet_list_tile.dart';
 import 'package:jade/core/widgets/list_summary_tile.dart';
 import 'package:jade/core/widgets/movie_card.dart';
@@ -940,99 +939,12 @@ class _ScreenshotSection extends StatelessWidget {
                   context: context,
                   useSafeArea: false,
                   builder: (_) =>
-                      _ScreenshotViewer(urls: urls, initialIndex: index),
+                      ImageGalleryViewer(urls: urls, initialIndex: index),
                 ),
                 child: MovieScreenshotImage(urls[index]),
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ScreenshotViewer extends StatefulWidget {
-  const _ScreenshotViewer({required this.urls, required this.initialIndex});
-
-  final List<String> urls;
-  final int initialIndex;
-
-  @override
-  State<_ScreenshotViewer> createState() => _ScreenshotViewerState();
-}
-
-class _ScreenshotViewerState extends State<_ScreenshotViewer> {
-  late final PageController _controller;
-  late final List<PhotoViewController> _photoViewControllers;
-  late int _currentIndex;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentIndex = widget.initialIndex;
-    _controller = PageController(initialPage: widget.initialIndex);
-    _photoViewControllers = List.generate(
-      widget.urls.length,
-      (_) => PhotoViewController(),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    for (final controller in _photoViewControllers) {
-      controller.dispose();
-    }
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog.fullscreen(
-      key: const Key('movie-screenshot-viewer'),
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        appBar: AppBar(
-          backgroundColor: Colors.black,
-          foregroundColor: Colors.white,
-          leading: IconButton(
-            tooltip: '关闭',
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.close),
-          ),
-          title: Text('${_currentIndex + 1} / ${widget.urls.length}'),
-          centerTitle: true,
-        ),
-        body: LayoutBuilder(
-          builder: (context, constraints) {
-            final childSize = Size(
-              constraints.maxWidth * 2,
-              constraints.maxHeight * 2,
-            );
-            return PhotoViewGallery.builder(
-              key: const Key('movie-screenshot-pages'),
-              pageController: _controller,
-              itemCount: widget.urls.length,
-              backgroundDecoration: const BoxDecoration(color: Colors.black),
-              customSize: constraints.biggest,
-              onPageChanged: (index) => setState(() => _currentIndex = index),
-              builder: (_, index) => PhotoViewGalleryPageOptions.customChild(
-                childSize: childSize,
-                controller: _photoViewControllers[index],
-                initialScale: PhotoViewComputedScale.contained,
-                minScale: PhotoViewComputedScale.contained,
-                maxScale: PhotoViewComputedScale.contained * 4,
-                child: SizedBox.expand(
-                  child: MovieScreenshotImage(
-                    widget.urls[index],
-                    key: Key('movie-screenshot-page-$index'),
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-            );
-          },
         ),
       ),
     );

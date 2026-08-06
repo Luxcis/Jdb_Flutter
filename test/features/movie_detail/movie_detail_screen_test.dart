@@ -913,12 +913,12 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.byKey(const Key('movie-screenshot-viewer')), findsOneWidget);
+    expect(find.byKey(const Key('image-gallery-viewer')), findsOneWidget);
     expect(find.text('2 / 2'), findsOneWidget);
     expect(find.byType(PhotoViewGallery), findsOneWidget);
     expect(find.byType(InteractiveViewer), findsNothing);
 
-    final currentScreenshot = find.byKey(const Key('movie-screenshot-page-1'));
+    final currentScreenshot = find.byKey(const Key('image-gallery-page-1'));
     expect(currentScreenshot, findsOneWidget);
     final currentPhotoView = find.ancestor(
       of: currentScreenshot,
@@ -953,6 +953,6 @@ void main() {
     await tester.tap(find.byTooltip('关闭'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
-    expect(find.byKey(const Key('movie-screenshot-viewer')), findsNothing);
+    expect(find.byKey(const Key('image-gallery-viewer')), findsNothing);
   });
 }
