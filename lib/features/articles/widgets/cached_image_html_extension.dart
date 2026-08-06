@@ -17,9 +17,9 @@ class CachedImageHtmlExtension extends HtmlExtension {
     final element = context.styledElement;
     if (element is! ImageElement) return false;
     final uri = Uri.tryParse(element.src);
-    final isNetwork = uri != null &&
-        (uri.scheme == 'http' || uri.scheme == 'https');
-    return isNetwork && !element.src.endsWith('.svg');
+    if (uri == null) return false;
+    final isNetwork = uri.scheme == 'http' || uri.scheme == 'https';
+    return isNetwork && !uri.path.toLowerCase().endsWith('.svg');
   }
 
   @override
