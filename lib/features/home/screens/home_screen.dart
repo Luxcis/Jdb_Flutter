@@ -30,10 +30,20 @@ class _HomePageState extends State<HomePage> {
     final api = ApiClient.instanceOrNull;
     if (api == null) return;
     final provider = HomeProvider(HomeService(api));
-    provider.loadAll().then((_) {
-      if (mounted) setState(() => _provider = provider);
-    });
     setState(() => _provider = provider);
+    for (final kind in HomeSectionKind.values) {
+      provider.loadSection(kind).then((_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  Future<void> _retrySection(HomeSectionKind kind) async {
+    final provider = _provider;
+    if (provider == null) return;
+    setState(() {});
+    await provider.retrySection(kind);
+    if (mounted) setState(() {});
   }
 
   Future<void> _refreshLatest() async {
@@ -73,82 +83,127 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final p = _provider;
-    if (p == null || p.isLoading) {
-      return const Scaffold(
-        body: SafeArea(child: Center(child: CircularProgressIndicator())),
-      );
-    }
-    if (p.error != null) {
-      return Scaffold(
-        body: SafeArea(
-          child: ErrorRetryWidget(message: p.error!, onRetry: _load),
-        ),
-      );
-    }
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
             const SliverToBoxAdapter(child: HomeSearchBar()),
             const SliverToBoxAdapter(child: TofuScroll()),
-            SliverToBoxAdapter(
+            const SliverToBoxAdapter(
               child: SectionHeader(title: '佳片推荐', trailing: '往期推荐', bold: true),
             ),
-            if (p.recommends.isNotEmpty)
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 220,
-                  child: PageView.builder(
-                    itemCount: p.recommends.length,
-                    itemBuilder: (_, i) => GestureDetector(
-                      onTap: () => context.push('/movie/${p.recommends[i].id}'),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          MovieCoverImage(
-                            p.recommends[i].coverUrl,
-                            variant: MovieImageVariant.cover,
-                            semanticLabel: p.recommends[i].title,
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              color: Colors.black54,
-                              padding: const EdgeInsets.all(8),
-                              child: Text(
-                                p.recommends[i].title,
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            _recommendSection(p?.recommends),
             SliverToBoxAdapter(
               child: SectionHeader(title: '最新上架', trailing: '全部'),
             ),
-            _buildGrid(p.latest),
+            _gridSection(p?.latest, kind: HomeSectionKind.latest),
             _shuffleButton(
               key: const Key('home-latest-shuffle'),
-              isLoading: p.isLatestRefreshing,
+              isLoading: p?.isLatestRefreshing ?? false,
               onPressed: _refreshLatest,
             ),
             SliverToBoxAdapter(
               child: SectionHeader(title: '近期磁链更新', trailing: '全部'),
             ),
-            _buildGrid(p.magnetUpdates),
+            _gridSection(p?.magnetUpdates, kind: HomeSectionKind.magnets),
             _shuffleButton(
               key: const Key('home-magnets-shuffle'),
-              isLoading: p.isMagnetRefreshing,
+              isLoading: p?.isMagnetRefreshing ?? false,
               onPressed: _refreshMagnets,
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _recommendSection(HomeSection? section) {
+    if (section == null || section.isLoading) {
+      return _sectionLoading(
+        height: 220,
+        key: const Key('home-loading-recommends'),
+      );
+    }
+    if (section.error != null) {
+      return _sectionError(
+        height: 220,
+        message: section.error!,
+        onRetry: () => _retrySection(HomeSectionKind.recommends),
+      );
+    }
+    if (section.isEmpty) return const SliverToBoxAdapter(child: EmptyState());
+    return SliverToBoxAdapter(
+      child: SizedBox(
+        height: 220,
+        child: PageView.builder(
+          itemCount: section.items.length,
+          itemBuilder: (_, i) => GestureDetector(
+            onTap: () => context.push('/movie/${section.items[i].id}'),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                MovieCoverImage(
+                  section.items[i].coverUrl,
+                  variant: MovieImageVariant.cover,
+                  semanticLabel: section.items[i].title,
+                ),
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    color: Colors.black54,
+                    padding: const EdgeInsets.all(8),
+                    child: Text(
+                      section.items[i].title,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _gridSection(HomeSection? section, {required HomeSectionKind kind}) {
+    if (section == null || section.isLoading) {
+      return _sectionLoading(
+        height: 640,
+        key: Key('home-loading-${kind.name}'),
+      );
+    }
+    if (section.error != null) {
+      return _sectionError(
+        height: 640,
+        message: section.error!,
+        onRetry: () => _retrySection(kind),
+      );
+    }
+    return _buildGrid(section.items);
+  }
+
+  Widget _sectionLoading({required double height, required Key key}) {
+    return SliverToBoxAdapter(
+      child: SizedBox(
+        height: height,
+        key: key,
+        child: const Center(child: CircularProgressIndicator()),
+      ),
+    );
+  }
+
+  Widget _sectionError({
+    required double height,
+    required String message,
+    required VoidCallback onRetry,
+  }) {
+    return SliverToBoxAdapter(
+      child: SizedBox(
+        height: height,
+        child: ErrorRetryWidget(message: message, onRetry: onRetry),
       ),
     );
   }
