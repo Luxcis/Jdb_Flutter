@@ -5,6 +5,7 @@ import 'package:jade/core/utils/time_format.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/features/articles/models/article.dart';
 import 'package:jade/features/articles/services/article_service.dart';
+import 'package:jade/features/articles/widgets/cached_image_html_extension.dart';
 
 /// 将正文中相对路径的图片地址拼接为完整 URL。
 ///
@@ -139,6 +140,7 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
               detail.content ?? '',
               detail.imageDomain,
             ),
+            extensions: const [CachedImageHtmlExtension()],
             style: {
               'body': Style(
                 fontSize: FontSize(15),

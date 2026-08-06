@@ -52,6 +52,14 @@ void main() {
     expect(find.byType(CachedImage), findsNothing);
   });
 
+  testWidgets('带查询参数的 svg 不渲染为 CachedImage', (tester) async {
+    await _pumpHtml(
+      tester,
+      '<img src="https://img.example.com/a.svg?v=1">',
+    );
+    expect(find.byType(CachedImage), findsNothing);
+  });
+
   testWidgets('正文图片跟随全局模糊开关', (tester) async {
     SharedPreferences.setMockInitialValues({StorageKeys.blurMovieImages: false});
     final prefs = await SharedPreferences.getInstance();

@@ -4,10 +4,14 @@ import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
+import 'package:jade/core/widgets/cached_image.dart';
 import 'package:jade/features/articles/screens/article_detail_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-Future<FakeAdapter> _pumpDetail(WidgetTester tester) async {
+Future<FakeAdapter> _pumpDetail(
+  WidgetTester tester, {
+  String content = '<p>正文第一段</p><p>正文第二段</p>',
+}) async {
   tester.view.physicalSize = const Size(390, 1600);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
@@ -33,7 +37,7 @@ Future<FakeAdapter> _pumpDetail(WidgetTester tester) async {
       'author': {'name': '作者D'},
       'category': '新作',
       'image_domain': 'https://img.example.com',
-      'content': '<p>正文第一段</p><p>正文第二段</p>',
+      'content': content,
       'released_at': DateTime.now()
           .toUtc()
           .subtract(const Duration(days: 2))
@@ -65,6 +69,15 @@ void main() {
 
     expect(find.text('正文第一段'), findsOneWidget);
     expect(find.text('正文第二段'), findsOneWidget);
+  });
+
+  testWidgets('正文网络图片使用 CachedImage 渲染', (tester) async {
+    await _pumpDetail(
+      tester,
+      content: '<p>正文</p><img src="https://img.example.com/a.jpg">',
+    );
+
+    expect(find.byType(CachedImage), findsOneWidget);
   });
 
   testWidgets('加载失败显示重试并可恢复', (tester) async {
