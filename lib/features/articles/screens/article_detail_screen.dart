@@ -8,17 +8,32 @@ import 'package:jade/features/articles/models/article.dart';
 import 'package:jade/features/articles/services/article_service.dart';
 import 'package:jade/features/articles/widgets/article_widget_factory.dart';
 
-/// 将正文中相对路径的图片地址拼接为完整 URL。
+/// 将正文中的图片地址统一改写为接口返回的 [imageDomain]：
 ///
-/// 跳过已有 scheme（如 https:、data:）的 src；`imageDomain` 为空时不处理。
+/// - 绝对 http/https 与协议相对（`//host/...`）地址：替换其 origin，
+///   保留路径与 query，即 `imageDomain + 原路径`；
+/// - 相对路径（`/x`、`x`）：拼接 `imageDomain`；
+/// - 已在 `imageDomain` 下的 src 保持不变（幂等，避免前缀重复）；
+/// - `data:`、`asset:`、`file:` 等非网络 src 保持不变；
+/// - `imageDomain` 为空时不处理。
 String resolveArticleImageUrls(String content, String? imageDomain) {
   final domain = imageDomain?.trim();
   if (domain == null || domain.isEmpty) return content;
   final base = domain.startsWith('//') ? 'https:$domain' : domain;
-  final pattern = RegExp(r'src="(?![a-zA-Z]+:)([^"]+)"');
+  final pattern = RegExp(r'src="([^"]+)"');
   return content.replaceAllMapped(pattern, (m) {
     final src = m[1]!;
-    if (src.startsWith('//')) return 'src="https:$src"';
+    if (src == base || src.startsWith('$base/')) return m[0]!;
+    final uri = Uri.tryParse(src);
+    if (uri == null) return m[0]!;
+    if (src.startsWith('//') ||
+        uri.scheme == 'http' ||
+        uri.scheme == 'https') {
+      final pathAndQuery =
+          uri.hasQuery ? '${uri.path}?${uri.query}' : uri.path;
+      return 'src="$base$pathAndQuery"';
+    }
+    if (uri.scheme.isNotEmpty) return m[0]!;
     final url = src.startsWith('/') ? '$base$src' : '$base/$src';
     return 'src="$url"';
   });

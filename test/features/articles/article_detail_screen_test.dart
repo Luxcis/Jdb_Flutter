@@ -178,7 +178,28 @@ void main() {
         '<img src="//cdn.x.com/a.jpg">',
         'https://img.example.com',
       ),
-      '<img src="https://cdn.x.com/a.jpg">',
+      '<img src="https://img.example.com/a.jpg">',
+    );
+    expect(
+      resolveArticleImageUrls(
+        '<img src="https://c0.jdbstatic.com/articles/images/x.jpg">',
+        'https://tp.spfcas.com/rhe951l4q',
+      ),
+      '<img src="https://tp.spfcas.com/rhe951l4q/articles/images/x.jpg">',
+    );
+    expect(
+      resolveArticleImageUrls(
+        '<img src="https://c0.jdbstatic.com/a.jpg?v=1">',
+        'https://tp.spfcas.com/rhe951l4q',
+      ),
+      '<img src="https://tp.spfcas.com/rhe951l4q/a.jpg?v=1">',
+    );
+    expect(
+      resolveArticleImageUrls(
+        '<img src="https://tp.spfcas.com/rhe951l4q/a.jpg">',
+        'https://tp.spfcas.com/rhe951l4q',
+      ),
+      '<img src="https://tp.spfcas.com/rhe951l4q/a.jpg">',
     );
     expect(
       resolveArticleImageUrls(
@@ -189,10 +210,17 @@ void main() {
     );
     expect(
       resolveArticleImageUrls(
+        '<img src="asset:assets/images/noimage_147x200.jpg">',
+        'https://img.example.com',
+      ),
+      '<img src="asset:assets/images/noimage_147x200.jpg">',
+    );
+    expect(
+      resolveArticleImageUrls(
         '<img src="HTTPS://img.example.com/a.jpg">',
         'https://img.example.com',
       ),
-      '<img src="HTTPS://img.example.com/a.jpg">',
+      '<img src="https://img.example.com/a.jpg">',
     );
   });
 
