@@ -126,7 +126,6 @@ class _HomePageState extends State<HomePage> {
     }
     if (section.error != null) {
       return _sectionError(
-        height: 220,
         message: section.error!,
         onRetry: () => _retrySection(HomeSectionKind.recommends),
       );
@@ -177,7 +176,6 @@ class _HomePageState extends State<HomePage> {
     }
     if (section.error != null) {
       return _sectionError(
-        height: 640,
         message: section.error!,
         onRetry: () => _retrySection(kind),
       );
@@ -196,15 +194,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _sectionError({
-    required double height,
     required String message,
     required VoidCallback onRetry,
   }) {
     return SliverToBoxAdapter(
-      child: SizedBox(
-        height: height,
-        child: ErrorRetryWidget(message: message, onRetry: onRetry),
-      ),
+      child: ErrorRetryWidget(message: message, onRetry: onRetry),
     );
   }
 
