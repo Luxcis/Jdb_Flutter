@@ -67,8 +67,8 @@ void main() {
   testWidgets('渲染正文 HTML', (tester) async {
     await _pumpDetail(tester);
 
-    expect(find.text('正文第一段'), findsOneWidget);
-    expect(find.text('正文第二段'), findsOneWidget);
+    expect(find.text('正文第一段', findRichText: true), findsOneWidget);
+    expect(find.text('正文第二段', findRichText: true), findsOneWidget);
   });
 
   testWidgets('正文网络图片使用 CachedImage 渲染', (tester) async {
@@ -78,6 +78,27 @@ void main() {
     );
 
     expect(find.byType(CachedImage), findsOneWidget);
+  });
+
+  testWidgets('点击正文图片打开大图预览并可关闭', (tester) async {
+    await _pumpDetail(
+      tester,
+      content: '<p>正文</p>'
+          '<img src="https://img.example.com/a.jpg">'
+          '<img src="https://img.example.com/b.jpg">',
+    );
+
+    await tester.tap(find.byType(CachedImage).first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.byKey(const Key('image-gallery-viewer')), findsOneWidget);
+    expect(find.text('1 / 2'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('关闭'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const Key('image-gallery-viewer')), findsNothing);
   });
 
   testWidgets('加载失败显示重试并可恢复', (tester) async {
@@ -123,7 +144,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('恢复标题'), findsOneWidget);
-    expect(find.text('恢复正文'), findsOneWidget);
+    expect(find.text('恢复正文', findRichText: true), findsOneWidget);
   });
 
   test('resolveArticleImageUrls 拼接相对图片地址', () {
@@ -173,5 +194,23 @@ void main() {
       ),
       '<img src="HTTPS://img.example.com/a.jpg">',
     );
+  });
+
+  test('extractImageUrls 提取网络非 svg 图片', () {
+    expect(
+      extractImageUrls(
+        '<img src="https://img.example.com/a.jpg">'
+        '<img src="https://cdn.x.com/b.webp">'
+        '<img src="https://img.example.com/c.svg">'
+        '<img src="https://img.example.com/d.svg?v=1">'
+        '<img src="data:image/png;base64,abc">'
+        '<img src="asset:assets/images/noimage_147x200.jpg">',
+      ),
+      ['https://img.example.com/a.jpg', 'https://cdn.x.com/b.webp'],
+    );
+  });
+
+  test('extractImageUrls 无图片时返回空列表', () {
+    expect(extractImageUrls('<p>纯文本</p>'), isEmpty);
   });
 }

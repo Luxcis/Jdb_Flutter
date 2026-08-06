@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_html/flutter_html.dart';
+import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/utils/time_format.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
+import 'package:jade/core/widgets/image_gallery_viewer.dart';
 import 'package:jade/features/articles/models/article.dart';
 import 'package:jade/features/articles/services/article_service.dart';
-import 'package:jade/features/articles/widgets/cached_image_html_extension.dart';
+import 'package:jade/features/articles/widgets/article_widget_factory.dart';
 
 /// 将正文中相对路径的图片地址拼接为完整 URL。
 ///
@@ -21,6 +22,21 @@ String resolveArticleImageUrls(String content, String? imageDomain) {
     final url = src.startsWith('/') ? '$base$src' : '$base/$src';
     return 'src="$url"';
   });
+}
+
+/// 提取正文中所有网络且非 svg 的图片地址，供大图预览切换与定位。
+List<String> extractImageUrls(String content) {
+  final urls = <String>[];
+  final pattern = RegExp(r'src="([^"]+)"');
+  for (final match in pattern.allMatches(content)) {
+    final src = match[1]!;
+    final uri = Uri.tryParse(src);
+    if (uri == null) continue;
+    if (uri.scheme != 'http' && uri.scheme != 'https') continue;
+    if (uri.path.toLowerCase().endsWith('.svg')) continue;
+    urls.add(src);
+  }
+  return urls;
 }
 
 class ArticleDetailPage extends StatefulWidget {
@@ -95,6 +111,9 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
     final detail = _detail!;
     final textTheme = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
+    final content =
+        resolveArticleImageUrls(detail.content ?? '', detail.imageDomain);
+    final imageUrls = extractImageUrls(content);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       child: Column(
@@ -135,18 +154,25 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
             ],
           ),
           const Divider(height: 24),
-          Html(
-            data: resolveArticleImageUrls(
-              detail.content ?? '',
-              detail.imageDomain,
+          HtmlWidget(
+            content,
+            factoryBuilder: () => ArticleWidgetFactory(),
+            textStyle: TextStyle(
+              fontSize: 15,
+              height: 1.6,
+              color: scheme.onSurface,
             ),
-            extensions: const [CachedImageHtmlExtension()],
-            style: {
-              'body': Style(
-                fontSize: FontSize(15),
-                lineHeight: LineHeight(1.6),
-                color: scheme.onSurface,
-              ),
+            onTapImage: (image) {
+              final url = image.sources.first.url;
+              final index = imageUrls.indexOf(url);
+              final urls = index < 0 ? [url] : imageUrls;
+              final initialIndex = index < 0 ? 0 : index;
+              showDialog<void>(
+                context: context,
+                useSafeArea: false,
+                builder: (_) =>
+                    ImageGalleryViewer(urls: urls, initialIndex: initialIndex),
+              );
             },
           ),
         ],
