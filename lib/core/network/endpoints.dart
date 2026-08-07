@@ -57,6 +57,7 @@ class Endpoints {
   // ⚠️ 服务端Bug: 该接口无论传什么 type 值均返回 HTTP 500
   static const String makers = '/api/v1/makers';
   static const String series = '/api/v1/series';
+  static const String seriesLetters = '/api/v1/series/letters';
 
   // ── 排行榜 ──
   static const String rankings = '/api/v1/rankings';
