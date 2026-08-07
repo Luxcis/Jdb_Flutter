@@ -160,7 +160,6 @@ class _MovieHeader extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        Divider(height: 1, color: colorScheme.outlineVariant),
       ],
     );
   }
