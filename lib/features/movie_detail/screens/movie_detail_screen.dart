@@ -18,6 +18,7 @@ import 'package:jade/core/widgets/list_summary_tile.dart';
 import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/movie_cover_image.dart';
 import 'package:jade/core/widgets/movie_screenshot_image.dart';
+import 'package:jade/core/widgets/review_tile.dart';
 import 'package:jade/core/widgets/star_rating.dart';
 import 'package:jade/core/widgets/tag_chip.dart';
 import 'package:jade/features/movie_detail/services/movie_detail_service.dart';
@@ -1141,7 +1142,7 @@ class _ReviewList extends StatelessWidget {
             onSortChanged: onSortChanged,
           );
         }
-        return _ReviewTile(review: reviews[index - 1]);
+        return ReviewTile(review: reviews[index - 1]);
       },
     );
   }
@@ -1204,83 +1205,6 @@ class _ReviewSortBar extends StatelessWidget {
               : (values) => onSortChanged!(values.single),
         ),
       ],
-    );
-  }
-}
-
-class _ReviewTile extends StatelessWidget {
-  const _ReviewTile({required this.review});
-
-  final Review review;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final authorName = review.author?.name ?? '';
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 8,
-        children: [
-          Row(
-            spacing: 8,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              if (authorName.isNotEmpty)
-                Text(
-                  authorName,
-                  style: textTheme.titleMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-              if (review.watchedCount > 0)
-                Expanded(
-                  child: Text(
-                    '看过${review.watchedCount}部影片',
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                )
-              else
-                const Spacer(),
-              if (review.score != null)
-                StarRating(
-                  score: review.score!,
-                  semanticLabel: '$authorName 短评评分',
-                  size: 17,
-                ),
-            ],
-          ),
-          if (review.content != null && review.content!.isNotEmpty)
-            Text(review.content!, style: textTheme.bodyLarge),
-          Row(
-            children: [
-              Icon(
-                Icons.thumb_up_alt_outlined,
-                size: 20,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                review.likedCount.toString(),
-                style: textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const Spacer(),
-              if (review.createdAt != null)
-                Text(
-                  review.createdAt!,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }
