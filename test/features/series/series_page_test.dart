@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/models/series.dart';
+import 'package:jade/core/router/routes.dart';
+import 'package:jade/features/common/screens/common_list_page.dart';
 import 'package:jade/features/series/models/series_letter.dart';
 import 'package:jade/features/series/screens/series_page.dart';
 import 'package:jade/features/series/services/series_service.dart';
@@ -39,16 +42,35 @@ void main() {
     expect(find.text('(1100)'), findsOneWidget);
   });
 
-  testWidgets('点击系列条目进入 CommonListPage，番号条目进入番号公共页', (tester) async {
+  testWidgets('番号与系列条目均经 /common-list 路由进入 CommonListPage', (tester) async {
     final source = _RecordingSeriesDataSource();
-    await tester.pumpWidget(
-      MaterialApp(home: SeriesPage(dataSource: source)),
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(path: '/', builder: (_, _) => SeriesPage(dataSource: source)),
+        GoRoute(
+          path: AppRoutes.commonList,
+          builder: (c, s) {
+            final q = s.uri.queryParameters;
+            return CommonListPage(
+              title: q['title'] ?? '',
+              type: int.tryParse(q['type'] ?? '') ?? 0,
+              category: q['category'] ?? '',
+              id: q['id'] ?? '',
+            );
+          },
+        ),
+      ],
     );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('IPX'));
     await tester.pumpAndSettle();
-    expect(find.text('番号 - IPX'), findsOneWidget);
+    expect(router.state.uri.path, AppRoutes.commonList);
+    expect(router.state.uri.queryParameters['title'], '番号 - IPX');
+    expect(router.state.uri.queryParameters['category'], 'c');
     await tester.pageBack();
     await tester.pumpAndSettle();
 
@@ -56,6 +78,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('测试系列'));
     await tester.pumpAndSettle();
+    expect(router.state.uri.path, AppRoutes.commonList);
+    expect(router.state.uri.queryParameters['title'], '系列 - 测试系列');
+    expect(router.state.uri.queryParameters['category'], 's');
     expect(find.text('系列 - 测试系列'), findsOneWidget);
   });
 }
