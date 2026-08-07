@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/director.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/widgets/entity_list_tile.dart';
 import 'package:jade/core/widgets/paginated_list_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
-import 'package:jade/features/common/screens/common_list_page.dart';
 import 'package:jade/features/directors/services/director_service.dart';
 
 class DirectorsPage extends StatefulWidget {
@@ -67,13 +68,16 @@ class _DirectorsPageState extends State<DirectorsPage>
               itemBuilder: (context, item) => EntityListTile(
                 name: item.name,
                 count: item.movieCount,
-                onTap: () => _openCommonList(
-                  context,
-                  '导演',
-                  item.name,
-                  item.type,
-                  'd',
-                  item.id,
+                onTap: () => context.push(
+                  Uri(
+                    path: AppRoutes.commonList,
+                    queryParameters: {
+                      'title': '导演 - ${item.name}',
+                      'type': '${item.type}',
+                      'category': 'd',
+                      'id': item.id,
+                    },
+                  ).toString(),
                 ),
               ),
             ),
@@ -126,24 +130,4 @@ class _DirectorsTabState<T> extends State<_DirectorsTab<T>>
       emptyMessage: widget.emptyMessage,
     );
   }
-}
-
-void _openCommonList(
-  BuildContext context,
-  String typeLabel,
-  String name,
-  int type,
-  String category,
-  String id,
-) {
-  Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => CommonListPage(
-        title: '$typeLabel - $name',
-        type: type,
-        category: category,
-        id: id,
-      ),
-    ),
-  );
 }

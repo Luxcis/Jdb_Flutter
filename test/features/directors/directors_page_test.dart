@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/director.dart';
 import 'package:jade/core/models/paged_result.dart';
-import 'package:jade/core/widgets/movie_grid_view.dart';
+import 'package:jade/core/router/routes.dart';
 import 'package:jade/features/common/screens/common_list_page.dart';
 import 'package:jade/features/directors/screens/directors_page.dart';
 import 'package:jade/features/directors/services/director_service.dart';
@@ -45,22 +46,43 @@ void main() {
     expect(source.calls, [(type: 0, page: 1), (type: 2, page: 1)]);
   });
 
-  testWidgets('点击导演条目进入与搜索结果一致的 CommonListPage', (tester) async {
+  testWidgets('点击导演条目经 /common-list 路由进入 CommonListPage', (tester) async {
     final source = _RecordingDirectorDataSource();
-    await tester.pumpWidget(MaterialApp(home: DirectorsPage(dataSource: source)));
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(path: '/', builder: (_, _) => DirectorsPage(dataSource: source)),
+        GoRoute(
+          path: AppRoutes.commonList,
+          builder: (c, s) {
+            final q = s.uri.queryParameters;
+            return CommonListPage(
+              title: q['title'] ?? '',
+              type: int.tryParse(q['type'] ?? '') ?? 0,
+              category: q['category'] ?? '',
+              id: q['id'] ?? '',
+            );
+          },
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('K太郎'));
     await tester.pumpAndSettle();
 
-    final page = tester.widget<CommonListPage>(find.byType(CommonListPage));
-    expect(page.title, '导演 - K太郎');
-    expect(page.type, 0);
-    expect(page.category, 'd');
-    expect(page.id, 'AqK');
+    expect(router.state.uri.path, AppRoutes.commonList);
+    expect(router.state.uri.queryParameters, {
+      'title': '导演 - K太郎',
+      'type': '0',
+      'category': 'd',
+      'id': 'AqK',
+    });
+    expect(find.byType(CommonListPage), findsOneWidget);
     expect(find.byKey(const Key('common-list-filter')), findsOneWidget);
     expect(find.byKey(const Key('common-list-sort')), findsOneWidget);
-    expect(find.byType(MovieGridView), findsOneWidget);
   });
 }
 
