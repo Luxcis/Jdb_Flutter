@@ -95,7 +95,7 @@ class SearchEntityService implements SearchEntityDataSource {
         type: 'maker',
         collectionKey: 'makers',
         page: page,
-        fromJson: (json) => Maker.fromJson(_namedEntityJson(json)),
+        fromJson: (json) => Maker.fromJson(normalizeMakerJson(json)),
       );
 
   @override

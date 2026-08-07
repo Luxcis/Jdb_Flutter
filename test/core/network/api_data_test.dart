@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/magnet.dart';
+import 'package:jade/core/models/maker.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/network/api_data.dart';
 import 'package:jade/features/articles/models/article.dart';
@@ -85,6 +86,31 @@ void main() {
     );
 
     expect(actor.name, '日本語名');
+  });
+
+  test('normalizeMakerJson 将 videos_count 映射为 movieCount 并保留 type', () {
+    final maker = Maker.fromJson(
+      normalizeMakerJson({
+        'id': 'xZyO',
+        'type': 1,
+        'name': 'Heydouga',
+        'videos_count': 25645,
+      }),
+    );
+
+    expect(maker.id, 'xZyO');
+    expect(maker.name, 'Heydouga');
+    expect(maker.type, 1);
+    expect(maker.movieCount, 25645);
+  });
+
+  test('normalizeMakerJson 为缺失字段提供兜底值', () {
+    final maker = Maker.fromJson(normalizeMakerJson({'id': null}));
+
+    expect(maker.id, '');
+    expect(maker.name, '');
+    expect(maker.type, 0);
+    expect(maker.movieCount, 0);
   });
 
   test('normalizeMovieDetailJson 标准化详情中的演员和数字字段', () {

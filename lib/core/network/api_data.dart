@@ -104,6 +104,17 @@ Map<String, dynamic> normalizeActorSummaryJson(Map<String, dynamic> json) {
   };
 }
 
+Map<String, dynamic> normalizeMakerJson(Map<String, dynamic> json) => {
+  ...json,
+  'id': apiString(json['id']) ?? '',
+  'name': apiString(json['name']) ?? '',
+  'type': apiInt(json['type'], 0),
+  'movie_count': apiInt(
+    json['movie_count'] ?? json['movies_count'] ?? json['videos_count'],
+    0,
+  ),
+};
+
 Map<String, dynamic> normalizeMovieDetailJson(dynamic data) {
   final root = apiMap(data);
   final movie = apiMap(root['movie']).isNotEmpty ? apiMap(root['movie']) : root;
