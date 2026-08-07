@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/models/maker.dart';
 import 'package:jade/core/models/paged_result.dart';
+import 'package:jade/core/widgets/movie_grid_view.dart';
+import 'package:jade/features/common/screens/common_list_page.dart';
 import 'package:jade/features/makers/screens/makers_page.dart';
 import 'package:jade/features/makers/services/maker_service.dart';
 
@@ -43,7 +45,7 @@ void main() {
     expect(source.calls, [(type: 0, page: 1), (type: 1, page: 1)]);
   });
 
-  testWidgets('点击片商条目进入 CommonListPage', (tester) async {
+  testWidgets('点击片商条目进入与搜索结果一致的 CommonListPage', (tester) async {
     final source = _RecordingMakerDataSource();
     await tester.pumpWidget(MaterialApp(home: MakersPage(dataSource: source)));
     await tester.pumpAndSettle();
@@ -51,7 +53,14 @@ void main() {
     await tester.tap(find.text('Heydouga'));
     await tester.pumpAndSettle();
 
-    expect(find.text('片商 - Heydouga'), findsOneWidget);
+    final page = tester.widget<CommonListPage>(find.byType(CommonListPage));
+    expect(page.title, '片商 - Heydouga');
+    expect(page.type, 0);
+    expect(page.category, 'm');
+    expect(page.id, 'xZyO');
+    expect(find.byKey(const Key('common-list-filter')), findsOneWidget);
+    expect(find.byKey(const Key('common-list-sort')), findsOneWidget);
+    expect(find.byType(MovieGridView), findsOneWidget);
   });
 }
 
