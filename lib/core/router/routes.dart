@@ -21,6 +21,7 @@ class AppRoutes {
   static const String series = '/series';
   static const String makers = '/makers';
   static const String directors = '/directors';
+  static const String commonList = '/common-list';
 
   // Profile 子页面
   static const String profileWantWatch = '/profile/want-watch';

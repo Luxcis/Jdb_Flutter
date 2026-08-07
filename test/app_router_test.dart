@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/router/app_router.dart';
 import 'package:jade/core/router/routes.dart';
+import 'package:jade/features/common/screens/common_list_page.dart';
 
 class _FakeAuth extends ChangeNotifier implements TokenProvider {
   final String _token = 'tok';
@@ -96,4 +97,32 @@ void main() {
     expect(find.text('最新'), findsOneWidget);
     expect(find.text('全部'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 10)));
+
+  testWidgets('/common-list 路由带参数渲染 CommonListPage', (tester) async {
+    final router = AppRouter.buildForTest(
+      initialLocation: Uri(
+        path: AppRoutes.commonList,
+        queryParameters: {
+          'title': '导演 - K太郎',
+          'type': '0',
+          'category': 'd',
+          'id': 'AqK',
+        },
+      ).toString(),
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<_FakeAuth>(
+        create: (_) => _FakeAuth.create(),
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final page = tester.widget<CommonListPage>(find.byType(CommonListPage));
+    expect(page.title, '导演 - K太郎');
+    expect(page.type, 0);
+    expect(page.category, 'd');
+    expect(page.id, 'AqK');
+  });
 }

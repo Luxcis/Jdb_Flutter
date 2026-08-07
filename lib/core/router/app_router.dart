@@ -18,6 +18,7 @@ import 'package:jade/features/auth/index.dart';
 import 'package:jade/features/startup/index.dart';
 import 'package:jade/features/reviews/index.dart';
 import 'package:jade/features/series/index.dart';
+import 'package:jade/features/common/screens/common_list_page.dart';
 
 class AppRouter {
   const AppRouter._();
@@ -199,6 +200,18 @@ class AppRouter {
     GoRoute(
       path: AppRoutes.directors,
       builder: (c, s) => const DirectorsPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.commonList,
+      builder: (c, s) {
+        final q = s.uri.queryParameters;
+        return CommonListPage(
+          title: q['title'] ?? '',
+          type: int.tryParse(q['type'] ?? '') ?? 0,
+          category: q['category'] ?? '',
+          id: q['id'] ?? '',
+        );
+      },
     ),
     GoRoute(
       path: AppRoutes.profileWantWatch,
