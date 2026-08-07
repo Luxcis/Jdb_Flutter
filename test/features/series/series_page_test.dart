@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/models/series.dart';
-import 'package:jade/core/widgets/entity_list_tile.dart';
 import 'package:jade/features/series/models/series_letter.dart';
 import 'package:jade/features/series/screens/series_page.dart';
 import 'package:jade/features/series/services/series_service.dart';
