@@ -15,6 +15,7 @@ import 'package:jade/features/search/index.dart';
 import 'package:jade/features/auth/index.dart';
 import 'package:jade/features/startup/index.dart';
 import 'package:jade/features/reviews/index.dart';
+import 'package:jade/features/series/index.dart';
 
 class AppRouter {
   const AppRouter._();
@@ -187,7 +188,7 @@ class AppRouter {
     ),
     GoRoute(
       path: AppRoutes.series,
-      builder: (c, s) => const _SimpleListPage(title: '系列'),
+      builder: (c, s) => const SeriesPage(),
     ),
     GoRoute(
       path: AppRoutes.makers,
