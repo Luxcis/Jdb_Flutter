@@ -22,7 +22,7 @@ import 'package:jade/features/search/services/search_movie_service.dart';
 import 'package:jade/features/search/services/search_page_session.dart';
 import 'package:jade/core/widgets/entity_list_tile.dart';
 import 'package:jade/features/search/widgets/search_movie_filter_bar.dart';
-import 'package:jade/features/search/widgets/search_paginated_list_view.dart';
+import 'package:jade/core/widgets/paginated_list_view.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -298,7 +298,7 @@ class _PaginatedEntitySearchTabState<T>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return SearchPaginatedListView<T>(
+    return PaginatedListView<T>(
       controller: _controller,
       itemBuilder: widget.itemBuilder,
       emptyMessage: widget.emptyMessage,

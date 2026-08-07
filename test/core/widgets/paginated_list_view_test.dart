@@ -5,14 +5,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
-import 'package:jade/features/search/widgets/search_paginated_list_view.dart';
+import 'package:jade/core/widgets/paginated_list_view.dart';
 
 Future<void> _pumpList(
   WidgetTester tester,
   PaginationController<_Item> controller,
 ) => tester.pumpWidget(
   MaterialApp(
-    home: SearchPaginatedListView<_Item>(
+    home: PaginatedListView<_Item>(
       controller: controller,
       emptyMessage: '暂无结果',
       itemBuilder: (_, item) => Text(item.id),

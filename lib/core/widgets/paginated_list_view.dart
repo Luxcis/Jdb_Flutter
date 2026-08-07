@@ -3,8 +3,8 @@ import 'package:jade/core/widgets/empty_state.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 
-class SearchPaginatedListView<T> extends StatelessWidget {
-  const SearchPaginatedListView({
+class PaginatedListView<T> extends StatelessWidget {
+  const PaginatedListView({
     super.key,
     required this.controller,
     required this.itemBuilder,
