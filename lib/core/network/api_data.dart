@@ -198,12 +198,19 @@ Map<String, dynamic> normalizeListModelJson(Map<String, dynamic> json) {
 }
 
 Map<String, dynamic> normalizeReviewJson(Map<String, dynamic> json) {
+  final movie = json['movie'];
   return {
     ...json,
     'id': apiString(json['id']) ?? '',
     'liked_count': json['liked_count'] ?? json['likes_count'],
     'watched_count': apiInt(json['watched_count'], 0),
     'author': json['author'] ?? {'name': json['username'] ?? ''},
+    if (movie is Map)
+      'movie': {
+        ...Map<String, dynamic>.from(movie),
+        'id': apiString(movie['id']) ?? '',
+        'score': apiString(movie['score']),
+      },
   };
 }
 

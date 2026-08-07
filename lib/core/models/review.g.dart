@@ -9,6 +9,16 @@ part of 'review.dart';
 ReviewAuthor _$ReviewAuthorFromJson(Map<String, dynamic> json) =>
     ReviewAuthor(name: json['name'] as String);
 
+ReviewMovie _$ReviewMovieFromJson(Map<String, dynamic> json) => ReviewMovie(
+  id: json['id'] as String,
+  number: json['number'] as String?,
+  title: json['title'] as String?,
+  originTitle: json['origin_title'] as String?,
+  score: json['score'] as String?,
+  thumbUrl: json['thumb_url'] as String?,
+  releaseDate: json['release_date'] as String?,
+);
+
 Review _$ReviewFromJson(Map<String, dynamic> json) => Review(
   id: json['id'] as String,
   score: (json['score'] as num?)?.toDouble(),
@@ -20,4 +30,7 @@ Review _$ReviewFromJson(Map<String, dynamic> json) => Review(
   likedCount: (json['liked_count'] as num?)?.toInt() ?? 0,
   watchedCount: (json['watched_count'] as num?)?.toInt() ?? 0,
   createdAt: json['created_at'] as String?,
+  movie: json['movie'] == null
+      ? null
+      : ReviewMovie.fromJson(json['movie'] as Map<String, dynamic>),
 );

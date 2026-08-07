@@ -10,6 +10,30 @@ class ReviewAuthor {
 }
 
 @JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
+class ReviewMovie {
+  const ReviewMovie({
+    required this.id,
+    this.number,
+    this.title,
+    this.originTitle,
+    this.score,
+    this.thumbUrl,
+    this.releaseDate,
+  });
+
+  final String id;
+  final String? number;
+  final String? title;
+  final String? originTitle;
+  final String? score;
+  final String? thumbUrl;
+  final String? releaseDate;
+
+  factory ReviewMovie.fromJson(Map<String, dynamic> json) =>
+      _$ReviewMovieFromJson(json);
+}
+
+@JsonSerializable(fieldRename: FieldRename.snake, createToJson: false)
 class Review {
   const Review({
     required this.id,
@@ -20,6 +44,7 @@ class Review {
     this.likedCount = 0,
     this.watchedCount = 0,
     this.createdAt,
+    this.movie,
   });
   final String id;
   final double? score;
@@ -29,5 +54,6 @@ class Review {
   final int likedCount;
   final int watchedCount;
   final String? createdAt;
+  final ReviewMovie? movie;
   factory Review.fromJson(Map<String, dynamic> json) => _$ReviewFromJson(json);
 }
