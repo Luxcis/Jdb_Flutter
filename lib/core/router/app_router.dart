@@ -185,10 +185,6 @@ class AppRouter {
       ],
     ),
     GoRoute(
-      path: AppRoutes.imageSearch,
-      builder: (c, s) => const _SimpleListPage(title: '识别搜索'),
-    ),
-    GoRoute(
       path: AppRoutes.series,
       builder: (c, s) => const _SimpleListPage(title: '系列'),
     ),

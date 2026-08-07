@@ -18,7 +18,6 @@ class AppRoutes {
   static const String reviews = '/reviews';
   static const String magnetSearch = '/search/magnet';
   static const String magnetSearchResults = '/search/magnet/results';
-  static const String imageSearch = '/search/image';
   static const String series = '/series';
   static const String makers = '/makers';
   static const String directors = '/directors';
