@@ -53,7 +53,10 @@ class ReviewTile extends StatelessWidget {
           ],
         ),
         if (review.content != null && review.content!.isNotEmpty)
-          Text(review.content!, style: textTheme.bodyLarge),
+          _ExpandableReviewContent(
+            text: review.content!,
+            style: textTheme.bodyLarge,
+          ),
         Row(
           children: [
             Icon(
@@ -87,6 +90,65 @@ class ReviewTile extends StatelessWidget {
     );
     if (movie == null) return tile;
     return InkWell(onTap: () => context.push('/movie/${movie.id}'), child: tile);
+  }
+}
+
+/// 评论内容：超过 5 行自动截断，提供展开/收起控制。
+class _ExpandableReviewContent extends StatefulWidget {
+  const _ExpandableReviewContent({required this.text, required this.style});
+
+  static const maxLines = 5;
+
+  final String text;
+  final TextStyle? style;
+
+  @override
+  State<_ExpandableReviewContent> createState() =>
+      _ExpandableReviewContentState();
+}
+
+class _ExpandableReviewContentState extends State<_ExpandableReviewContent> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textPainter = TextPainter(
+          text: TextSpan(text: widget.text, style: widget.style),
+          maxLines: _ExpandableReviewContent.maxLines,
+          textDirection: Directionality.of(context),
+        )..layout(maxWidth: constraints.maxWidth);
+        if (!textPainter.didExceedMaxLines) {
+          return Text(widget.text, style: widget.style);
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.text,
+              style: widget.style,
+              maxLines: _expanded ? null : _ExpandableReviewContent.maxLines,
+              overflow: _expanded ? null : TextOverflow.ellipsis,
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                key: Key(_expanded ? 'review-collapse' : 'review-expand'),
+                onPressed: () => setState(() => _expanded = !_expanded),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: const Size(0, 32),
+                  visualDensity: VisualDensity.compact,
+                  textStyle: Theme.of(context).textTheme.bodySmall,
+                ),
+                child: Text(_expanded ? '收起' : '展开'),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 

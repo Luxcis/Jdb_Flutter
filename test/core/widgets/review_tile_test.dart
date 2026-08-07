@@ -4,12 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/review.dart';
 import 'package:jade/core/widgets/review_tile.dart';
 
-Review _review({ReviewMovie? movie}) => Review(
+Review _review({ReviewMovie? movie, String content = '评论内容'}) => Review(
   id: '1',
   author: const ReviewAuthor(name: '作者A'),
   watchedCount: 3,
   score: 4.5,
-  content: '评论内容',
+  content: content,
   likedCount: 17,
   createdAt: '2016-09-24',
   movie: movie,
@@ -70,5 +70,43 @@ void main() {
 
     expect(router.state.uri.path, '/movie/m1');
     expect(find.text('影片 m1'), findsOneWidget);
+  });
+
+  testWidgets('短评论不显示展开收起按钮', (tester) async {
+    await tester.pumpWidget(
+      _wrap(ReviewTile(review: _review(content: '短评论'))),
+    );
+
+    expect(find.text('短评论'), findsOneWidget);
+    expect(find.text('展开'), findsNothing);
+    expect(find.text('收起'), findsNothing);
+  });
+
+  testWidgets('超 5 行评论截断并可展开收起', (tester) async {
+    final longText = '这是一段非常长的评论内容。' * 30;
+    await tester.pumpWidget(
+      _wrap(ReviewTile(review: _review(content: longText))),
+    );
+
+    final collapsed = tester.widget<Text>(find.text(longText));
+    expect(collapsed.maxLines, 5);
+    expect(collapsed.overflow, TextOverflow.ellipsis);
+    expect(find.text('展开'), findsOneWidget);
+
+    await tester.tap(find.text('展开'));
+    await tester.pump();
+
+    final expanded = tester.widget<Text>(find.text(longText));
+    expect(expanded.maxLines, isNull);
+    expect(expanded.overflow, isNull);
+    expect(find.text('收起'), findsOneWidget);
+
+    await tester.tap(find.text('收起'));
+    await tester.pump();
+
+    final collapsedAgain = tester.widget<Text>(find.text(longText));
+    expect(collapsedAgain.maxLines, 5);
+    expect(collapsedAgain.overflow, TextOverflow.ellipsis);
+    expect(find.text('展开'), findsOneWidget);
   });
 }
