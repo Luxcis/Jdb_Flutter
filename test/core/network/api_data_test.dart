@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/models/actor.dart';
+import 'package:jade/core/models/director.dart';
 import 'package:jade/core/models/magnet.dart';
 import 'package:jade/core/models/maker.dart';
 import 'package:jade/core/models/movie.dart';
@@ -111,6 +112,31 @@ void main() {
     expect(maker.name, '');
     expect(maker.type, 0);
     expect(maker.movieCount, 0);
+  });
+
+  test('normalizeDirectorJson 将 videos_count 映射为 movieCount 并保留 type', () {
+    final director = Director.fromJson(
+      normalizeDirectorJson({
+        'id': 'AqK',
+        'type': '0',
+        'name': 'K太郎',
+        'videos_count': 3122,
+      }),
+    );
+
+    expect(director.id, 'AqK');
+    expect(director.name, 'K太郎');
+    expect(director.type, 0);
+    expect(director.movieCount, 3122);
+  });
+
+  test('normalizeDirectorJson 为缺失字段提供兜底值', () {
+    final director = Director.fromJson(normalizeDirectorJson({'id': null}));
+
+    expect(director.id, '');
+    expect(director.name, '');
+    expect(director.type, 0);
+    expect(director.movieCount, 0);
   });
 
   test('normalizeMovieDetailJson 标准化详情中的演员和数字字段', () {

@@ -107,7 +107,7 @@ class SearchEntityService implements SearchEntityDataSource {
     type: 'director',
     collectionKey: 'directors',
     page: page,
-    fromJson: (json) => Director.fromJson(_namedEntityJson(json)),
+    fromJson: (json) => Director.fromJson(normalizeDirectorJson(json)),
   );
 
   @override
