@@ -25,11 +25,11 @@ class EntityListTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
           child: Row(
             children: [
-              Expanded(
+              Flexible(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, overflow: TextOverflow.ellipsis),
+                    Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
                     if (subtitle case final subtitle?) ...[
                       const SizedBox(height: 2),
                       Text(

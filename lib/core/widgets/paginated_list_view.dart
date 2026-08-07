@@ -55,7 +55,7 @@ class PaginatedListView<T> extends StatelessWidget {
             }
             return Center(
               child: TextButton(
-                key: const Key('search-list-tail-retry'),
+                key: const Key('list-tail-retry'),
                 onPressed: controller.fetchMore,
                 child: const Text('重试'),
               ),

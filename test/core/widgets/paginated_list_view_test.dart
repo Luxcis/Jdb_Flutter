@@ -44,7 +44,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('29'), findsOneWidget);
-    expect(find.byKey(const Key('search-list-tail-retry')), findsOneWidget);
+    expect(find.byKey(const Key('list-tail-retry')), findsOneWidget);
   });
 
   testWidgets('首屏加载完成后显示空状态', (tester) async {

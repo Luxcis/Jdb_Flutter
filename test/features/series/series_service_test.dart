@@ -52,7 +52,7 @@ void main() {
       'success': 1,
       'data': {
         'series': [
-          {'id': 'rY2v', 'type': 0, 'name': '测试系列', 'videos_count': 1100},
+          {'id': 'rY2v', 'type': '0', 'name': '测试系列', 'videos_count': 1100},
         ],
         'current_page': 1,
       },
@@ -79,7 +79,7 @@ void main() {
         'data': {
           'series': [
             for (var i = 0; i < 48; i++)
-              {'id': 's$i', 'type': 0, 'name': 'S$i', 'videos_count': 1},
+              {'id': 's$i', 'type': '0', 'name': 'S$i', 'videos_count': 1},
           ],
           'current_page': 1,
         },
@@ -88,7 +88,7 @@ void main() {
         'success': 1,
         'data': {
           'series': [
-            {'id': 's48', 'type': 0, 'name': 'S48', 'videos_count': 1},
+            {'id': 's48', 'type': '0', 'name': 'S48', 'videos_count': 1},
           ],
           'current_page': 2,
         },
