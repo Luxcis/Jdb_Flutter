@@ -20,7 +20,7 @@ import 'package:jade/features/search/services/search_entity_service.dart';
 import 'package:jade/features/search/services/search_history_store.dart';
 import 'package:jade/features/search/services/search_movie_service.dart';
 import 'package:jade/features/search/services/search_page_session.dart';
-import 'package:jade/features/search/widgets/search_entity_list_tile.dart';
+import 'package:jade/core/widgets/entity_list_tile.dart';
 import 'package:jade/features/search/widgets/search_movie_filter_bar.dart';
 import 'package:jade/features/search/widgets/search_paginated_list_view.dart';
 import 'package:provider/provider.dart';
@@ -149,7 +149,7 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                   ),
                   idOf: (item) => item.id,
                   emptyMessage: '暂无系列',
-                  itemBuilder: (context, item) => SearchEntityListTile(
+                  itemBuilder: (context, item) => EntityListTile(
                     name: item.name,
                     count: item.movieCount,
                     onTap: () => _openCommonList(
@@ -169,7 +169,7 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                   ),
                   idOf: (item) => item.id,
                   emptyMessage: '暂无片商',
-                  itemBuilder: (context, item) => SearchEntityListTile(
+                  itemBuilder: (context, item) => EntityListTile(
                     name: item.name,
                     count: item.movieCount,
                     onTap: () => _openCommonList(
@@ -189,7 +189,7 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                   ),
                   idOf: (item) => item.id,
                   emptyMessage: '暂无导演',
-                  itemBuilder: (context, item) => SearchEntityListTile(
+                  itemBuilder: (context, item) => EntityListTile(
                     name: item.name,
                     count: item.movieCount,
                     onTap: () => _openCommonList(
@@ -229,7 +229,7 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                   ),
                   idOf: (item) => item.id,
                   emptyMessage: '暂无番号',
-                  itemBuilder: (context, item) => SearchEntityListTile(
+                  itemBuilder: (context, item) => EntityListTile(
                     name: item.number,
                     count: item.movieCount,
                     onTap: () => _openCommonList(

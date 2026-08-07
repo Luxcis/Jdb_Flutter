@@ -22,7 +22,7 @@ import 'package:jade/features/search/screens/search_screen.dart';
 import 'package:jade/features/search/services/search_entity_service.dart';
 import 'package:jade/features/search/services/search_history_store.dart';
 import 'package:jade/features/search/services/search_movie_service.dart';
-import 'package:jade/features/search/widgets/search_entity_list_tile.dart';
+import 'package:jade/core/widgets/entity_list_tile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 typedef _SearchMovieCall = ({String query, SearchMovieFilter filter, int page});
@@ -434,7 +434,7 @@ void main() {
     await tester.tap(find.text('系列'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(SearchEntityListTile), findsWidgets);
+    expect(find.byType(EntityListTile), findsWidgets);
     await tester.fling(find.byType(ListView), const Offset(0, -5000), 5000);
     await tester.pumpAndSettle();
     expect(source.seriesRequestedPages, [1, 2]);
@@ -475,11 +475,11 @@ void main() {
 
   testWidgets('非演员实体进入类型减名称公共页且不请求搜索或影片接口', (tester) async {
     final cases = <({String tab, String expectedTitle, Type rowType})>[
-      (tab: '系列', expectedTitle: '系列 - 测试系列', rowType: SearchEntityListTile),
-      (tab: '片商', expectedTitle: '片商 - 测试片商', rowType: SearchEntityListTile),
-      (tab: '导演', expectedTitle: '导演 - 测试导演', rowType: SearchEntityListTile),
+      (tab: '系列', expectedTitle: '系列 - 测试系列', rowType: EntityListTile),
+      (tab: '片商', expectedTitle: '片商 - 测试片商', rowType: EntityListTile),
+      (tab: '导演', expectedTitle: '导演 - 测试导演', rowType: EntityListTile),
       (tab: '清单', expectedTitle: '清单 - 测试清单', rowType: ListSummaryTile),
-      (tab: '番号', expectedTitle: '番号 - TEST', rowType: SearchEntityListTile),
+      (tab: '番号', expectedTitle: '番号 - TEST', rowType: EntityListTile),
     ];
 
     for (final item in cases) {

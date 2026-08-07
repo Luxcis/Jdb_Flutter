@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:jade/features/search/widgets/search_entity_list_tile.dart';
+import 'package:jade/core/widgets/entity_list_tile.dart';
 
 void main() {
   testWidgets('同行显示名称和灰色括号数量并触发点击', (tester) async {
@@ -8,7 +8,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: SearchEntityListTile(
+          body: EntityListTile(
             name: 'ハッピー山田',
             count: 9,
             onTap: () => tapped = true,
@@ -24,7 +24,7 @@ void main() {
       count.style?.color,
       Theme.of(tester.element(find.text('(9)'))).colorScheme.onSurfaceVariant,
     );
-    await tester.tap(find.byType(SearchEntityListTile));
+    await tester.tap(find.byType(EntityListTile));
     expect(tapped, isTrue);
   });
 
@@ -34,13 +34,13 @@ void main() {
         home: Scaffold(
           body: Column(
             children: [
-              SearchEntityListTile(
+              EntityListTile(
                 key: const Key('row-1'),
                 name: 'A',
                 count: 1,
                 onTap: () {},
               ),
-              SearchEntityListTile(
+              EntityListTile(
                 key: const Key('row-2'),
                 name: 'B',
                 count: 2,
@@ -75,5 +75,24 @@ void main() {
       ).colorScheme.surface,
     );
     expect(second.color, first.color);
+  });
+
+  testWidgets('可选副标题渲染在名称下方', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: EntityListTile(
+            name: 'IPX',
+            count: 998,
+            subtitle: 'IdeaPocket美少女夢工廠',
+            onTap: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('IPX'), findsOneWidget);
+    expect(find.text('(998)'), findsOneWidget);
+    expect(find.text('IdeaPocket美少女夢工廠'), findsOneWidget);
   });
 }
