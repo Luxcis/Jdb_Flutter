@@ -19,6 +19,10 @@ void main() {
 
     expect(find.text('ハッピー山田'), findsOneWidget);
     expect(find.text('(9)'), findsOneWidget);
+    final nameTopLeft = tester.getTopLeft(find.text('ハッピー山田'));
+    final countTopLeft = tester.getTopLeft(find.text('(9)'));
+    expect(countTopLeft.dy, nameTopLeft.dy);
+    expect(countTopLeft.dx, greaterThan(nameTopLeft.dx));
     final count = tester.widget<Text>(find.text('(9)'));
     expect(
       count.style?.color,
@@ -94,5 +98,11 @@ void main() {
     expect(find.text('IPX'), findsOneWidget);
     expect(find.text('(998)'), findsOneWidget);
     expect(find.text('IdeaPocket美少女夢工廠'), findsOneWidget);
+    final nameTopLeft = tester.getTopLeft(find.text('IPX'));
+    final countTopLeft = tester.getTopLeft(find.text('(998)'));
+    final subtitleTopLeft = tester.getTopLeft(find.text('IdeaPocket美少女夢工廠'));
+    expect(countTopLeft.dy, nameTopLeft.dy);
+    expect(countTopLeft.dx, greaterThan(nameTopLeft.dx));
+    expect(subtitleTopLeft.dy, greaterThan(countTopLeft.dy));
   });
 }
