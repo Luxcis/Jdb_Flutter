@@ -12,6 +12,7 @@ import 'package:jade/features/articles/index.dart';
 import 'package:jade/features/profile/index.dart';
 import 'package:jade/features/movie_detail/index.dart';
 import 'package:jade/features/makers/index.dart';
+import 'package:jade/features/directors/index.dart';
 import 'package:jade/features/search/index.dart';
 import 'package:jade/features/auth/index.dart';
 import 'package:jade/features/startup/index.dart';
@@ -197,7 +198,7 @@ class AppRouter {
     ),
     GoRoute(
       path: AppRoutes.directors,
-      builder: (c, s) => const _SimpleListPage(title: '导演'),
+      builder: (c, s) => const DirectorsPage(),
     ),
     GoRoute(
       path: AppRoutes.profileWantWatch,
@@ -325,23 +326,4 @@ class _AuthGuardState extends State<_AuthGuard> {
 
   @override
   Widget build(BuildContext context) => widget.child;
-}
-
-class _SimpleListPage extends StatelessWidget {
-  const _SimpleListPage({required this.title});
-  final String title;
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(title)),
-    body: ListView.separated(
-      itemCount: 8,
-      separatorBuilder: (_, _) => const Divider(height: 1),
-      itemBuilder: (_, i) => ListTile(
-        title: Text('$title ${i + 1}'),
-        subtitle: const Text('内容接入接口后展示'),
-        trailing: const Icon(Icons.chevron_right),
-      ),
-    ),
-  );
 }

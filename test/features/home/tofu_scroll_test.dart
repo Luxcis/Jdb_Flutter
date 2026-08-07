@@ -68,4 +68,29 @@ void main() {
     await tester.pumpAndSettle();
     expect(router.state.uri.path, '/makers');
   });
+
+  testWidgets('导演豆腐块存在且点击进入 /directors', (tester) async {
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => const Scaffold(
+            body: Align(alignment: Alignment.topCenter, child: TofuScroll()),
+          ),
+        ),
+        GoRoute(
+          path: '/directors',
+          builder: (_, _) => const Scaffold(body: Text('导演页')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+
+    expect(find.byKey(const Key('tofu-导演')), findsOneWidget);
+    await tester.tap(find.text('导演'));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.path, '/directors');
+  });
 }
