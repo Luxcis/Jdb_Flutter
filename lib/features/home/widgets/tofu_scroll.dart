@@ -44,18 +44,6 @@ class TofuScroll extends StatelessWidget {
       color: Colors.green,
     ),
     TofuItem(
-      label: '识演员',
-      icon: Icons.person_search,
-      route: '/search/image',
-      color: Colors.purpleAccent,
-    ),
-    TofuItem(
-      label: '识影片',
-      icon: Icons.movie,
-      route: '/search/image',
-      color: Colors.indigoAccent,
-    ),
-    TofuItem(
       label: '系列',
       icon: Icons.collections,
       route: '/series',
