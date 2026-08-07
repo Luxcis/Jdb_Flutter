@@ -87,4 +87,13 @@ void main() {
     expect(router.state.uri.path, AppRoutes.magnetSearch);
     expect(find.widgetWithText(TextField, '搜索磁链...'), findsOneWidget);
   });
+
+  testWidgets('/reviews 渲染短评页面', (tester) async {
+    await tester.pumpWidget(_buildApp(initialLocation: AppRoutes.reviews));
+    await tester.pump();
+
+    expect(find.text('看短评'), findsOneWidget);
+    expect(find.text('最新'), findsOneWidget);
+    expect(find.text('全部'), findsOneWidget);
+  }, timeout: const Timeout(Duration(seconds: 10)));
 }
