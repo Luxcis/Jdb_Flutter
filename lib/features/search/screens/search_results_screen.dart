@@ -16,7 +16,6 @@ import 'package:jade/core/widgets/list_summary_tile.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/paginated_list_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
-import 'package:jade/features/common/screens/common_list_page.dart';
 import 'package:jade/features/search/models/search_movie_filter.dart';
 import 'package:jade/features/search/services/search_entity_service.dart';
 import 'package:jade/features/search/services/search_history_store.dart';
@@ -152,13 +151,16 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                   itemBuilder: (context, item) => EntityListTile(
                     name: item.name,
                     count: item.movieCount,
-                    onTap: () => _openCommonList(
-                      context,
-                      '系列',
-                      item.name,
-                      item.type,
-                      's',
-                      item.id,
+                    onTap: () => context.push(
+                      Uri(
+                        path: AppRoutes.commonList,
+                        queryParameters: {
+                          'title': '系列 - ${item.name}',
+                          'type': '${item.type}',
+                          'category': 's',
+                          'id': item.id,
+                        },
+                      ).toString(),
                     ),
                   ),
                 ),
@@ -172,13 +174,16 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                   itemBuilder: (context, item) => EntityListTile(
                     name: item.name,
                     count: item.movieCount,
-                    onTap: () => _openCommonList(
-                      context,
-                      '片商',
-                      item.name,
-                      item.type,
-                      'm',
-                      item.id,
+                    onTap: () => context.push(
+                      Uri(
+                        path: AppRoutes.commonList,
+                        queryParameters: {
+                          'title': '片商 - ${item.name}',
+                          'type': '${item.type}',
+                          'category': 'm',
+                          'id': item.id,
+                        },
+                      ).toString(),
                     ),
                   ),
                 ),
@@ -192,13 +197,16 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                   itemBuilder: (context, item) => EntityListTile(
                     name: item.name,
                     count: item.movieCount,
-                    onTap: () => _openCommonList(
-                      context,
-                      '导演',
-                      item.name,
-                      item.type,
-                      'd',
-                      item.id,
+                    onTap: () => context.push(
+                      Uri(
+                        path: AppRoutes.commonList,
+                        queryParameters: {
+                          'title': '导演 - ${item.name}',
+                          'type': '${item.type}',
+                          'category': 'd',
+                          'id': item.id,
+                        },
+                      ).toString(),
                     ),
                   ),
                 ),
@@ -212,13 +220,16 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                   itemBuilder: (context, item) => ListSummaryTile(
                     list: item,
                     showViewCount: false,
-                    onTap: () => _openCommonList(
-                      context,
-                      '清单',
-                      item.name,
-                      0,
-                      'l',
-                      item.id,
+                    onTap: () => context.push(
+                      Uri(
+                        path: AppRoutes.commonList,
+                        queryParameters: {
+                          'title': '清单 - ${item.name}',
+                          'type': '0',
+                          'category': 'l',
+                          'id': item.id,
+                        },
+                      ).toString(),
                     ),
                   ),
                 ),
@@ -232,13 +243,16 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                   itemBuilder: (context, item) => EntityListTile(
                     name: item.number,
                     count: item.movieCount,
-                    onTap: () => _openCommonList(
-                      context,
-                      '番号',
-                      item.number,
-                      item.type,
-                      'c',
-                      item.id,
+                    onTap: () => context.push(
+                      Uri(
+                        path: AppRoutes.commonList,
+                        queryParameters: {
+                          'title': '番号 - ${item.number}',
+                          'type': '${item.type}',
+                          'category': 'c',
+                          'id': item.id,
+                        },
+                      ).toString(),
                     ),
                   ),
                 ),
@@ -400,24 +414,4 @@ class _ActorSearchTabState extends State<_ActorSearchTab>
       onActorTap: (actor) => context.push('/actor/${actor.id}'),
     );
   }
-}
-
-void _openCommonList(
-  BuildContext context,
-  String typeLabel,
-  String name,
-  int type,
-  String category,
-  String id,
-) {
-  Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => CommonListPage(
-        title: '$typeLabel - $name',
-        type: type,
-        category: category,
-        id: id,
-      ),
-    ),
-  );
 }

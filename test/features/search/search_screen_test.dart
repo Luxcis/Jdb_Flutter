@@ -14,6 +14,7 @@ import 'package:jade/core/models/series.dart';
 import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/storage/storage_keys.dart';
 import 'package:jade/core/widgets/actor_card.dart';
+import 'package:jade/features/common/screens/common_list_page.dart';
 import 'package:jade/core/widgets/list_summary_tile.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/features/search/models/search_movie_filter.dart';
@@ -473,7 +474,7 @@ void main() {
     expect(router.state.uri.path, '/actor/a1');
   });
 
-  testWidgets('非演员实体进入类型减名称公共页且不请求搜索或影片接口', (tester) async {
+  testWidgets('非演员实体经路由进入类型减名称公共页且不请求搜索或影片接口', (tester) async {
     final cases = <({String tab, String expectedTitle, Type rowType})>[
       (tab: '系列', expectedTitle: '系列 - 测试系列', rowType: EntityListTile),
       (tab: '片商', expectedTitle: '片商 - 测试片商', rowType: EntityListTile),
@@ -485,15 +486,9 @@ void main() {
     for (final item in cases) {
       final source = _FakeSearchEntityDataSource.singleNamedResults();
       final movieSource = _RecordingSearchMovieDataSource();
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SearchResultsPage(
-            query: 'test',
-            entityDataSource: source,
-            movieDataSource: movieSource,
-          ),
-        ),
-      );
+      final router = _buildNamedResultsRouter(source);
+      addTearDown(router.dispose);
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
       await tester.pumpAndSettle();
       await tester.tap(find.text(item.tab));
       await tester.pumpAndSettle();
@@ -503,6 +498,7 @@ void main() {
       await tester.tap(find.byType(item.rowType).first);
       await tester.pumpAndSettle();
 
+      expect(router.state.uri.path, AppRoutes.commonList);
       expect(find.text(item.expectedTitle), findsOneWidget);
       expect(find.byKey(const Key('common-list-filter')), findsOneWidget);
       expect(find.byKey(const Key('common-list-sort')), findsOneWidget);
@@ -545,6 +541,33 @@ GoRouter _buildSearchResultsRouter(SearchEntityDataSource entityDataSource) =>
           path: '/actor/:id',
           builder: (_, state) =>
               Scaffold(body: Text('actor ${state.pathParameters['id']}')),
+        ),
+      ],
+    );
+
+GoRouter _buildNamedResultsRouter(SearchEntityDataSource entityDataSource) =>
+    GoRouter(
+      initialLocation: '/search/results',
+      routes: [
+        GoRoute(
+          path: '/search/results',
+          builder: (_, _) => SearchResultsPage(
+            query: 'test',
+            entityDataSource: entityDataSource,
+            movieDataSource: _RecordingSearchMovieDataSource(),
+          ),
+        ),
+        GoRoute(
+          path: AppRoutes.commonList,
+          builder: (c, s) {
+            final q = s.uri.queryParameters;
+            return CommonListPage(
+              title: q['title'] ?? '',
+              type: int.tryParse(q['type'] ?? '') ?? 0,
+              category: q['category'] ?? '',
+              id: q['id'] ?? '',
+            );
+          },
         ),
       ],
     );
