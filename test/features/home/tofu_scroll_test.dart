@@ -43,4 +43,29 @@ void main() {
     expect(router.state.uri.path, '/rankings');
     expect(router.state.uri.queryParameters['tab'], 'hot');
   });
+
+  testWidgets('片商豆腐块存在且点击进入 /makers', (tester) async {
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => const Scaffold(
+            body: Align(alignment: Alignment.topCenter, child: TofuScroll()),
+          ),
+        ),
+        GoRoute(
+          path: '/makers',
+          builder: (_, _) => const Scaffold(body: Text('片商页')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+
+    expect(find.byKey(const Key('tofu-片商')), findsOneWidget);
+    await tester.tap(find.text('片商'));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.path, '/makers');
+  });
 }

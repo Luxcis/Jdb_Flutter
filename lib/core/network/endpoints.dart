@@ -54,7 +54,7 @@ class Endpoints {
 
   // ── 导演/片商/系列/番号 ──
   static const String directors = '/api/v1/directors';
-  // ⚠️ 服务端Bug: 该接口无论传什么 type 值均返回 HTTP 500
+  // type: 0 有码, 1 无码, 2 欧美, 3 FC2, 4 动漫; page 从 1 开始; limit 固定 48
   static const String makers = '/api/v1/makers';
   static const String series = '/api/v1/series';
   static const String seriesLetters = '/api/v1/series/letters';

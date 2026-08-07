@@ -11,6 +11,7 @@ import 'package:jade/features/actors/index.dart';
 import 'package:jade/features/articles/index.dart';
 import 'package:jade/features/profile/index.dart';
 import 'package:jade/features/movie_detail/index.dart';
+import 'package:jade/features/makers/index.dart';
 import 'package:jade/features/search/index.dart';
 import 'package:jade/features/auth/index.dart';
 import 'package:jade/features/startup/index.dart';
@@ -192,7 +193,7 @@ class AppRouter {
     ),
     GoRoute(
       path: AppRoutes.makers,
-      builder: (c, s) => const _SimpleListPage(title: '片商'),
+      builder: (c, s) => const MakersPage(),
     ),
     GoRoute(
       path: AppRoutes.directors,
