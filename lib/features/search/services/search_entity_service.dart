@@ -55,18 +55,12 @@ class SearchEntityService implements SearchEntityDataSource {
         'limit': pageSize,
       },
     );
-    final data = apiMap(response.data);
-    final rawItems = apiList(data, [collectionKey]);
-    final items = rawItems.map(fromJson).toList(growable: false);
-    final currentPage = apiInt(data['current_page'], page);
-    final totalPages = data['total_pages'] == null
-        ? currentPage + (rawItems.length >= pageSize ? 1 : 0)
-        : apiInt(data['total_pages'], currentPage);
-    return PagedResult(
-      items: items,
-      currentPage: currentPage,
-      totalPages: totalPages,
-      total: apiInt(data['total_count'] ?? data['total'], items.length),
+    return apiPageResult(
+      response.data,
+      keys: [collectionKey],
+      page: page,
+      pageSize: pageSize,
+      fromJson: fromJson,
     );
   }
 

@@ -1,3 +1,5 @@
+import 'package:jade/core/models/paged_result.dart';
+
 Map<String, dynamic> apiMap(dynamic data) {
   if (data is Map<String, dynamic>) return data;
   if (data is Map) return Map<String, dynamic>.from(data);
@@ -303,4 +305,31 @@ String? _magnetSize(dynamic value) {
   final unit = value >= 1024 ? 'GB' : 'MB';
   final digits = amount == amount.roundToDouble() ? 0 : 2;
   return '${amount.toStringAsFixed(digits)} $unit';
+}
+
+/// 解析分页响应信封（data 为 BaseEntity.data），统一「无 total_pages 时按满页推断」启发式。
+///
+/// - [keys]：集合键名列表（如 `['movies', 'items']` 或 `['series']`），按序取第一个存在的数组。
+/// - [page]：请求页码，作为 `current_page` 缺失时的回退。
+/// - [pageSize]：每页条数，用于「满页则有下一页」推断。
+/// - [fromJson]：单条数据的反序列化回调。
+PagedResult<T> apiPageResult<T>(
+  dynamic data, {
+  required List<String> keys,
+  required int page,
+  required int pageSize,
+  required T Function(Map<String, dynamic>) fromJson,
+}) {
+  final map = apiMap(data);
+  final items = apiList(map, keys).map(fromJson).toList(growable: false);
+  final currentPage = apiInt(map['current_page'], page);
+  final totalPages = map['total_pages'] == null
+      ? currentPage + (items.length >= pageSize ? 1 : 0)
+      : apiInt(map['total_pages'], currentPage);
+  return PagedResult(
+    items: items,
+    currentPage: currentPage,
+    totalPages: totalPages,
+    total: apiInt(map['total_count'] ?? map['total'], items.length),
+  );
 }

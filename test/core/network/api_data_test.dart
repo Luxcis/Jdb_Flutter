@@ -269,4 +269,80 @@ void main() {
       expect(json['content'], isNull);
     });
   });
+
+  group('apiPageResult', () {
+    test('正常解析：逐字段透传并按序取第一个存在的集合键', () {
+      final result = apiPageResult(
+        {
+          'movies': [
+            {'name': 'M1'},
+            {'name': 'M2'},
+          ],
+          'items': [
+            {'name': 'X1'},
+          ],
+          'current_page': 3,
+          'total_pages': 10,
+          'total_count': 500,
+        },
+        keys: const ['movies', 'items'],
+        page: 1,
+        pageSize: 48,
+        fromJson: (j) => j['name'] as String,
+      );
+
+      expect(result.items, ['M1', 'M2']);
+      expect(result.currentPage, 3);
+      expect(result.totalPages, 10);
+      expect(result.total, 500);
+    });
+
+    test('无 total_pages 且满页时 totalPages 为 currentPage + 1', () {
+      final result = apiPageResult(
+        {
+          'movies': List.generate(48, (i) => {'name': 'M$i'}),
+          'current_page': 2,
+        },
+        keys: const ['movies', 'items'],
+        page: 2,
+        pageSize: 48,
+        fromJson: (j) => j['name'] as String,
+      );
+
+      expect(result.totalPages, 3);
+    });
+
+    test('无 total_pages 且不满页时 totalPages 为 currentPage', () {
+      final result = apiPageResult(
+        {
+          'movies': List.generate(10, (i) => {'name': 'M$i'}),
+          'current_page': 2,
+        },
+        keys: const ['movies', 'items'],
+        page: 2,
+        pageSize: 48,
+        fromJson: (j) => j['name'] as String,
+      );
+
+      expect(result.totalPages, 2);
+    });
+
+    test('current_page 与 total 缺失时回退到 page 与 items.length', () {
+      final result = apiPageResult(
+        {
+          'movies': [
+            {'name': 'M1'},
+          ],
+        },
+        keys: const ['movies'],
+        page: 7,
+        pageSize: 48,
+        fromJson: (j) => j['name'] as String,
+      );
+
+      expect(result.currentPage, 7);
+      expect(result.totalPages, 7);
+      expect(result.total, 1);
+    });
+  });
 }

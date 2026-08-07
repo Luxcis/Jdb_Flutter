@@ -73,20 +73,12 @@ class CategoryService implements CategoryDataSource {
       Endpoints.moviesTags,
       queryParameters: query,
     );
-    final data = apiMap(response.data);
-    final items = apiList(data, const ['movies', 'items'])
-        .map(normalizeMovieSummaryJson)
-        .map(MovieSummary.fromJson)
-        .toList(growable: false);
-    final currentPage = apiInt(data['current_page'], page);
-    final totalPages = data['total_pages'] == null
-        ? currentPage + (items.length >= _pageSize ? 1 : 0)
-        : apiInt(data['total_pages'], currentPage);
-    return PagedResult(
-      items: items,
-      currentPage: currentPage,
-      totalPages: totalPages,
-      total: apiInt(data['total_count'] ?? data['total'], items.length),
+    return apiPageResult(
+      response.data,
+      keys: const ['movies', 'items'],
+      page: page,
+      pageSize: _pageSize,
+      fromJson: (json) => MovieSummary.fromJson(normalizeMovieSummaryJson(json)),
     );
   }
 }

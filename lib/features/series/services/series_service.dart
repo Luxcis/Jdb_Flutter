@@ -32,11 +32,11 @@ class SeriesService implements SeriesDataSource {
       Endpoints.seriesLetters,
       queryParameters: {'page': page, 'limit': limit},
     );
-    return _parsePage(
+    return apiPageResult(
       response.data,
-      key: 'letters',
-      fallbackPage: page,
-      limit: limit,
+      keys: const ['letters'],
+      page: page,
+      pageSize: limit,
       fromJson: SeriesLetter.fromJson,
     );
   }
@@ -51,33 +51,12 @@ class SeriesService implements SeriesDataSource {
       Endpoints.series,
       queryParameters: {'type': type, 'page': page, 'limit': limit},
     );
-    return _parsePage(
+    return apiPageResult(
       response.data,
-      key: 'series',
-      fallbackPage: page,
-      limit: limit,
+      keys: const ['series'],
+      page: page,
+      pageSize: limit,
       fromJson: (json) => Series.fromJson(_seriesJson(json)),
-    );
-  }
-
-  PagedResult<T> _parsePage<T>(
-    dynamic data, {
-    required String key,
-    required int fallbackPage,
-    required int limit,
-    required T Function(Map<String, dynamic>) fromJson,
-  }) {
-    final map = apiMap(data);
-    final items = apiList(map, [key]).map(fromJson).toList(growable: false);
-    final currentPage = apiInt(map['current_page'], fallbackPage);
-    final totalPages = map['total_pages'] == null
-        ? currentPage + (items.length >= limit ? 1 : 0)
-        : apiInt(map['total_pages'], currentPage);
-    return PagedResult(
-      items: items,
-      currentPage: currentPage,
-      totalPages: totalPages,
-      total: apiInt(map['total_count'] ?? map['total'], items.length),
     );
   }
 }
