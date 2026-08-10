@@ -1,6 +1,8 @@
 // test/core/network/api_client_test.dart
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/network/api_exception.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/interceptors/response_interceptor.dart';
 import 'package:jade/core/network/interceptors/response_logging_interceptor.dart';
@@ -149,6 +151,59 @@ void main() {
         token: 'invalid-candidate',
       ),
       throwsA(isNotNull),
+    );
+
+    expect(authErrorCalls, 0);
+  });
+
+  test('候选 Token 的 HTTP 401 鉴权错误不触发全局认证回调', () async {
+    final prefs = await SharedPreferences.getInstance();
+    var authErrorCalls = 0;
+    final api = await ApiClient.create(
+      prefs: prefs,
+      tokenProvider: _TokenProvider('old-token'),
+      onAuthError: () => authErrorCalls++,
+    );
+    final adapter = FakeAdapter()
+      ..enqueue(Endpoints.users, {
+        'success': 0,
+        'action': 'JWTVerificationError',
+        'message': 'Token 无效',
+      }, statusCode: 401);
+    api.setAdapterForTest(adapter);
+
+    await expectLater(
+      () => api.getWithCandidateToken(
+        Endpoints.users,
+        token: 'invalid-candidate',
+      ),
+      throwsA(predicate<DioException>((error) => error.error is ApiException)),
+    );
+
+    expect(authErrorCalls, 0);
+  });
+
+  test('候选 Token 的裸 HTTP 401 不触发全局认证回调', () async {
+    final prefs = await SharedPreferences.getInstance();
+    var authErrorCalls = 0;
+    final api = await ApiClient.create(
+      prefs: prefs,
+      tokenProvider: _TokenProvider('old-token'),
+      onAuthError: () => authErrorCalls++,
+    );
+    final adapter = FakeAdapter()
+      ..enqueue(Endpoints.users, {
+        'success': 0,
+        'message': '未授权',
+      }, statusCode: 401);
+    api.setAdapterForTest(adapter);
+
+    await expectLater(
+      () => api.getWithCandidateToken(
+        Endpoints.users,
+        token: 'invalid-candidate',
+      ),
+      throwsA(isA<DioException>()),
     );
 
     expect(authErrorCalls, 0);
