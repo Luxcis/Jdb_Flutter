@@ -13,6 +13,14 @@ Future<FakeAdapter> _pumpHome(
   WidgetTester tester, {
   Duration responseDelay = Duration.zero,
   List<Map<String, dynamic>>? latestBodies,
+  List<Map<String, dynamic>> recommends = const [
+    {
+      'id': 'recommend',
+      'number': 'R-1',
+      'title': 'Recommend',
+      'cover_url': 'recommend.jpg',
+    },
+  ],
   bool settle = true,
 }) async {
   tester.view.physicalSize = const Size(390, 1600);
@@ -34,16 +42,7 @@ Future<FakeAdapter> _pumpHome(
   api.setAdapterForTest(adapter);
   adapter.enqueue(Endpoints.moviesRecommend, {
     'success': 1,
-    'data': {
-      'movies': [
-        {
-          'id': 'recommend',
-          'number': 'R-1',
-          'title': 'Recommend',
-          'cover_url': 'recommend.jpg',
-        },
-      ],
-    },
+    'data': {'movies': recommends},
   });
   if (latestBodies != null) {
     adapter.enqueueSequence(Endpoints.moviesLatest, latestBodies);
@@ -104,6 +103,40 @@ void main() {
     final searchTop = tester.getTopLeft(find.byType(HomeSearchBar)).dy;
     final tofuTop = tester.getTopLeft(find.byType(TofuScroll)).dy;
     expect(searchTop, lessThan(tofuTop));
+  });
+
+  testWidgets('佳片推荐在首页每 5 秒自动显示下一张', (tester) async {
+    await _pumpHome(
+      tester,
+      recommends: const [
+        {
+          'id': 'recommend-a',
+          'number': 'R-1',
+          'title': 'Recommend A',
+          'cover_url': 'recommend-a.jpg',
+        },
+        {
+          'id': 'recommend-b',
+          'number': 'R-2',
+          'title': 'Recommend B',
+          'cover_url': 'recommend-b.jpg',
+        },
+      ],
+    );
+    final carousel = find.byKey(const Key('home-recommend-carousel'));
+
+    expect(
+      tester.getCenter(find.text('Recommend A')).dx,
+      closeTo(tester.getCenter(carousel).dx, 5),
+    );
+    await tester.pump(const Duration(seconds: 5));
+    for (var frame = 0; frame < 4; frame++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(
+      tester.getCenter(find.text('Recommend B')).dx,
+      closeTo(tester.getCenter(carousel).dx, 5),
+    );
   });
 
   testWidgets('最新上架换一组仅请求 can_play 第 2 页', (tester) async {

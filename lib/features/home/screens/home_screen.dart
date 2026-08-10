@@ -4,11 +4,11 @@ import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/empty_state.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/movie_card.dart';
-import 'package:jade/core/widgets/movie_cover_image.dart';
 import 'package:jade/core/widgets/search_entry.dart';
 import 'package:jade/core/widgets/section_header.dart';
 import 'package:jade/features/home/providers/home_provider.dart';
 import 'package:jade/features/home/services/home_service.dart';
+import 'package:jade/features/home/widgets/recommend_carousel.dart';
 import 'package:jade/features/home/widgets/tofu_scroll.dart';
 
 class HomePage extends StatefulWidget {
@@ -134,34 +134,9 @@ class _HomePageState extends State<HomePage> {
     return SliverToBoxAdapter(
       child: SizedBox(
         height: 220,
-        child: PageView.builder(
-          itemCount: section.items.length,
-          itemBuilder: (_, i) => GestureDetector(
-            onTap: () => context.push('/movie/${section.items[i].id}'),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                MovieCoverImage(
-                  section.items[i].coverUrl,
-                  variant: MovieImageVariant.cover,
-                  semanticLabel: section.items[i].title,
-                ),
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    color: Colors.black54,
-                    padding: const EdgeInsets.all(8),
-                    child: Text(
-                      section.items[i].title,
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        child: RecommendCarousel(
+          movies: section.items,
+          onMovieTap: (movie) => context.push('/movie/${movie.id}'),
         ),
       ),
     );
