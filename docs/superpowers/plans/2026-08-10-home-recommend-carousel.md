@@ -92,8 +92,16 @@ Future<void> finishAutoPlayAnimation(WidgetTester tester) async {
   }
 }
 
-void expectVisibleTitle(String title) {
-  expect(find.text(title).hitTestable(), findsOneWidget);
+Future<void> finishManualSwipe(WidgetTester tester) async {
+  for (var frame = 0; frame < 6; frame++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
+void expectVisibleTitle(WidgetTester tester, String title) {
+  final carouselCenter = tester.getCenter(find.byType(CarouselSlider)).dx;
+  final titleCenter = tester.getCenter(find.text(title)).dx;
+  expect(titleCenter, closeTo(carouselCenter, 5));
 }
 
 void main() {
@@ -105,14 +113,14 @@ void main() {
 
   testWidgets('满 5 秒后自动显示下一张推荐', (tester) async {
     await pumpCarousel(tester);
-    expectVisibleTitle('A');
+    expectVisibleTitle(tester, 'A');
 
     await tester.pump(const Duration(milliseconds: 4999));
-    expectVisibleTitle('A');
+    expectVisibleTitle(tester, 'A');
 
     await tester.pump(const Duration(milliseconds: 1));
     await finishAutoPlayAnimation(tester);
-    expectVisibleTitle('B');
+    expectVisibleTitle(tester, 'B');
   });
 
   testWidgets('最后一张之后继续显示第一张', (tester) async {
@@ -123,7 +131,7 @@ void main() {
       await finishAutoPlayAnimation(tester);
     }
 
-    expectVisibleTitle('A');
+    expectVisibleTitle(tester, 'A');
   });
 }
 ```
@@ -254,15 +262,15 @@ testWidgets('手动滑动后重新等待完整 5 秒', (tester) async {
   final carousel = find.byKey(const Key('home-recommend-carousel'));
 
   await tester.pump(const Duration(seconds: 4));
-  await tester.drag(carousel, const Offset(-300, 0));
-  await finishAutoPlayAnimation(tester);
-  expectVisibleTitle('B');
+  await tester.drag(carousel, const Offset(-600, 0));
+  await finishManualSwipe(tester);
+  expectVisibleTitle(tester, 'B');
 
-  await tester.pump(const Duration(milliseconds: 4999));
-  expectVisibleTitle('B');
+  await tester.pump(const Duration(milliseconds: 4399));
+  expectVisibleTitle(tester, 'B');
   await tester.pump(const Duration(milliseconds: 1));
   await finishAutoPlayAnimation(tester);
-  expectVisibleTitle('C');
+  expectVisibleTitle(tester, 'C');
 });
 
 testWidgets('只有一张推荐时不会自动切换', (tester) async {
@@ -270,24 +278,33 @@ testWidgets('只有一张推荐时不会自动切换', (tester) async {
 
   await tester.pump(const Duration(seconds: 15));
 
-  expectVisibleTitle('A');
+  expectVisibleTitle(tester, 'A');
 });
 
 testWidgets('应用在后台时暂停并在恢复后重新计时', (tester) async {
   await pumpCarousel(tester);
-  await tester.binding.handleAppLifecycleStateChanged(
+  await tester.pump(const Duration(seconds: 2));
+  tester.binding.handleAppLifecycleStateChanged(
     AppLifecycleState.paused,
   );
+  await tester.pump();
 
   await tester.pump(const Duration(seconds: 10));
-  expectVisibleTitle('A');
+  await finishAutoPlayAnimation(tester);
+  expectVisibleTitle(tester, 'A');
 
-  await tester.binding.handleAppLifecycleStateChanged(
+  tester.binding.handleAppLifecycleStateChanged(
     AppLifecycleState.resumed,
   );
-  await tester.pump(const Duration(seconds: 5));
+  await tester.pump();
+  await tester.pump(const Duration(seconds: 3));
   await finishAutoPlayAnimation(tester);
-  expectVisibleTitle('B');
+  expectVisibleTitle(tester, 'A');
+  await tester.pump(const Duration(milliseconds: 1599));
+  expectVisibleTitle(tester, 'A');
+  await tester.pump(const Duration(milliseconds: 1));
+  await finishAutoPlayAnimation(tester);
+  expectVisibleTitle(tester, 'B');
 });
 
 testWidgets('TickerMode 关闭时暂停并在恢复后重新计时', (tester) async {
@@ -303,14 +320,22 @@ testWidgets('TickerMode 关闭时暂停并在恢复后重新计时', (tester) as
     ),
   );
 
+  await tester.pumpWidget(harness(true));
+  await tester.pump(const Duration(seconds: 2));
   await tester.pumpWidget(harness(false));
   await tester.pump(const Duration(seconds: 10));
-  expectVisibleTitle('A');
+  await finishAutoPlayAnimation(tester);
+  expectVisibleTitle(tester, 'A');
 
   await tester.pumpWidget(harness(true));
-  await tester.pump(const Duration(seconds: 5));
+  await tester.pump(const Duration(seconds: 3));
   await finishAutoPlayAnimation(tester);
-  expectVisibleTitle('B');
+  expectVisibleTitle(tester, 'A');
+  await tester.pump(const Duration(milliseconds: 1599));
+  expectVisibleTitle(tester, 'A');
+  await tester.pump(const Duration(milliseconds: 1));
+  await finishAutoPlayAnimation(tester);
+  expectVisibleTitle(tester, 'B');
 });
 
 testWidgets('销毁轮播后没有异步异常', (tester) async {
