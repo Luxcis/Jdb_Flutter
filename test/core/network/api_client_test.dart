@@ -90,6 +90,70 @@ void main() {
     expect(adapter.requests.last.headers['authorization'], 'Bearer mytoken');
   });
 
+  test('候选 Token 请求覆盖当前 Token，普通请求仍读取 TokenProvider', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final provider = _TokenProvider('old-token');
+    final api = await ApiClient.create(
+      prefs: prefs,
+      tokenProvider: provider,
+      onAuthError: () {},
+    );
+    final adapter = FakeAdapter()
+      ..enqueue(Endpoints.users, {
+        'success': 1,
+        'data': {
+          'user': {
+            'id': 7,
+            'username': 'candidate-user',
+            'email': 'candidate@example.invalid',
+          },
+          'banner_type': 'none',
+        },
+      })
+      ..enqueue(Endpoints.moviesRecommend, {'success': 1, 'data': <dynamic>[]});
+    api.setAdapterForTest(adapter);
+
+    await api.getWithCandidateToken(Endpoints.users, token: 'candidate-token');
+    expect(
+      adapter.requests.first.headers['authorization'],
+      'Bearer candidate-token',
+    );
+
+    provider.token = 'saved-token';
+    await api.get(Endpoints.moviesRecommend);
+    expect(
+      adapter.requests.last.headers['authorization'],
+      'Bearer saved-token',
+    );
+  });
+
+  test('候选 Token 失效不触发全局认证回调', () async {
+    final prefs = await SharedPreferences.getInstance();
+    var authErrorCalls = 0;
+    final api = await ApiClient.create(
+      prefs: prefs,
+      tokenProvider: _TokenProvider('old-token'),
+      onAuthError: () => authErrorCalls++,
+    );
+    final adapter = FakeAdapter()
+      ..enqueue(Endpoints.users, {
+        'success': 0,
+        'action': 'JWTVerificationError',
+        'message': 'Token 无效',
+      });
+    api.setAdapterForTest(adapter);
+
+    await expectLater(
+      () => api.getWithCandidateToken(
+        Endpoints.users,
+        token: 'invalid-candidate',
+      ),
+      throwsA(isNotNull),
+    );
+
+    expect(authErrorCalls, 0);
+  });
+
   test('在业务响应解包前装配响应日志拦截器', () async {
     final prefs = await SharedPreferences.getInstance();
     final api = await ApiClient.create(

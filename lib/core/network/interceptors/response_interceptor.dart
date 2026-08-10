@@ -1,6 +1,7 @@
 // lib/core/network/interceptors/response_interceptor.dart
 import 'package:dio/dio.dart';
 import 'package:jade/core/network/api_exception.dart';
+import 'package:jade/core/network/auth_request_context.dart';
 
 class ResponseInterceptor extends Interceptor {
   ResponseInterceptor({required this.onAuthError});
@@ -30,7 +31,9 @@ class ResponseInterceptor extends Interceptor {
     }
     final action = (data['action'] as String?) ?? '';
     final message = _decodeHtmlEntities(data['message']) as String?;
-    if (_isAuthAction(action)) {
+    final suppressGlobalAuthError =
+        AuthRequestContext.suppressesGlobalAuthError(response.requestOptions);
+    if (_isAuthAction(action) && !suppressGlobalAuthError) {
       onAuthError();
     }
     final ex = ApiException.fromAction(action, message);
@@ -51,8 +54,12 @@ class ResponseInterceptor extends Interceptor {
     if (data is Map) {
       final action = (data['action'] as String?) ?? '';
       final message = _decodeHtmlEntities(data['message']) as String?;
+      final suppressGlobalAuthError =
+          AuthRequestContext.suppressesGlobalAuthError(err.requestOptions);
       if (_isAuthAction(action)) {
-        onAuthError();
+        if (!suppressGlobalAuthError) {
+          onAuthError();
+        }
         handler.reject(
           DioException(
             requestOptions: err.requestOptions,
@@ -64,7 +71,8 @@ class ResponseInterceptor extends Interceptor {
         return;
       }
     }
-    if (response?.statusCode == 401) {
+    if (response?.statusCode == 401 &&
+        !AuthRequestContext.suppressesGlobalAuthError(err.requestOptions)) {
       onAuthError();
     }
     handler.next(err);

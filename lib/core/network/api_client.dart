@@ -1,5 +1,6 @@
 // lib/core/network/api_client.dart
 import 'package:dio/dio.dart';
+import 'package:jade/core/network/auth_request_context.dart';
 import 'package:jade/core/network/domain_manager.dart';
 import 'package:jade/core/network/interceptors/auth_interceptor.dart';
 import 'package:jade/core/network/interceptors/domain_switch_interceptor.dart';
@@ -50,6 +51,18 @@ class ApiClient {
 
   Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) {
     return dio.get(path, queryParameters: queryParameters);
+  }
+
+  Future<Response> getWithCandidateToken(
+    String path, {
+    required String token,
+    Map<String, dynamic>? queryParameters,
+  }) {
+    return dio.get(
+      path,
+      queryParameters: queryParameters,
+      options: AuthRequestContext.candidateTokenOptions(token),
+    );
   }
 
   Future<Response> post(String path, {dynamic data}) {

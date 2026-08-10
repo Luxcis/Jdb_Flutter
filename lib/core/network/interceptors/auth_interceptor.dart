@@ -1,17 +1,18 @@
 import 'package:dio/dio.dart';
 import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/network/auth_request_context.dart';
 
 class AuthInterceptor extends Interceptor {
   AuthInterceptor(Object tokenProvider)
-      : _tokenProvider = tokenProvider is TokenProvider
+    : _tokenProvider = tokenProvider is TokenProvider
           ? tokenProvider
-          : (throw ArgumentError(
-              'tokenProvider must implement TokenProvider')) ;
+          : (throw ArgumentError('tokenProvider must implement TokenProvider'));
   final TokenProvider _tokenProvider;
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    final token = _tokenProvider.token;
+    final token =
+        AuthRequestContext.tokenOverride(options) ?? _tokenProvider.token;
     if (token != null && token.isNotEmpty) {
       options.headers['authorization'] = 'Bearer $token';
     }
