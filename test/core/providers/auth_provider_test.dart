@@ -57,6 +57,36 @@ void main() {
     expect(prefs.getString(StorageKeys.token), 'old-token');
     expect(jsonDecode(prefs.getString(StorageKeys.user)!), oldUser);
   });
+
+  test('login Token 写入抛异常时回滚且保留原始异常与堆栈', () async {
+    final oldUser = {'id': 1, 'username': 'old-user'};
+    const replacementUser = {'id': 2, 'username': 'replacement-user'};
+    const originalError = _TokenWriteException('token write failed');
+    final originalStackTrace = StackTrace.fromString('token-write-stack');
+    final prefs = _ThrowingTokenSharedPreferences(
+      initialValues: {
+        StorageKeys.token: 'old-token',
+        StorageKeys.user: jsonEncode(oldUser),
+      },
+      replacementUser: jsonEncode(replacementUser),
+      tokenWriteError: originalError,
+      tokenWriteStackTrace: originalStackTrace,
+    );
+    final auth = await AuthProvider.create(prefs);
+
+    try {
+      await auth.login(token: 'replacement-token', user: replacementUser);
+      fail('login 应抛出 Token 写入的原始异常');
+    } catch (error, stackTrace) {
+      expect(error, same(originalError));
+      expect(stackTrace.toString(), originalStackTrace.toString());
+    }
+
+    expect(auth.token, 'old-token');
+    expect(auth.user, oldUser);
+    expect(prefs.getString(StorageKeys.token), 'old-token');
+    expect(jsonDecode(prefs.getString(StorageKeys.user)!), oldUser);
+  });
 }
 
 final class _FailingSharedPreferences implements SharedPreferences {
@@ -86,4 +116,55 @@ final class _FailingSharedPreferences implements SharedPreferences {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+final class _ThrowingTokenSharedPreferences implements SharedPreferences {
+  _ThrowingTokenSharedPreferences({
+    required Map<String, String> initialValues,
+    required this.replacementUser,
+    required this.tokenWriteError,
+    required this.tokenWriteStackTrace,
+  }) : _values = Map.of(initialValues);
+
+  final Map<String, String> _values;
+  final String replacementUser;
+  final Object tokenWriteError;
+  final StackTrace tokenWriteStackTrace;
+
+  @override
+  String? getString(String key) => _values[key];
+
+  @override
+  Future<bool> setString(String key, String value) async {
+    if (key == StorageKeys.user) {
+      _values[key] = value;
+      return true;
+    }
+    if (key == StorageKeys.token) {
+      if (_values[StorageKeys.user] != replacementUser) {
+        throw StateError('Token must be written after the replacement user');
+      }
+      Error.throwWithStackTrace(tokenWriteError, tokenWriteStackTrace);
+    }
+    _values[key] = value;
+    return true;
+  }
+
+  @override
+  Future<bool> remove(String key) async {
+    _values.remove(key);
+    return true;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+final class _TokenWriteException implements Exception {
+  const _TokenWriteException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'Token write failed: $message';
 }
