@@ -1,10 +1,15 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/constants/app_constants.dart';
 import 'package:jade/core/models/startup.dart';
 import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/network/api_exception.dart';
 import 'package:jade/core/network/cache_service.dart';
 import 'package:jade/core/network/domain_manager.dart';
+import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/providers/theme_provider.dart';
@@ -12,6 +17,7 @@ import 'package:jade/core/storage/storage_keys.dart';
 import 'package:jade/features/profile/screens/profile_sub_pages.dart';
 import 'package:jade/features/profile/services/app_version_service.dart';
 import 'package:jade/features/profile/services/token_authentication_service.dart';
+import 'package:jade/features/profile/widgets/token_authentication_dialog.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -45,6 +51,36 @@ final class _FailingAppVersionService implements AppVersionService {
 
   @override
   Future<String> loadVersion() => Future.error(StateError('unavailable'));
+}
+
+final class _FakeTokenAuthenticationService
+    implements TokenAuthenticationService {
+  _FakeTokenAuthenticationService({this.user, this.error});
+
+  final Map<String, dynamic>? user;
+  final Object? error;
+  var calls = 0;
+  String? lastToken;
+
+  @override
+  Future<Map<String, dynamic>> authenticate(String token) async {
+    calls++;
+    lastToken = token;
+    if (error case final error?) throw error;
+    return user!;
+  }
+}
+
+final class _CompletingTokenAuthenticationService
+    implements TokenAuthenticationService {
+  final completer = Completer<Map<String, dynamic>>();
+  var calls = 0;
+
+  @override
+  Future<Map<String, dynamic>> authenticate(String token) {
+    calls++;
+    return completer.future;
+  }
 }
 
 Future<({AuthProvider auth, SharedPreferences prefs, void Function() dispose})>
@@ -132,7 +168,9 @@ void main() {
           ChangeNotifierProvider.value(value: theme),
           ChangeNotifierProvider.value(value: dm),
         ],
-        child: MaterialApp(home: ProfileSettingsPage(cacheService: _FakeCacheService())),
+        child: MaterialApp(
+          home: ProfileSettingsPage(cacheService: _FakeCacheService()),
+        ),
       ),
     );
 
@@ -177,7 +215,9 @@ void main() {
           ChangeNotifierProvider.value(value: theme),
           ChangeNotifierProvider.value(value: dm),
         ],
-        child: MaterialApp(home: ProfileSettingsPage(cacheService: _FakeCacheService())),
+        child: MaterialApp(
+          home: ProfileSettingsPage(cacheService: _FakeCacheService()),
+        ),
       ),
     );
 
@@ -225,7 +265,9 @@ void main() {
           ChangeNotifierProvider.value(value: theme),
           ChangeNotifierProvider.value(value: dm),
         ],
-        child: MaterialApp(home: ProfileSettingsPage(cacheService: _FakeCacheService())),
+        child: MaterialApp(
+          home: ProfileSettingsPage(cacheService: _FakeCacheService()),
+        ),
       ),
     );
 
@@ -264,7 +306,9 @@ void main() {
           ChangeNotifierProvider.value(value: theme),
           ChangeNotifierProvider.value(value: dm),
         ],
-        child: MaterialApp(home: ProfileSettingsPage(cacheService: _FakeCacheService())),
+        child: MaterialApp(
+          home: ProfileSettingsPage(cacheService: _FakeCacheService()),
+        ),
       ),
     );
 
@@ -298,7 +342,9 @@ void main() {
           ChangeNotifierProvider.value(value: theme),
           ChangeNotifierProvider.value(value: dm),
         ],
-        child: MaterialApp(home: ProfileSettingsPage(cacheService: _FakeCacheService())),
+        child: MaterialApp(
+          home: ProfileSettingsPage(cacheService: _FakeCacheService()),
+        ),
       ),
     );
 
@@ -384,5 +430,194 @@ void main() {
 
     expect(find.text('当前版本'), findsOneWidget);
     expect(find.text('未知'), findsOneWidget);
+  });
+
+  testWidgets('2 秒内第五次点击当前版本才打开 Token 弹窗', (tester) async {
+    final subject = await _pumpSettings(
+      tester,
+      appVersionService: const _FixedAppVersionService('0.7.1'),
+      tokenAuthenticationService: _FakeTokenAuthenticationService(
+        user: {'id': 1},
+      ),
+    );
+    addTearDown(subject.dispose);
+    await tester.pumpAndSettle();
+
+    for (var i = 0; i < 4; i++) {
+      await tester.tap(find.text('当前版本'));
+    }
+    await tester.pump();
+    expect(find.text('认证 Token'), findsNothing);
+
+    await tester.tap(find.text('当前版本'));
+    await tester.pumpAndSettle();
+    expect(find.text('认证 Token'), findsOneWidget);
+    expect(find.text('输入新的认证 Token 将覆盖当前登录信息。'), findsOneWidget);
+  });
+
+  testWidgets('版本点击超过 2 秒后重新计数', (tester) async {
+    final subject = await _pumpSettings(
+      tester,
+      appVersionService: const _FixedAppVersionService('0.7.1'),
+      tokenAuthenticationService: _FakeTokenAuthenticationService(
+        user: {'id': 1},
+      ),
+    );
+    addTearDown(subject.dispose);
+    await tester.pumpAndSettle();
+
+    for (var i = 0; i < 4; i++) {
+      await tester.tap(find.text('当前版本'));
+    }
+    await tester.pump(const Duration(seconds: 2));
+    await tester.tap(find.text('当前版本'));
+    await tester.pump();
+
+    expect(find.text('认证 Token'), findsNothing);
+  });
+
+  testWidgets('Token 验证成功后覆盖并持久化完整登录状态', (tester) async {
+    final service = _FakeTokenAuthenticationService(
+      user: {
+        'id': 10,
+        'username': 'replacement-user',
+        'email': 'replacement@example.invalid',
+      },
+    );
+    final subject = await _pumpSettings(
+      tester,
+      initialToken: 'old-token',
+      initialUser: {'id': 1, 'username': 'old-user'},
+      appVersionService: const _FixedAppVersionService('0.7.1'),
+      tokenAuthenticationService: service,
+    );
+    addTearDown(subject.dispose);
+    await tester.pumpAndSettle();
+
+    for (var i = 0; i < 5; i++) {
+      await tester.tap(find.text('当前版本'));
+    }
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '  replacement-token  ');
+    await tester.tap(find.text('确定'));
+    await tester.pumpAndSettle();
+
+    expect(service.calls, 1);
+    expect(service.lastToken, 'replacement-token');
+    expect(subject.auth.token, 'replacement-token');
+    expect(subject.auth.user?['username'], 'replacement-user');
+    expect(subject.prefs.getString(StorageKeys.token), 'replacement-token');
+    expect(find.text('认证 Token'), findsNothing);
+    expect(find.text('认证 Token 已更新'), findsOneWidget);
+  });
+
+  testWidgets('Token 验证失败时保留旧登录状态并允许重试', (tester) async {
+    final service = _FakeTokenAuthenticationService(
+      error: DioException(
+        requestOptions: RequestOptions(path: Endpoints.users),
+        error: const ApiException(
+          action: ApiErrorActions.jwtVerificationError,
+          message: 'Token 无效',
+        ),
+      ),
+    );
+    final subject = await _pumpSettings(
+      tester,
+      initialToken: 'old-token',
+      initialUser: {'id': 1, 'username': 'old-user'},
+      appVersionService: const _FixedAppVersionService('0.7.1'),
+      tokenAuthenticationService: service,
+    );
+    addTearDown(subject.dispose);
+    await tester.pumpAndSettle();
+
+    for (var i = 0; i < 5; i++) {
+      await tester.tap(find.text('当前版本'));
+    }
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'invalid-token');
+    await tester.tap(find.text('确定'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('认证 Token'), findsOneWidget);
+    expect(find.text('Token 无效'), findsOneWidget);
+    expect(subject.auth.token, 'old-token');
+    expect(subject.auth.user?['username'], 'old-user');
+    expect(subject.prefs.getString(StorageKeys.token), 'old-token');
+
+    await tester.tap(find.text('确定'));
+    await tester.pumpAndSettle();
+
+    expect(service.calls, 2);
+    expect(find.text('Token 无效'), findsOneWidget);
+    expect(subject.auth.token, 'old-token');
+  });
+
+  testWidgets('空 Token 不发起验证', (tester) async {
+    final service = _FakeTokenAuthenticationService(user: {'id': 1});
+    final subject = await _pumpSettings(
+      tester,
+      appVersionService: const _FixedAppVersionService('0.7.1'),
+      tokenAuthenticationService: service,
+    );
+    addTearDown(subject.dispose);
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) {
+      await tester.tap(find.text('当前版本'));
+    }
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), '   ');
+    await tester.tap(find.text('确定'));
+    await tester.pump();
+
+    expect(service.calls, 0);
+    expect(find.text('认证 Token'), findsOneWidget);
+  });
+
+  testWidgets('会话保存失败时弹窗保留且不显示成功状态', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TokenAuthenticationDialog(
+          authenticate: (_) async => {'id': 1, 'username': 'token-user'},
+          saveSession: ({required token, required user}) async {
+            throw StateError('storage unavailable');
+          },
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), 'candidate-token');
+    await tester.tap(find.text('确定'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('认证 Token'), findsOneWidget);
+    expect(find.text('保存失败，请重试'), findsOneWidget);
+    expect(find.text('认证 Token 已更新'), findsNothing);
+  });
+
+  testWidgets('验证期间阻止重复提交', (tester) async {
+    final service = _CompletingTokenAuthenticationService();
+    final subject = await _pumpSettings(
+      tester,
+      appVersionService: const _FixedAppVersionService('0.7.1'),
+      tokenAuthenticationService: service,
+    );
+    addTearDown(subject.dispose);
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 5; i++) {
+      await tester.tap(find.text('当前版本'));
+    }
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'candidate-token');
+
+    await tester.tap(find.text('确定'));
+    await tester.tap(find.text('确定'));
+    await tester.pump();
+
+    expect(service.calls, 1);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    service.completer.complete({'id': 1, 'username': 'token-user'});
+    await tester.pumpAndSettle();
   });
 }
