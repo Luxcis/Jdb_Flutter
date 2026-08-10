@@ -39,7 +39,7 @@ class _RecommendCarouselState extends State<RecommendCarousel>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final enabled = TickerMode.of(context);
+    final enabled = TickerMode.valuesOf(context).enabled;
     if (_tickerModeEnabled == enabled) return;
     _tickerModeEnabled = enabled;
     _syncAutoPlay();

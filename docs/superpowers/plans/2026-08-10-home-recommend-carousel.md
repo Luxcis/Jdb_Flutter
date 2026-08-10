@@ -249,7 +249,7 @@ git commit -m "feat(home): refactor recommendations with carousel slider"
 - Modify: `test/features/home/recommend_carousel_test.dart`
 
 **Interfaces:**
-- Consumes: `WidgetsBindingObserver`, `TickerMode.of(context)`, and `CarouselSliderController`
+- Consumes: `WidgetsBindingObserver`, `TickerMode.valuesOf(context).enabled`, and `CarouselSliderController`
 - Produces: controller auto-play synchronized with application and navigation visibility
 
 - [ ] **Step 1: Add failing interaction and visibility tests**
@@ -385,7 +385,7 @@ class _RecommendCarouselState extends State<RecommendCarousel>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final enabled = TickerMode.of(context);
+    final enabled = TickerMode.valuesOf(context).enabled;
     if (_tickerModeEnabled == enabled) return;
     _tickerModeEnabled = enabled;
     _syncAutoPlay();
