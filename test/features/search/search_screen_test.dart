@@ -486,7 +486,10 @@ void main() {
     for (final item in cases) {
       final source = _FakeSearchEntityDataSource.singleNamedResults();
       final movieSource = _RecordingSearchMovieDataSource();
-      final router = _buildNamedResultsRouter(source);
+      final router = _buildNamedResultsRouter(
+        source,
+        movieDataSource: movieSource,
+      );
       addTearDown(router.dispose);
       await tester.pumpWidget(MaterialApp.router(routerConfig: router));
       await tester.pumpAndSettle();
@@ -545,7 +548,10 @@ GoRouter _buildSearchResultsRouter(SearchEntityDataSource entityDataSource) =>
       ],
     );
 
-GoRouter _buildNamedResultsRouter(SearchEntityDataSource entityDataSource) =>
+GoRouter _buildNamedResultsRouter(
+  SearchEntityDataSource entityDataSource, {
+  SearchMovieDataSource? movieDataSource,
+}) =>
     GoRouter(
       initialLocation: '/search/results',
       routes: [
@@ -554,7 +560,7 @@ GoRouter _buildNamedResultsRouter(SearchEntityDataSource entityDataSource) =>
           builder: (_, _) => SearchResultsPage(
             query: 'test',
             entityDataSource: entityDataSource,
-            movieDataSource: _RecordingSearchMovieDataSource(),
+            movieDataSource: movieDataSource ?? _RecordingSearchMovieDataSource(),
           ),
         ),
         GoRoute(
