@@ -2,81 +2,113 @@
 
 ## 目标
 
-在首页“佳片推荐”分区现有 `PageView` 基础上增加自动循环轮播：
+使用 `carousel_slider` 重构首页“佳片推荐”分区：
 
 - 每 5 秒自动切换到下一张；
-- 最后一张之后继续向前显示第一张，形成连续循环；
-- 用户手动滑动后重新等待 5 秒；
+- 最后一张之后继续向前显示第一张；
+- 用户触摸或手动滑动时暂停，交互结束后重新计时；
 - 页面不可见或应用进入后台时暂停，恢复可见后重新计时；
 - 只有一张推荐时不自动轮播。
 
-现有推荐数据加载、失败重试、空态、图片展示和点击进入电影详情的行为保持不变。
+现有推荐数据加载、失败重试、空态、图片展示、标题遮罩和点击进入电影详情的行为保持不变。
+
+## 文档依据
+
+通过 Context7 查询 `/serenader2014/flutter_carousel_slider`，确认：
+
+- `CarouselSlider.builder` 支持按需构建；
+- `CarouselOptions` 提供 `autoPlay`、`autoPlayInterval`、`autoPlayAnimationDuration`、`autoPlayCurve`、`enableInfiniteScroll` 和 `pauseAutoPlayOnTouch`；
+- `CarouselSliderController` 提供 `startAutoPlay()` 与 `stopAutoPlay()`。
+
+Context7 未返回明确的当前稳定版本，因此使用官方 pub.dev 补充确认 `carousel_slider 5.1.2` 为当前稳定版。该版本修复了内部 `PageController` 未正确释放，以及控制器尚未就绪时调用导致的崩溃。
+
+参考：
+
+- Context7 library：`/serenader2014/flutter_carousel_slider`
+- pub.dev：`https://pub.dev/packages/carousel_slider`
+- API：`https://pub.dev/documentation/carousel_slider/latest/carousel_slider/`
 
 ## 方案选择
 
-采用 `PageController + Timer + 虚拟无限页`，不增加第三方依赖。
+采用 `carousel_slider: ^5.1.2`，由第三方组件负责无限循环、自动播放、动画和触摸暂停。项目代码不再持有自研 `Timer`，也不再维护虚拟页索引。
 
-推荐影片通过“虚拟页索引对影片数量取模”映射到真实数据。初始虚拟页选择一个足够大的、可被影片数量整除的页码，因此用户可以持续向前或向后滑动，自动切换也不需要从末页反向滚回首页。
+仍保留首页 feature 内的 `RecommendCarousel` 薄封装，用于：
+
+- 把 `MovieSummary` 映射为现有封面、标题遮罩和点击区域；
+- 统一固化首页轮播参数；
+- 通过 `CarouselSliderController` 响应 App 生命周期和 `TickerMode` 可见性；
+- 隔离第三方组件 API，避免 `HomePage` 直接承担轮播状态。
 
 未选择以下方案：
 
-- 有限 `PageView` 在末页直接跳回首页：代码较少，但回绕动画突兀，不能形成连续向前的视觉效果。
-- 引入第三方轮播组件：当前需求只需要基础计时和循环行为，新增依赖的维护成本高于收益。
+- 直接在 `HomePage` 内联 `CarouselSlider`：文件更短，但生命周期和第三方配置会再次混入首页页面代码。
+- `carousel_slider` 外再叠加自研 `Timer`：产生两套自动播放状态，容易重复翻页，不符合单一职责。
 
-## 组件设计
+## 组件配置
 
-从 `HomePage` 中把成功态的推荐轮播提取为首页 feature 内的私有 `StatefulWidget`。该组件只负责轮播的短生命周期 UI 状态：
+`RecommendCarousel` 使用 `CarouselSlider.builder`，配置固定为：
 
-- 接收已经加载成功且非空的推荐影片列表；
-- 持有 `PageController`、当前虚拟页和一次性 `Timer`；
-- 渲染现有封面、标题遮罩和电影详情点击行为；
-- 监听页面拖动、应用生命周期和当前导航分支可见性；
-- 在 `dispose` 中取消计时器并释放控制器。
+```dart
+CarouselOptions(
+  height: 220,
+  viewportFraction: 1,
+  enableInfiniteScroll: movies.length > 1,
+  autoPlay: movies.length > 1,
+  autoPlayInterval: const Duration(seconds: 5),
+  autoPlayAnimationDuration: const Duration(milliseconds: 400),
+  autoPlayCurve: Curves.easeInOut,
+  pauseAutoPlayOnTouch: true,
+  enlargeCenterPage: false,
+)
+```
 
-推荐接口请求和 `HomeSection` 状态仍由现有 `HomeProvider` 管理，不把计时器或页码放入业务 Provider。
-
-## 轮播状态与数据流
-
-1. 推荐分区加载成功后创建轮播组件。
-2. 推荐数量大于 1 且页面可见时，安排一次 5 秒后的切换。
-3. 计时到达后，使用短时缓动动画切换到下一个虚拟页。
-4. `PageView.onPageChanged` 更新当前虚拟页，并重新安排下一次 5 秒计时。
-5. `itemBuilder` 使用 `virtualIndex % movies.length` 获取真实影片。
-6. 用户开始拖动时取消当前计时器；滚动结束后重新安排完整的 5 秒等待。
-
-使用一次性 `Timer`，而不是永久的 `Timer.periodic`，以便每次用户交互、可见性变化和动画完成后都从完整间隔重新计时，避免多个计时器并存。
+不增加页码指示器、不放大中心项、不改变页面边距。轮播项继续使用 `MovieCoverImage`、`MovieImageVariant.cover`、黑色半透明标题遮罩和现有电影详情回调。
 
 ## 可见性与生命周期
 
-- 应用进入 `inactive`、`paused`、`detached` 或 `hidden` 状态时取消计时器。
-- 应用恢复到 `resumed` 后，仅在首页所在导航分支当前可见时重新计时。
-- 首页因底部导航切换而处于 `TickerMode` 关闭状态时，计时回调不触发翻页；重新可见后恢复计时。
-- 组件销毁后不再访问 `PageController`，避免异步回调作用于已释放状态。
+`RecommendCarousel` 为 `StatefulWidget` 并实现 `WidgetsBindingObserver`：
 
-## 边界与异常处理
+- 创建并持有 `CarouselSliderController`；
+- App 进入非 `resumed` 状态时调用 `stopAutoPlay()`；
+- App 恢复 `resumed` 时，仅在 `TickerMode` 启用且影片数量大于 1 时调用 `startAutoPlay()`；
+- `TickerMode` 关闭时停止，重新启用时恢复；
+- `dispose` 时移除生命周期观察者，不创建或管理额外计时器。
 
-- 推荐为空：继续使用现有 `EmptyState`，不构建轮播组件。
-- 推荐只有一条：显示现有单页内容，不创建计时器，也不使用虚拟无限页。
-- 推荐数据重新加载或列表长度变化：重建轮播状态，从第一条推荐开始并重新计时。
-- 页面控制器尚未挂载、组件已销毁或页面不可见：本次自动切换直接跳过，不抛出异常。
-- 网络错误和重试继续由现有推荐分区状态处理，不与轮播计时耦合。
+调用控制器前通过 post-frame 同步，避免组件尚未挂载到控制器时调用。
+
+## 数据与边界
+
+- 推荐为空：继续使用现有 `EmptyState`，不创建轮播组件。
+- 推荐只有一条：`autoPlay` 与 `enableInfiniteScroll` 均为 `false`。
+- 推荐多于一条：开启自动播放与无限循环。
+- 推荐列表变化：由 `CarouselSlider.builder` 根据新的 `itemCount` 重建。
+- 网络错误与重试：继续由现有 `HomeSection` 和 `HomeProvider` 处理。
+- 点击影片：继续由 `HomePage` 执行 `context.push('/movie/${movie.id}')`。
 
 ## 测试设计
 
-在首页 widget 测试中使用至少三条推荐数据，按 TDD 依次覆盖：
+测试用户可见行为，不依赖 `carousel_slider` 内部 `PageController`：
 
-1. 未满 5 秒时保持第一条，满 5 秒并完成动画后显示第二条；
-2. 从最后一条继续自动切换后显示第一条，证明向前循环；
-3. 用户手动滑动后重新等待完整 5 秒，不沿用交互前剩余时间；
+1. 未满 5 秒时保持第一条，满 5 秒并完成 400 毫秒动画后显示第二条；
+2. 从最后一条继续自动切换后显示第一条；
+3. 用户手动滑动后重新等待完整 5 秒；
 4. 只有一条推荐时经过多个间隔仍保持原页；
-5. 应用进入后台时不切换，恢复后重新计时；
-6. 轮播组件销毁后继续推进测试时钟不会产生异常。
+5. App 进入后台时不切换，恢复后重新计时；
+6. `TickerMode` 关闭时不切换，重新启用后恢复；
+7. 组件销毁后推进测试时钟不会产生异常；
+8. 首页成功态接入新轮播，同时保留原有 loading、error、empty 和路由行为。
 
-验证顺序为：聚焦首页 widget 测试、`flutter analyze`、完整 `flutter test`、`git diff --check`。
+验证顺序：
+
+1. `flutter test test/features/home/recommend_carousel_test.dart`
+2. `flutter test test/features/home/home_screen_test.dart`
+3. `flutter analyze`
+4. `flutter test`
+5. `git diff --check`
 
 ## 非目标
 
-- 不增加页码指示器、自动播放开关或新的用户设置；
-- 不改变轮播高度、封面裁剪、标题样式和点击路由；
+- 不增加指示器、自动播放开关或新的用户设置；
+- 不改变轮播高度、图片裁剪、标题样式和点击路由；
 - 不修改推荐接口、推荐顺序或首页其他分区；
-- 不引入新的依赖。
+- 不直接依赖 `carousel_slider` 的内部实现或私有状态。
