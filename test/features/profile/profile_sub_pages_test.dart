@@ -10,6 +10,8 @@ import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/providers/theme_provider.dart';
 import 'package:jade/core/storage/storage_keys.dart';
 import 'package:jade/features/profile/screens/profile_sub_pages.dart';
+import 'package:jade/features/profile/services/app_version_service.dart';
+import 'package:jade/features/profile/services/token_authentication_service.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -27,6 +29,70 @@ class _FakeCacheService implements CacheService {
     clearAllCalls++;
     size = 0;
   }
+}
+
+final class _FixedAppVersionService implements AppVersionService {
+  const _FixedAppVersionService(this.version);
+
+  final String version;
+
+  @override
+  Future<String> loadVersion() async => version;
+}
+
+final class _FailingAppVersionService implements AppVersionService {
+  const _FailingAppVersionService();
+
+  @override
+  Future<String> loadVersion() => Future.error(StateError('unavailable'));
+}
+
+Future<({AuthProvider auth, SharedPreferences prefs, void Function() dispose})>
+_pumpSettings(
+  WidgetTester tester, {
+  required AppVersionService appVersionService,
+  TokenAuthenticationService? tokenAuthenticationService,
+  String? initialToken,
+  Map<String, dynamic>? initialUser,
+}) async {
+  SharedPreferences.setMockInitialValues({});
+  final prefs = await SharedPreferences.getInstance();
+  final settings = await SettingsProvider.create(prefs);
+  final theme = await ThemeProvider.create();
+  final domainManager = await DomainManager.load(prefs);
+  final auth = await AuthProvider.create(prefs);
+  if (initialToken != null && initialUser != null) {
+    await auth.login(token: initialToken, user: initialUser);
+  }
+
+  await tester.pumpWidget(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: settings),
+        ChangeNotifierProvider.value(value: theme),
+        ChangeNotifierProvider.value(value: domainManager),
+        ChangeNotifierProvider.value(value: auth),
+      ],
+      child: MaterialApp(
+        home: ProfileSettingsPage(
+          cacheService: _FakeCacheService(),
+          appVersionService: appVersionService,
+          tokenAuthenticationService: tokenAuthenticationService,
+        ),
+      ),
+    ),
+  );
+
+  return (
+    auth: auth,
+    prefs: prefs,
+    dispose: () {
+      settings.dispose();
+      theme.dispose();
+      domainManager.dispose();
+      auth.dispose();
+    },
+  );
 }
 
 void main() {
@@ -289,5 +355,34 @@ void main() {
     expect(cacheService.clearAllCalls, 1);
     expect(find.text('0 B'), findsOneWidget);
     expect(find.text('缓存已清除'), findsOneWidget);
+  });
+
+  testWidgets('当前版本是 settings cells 最后一行且不显示构建号', (tester) async {
+    final subject = await _pumpSettings(
+      tester,
+      appVersionService: const _FixedAppVersionService('0.7.1'),
+    );
+    addTearDown(subject.dispose);
+    await tester.pumpAndSettle();
+
+    expect(find.text('当前版本'), findsOneWidget);
+    expect(find.text('0.7.1'), findsOneWidget);
+    expect(find.textContaining('+701'), findsNothing);
+    expect(
+      tester.getTopLeft(find.text('当前版本')).dy,
+      greaterThan(tester.getTopLeft(find.text('清除缓存')).dy),
+    );
+  });
+
+  testWidgets('版本读取失败时副标题显示未知', (tester) async {
+    final subject = await _pumpSettings(
+      tester,
+      appVersionService: const _FailingAppVersionService(),
+    );
+    addTearDown(subject.dispose);
+    await tester.pumpAndSettle();
+
+    expect(find.text('当前版本'), findsOneWidget);
+    expect(find.text('未知'), findsOneWidget);
   });
 }

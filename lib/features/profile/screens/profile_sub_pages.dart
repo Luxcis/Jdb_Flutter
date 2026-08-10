@@ -17,6 +17,8 @@ import 'package:jade/core/widgets/filter_drawer.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/movie_list_tile.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
+import 'package:jade/features/profile/services/app_version_service.dart';
+import 'package:jade/features/profile/services/token_authentication_service.dart';
 import 'package:provider/provider.dart';
 
 class ProfileMovieCollectionPage extends StatefulWidget {
@@ -320,29 +322,52 @@ class ProfileInfoPage extends StatelessWidget {
 }
 
 class ProfileSettingsPage extends StatefulWidget {
-  const ProfileSettingsPage({super.key, this.cacheService});
+  const ProfileSettingsPage({
+    super.key,
+    this.cacheService,
+    this.appVersionService,
+    this.tokenAuthenticationService,
+  });
 
   final CacheService? cacheService;
+  final AppVersionService? appVersionService;
+  final TokenAuthenticationService? tokenAuthenticationService;
 
   @override
   State<ProfileSettingsPage> createState() => _ProfileSettingsPageState();
 }
 
 class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
-  late final CacheService _cacheService =
-      widget.cacheService ?? JdbImageCacheService();
+  late final CacheService _cacheService;
+  late final AppVersionService _appVersionService;
   int? _cacheSizeBytes;
+  String _appVersion = '…';
 
   @override
   void initState() {
     super.initState();
-    _loadCacheSize();
+    _cacheService = widget.cacheService ?? JdbImageCacheService();
+    _appVersionService =
+        widget.appVersionService ?? const PackageAppVersionService();
+    unawaited(_loadCacheSize());
+    unawaited(_loadAppVersion());
   }
 
   Future<void> _loadCacheSize() async {
     final size = await _cacheService.getCacheSizeBytes();
     if (!mounted) return;
     setState(() => _cacheSizeBytes = size);
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final version = await _appVersionService.loadVersion();
+      if (!mounted) return;
+      setState(() => _appVersion = version);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _appVersion = '未知');
+    }
   }
 
   Future<void> _confirmAndClearCache() async {
@@ -416,6 +441,11 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
         ),
         trailing: const Icon(Icons.chevron_right),
         onTap: _confirmAndClearCache,
+      ),
+      ListTile(
+        leading: const Icon(Icons.info_outline),
+        title: const Text('当前版本'),
+        subtitle: Text(_appVersion),
       ),
     ];
     return Scaffold(
