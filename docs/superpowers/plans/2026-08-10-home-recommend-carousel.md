@@ -1,51 +1,66 @@
-# Home Recommendation Carousel Implementation Plan
+# Home Recommendation Carousel Slider Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make the home “佳片推荐” PageView automatically advance every 5 seconds and loop continuously while preserving manual swiping, lifecycle safety, and existing navigation.
+**Goal:** Refactor the home “佳片推荐” section to use `carousel_slider 5.1.2` for five-second infinite auto-play with touch, application-lifecycle, and navigation-visibility pause behavior.
 
-**Architecture:** Move the successful recommendation UI into a feature-local `RecommendCarousel` stateful widget. It owns only ephemeral carousel state (`PageController`, one-shot `Timer`, lifecycle and ticker visibility), maps a large virtual page range to the real movie list with modulo, and delegates movie taps back to `HomePage`.
+**Architecture:** A feature-local `RecommendCarousel` wraps `CarouselSlider.builder`, owns a `CarouselSliderController`, and translates lifecycle or `TickerMode` changes into `startAutoPlay()` and `stopAutoPlay()`. `HomePage` keeps data/error state and detail navigation; the package owns timers, infinite page mapping, touch pause, and animation.
 
-**Tech Stack:** Flutter, Dart `Timer`, `PageView.builder`, `WidgetsBindingObserver`, `TickerMode`, `flutter_test`
+**Tech Stack:** Flutter, Dart, `carousel_slider: ^5.1.2`, `flutter_test`
 
 ## Global Constraints
 
-- Auto-advance interval is exactly 5 seconds.
-- The last movie continues forward to the first movie without a reverse rewind animation.
-- A completed manual swipe restarts a full 5-second interval.
-- Auto-play pauses while the application or home navigation branch is not visible and restarts on visibility.
-- Zero movies keep the existing `EmptyState`; one movie never starts an auto-play timer.
-- Existing carousel height, cover rendering, title overlay, and `/movie/:id` navigation remain unchanged.
-- Do not add dependencies or modify recommendation API behavior.
-- Preserve and do not stage the existing unrelated movie-detail/API-model worktree changes.
+- Query `carousel_slider` API through Context7 before implementation; Context7 library ID is `/serenader2014/flutter_carousel_slider`.
+- Pin the compatible constraint to `carousel_slider: ^5.1.2`.
+- Auto-advance interval is exactly 5 seconds; animation duration is 400 milliseconds with `Curves.easeInOut`.
+- Infinite scroll and auto-play are enabled only when there are at least two movies.
+- Touch interaction pauses auto-play and resumes after interaction.
+- Application background and disabled `TickerMode` stop auto-play; visibility restoration starts it.
+- Keep carousel height `220`, `viewportFraction: 1`, current cover/title UI, and `/movie/:id` navigation.
+- Do not retain a custom `Timer`, virtual page index, or direct `PageController`.
+- Preserve existing unrelated movie-detail/API-model changes in the original master checkout.
 
 ---
 
 ## File Structure
 
-- Create `lib/features/home/widgets/recommend_carousel.dart`: owns recommendation rendering and all transient auto-play state.
-- Create `test/features/home/recommend_carousel_test.dart`: verifies timing, modulo looping, gestures, lifecycle, ticker visibility, single-item behavior, and disposal.
-- Modify `lib/features/home/screens/home_screen.dart`: replaces the inline finite `PageView` with `RecommendCarousel` and keeps the existing route callback.
-- Modify `test/features/home/home_screen_test.dart`: proves the real home recommendation section is wired to the auto-playing carousel.
+- Modify `pubspec.yaml`: add the runtime dependency.
+- Modify `pubspec.lock`: lock the resolved `carousel_slider` version.
+- Create `lib/features/home/widgets/recommend_carousel.dart`: isolate third-party configuration and visibility control.
+- Create `test/features/home/recommend_carousel_test.dart`: verify visible carousel behavior.
+- Modify `lib/features/home/screens/home_screen.dart`: replace the inline `PageView`.
+- Modify `test/features/home/home_screen_test.dart`: prove real-home integration.
 
-### Task 1: Continuous timed carousel
+### Task 1: Add dependency and package-owned auto-play
 
 **Files:**
+- Modify: `pubspec.yaml`
+- Modify: `pubspec.lock`
 - Create: `lib/features/home/widgets/recommend_carousel.dart`
 - Create: `test/features/home/recommend_carousel_test.dart`
 
 **Interfaces:**
-- Consumes: `List<MovieSummary>` and `ValueChanged<MovieSummary> onMovieTap`
 - Produces: `RecommendCarousel({Key? key, required List<MovieSummary> movies, required ValueChanged<MovieSummary> onMovieTap})`
-- Test selector: `Key('home-recommend-carousel')`
-- Visible item selector: `Key('home-recommend-card-${movie.id}')`
+- Uses: `CarouselSlider.builder(itemCount:, itemBuilder:, options:, carouselController:)`
+- Test selectors: `Key('home-recommend-carousel')` and `Key('home-recommend-card-${movie.id}')`
 
-- [ ] **Step 1: Write failing tests for timed advance and forward looping**
+- [ ] **Step 1: Add the verified dependency**
+
+Run:
+
+```bash
+flutter pub add carousel_slider:^5.1.2
+```
+
+Expected: `pubspec.yaml` contains `carousel_slider: ^5.1.2`, `pubspec.lock` resolves `5.1.2`, and `flutter pub get` succeeds.
+
+- [ ] **Step 2: Write failing visible-behavior tests**
 
 ```dart
 // test/features/home/recommend_carousel_test.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:carousel_slider/carousel_slider.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/features/home/widgets/recommend_carousel.dart';
 
@@ -71,49 +86,57 @@ Future<void> pumpCarousel(
   );
 }
 
-PageController carouselController(WidgetTester tester) {
-  return tester
-      .widget<PageView>(
-        find.byKey(const Key('home-recommend-carousel')),
-      )
-      .controller!;
+Future<void> finishAutoPlayAnimation(WidgetTester tester) async {
+  for (var frame = 0; frame < 4; frame++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
 }
 
-testWidgets('满 5 秒后自动向下一张推荐前进', (tester) async {
-  await pumpCarousel(tester);
-  final controller = carouselController(tester);
-  final firstPage = controller.page!;
-
-  await tester.pump(const Duration(milliseconds: 4999));
-  expect(controller.page, firstPage);
-
-  await tester.pump(const Duration(milliseconds: 1));
-  await tester.pump(const Duration(milliseconds: 400));
-  expect(controller.page, firstPage + 1);
-});
-
-testWidgets('最后一张之后继续向前显示第一张', (tester) async {
-  await pumpCarousel(tester);
-  final carousel = find.byKey(const Key('home-recommend-carousel'));
-
-  for (var index = 0; index < movies.length; index++) {
-    await tester.pump(const Duration(seconds: 5));
-    await tester.pump(const Duration(milliseconds: 400));
+Future<void> finishManualSwipe(WidgetTester tester) async {
+  for (var frame = 0; frame < 6; frame++) {
+    await tester.pump(const Duration(milliseconds: 100));
   }
+}
 
-  expect(
-    find
-        .descendant(
-          of: carousel,
-          matching: find.byKey(const Key('home-recommend-card-a')),
-        )
-        .hitTestable(),
-    findsOneWidget,
-  );
-});
+void expectVisibleTitle(WidgetTester tester, String title) {
+  final carouselCenter = tester.getCenter(find.byType(CarouselSlider)).dx;
+  final titleCenter = tester.getCenter(find.text(title)).dx;
+  expect(titleCenter, closeTo(carouselCenter, 5));
+}
+
+void main() {
+  testWidgets('佳片推荐由 CarouselSlider 承载', (tester) async {
+    await pumpCarousel(tester);
+
+    expect(find.byType(CarouselSlider), findsOneWidget);
+  });
+
+  testWidgets('满 5 秒后自动显示下一张推荐', (tester) async {
+    await pumpCarousel(tester);
+    expectVisibleTitle(tester, 'A');
+
+    await tester.pump(const Duration(milliseconds: 4999));
+    expectVisibleTitle(tester, 'A');
+
+    await tester.pump(const Duration(milliseconds: 1));
+    await finishAutoPlayAnimation(tester);
+    expectVisibleTitle(tester, 'B');
+  });
+
+  testWidgets('最后一张之后继续显示第一张', (tester) async {
+    await pumpCarousel(tester);
+
+    for (var index = 0; index < movies.length; index++) {
+      await tester.pump(const Duration(seconds: 5));
+      await finishAutoPlayAnimation(tester);
+    }
+
+    expectVisibleTitle(tester, 'A');
+  });
+}
 ```
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [ ] **Step 3: Run the tests and verify RED**
 
 Run:
 
@@ -121,14 +144,13 @@ Run:
 flutter test test/features/home/recommend_carousel_test.dart
 ```
 
-Expected: compilation fails because `recommend_carousel.dart` and `RecommendCarousel` do not exist.
+Expected: the architecture test fails because the existing rejected implementation uses a custom `PageView` and `Timer`, not `CarouselSlider`.
 
-- [ ] **Step 3: Implement the minimal virtual PageView and one-shot timer**
+- [ ] **Step 4: Implement package-owned auto-play**
 
 ```dart
 // lib/features/home/widgets/recommend_carousel.dart
-import 'dart:async';
-
+import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/widgets/movie_cover_image.dart';
@@ -148,105 +170,62 @@ class RecommendCarousel extends StatefulWidget {
 }
 
 class _RecommendCarouselState extends State<RecommendCarousel> {
-  static const _autoPlayInterval = Duration(seconds: 5);
-  static const _animationDuration = Duration(milliseconds: 400);
-  static const _virtualPageBase = 10000;
-
-  late final PageController _pageController;
-  Timer? _timer;
-  late int _currentPage;
-
-  int _initialPageFor(int movieCount) =>
-      movieCount < 2
-          ? 0
-          : _virtualPageBase - (_virtualPageBase % movieCount);
-
-  @override
-  void initState() {
-    super.initState();
-    _currentPage = _initialPageFor(widget.movies.length);
-    _pageController = PageController(initialPage: _currentPage);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scheduleNext());
-  }
-
-  void _scheduleNext() {
-    _timer?.cancel();
-    if (!mounted || widget.movies.length < 2) return;
-    _timer = Timer(_autoPlayInterval, _advance);
-  }
-
-  void _advance() {
-    if (!mounted || !_pageController.hasClients) return;
-    _pageController.animateToPage(
-      _currentPage + 1,
-      duration: _animationDuration,
-      curve: Curves.easeInOut,
-    );
-  }
-
-  bool _onScrollNotification(ScrollNotification notification) {
-    if (notification is ScrollStartNotification &&
-        notification.dragDetails != null) {
-      _timer?.cancel();
-    } else if (notification is ScrollEndNotification) {
-      _scheduleNext();
-    }
-    return false;
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _pageController.dispose();
-    super.dispose();
-  }
+  final CarouselSliderController _controller = CarouselSliderController();
 
   @override
   Widget build(BuildContext context) {
-    return NotificationListener<ScrollNotification>(
-      onNotification: _onScrollNotification,
-      child: PageView.builder(
-        key: const Key('home-recommend-carousel'),
-        controller: _pageController,
-        itemCount: widget.movies.length < 2 ? widget.movies.length : null,
-        onPageChanged: (page) => _currentPage = page,
-        itemBuilder: (context, virtualIndex) {
-          final movie = widget.movies[virtualIndex % widget.movies.length];
-          return GestureDetector(
-            key: Key('home-recommend-card-${movie.id}'),
-            onTap: () => widget.onMovieTap(movie),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                MovieCoverImage(
-                  movie.coverUrl,
-                  variant: MovieImageVariant.cover,
-                  semanticLabel: movie.title,
-                ),
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    color: Colors.black54,
-                    padding: const EdgeInsets.all(8),
-                    child: Text(
-                      movie.title,
-                      style: const TextStyle(color: Colors.white),
-                    ),
+    final canAutoPlay = widget.movies.length > 1;
+    return CarouselSlider.builder(
+      key: const Key('home-recommend-carousel'),
+      carouselController: _controller,
+      itemCount: widget.movies.length,
+      options: CarouselOptions(
+        height: 220,
+        viewportFraction: 1,
+        enableInfiniteScroll: canAutoPlay,
+        autoPlay: canAutoPlay,
+        autoPlayInterval: const Duration(seconds: 5),
+        autoPlayAnimationDuration: const Duration(milliseconds: 400),
+        autoPlayCurve: Curves.easeInOut,
+        pauseAutoPlayOnTouch: true,
+        enlargeCenterPage: false,
+      ),
+      itemBuilder: (context, index, realIndex) {
+        final movie = widget.movies[index];
+        return GestureDetector(
+          key: Key('home-recommend-card-${movie.id}'),
+          onTap: () => widget.onMovieTap(movie),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              MovieCoverImage(
+                movie.coverUrl,
+                variant: MovieImageVariant.cover,
+                semanticLabel: movie.title,
+              ),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  color: Colors.black54,
+                  padding: const EdgeInsets.all(8),
+                  child: Text(
+                    movie.title,
+                    style: const TextStyle(color: Colors.white),
                   ),
                 ),
-              ],
-            ),
-          );
-        },
-      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
 ```
 
-- [ ] **Step 4: Run the focused test and verify GREEN**
+- [ ] **Step 5: Run the focused tests and verify GREEN**
 
 Run:
 
@@ -254,78 +233,82 @@ Run:
 flutter test test/features/home/recommend_carousel_test.dart
 ```
 
-Expected: both timed advance and loop tests pass with no pending-timer exception.
+Expected: timed advance and infinite-loop tests pass without custom timer code.
 
-- [ ] **Step 5: Commit the isolated component**
+- [ ] **Step 6: Commit dependency and base carousel**
 
 ```bash
-git add lib/features/home/widgets/recommend_carousel.dart test/features/home/recommend_carousel_test.dart
-git commit -m "feat(home): add automatic recommendation carousel"
+git add pubspec.yaml pubspec.lock lib/features/home/widgets/recommend_carousel.dart test/features/home/recommend_carousel_test.dart
+git commit -m "feat(home): refactor recommendations with carousel slider"
 ```
 
-### Task 2: Interaction and visibility safety
+### Task 2: Lifecycle, touch, and single-item safety
 
 **Files:**
 - Modify: `lib/features/home/widgets/recommend_carousel.dart`
 - Modify: `test/features/home/recommend_carousel_test.dart`
 
 **Interfaces:**
-- Consumes: Flutter application lifecycle and inherited `TickerMode`
-- Produces: auto-play that is active only when `AppLifecycleState.resumed` and `TickerMode.of(context)` are both active
+- Consumes: `WidgetsBindingObserver`, `TickerMode.valuesOf(context).enabled`, and `CarouselSliderController`
+- Produces: controller auto-play synchronized with application and navigation visibility
 
-- [ ] **Step 1: Add failing tests for manual reset, one item, app lifecycle, ticker visibility, and disposal**
+- [ ] **Step 1: Add failing interaction and visibility tests**
+
+Add tests for:
 
 ```dart
-// Append inside main() in test/features/home/recommend_carousel_test.dart
-testWidgets('手动滑动结束后重新等待完整 5 秒', (tester) async {
+testWidgets('手动滑动后重新等待完整 5 秒', (tester) async {
   await pumpCarousel(tester);
   final carousel = find.byKey(const Key('home-recommend-carousel'));
-  final controller = carouselController(tester);
 
   await tester.pump(const Duration(seconds: 4));
-  await tester.drag(carousel, const Offset(-300, 0));
-  await tester.pumpAndSettle();
-  final manualPage = controller.page!;
+  await tester.drag(carousel, const Offset(-600, 0));
+  await finishManualSwipe(tester);
+  expectVisibleTitle(tester, 'B');
 
-  await tester.pump(const Duration(milliseconds: 4999));
-  expect(controller.page, manualPage);
+  await tester.pump(const Duration(milliseconds: 4399));
+  expectVisibleTitle(tester, 'B');
   await tester.pump(const Duration(milliseconds: 1));
-  await tester.pump(const Duration(milliseconds: 400));
-  expect(controller.page, manualPage + 1);
+  await finishAutoPlayAnimation(tester);
+  expectVisibleTitle(tester, 'C');
 });
 
 testWidgets('只有一张推荐时不会自动切换', (tester) async {
   await pumpCarousel(tester, items: [movies.first]);
-  final controller = carouselController(tester);
 
   await tester.pump(const Duration(seconds: 15));
 
-  expect(controller.page, 0);
+  expectVisibleTitle(tester, 'A');
 });
 
 testWidgets('应用在后台时暂停并在恢复后重新计时', (tester) async {
   await pumpCarousel(tester);
-  final controller = carouselController(tester);
-  final page = controller.page!;
-
-  await tester.binding.handleAppLifecycleStateChanged(
+  await tester.pump(const Duration(seconds: 2));
+  tester.binding.handleAppLifecycleStateChanged(
     AppLifecycleState.paused,
   );
-  await tester.pump(const Duration(seconds: 10));
-  expect(controller.page, page);
+  await tester.pump();
 
-  await tester.binding.handleAppLifecycleStateChanged(
+  await tester.pump(const Duration(seconds: 10));
+  await finishAutoPlayAnimation(tester);
+  expectVisibleTitle(tester, 'A');
+
+  tester.binding.handleAppLifecycleStateChanged(
     AppLifecycleState.resumed,
   );
-  await tester.pump(const Duration(milliseconds: 4999));
-  expect(controller.page, page);
+  await tester.pump();
+  await tester.pump(const Duration(seconds: 3));
+  await finishAutoPlayAnimation(tester);
+  expectVisibleTitle(tester, 'A');
+  await tester.pump(const Duration(milliseconds: 1599));
+  expectVisibleTitle(tester, 'A');
   await tester.pump(const Duration(milliseconds: 1));
-  await tester.pump(const Duration(milliseconds: 400));
-  expect(controller.page, page + 1);
+  await finishAutoPlayAnimation(tester);
+  expectVisibleTitle(tester, 'B');
 });
 
-testWidgets('TickerMode 关闭时暂停并在重新可见后计时', (tester) async {
-  Widget buildHarness(bool enabled) => MaterialApp(
+testWidgets('TickerMode 关闭时暂停并在恢复后重新计时', (tester) async {
+  Widget harness(bool enabled) => MaterialApp(
     home: TickerMode(
       enabled: enabled,
       child: Scaffold(
@@ -337,21 +320,25 @@ testWidgets('TickerMode 关闭时暂停并在重新可见后计时', (tester) as
     ),
   );
 
-  await tester.pumpWidget(buildHarness(true));
-  final controller = carouselController(tester);
-  final page = controller.page!;
-
-  await tester.pumpWidget(buildHarness(false));
+  await tester.pumpWidget(harness(true));
+  await tester.pump(const Duration(seconds: 2));
+  await tester.pumpWidget(harness(false));
   await tester.pump(const Duration(seconds: 10));
-  expect(controller.page, page);
+  await finishAutoPlayAnimation(tester);
+  expectVisibleTitle(tester, 'A');
 
-  await tester.pumpWidget(buildHarness(true));
-  await tester.pump(const Duration(seconds: 5));
-  await tester.pump(const Duration(milliseconds: 400));
-  expect(controller.page, page + 1);
+  await tester.pumpWidget(harness(true));
+  await tester.pump(const Duration(seconds: 3));
+  await finishAutoPlayAnimation(tester);
+  expectVisibleTitle(tester, 'A');
+  await tester.pump(const Duration(milliseconds: 1599));
+  expectVisibleTitle(tester, 'A');
+  await tester.pump(const Duration(milliseconds: 1));
+  await finishAutoPlayAnimation(tester);
+  expectVisibleTitle(tester, 'B');
 });
 
-testWidgets('销毁后推进时钟不会留下计时器异常', (tester) async {
+testWidgets('销毁轮播后没有异步异常', (tester) async {
   await pumpCarousel(tester);
 
   await tester.pumpWidget(const SizedBox.shrink());
@@ -369,20 +356,21 @@ Run:
 flutter test test/features/home/recommend_carousel_test.dart
 ```
 
-Expected: lifecycle and ticker visibility tests fail because the timer still advances while hidden; timing-reset assertions may reveal duplicate scheduling.
+Expected: lifecycle and `TickerMode` tests fail because the thin wrapper does not yet control package auto-play.
 
-- [ ] **Step 3: Add lifecycle, ticker visibility, and data-update synchronization**
+- [ ] **Step 3: Add visibility synchronization without a custom timer**
 
-Update the state class to implement `WidgetsBindingObserver`, track visibility, and centralize timer eligibility:
+Update `_RecommendCarouselState`:
 
 ```dart
 class _RecommendCarouselState extends State<RecommendCarousel>
     with WidgetsBindingObserver {
-  AppLifecycleState _lifecycleState = AppLifecycleState.resumed;
+  final CarouselSliderController _controller = CarouselSliderController();
+  AppLifecycleState _lifecycleState =
+      WidgetsBinding.instance.lifecycleState ?? AppLifecycleState.resumed;
   bool _tickerModeEnabled = true;
 
-  bool get _canAutoPlay =>
-      mounted &&
+  bool get _shouldAutoPlay =>
       widget.movies.length > 1 &&
       _lifecycleState == AppLifecycleState.resumed &&
       _tickerModeEnabled;
@@ -391,72 +379,49 @@ class _RecommendCarouselState extends State<RecommendCarousel>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _currentPage = _initialPageFor(widget.movies.length);
-    _pageController = PageController(initialPage: _currentPage);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scheduleNext());
+    _syncAutoPlay();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final enabled = TickerMode.of(context);
+    final enabled = TickerMode.valuesOf(context).enabled;
     if (_tickerModeEnabled == enabled) return;
     _tickerModeEnabled = enabled;
-    enabled ? _scheduleNext() : _cancelTimer();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    _lifecycleState = state;
-    state == AppLifecycleState.resumed ? _scheduleNext() : _cancelTimer();
-  }
-
-  void _cancelTimer() {
-    _timer?.cancel();
-    _timer = null;
-  }
-
-  void _scheduleNext() {
-    _cancelTimer();
-    if (!_canAutoPlay) return;
-    _timer = Timer(_autoPlayInterval, _advance);
-  }
-
-  void _advance() {
-    _timer = null;
-    if (!_canAutoPlay || !_pageController.hasClients) return;
-    _pageController.animateToPage(
-      _currentPage + 1,
-      duration: _animationDuration,
-      curve: Curves.easeInOut,
-    );
+    _syncAutoPlay();
   }
 
   @override
   void didUpdateWidget(covariant RecommendCarousel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final oldIds = oldWidget.movies.map((movie) => movie.id).toList();
-    final newIds = widget.movies.map((movie) => movie.id).toList();
-    if (listEquals(oldIds, newIds)) return;
-    _currentPage = _initialPageFor(widget.movies.length);
+    if (oldWidget.movies.length != widget.movies.length) _syncAutoPlay();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _lifecycleState = state;
+    _syncAutoPlay();
+  }
+
+  void _syncAutoPlay() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_pageController.hasClients) return;
-      _pageController.jumpToPage(_currentPage);
-      _scheduleNext();
+      if (!mounted) return;
+      _shouldAutoPlay
+          ? _controller.startAutoPlay()
+          : _controller.stopAutoPlay();
     });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _cancelTimer();
-    _pageController.dispose();
     super.dispose();
   }
+
+  // build() keeps autoPlay based on movie count so controller start/stop
+  // remains available after lifecycle changes.
 }
 ```
-
-Use `_cancelTimer()` for manual `ScrollStartNotification`, and schedule only from `ScrollEndNotification`, lifecycle resume, ticker resume, initial post-frame setup, or a movie-list change.
 
 - [ ] **Step 4: Run tests and verify GREEN**
 
@@ -466,16 +431,16 @@ Run:
 flutter test test/features/home/recommend_carousel_test.dart
 ```
 
-Expected: all carousel tests pass without framework exceptions or pending timers.
+Expected: all auto-play, touch, single-item, lifecycle, ticker, and disposal tests pass.
 
-- [ ] **Step 5: Commit interaction and lifecycle behavior**
+- [ ] **Step 5: Commit lifecycle behavior**
 
 ```bash
 git add lib/features/home/widgets/recommend_carousel.dart test/features/home/recommend_carousel_test.dart
-git commit -m "test(home): cover carousel interaction and lifecycle"
+git commit -m "test(home): cover carousel slider lifecycle"
 ```
 
-### Task 3: Integrate carousel into the real home screen
+### Task 3: Integrate into HomePage
 
 **Files:**
 - Modify: `lib/features/home/screens/home_screen.dart`
@@ -483,41 +448,14 @@ git commit -m "test(home): cover carousel interaction and lifecycle"
 
 **Interfaces:**
 - Consumes: `RecommendCarousel(movies:, onMovieTap:)`
-- Preserves: `context.push('/movie/${movie.id}')`
-- Preserves: recommendation success container height of `220`
+- Preserves: `context.push('/movie/${movie.id}')`, successful-section height `220`, and existing section states
 
-- [ ] **Step 1: Make the home test use three recommendations and add a failing auto-play assertion**
+- [ ] **Step 1: Extend the home fixture and add a failing integration test**
 
-Extend `_pumpHome` with an optional recommendation fixture:
-
-```dart
-Future<FakeAdapter> _pumpHome(
-  WidgetTester tester, {
-  Duration responseDelay = Duration.zero,
-  List<Map<String, dynamic>>? latestBodies,
-  List<Map<String, dynamic>> recommends = const [
-    {
-      'id': 'recommend-a',
-      'number': 'R-1',
-      'title': 'Recommend A',
-      'cover_url': 'recommend-a.jpg',
-    },
-  ],
-  bool settle = true,
-}) async {
-  // Existing setup remains unchanged.
-  adapter.enqueue(Endpoints.moviesRecommend, {
-    'success': 1,
-    'data': {'movies': recommends},
-  });
-  // Existing latest fixtures and pump logic remain unchanged.
-}
-```
-
-Add the integration test:
+Make `_pumpHome` accept a `recommends` fixture and enqueue it under `Endpoints.moviesRecommend`. Add:
 
 ```dart
-testWidgets('佳片推荐在首页每 5 秒自动前进', (tester) async {
+testWidgets('佳片推荐在首页每 5 秒自动显示下一张', (tester) async {
   await _pumpHome(
     tester,
     recommends: const [
@@ -535,14 +473,13 @@ testWidgets('佳片推荐在首页每 5 秒自动前进', (tester) async {
       },
     ],
   );
-  final pageView = find.byKey(const Key('home-recommend-carousel'));
-  final controller = tester.widget<PageView>(pageView).controller!;
-  final firstPage = controller.page!;
 
+  expect(find.text('Recommend A').hitTestable(), findsOneWidget);
   await tester.pump(const Duration(seconds: 5));
-  await tester.pump(const Duration(milliseconds: 400));
-
-  expect(controller.page, firstPage + 1);
+  for (var frame = 0; frame < 4; frame++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+  expect(find.text('Recommend B').hitTestable(), findsOneWidget);
 });
 ```
 
@@ -554,17 +491,17 @@ Run:
 flutter test test/features/home/home_screen_test.dart
 ```
 
-Expected: the new key is absent because `HomePage` still builds the old inline finite `PageView`.
+Expected: the integration test fails because `HomePage` still builds its inline finite `PageView`.
 
-- [ ] **Step 3: Replace the inline PageView with RecommendCarousel**
+- [ ] **Step 3: Replace the inline PageView**
 
-Update imports:
+Add:
 
 ```dart
 import 'package:jade/features/home/widgets/recommend_carousel.dart';
 ```
 
-Remove the now-unused `movie_cover_image.dart` import, then replace only the successful recommendation body:
+Remove the no-longer-used `movie_cover_image.dart` import and replace the successful recommendation body with:
 
 ```dart
 return SliverToBoxAdapter(
@@ -578,7 +515,7 @@ return SliverToBoxAdapter(
 );
 ```
 
-- [ ] **Step 4: Run carousel and home tests and verify GREEN**
+- [ ] **Step 4: Run focused tests and verify GREEN**
 
 Run:
 
@@ -588,48 +525,37 @@ flutter test test/features/home/recommend_carousel_test.dart test/features/home/
 
 Expected: all carousel and existing home loading/error/pagination tests pass.
 
-- [ ] **Step 5: Commit the integration**
+- [ ] **Step 5: Commit integration**
 
 ```bash
 git add lib/features/home/screens/home_screen.dart test/features/home/home_screen_test.dart
-git commit -m "feat(home): enable recommendation auto-play"
+git commit -m "feat(home): enable recommendation carousel auto-play"
 ```
 
 ### Task 4: Format and full verification
 
 **Files:**
-- Verify only:
+- Verify:
+  - `pubspec.yaml`
+  - `pubspec.lock`
   - `lib/features/home/widgets/recommend_carousel.dart`
   - `lib/features/home/screens/home_screen.dart`
   - `test/features/home/recommend_carousel_test.dart`
   - `test/features/home/home_screen_test.dart`
 
-**Interfaces:**
-- Produces: formatted, analyzed, regression-tested implementation with no unrelated staged files
-
-- [ ] **Step 1: Format only the changed Dart files**
-
-Run:
+- [ ] **Step 1: Format changed Dart files**
 
 ```bash
 dart format lib/features/home/widgets/recommend_carousel.dart lib/features/home/screens/home_screen.dart test/features/home/recommend_carousel_test.dart test/features/home/home_screen_test.dart
 ```
 
-Expected: formatter completes successfully.
-
-- [ ] **Step 2: Run focused tests after formatting**
-
-Run:
+- [ ] **Step 2: Run focused tests**
 
 ```bash
 flutter test test/features/home/recommend_carousel_test.dart test/features/home/home_screen_test.dart
 ```
 
-Expected: all focused tests pass.
-
 - [ ] **Step 3: Run static analysis**
-
-Run:
 
 ```bash
 flutter analyze
@@ -637,9 +563,7 @@ flutter analyze
 
 Expected: `No issues found!`
 
-- [ ] **Step 4: Run the full regression suite**
-
-Run:
+- [ ] **Step 4: Run complete regression suite**
 
 ```bash
 flutter test
@@ -647,23 +571,13 @@ flutter test
 
 Expected: all tests pass.
 
-- [ ] **Step 5: Check diff hygiene and staging scope**
-
-Run:
+- [ ] **Step 5: Verify dependency and diff hygiene**
 
 ```bash
+flutter pub deps --style=compact
 git diff --check
 git status --short
 git diff --cached --name-only
 ```
 
-Expected: no whitespace errors; only carousel/home files belong to this feature; existing unrelated movie-detail/API-model modifications remain unstaged and unchanged.
-
-- [ ] **Step 6: Commit formatting changes only if formatting changed tracked feature files**
-
-```bash
-git add lib/features/home/widgets/recommend_carousel.dart lib/features/home/screens/home_screen.dart test/features/home/recommend_carousel_test.dart test/features/home/home_screen_test.dart
-git commit -m "style(home): format recommendation carousel"
-```
-
-If `git diff` shows no formatting-only changes, skip this commit.
+Expected: `carousel_slider 5.1.2` is present; no whitespace errors; only approved feature and dependency files belong to this branch.
