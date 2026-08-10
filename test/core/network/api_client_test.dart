@@ -120,6 +120,10 @@ void main() {
       adapter.requests.first.headers['authorization'],
       'Bearer candidate-token',
     );
+    expect(
+      adapter.requests.first.extra['jade.logging.sensitiveResponseBody'],
+      isTrue,
+    );
 
     provider.token = 'saved-token';
     await api.get(Endpoints.moviesRecommend);

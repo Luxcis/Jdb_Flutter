@@ -6,9 +6,14 @@ final class AuthRequestContext {
   static const _tokenOverrideKey = 'jade.auth.tokenOverride';
   static const _suppressGlobalAuthErrorKey =
       'jade.auth.suppressGlobalAuthError';
+  static const _sensitiveResponseBodyKey = 'jade.logging.sensitiveResponseBody';
 
   static Options candidateTokenOptions(String token) => Options(
-    extra: {_tokenOverrideKey: token, _suppressGlobalAuthErrorKey: true},
+    extra: {
+      _tokenOverrideKey: token,
+      _suppressGlobalAuthErrorKey: true,
+      _sensitiveResponseBodyKey: true,
+    },
   );
 
   static String? tokenOverride(RequestOptions options) =>
@@ -16,4 +21,7 @@ final class AuthRequestContext {
 
   static bool suppressesGlobalAuthError(RequestOptions options) =>
       options.extra[_suppressGlobalAuthErrorKey] == true;
+
+  static bool hasSensitiveResponseBody(RequestOptions options) =>
+      options.extra[_sensitiveResponseBodyKey] == true;
 }

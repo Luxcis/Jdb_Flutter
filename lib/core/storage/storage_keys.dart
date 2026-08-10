@@ -4,6 +4,7 @@ class StorageKeys {
   const StorageKeys._();
   static const String baseUrl = 'key_baseurl';
   static const String apiDomains = 'key_api_domains';
+  static const String authSession = 'key_auth_session';
   static const String token = 'key_token';
   static const String user = 'key_user';
   static const String themeMode = 'key_theme_mode';

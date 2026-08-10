@@ -26,6 +26,8 @@ class TokenAuthenticationDialog extends StatefulWidget {
 }
 
 class _TokenAuthenticationDialogState extends State<TokenAuthenticationDialog> {
+  static const _redactedSecret = '[REDACTED_SECRET]';
+
   final _controller = TextEditingController();
   var _loading = false;
   String? _error;
@@ -42,7 +44,7 @@ class _TokenAuthenticationDialogState extends State<TokenAuthenticationDialog> {
     try {
       user = await widget.authenticate(token);
     } on ApiException catch (error) {
-      _showError(error.message ?? 'Token 验证失败，请重试');
+      _showError(error.message ?? 'Token 验证失败，请重试', secret: token);
       return;
     } on DioException catch (error) {
       final cause = error.error;
@@ -51,28 +53,29 @@ class _TokenAuthenticationDialogState extends State<TokenAuthenticationDialog> {
         message != null && message.trim().isNotEmpty
             ? message
             : 'Token 验证失败，请重试',
+        secret: token,
       );
       return;
     } catch (_) {
-      _showError('Token 验证失败，请重试');
+      _showError('Token 验证失败，请重试', secret: token);
       return;
     }
 
     try {
       await widget.saveSession(token: token, user: user);
     } catch (_) {
-      _showError('保存失败，请重试');
+      _showError('保存失败，请重试', secret: token);
       return;
     }
 
     if (mounted) Navigator.pop(context, true);
   }
 
-  void _showError(String message) {
+  void _showError(String message, {required String secret}) {
     if (!mounted) return;
     setState(() {
       _loading = false;
-      _error = message;
+      _error = message.replaceAll(secret, _redactedSecret);
     });
   }
 

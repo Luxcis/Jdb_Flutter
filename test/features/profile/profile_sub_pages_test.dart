@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -506,18 +507,28 @@ void main() {
     expect(service.lastToken, 'replacement-token');
     expect(subject.auth.token, 'replacement-token');
     expect(subject.auth.user?['username'], 'replacement-user');
-    expect(subject.prefs.getString(StorageKeys.token), 'replacement-token');
+    expect(jsonDecode(subject.prefs.getString(StorageKeys.authSession)!), {
+      'token': 'replacement-token',
+      'user': {
+        'id': 10,
+        'username': 'replacement-user',
+        'email': 'replacement@example.invalid',
+      },
+    });
     expect(find.text('认证 Token'), findsNothing);
     expect(find.text('认证 Token 已更新'), findsOneWidget);
   });
 
-  testWidgets('Token 验证失败时保留旧登录状态并允许重试', (tester) async {
+  testWidgets('DioException 服务端 message 回显候选 Token 时逐次脱敏并允许重试', (tester) async {
+    const candidateToken = 'candidate-ui-secret-93c';
     final service = _FakeTokenAuthenticationService(
       error: DioException(
         requestOptions: RequestOptions(path: Endpoints.users),
         error: const ApiException(
           action: ApiErrorActions.jwtVerificationError,
-          message: 'Token 无效',
+          message:
+              '服务端拒绝 candidate-ui-secret-93c；'
+              '请替换 candidate-ui-secret-93c',
         ),
       ),
     );
@@ -535,21 +546,41 @@ void main() {
       await tester.tap(find.text('当前版本'));
     }
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'invalid-token');
+    await tester.enterText(find.byType(TextField), candidateToken);
     await tester.tap(find.text('确定'));
     await tester.pumpAndSettle();
 
     expect(find.text('认证 Token'), findsOneWidget);
-    expect(find.text('Token 无效'), findsOneWidget);
+    expect(
+      find.text(
+        '服务端拒绝 [REDACTED_SECRET]；'
+        '请替换 [REDACTED_SECRET]',
+      ),
+      findsOneWidget,
+    );
+    final renderedText = tester
+        .widgetList<Text>(find.byType(Text))
+        .map((text) => text.data ?? text.textSpan?.toPlainText() ?? '')
+        .join('\n');
+    expect(renderedText, isNot(contains(candidateToken)));
     expect(subject.auth.token, 'old-token');
     expect(subject.auth.user?['username'], 'old-user');
-    expect(subject.prefs.getString(StorageKeys.token), 'old-token');
+    expect(jsonDecode(subject.prefs.getString(StorageKeys.authSession)!), {
+      'token': 'old-token',
+      'user': {'id': 1, 'username': 'old-user'},
+    });
 
     await tester.tap(find.text('确定'));
     await tester.pumpAndSettle();
 
     expect(service.calls, 2);
-    expect(find.text('Token 无效'), findsOneWidget);
+    expect(
+      find.text(
+        '服务端拒绝 [REDACTED_SECRET]；'
+        '请替换 [REDACTED_SECRET]',
+      ),
+      findsOneWidget,
+    );
     expect(subject.auth.token, 'old-token');
   });
 

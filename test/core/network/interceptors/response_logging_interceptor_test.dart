@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:jade/core/network/auth_request_context.dart';
 import 'package:jade/core/network/interceptors/response_logging_interceptor.dart';
 
 class _RequestHandler extends RequestInterceptorHandler {
@@ -39,9 +40,17 @@ RequestOptions _requestOptions() {
   );
 }
 
+RequestOptions _candidateRequestOptions(String token) {
+  final options = _requestOptions();
+  options.extra.addAll(
+    AuthRequestContext.candidateTokenOptions(token).extra ?? const {},
+  );
+  return options;
+}
+
 void main() {
   group('ResponseLoggingInterceptor', () {
-    test('成功响应输出请求参数、响应结果和原始内容并继续响应', () {
+    test('普通成功响应输出请求参数、响应结果和原始内容并继续响应', () {
       final logs = <String>[];
       final interceptor = ResponseLoggingInterceptor(
         enabled: true,
@@ -71,6 +80,59 @@ void main() {
       expect(output, contains('Result: SUCCESS'));
       expect(output, contains('Body: {"success":1,"data":{"id":"1"}}'));
       expect(output, isNot(contains('"Body": {')));
+    });
+
+    test('候选 Token 敏感成功响应隐藏原始 Body', () {
+      const candidateToken = 'candidate-success-secret-71a';
+      final logs = <String>[];
+      final interceptor = ResponseLoggingInterceptor(
+        enabled: true,
+        output: logs.add,
+      );
+      final response = Response<dynamic>(
+        requestOptions: _candidateRequestOptions(candidateToken),
+        statusCode: 200,
+        data: {
+          'success': 1,
+          'data': {'echo': candidateToken},
+        },
+      );
+      final handler = _ResponseHandler();
+
+      interceptor.onResponse(response, handler);
+
+      expect(handler.forwarded, same(response));
+      final output = logs.join('\n');
+      expect(output, contains('Body: [REDACTED_SECRET]'));
+      expect(output, isNot(contains(candidateToken)));
+    });
+
+    test('候选 Token 敏感错误响应隐藏原始 Body', () {
+      const candidateToken = 'candidate-error-secret-82b';
+      final logs = <String>[];
+      final interceptor = ResponseLoggingInterceptor(
+        enabled: true,
+        output: logs.add,
+      );
+      final options = _candidateRequestOptions(candidateToken);
+      final response = Response<dynamic>(
+        requestOptions: options,
+        statusCode: 401,
+        data: {'success': 0, 'message': 'rejected $candidateToken'},
+      );
+      final error = DioException(
+        requestOptions: options,
+        response: response,
+        type: DioExceptionType.badResponse,
+      );
+      final handler = _ErrorHandler();
+
+      interceptor.onError(error, handler);
+
+      expect(handler.forwarded, same(error));
+      final output = logs.join('\n');
+      expect(output, contains('Body: [REDACTED_SECRET]'));
+      expect(output, isNot(contains(candidateToken)));
     });
 
     test('业务失败输出 ERROR 且进入错误链时不重复输出', () {
