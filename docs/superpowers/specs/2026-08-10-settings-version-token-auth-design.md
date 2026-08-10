@@ -73,7 +73,7 @@ Authorization: Bearer <candidate-token>
 
 ### 用户信息
 
-以 `docs/main/api/jdb_api_openapi.json` 为准，`GET /api/v1/users` 成功响应经过 `ResponseInterceptor` 解包后应为用户对象。只有响应可转换为非空 `Map<String, dynamic>` 时才算验证成功；响应结构异常按验证失败处理。
+以 `docs/main/api/jdb_api_openapi.json` 为准，`GET /api/v1/users` 成功响应经过 `ResponseInterceptor` 解包后应为 `UserEntity` 对象，真正的用户信息位于其非空 `user` 字段。只有 `user` 可转换为非空 `Map<String, dynamic>` 时才算验证成功；响应结构异常按验证失败处理。
 
 ### 原子覆盖
 
