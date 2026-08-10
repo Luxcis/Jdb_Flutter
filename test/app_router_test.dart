@@ -125,4 +125,27 @@ void main() {
     expect(page.category, 'd');
     expect(page.id, 'AqK');
   });
+
+  testWidgets('/common-list 路由缺参或非法 type 时走兜底', (tester) async {
+    final router = AppRouter.buildForTest(
+      initialLocation: Uri(
+        path: AppRoutes.commonList,
+        queryParameters: {'type': 'abc', 'title': '测试&系列#1'},
+      ).toString(),
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<_FakeAuth>(
+        create: (_) => _FakeAuth.create(),
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final page = tester.widget<CommonListPage>(find.byType(CommonListPage));
+    expect(page.title, '测试&系列#1');
+    expect(page.type, 0);
+    expect(page.category, '');
+    expect(page.id, '');
+  });
 }

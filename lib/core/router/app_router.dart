@@ -18,7 +18,7 @@ import 'package:jade/features/auth/index.dart';
 import 'package:jade/features/startup/index.dart';
 import 'package:jade/features/reviews/index.dart';
 import 'package:jade/features/series/index.dart';
-import 'package:jade/features/common/screens/common_list_page.dart';
+import 'package:jade/features/common/index.dart';
 
 class AppRouter {
   const AppRouter._();
