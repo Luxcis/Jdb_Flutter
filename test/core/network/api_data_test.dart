@@ -163,6 +163,71 @@ void main() {
     expect(movie.actors.single.avatarUrl, '');
   });
 
+  test('normalizeMovieDetailJson 保留基础信息跳转所需的 OpenAPI 字段', () {
+    final movie = MovieDetail.fromJson(
+      normalizeMovieDetailJson({
+        'movie': {
+          'id': 'm1',
+          'type': '2',
+          'number': 'TEST-001',
+          'number_letter': 'TEST',
+          'title': 'Title',
+          'cover_url': 'cover.jpg',
+          'director_id': 'director-1',
+          'director_name': '测试&导演',
+          'maker_id': 'maker-1',
+          'maker_name': '测试片商',
+          'publisher_id': 'publisher-1',
+          'publisher_name': '测试发行商',
+          'series_id': 'series-1',
+          'series_name': '测试系列',
+          'tags': [
+            {'id': 'tag-1', 'name': '剧情', 'value': 'plot'},
+            '中文字幕',
+          ],
+        },
+      }),
+    );
+
+    expect(movie.type, 2);
+    expect(movie.numberLetter, 'TEST');
+    expect(movie.directorId, 'director-1');
+    expect(movie.director, '测试&导演');
+    expect(movie.makerId, 'maker-1');
+    expect(movie.maker, '测试片商');
+    expect(movie.publisherId, 'publisher-1');
+    expect(movie.publisher, '测试发行商');
+    expect(movie.seriesId, 'series-1');
+    expect(movie.series, '测试系列');
+    expect(movie.tags, ['剧情', '中文字幕']);
+    expect(movie.tagItems, hasLength(2));
+    expect(movie.tagItems.first.id, 'tag-1');
+    expect(movie.tagItems.first.name, '剧情');
+    expect(movie.tagItems.first.value, 'plot');
+    expect(movie.tagItems.last.id, '');
+    expect(movie.tagItems.last.name, '中文字幕');
+    expect(movie.tagItems.last.value, '中文字幕');
+  });
+
+  test('normalizeMovieDetailJson 为缺失的基础信息跳转字段提供兼容默认值', () {
+    final movie = MovieDetail.fromJson(
+      normalizeMovieDetailJson({
+        'id': 'm1',
+        'number': 'TEST-001',
+        'title': 'Title',
+        'cover_url': 'cover.jpg',
+      }),
+    );
+
+    expect(movie.type, 0);
+    expect(movie.numberLetter, isNull);
+    expect(movie.directorId, isNull);
+    expect(movie.makerId, isNull);
+    expect(movie.publisherId, isNull);
+    expect(movie.seriesId, isNull);
+    expect(movie.tagItems, isEmpty);
+  });
+
   test('normalizeMovieDetailJson 解析内嵌剧照和两类关联影片', () {
     final movie = MovieDetail.fromJson(
       normalizeMovieDetailJson({

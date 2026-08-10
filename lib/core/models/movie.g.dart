@@ -38,8 +38,15 @@ MovieDetail _$MovieDetailFromJson(Map<String, dynamic> json) => MovieDetail(
   releaseDate: json['release_date'] as String?,
   duration: (json['duration'] as num?)?.toInt(),
   score: (json['score'] as num?)?.toDouble(),
+  type: (json['type'] as num?)?.toInt() ?? 0,
+  numberLetter: json['number_letter'] as String?,
+  directorId: json['director_id'] as String?,
   director: json['director'] as String?,
+  makerId: json['maker_id'] as String?,
   maker: json['maker'] as String?,
+  publisherId: json['publisher_id'] as String?,
+  publisher: json['publisher'] as String?,
+  seriesId: json['series_id'] as String?,
   series: json['series'] as String?,
   actors:
       (json['actors'] as List<dynamic>?)
@@ -64,6 +71,11 @@ MovieDetail _$MovieDetailFromJson(Map<String, dynamic> json) => MovieDetail(
   tags:
       (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const [],
+  tagItems:
+      (json['tag_items'] as List<dynamic>?)
+          ?.map((e) => Tag.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
   magnetCount: (json['magnet_count'] as num?)?.toInt() ?? 0,
   wantWatchCount: (json['want_watch_count'] as num?)?.toInt() ?? 0,
   watchedCount: (json['watched_count'] as num?)?.toInt() ?? 0,
@@ -81,8 +93,15 @@ Map<String, dynamic> _$MovieDetailToJson(MovieDetail instance) =>
       'release_date': instance.releaseDate,
       'duration': instance.duration,
       'score': instance.score,
+      'type': instance.type,
+      'number_letter': instance.numberLetter,
+      'director_id': instance.directorId,
       'director': instance.director,
+      'maker_id': instance.makerId,
       'maker': instance.maker,
+      'publisher_id': instance.publisherId,
+      'publisher': instance.publisher,
+      'series_id': instance.seriesId,
       'series': instance.series,
       'actors': instance.actors,
       'screenshots': instance.screenshots,

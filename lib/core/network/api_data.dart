@@ -142,8 +142,15 @@ Map<String, dynamic> normalizeMovieDetailJson(dynamic data) {
   ]).map(normalizeMovieSummaryJson);
   return {
     ...normalizeMovieSummaryJson(movie),
+    'type': apiInt(movie['type'], 0),
+    'number_letter': _nonEmptyApiString(movie['number_letter']),
+    'director_id': _nonEmptyApiString(movie['director_id']),
     'director': movie['director'] ?? movie['director_name'],
+    'maker_id': _nonEmptyApiString(movie['maker_id']),
     'maker': movie['maker'] ?? movie['maker_name'],
+    'publisher_id': _nonEmptyApiString(movie['publisher_id']),
+    'publisher': movie['publisher'] ?? movie['publisher_name'],
+    'series_id': _nonEmptyApiString(movie['series_id']),
     'series': movie['series'] ?? movie['series_name'],
     'magnet_count': apiInt(movie['magnet_count'] ?? movie['magnets_count'], 0),
     'want_watch_count': apiInt(movie['want_watch_count'], 0),
@@ -155,6 +162,7 @@ Map<String, dynamic> normalizeMovieDetailJson(dynamic data) {
     'actor_movies': actorMovies.toList(),
     'relative_movies': relativeMovies.toList(),
     'tags': _tagLabels(tags),
+    'tag_items': _tagItems(tags),
   };
 }
 
@@ -292,6 +300,26 @@ List<String> _tagLabels(dynamic tags) {
       })
       .whereType<String>()
       .toList();
+}
+
+List<Map<String, dynamic>> _tagItems(dynamic tags) {
+  if (tags is! List) return const [];
+  return tags.map((tag) {
+    if (tag is Map) {
+      final name =
+          _nonEmptyApiString(tag['name']) ??
+          _nonEmptyApiString(tag['title']) ??
+          _nonEmptyApiString(tag['value']) ??
+          '';
+      return {
+        'id': apiString(tag['id']) ?? '',
+        'name': name,
+        'value': apiString(tag['value']) ?? name,
+      };
+    }
+    final name = apiString(tag) ?? '';
+    return {'id': '', 'name': name, 'value': name};
+  }).toList();
 }
 
 List<String> _imageUrls(dynamic images) {

@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:photo_view/photo_view.dart';
+import 'package:go_router/go_router.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
+import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/storage/storage_keys.dart';
 import 'package:jade/core/widgets/actor_card.dart';
-import 'package:jade/core/widgets/movie_cover_image.dart';
-import 'package:jade/core/widgets/movie_card.dart';
-import 'package:jade/core/widgets/movie_screenshot_image.dart';
 import 'package:jade/core/widgets/list_summary_tile.dart';
+import 'package:jade/core/widgets/movie_card.dart';
+import 'package:jade/core/widgets/movie_cover_image.dart';
+import 'package:jade/core/widgets/movie_screenshot_image.dart';
 import 'package:jade/core/widgets/star_rating.dart';
 import 'package:jade/core/widgets/tag_chip.dart';
+import 'package:jade/features/common/screens/common_list_page.dart';
+import 'package:jade/features/common/services/tag_movies_service.dart';
 import 'package:jade/features/movie_detail/screens/movie_detail_screen.dart';
+import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -74,14 +78,21 @@ void _enqueueCompleteMovieDetail(FakeAdapter adapter) {
     'data': {
       'movie': {
         'id': 'm1',
+        'type': '1',
         'number': 'SSIS-001',
+        'number_letter': 'SSIS',
         'title': '测试影片',
         'cover_url': 'covers/test.jpg',
         'release_date': '2026-07-22',
         'duration': 120,
-        'director': '测试导演',
-        'maker': '测试片商',
-        'series': '测试系列',
+        'director_id': 'director-1',
+        'director_name': '测试&导演#1',
+        'maker_id': 'maker-1',
+        'maker_name': '测试片商',
+        'publisher_id': 'publisher-1',
+        'publisher_name': '测试发行商',
+        'series_id': 'series-1',
+        'series_name': '测试系列',
         'score': '4.33',
         'want_watch_count': 12,
         'watched_count': 8,
@@ -107,7 +118,7 @@ void _enqueueCompleteMovieDetail(FakeAdapter adapter) {
           },
         ],
         'tags': [
-          {'name': '剧情'},
+          {'id': 'tag-1', 'name': '剧情&爱情#1', 'value': 'plot'},
           {'name': '漫画游戏改编'},
           {'name': '中文字幕'},
           {'name': '角色扮演'},
@@ -220,6 +231,31 @@ void _enqueueMinimalDetail(FakeAdapter adapter) {
   });
 }
 
+GoRouter _buildMovieDetailRouter() {
+  return GoRouter(
+    initialLocation: '/movie/m1',
+    routes: [
+      GoRoute(
+        path: AppRoutes.movieDetail,
+        builder: (_, state) => MovieDetailPage(id: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.commonList,
+        builder: (_, state) {
+          final query = state.uri.queryParameters;
+          return CommonListPage(
+            title: query['title'] ?? '',
+            type: int.tryParse(query['type'] ?? '') ?? 0,
+            category: query['category'] ?? '',
+            id: query['id'] ?? '',
+            dataSource: const UnavailableTagMoviesDataSource(),
+          );
+        },
+      ),
+    ],
+  );
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -250,7 +286,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('测试影片'), findsOneWidget);
-    expect(find.text('番号: SSIS-001'), findsOneWidget);
+    expect(find.text('番号:'), findsOneWidget);
+    expect(find.text('SSIS-001'), findsOneWidget);
     final innerScrollable = find
         .descendant(
           of: find.byType(TabBarView),
@@ -267,6 +304,213 @@ void main() {
       scrollable: innerScrollable,
     );
     expect(find.text('剧情'), findsOneWidget);
+  });
+
+  for (final target in [
+    (
+      label: '番号',
+      value: 'SSIS-001',
+      title: '番号 - SSIS',
+      category: 'c',
+      id: 'SSIS',
+    ),
+    (
+      label: '导演',
+      value: '测试&导演#1',
+      title: '导演 - 测试&导演#1',
+      category: 'd',
+      id: 'director-1',
+    ),
+    (
+      label: '片商',
+      value: '测试片商',
+      title: '片商 - 测试片商',
+      category: 'm',
+      id: 'maker-1',
+    ),
+    (
+      label: '发行商',
+      value: '测试发行商',
+      title: '发行商 - 测试发行商',
+      category: 'p',
+      id: 'publisher-1',
+    ),
+    (
+      label: '系列',
+      value: '测试系列',
+      title: '系列 - 测试系列',
+      category: 's',
+      id: 'series-1',
+    ),
+  ]) {
+    testWidgets('点击${target.label}经 router 打开对应通用列表并可返回', (tester) async {
+      tester.view.physicalSize = const Size(800, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final adapter = await _setupApiClient();
+      _enqueueCompleteMovieDetail(adapter);
+      final router = _buildMovieDetailRouter();
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await _pumpUntilText(tester, target.value);
+      final label = find.text('${target.label}:');
+      final value = find.text(target.value);
+      expect(label, findsOneWidget);
+      expect(value, findsOneWidget);
+      expect(
+        find.ancestor(of: label, matching: find.byType(InkWell)),
+        findsNothing,
+      );
+      expect(
+        find.ancestor(of: value, matching: find.byType(InkWell)),
+        findsOneWidget,
+      );
+      final colorScheme = Theme.of(tester.element(value)).colorScheme;
+      expect(tester.widget<Text>(label).style?.color, colorScheme.onSurface);
+      final valueStyle = tester.widget<Text>(value).style;
+      expect(valueStyle?.color, colorScheme.onSurface);
+      expect(valueStyle?.decoration, TextDecoration.underline);
+      expect(
+        find.bySemanticsLabel('查看${target.value}的${target.label}影片列表'),
+        findsOneWidget,
+      );
+      await tester.ensureVisible(value);
+      await tester.tap(value);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(router.state.uri.path, AppRoutes.commonList);
+      expect(router.state.uri.queryParameters, {
+        'title': target.title,
+        'type': '1',
+        'category': target.category,
+        'id': target.id,
+      });
+      final page = tester.widget<CommonListPage>(find.byType(CommonListPage));
+      expect(page.title, target.title);
+      expect(page.type, 1);
+      expect(page.category, target.category);
+      expect(page.id, target.id);
+
+      router.pop();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(router.state.uri.path, '/movie/m1');
+      expect(find.text('${target.label}:'), findsOneWidget);
+      expect(find.text(target.value), findsOneWidget);
+    });
+  }
+
+  testWidgets('点击带 ID 的类别经 router 打开通用列表并可返回', (tester) async {
+    tester.view.physicalSize = const Size(800, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(adapter);
+    final router = _buildMovieDetailRouter();
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await _pumpUntilText(tester, '剧情&爱情#1');
+
+    final chip = tester.widget<TagChip>(
+      find.ancestor(of: find.text('剧情&爱情#1'), matching: find.byType(TagChip)),
+    );
+    expect(chip.onTap, isNotNull);
+
+    await tester.ensureVisible(find.text('剧情&爱情#1'));
+    await tester.tap(find.text('剧情&爱情#1'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(router.state.uri.path, AppRoutes.commonList);
+    expect(router.state.uri.queryParameters, {
+      'title': '类别 - 剧情&爱情#1',
+      'type': '1',
+      'category': 't',
+      'id': 'tag-1',
+    });
+    final page = tester.widget<CommonListPage>(find.byType(CommonListPage));
+    expect(page.title, '类别 - 剧情&爱情#1');
+    expect(page.type, 1);
+    expect(page.category, 't');
+    expect(page.id, 'tag-1');
+
+    router.pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(router.state.uri.path, '/movie/m1');
+    expect(find.text('剧情&爱情#1'), findsOneWidget);
+  });
+
+  testWidgets('缺少 ID 的类别仍展示但不可点击', (tester) async {
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(adapter);
+    final router = _buildMovieDetailRouter();
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await _pumpUntilText(tester, '漫画游戏改编');
+
+    final chipFinder = find.byWidgetPredicate(
+      (widget) => widget is TagChip && widget.label == '漫画游戏改编',
+      skipOffstage: false,
+    );
+    final chip = tester.widget<TagChip>(chipFinder);
+    expect(chip.onTap, isNull);
+    expect(router.state.uri.path, '/movie/m1');
+  });
+
+  testWidgets('基础信息缺少实体 ID 时保留文本且不可点击', (tester) async {
+    final adapter = await _setupApiClient();
+    adapter.enqueue('/api/v4/movies/m1', {
+      'success': 1,
+      'data': {
+        'movie': {
+          'id': 'm1',
+          'number': 'SSIS-001',
+          'title': '测试影片',
+          'cover_url': '',
+          'director_name': '测试导演',
+          'maker_name': '测试片商',
+          'publisher_name': '测试发行商',
+          'series_name': '测试系列',
+        },
+      },
+    });
+    final router = _buildMovieDetailRouter();
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await _pumpUntilText(tester, 'SSIS-001');
+
+    for (final item in [
+      (label: '番号', value: 'SSIS-001'),
+      (label: '导演', value: '测试导演'),
+      (label: '片商', value: '测试片商'),
+      (label: '发行商', value: '测试发行商'),
+      (label: '系列', value: '测试系列'),
+    ]) {
+      final label = find.text('${item.label}:');
+      final value = find.text(item.value);
+      expect(label, findsOneWidget);
+      expect(value, findsOneWidget);
+      expect(
+        find.ancestor(of: label, matching: find.byType(InkWell)),
+        findsNothing,
+      );
+      expect(
+        find.ancestor(of: value, matching: find.byType(InkWell)),
+        findsNothing,
+      );
+      await tester.ensureVisible(value);
+      await tester.tap(value);
+      await tester.pump();
+      expect(router.state.uri.path, '/movie/m1');
+    }
   });
 
   testWidgets('320px 暗色大字体下非空演员区域不溢出', (tester) async {
@@ -351,7 +595,8 @@ void main() {
       greaterThan(tester.getTopLeft(find.byType(MovieCoverImage)).dy),
     );
 
-    expect(find.text('番号: SSIS-001'), findsOneWidget);
+    expect(find.text('番号:'), findsOneWidget);
+    expect(find.text('SSIS-001'), findsOneWidget);
     expect(find.text('4.33'), findsOneWidget);
     expect(find.text('4.3'), findsNothing);
     expect(find.text('类别:'), findsOneWidget);
@@ -431,7 +676,7 @@ void main() {
     expect(find.text('演员'), findsOneWidget);
 
     await tester.scrollUntilVisible(
-      find.text('预告片 / 剧照'),
+      find.byKey(const Key('movie-detail-screenshot-1')),
       300,
       scrollable: innerScrollable,
     );
@@ -908,8 +1153,15 @@ void main() {
       300,
       scrollable: innerScrollable,
     );
+    final secondScreenshot = find.byKey(const Key('movie-detail-screenshot-1'));
+    expect(secondScreenshot, findsOneWidget);
+    await Scrollable.ensureVisible(
+      tester.element(secondScreenshot),
+      alignment: 0.5,
+    );
+    await tester.pump();
 
-    await tester.tap(find.byKey(const Key('movie-detail-screenshot-1')));
+    await tester.tap(secondScreenshot);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 

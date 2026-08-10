@@ -8,13 +8,15 @@ import 'package:jade/core/models/list_model.dart';
 import 'package:jade/core/models/magnet.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/review.dart';
+import 'package:jade/core/models/tag.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/api_exception.dart';
+import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/widgets/actor_card.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/image_gallery_viewer.dart';
-import 'package:jade/core/widgets/magnet_list_tile.dart';
 import 'package:jade/core/widgets/list_summary_tile.dart';
+import 'package:jade/core/widgets/magnet_list_tile.dart';
 import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/movie_cover_image.dart';
 import 'package:jade/core/widgets/movie_screenshot_image.dart';
@@ -431,7 +433,8 @@ class _BasicInfoTab extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: _MovieInfoCard(detail: detail, onSaveToList: onSaveToList),
         ),
-        if (detail.tags.isNotEmpty) _CategorySection(tags: detail.tags),
+        if (detail.tagItems.isNotEmpty)
+          _CategorySection(tags: detail.tagItems, type: detail.type),
         if (detail.actors.isNotEmpty)
           _ActorSection(actors: detail.actors, onActorTap: onActorTap),
         if (detail.screenshots.isNotEmpty)
@@ -493,13 +496,35 @@ class _MovieInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final metadata = <(String, String?)>[
-      ('发行日期', detail.releaseDate),
-      ('时长', detail.duration == null ? null : '${detail.duration}分钟'),
-      ('导演', detail.director),
-      ('片商', detail.maker),
-      ('系列', detail.series),
-    ];
+    final metadata =
+        <({String label, String? value, String? category, String? id})>[
+          (label: '发行日期', value: detail.releaseDate, category: null, id: null),
+          (
+            label: '时长',
+            value: detail.duration == null ? null : '${detail.duration}分钟',
+            category: null,
+            id: null,
+          ),
+          (
+            label: '导演',
+            value: detail.director,
+            category: 'd',
+            id: detail.directorId,
+          ),
+          (label: '片商', value: detail.maker, category: 'm', id: detail.makerId),
+          (
+            label: '发行商',
+            value: detail.publisher,
+            category: 'p',
+            id: detail.publisherId,
+          ),
+          (
+            label: '系列',
+            value: detail.series,
+            category: 's',
+            id: detail.seriesId,
+          ),
+        ];
     final actionStyle = FilledButton.styleFrom(
       minimumSize: const Size(0, 32),
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -516,10 +541,30 @@ class _MovieInfoCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           spacing: 6,
           children: [
-            _MetadataLine(label: '番号', value: detail.number),
-            for (final (label, value) in metadata)
-              if (value != null && value.isNotEmpty)
-                _MetadataLine(label: label, value: value),
+            _MetadataLine(
+              label: '番号',
+              value: detail.number,
+              onTap: _commonListCallback(
+                context,
+                label: '番号',
+                value: detail.numberLetter,
+                category: 'c',
+                id: detail.numberLetter,
+              ),
+            ),
+            for (final item in metadata)
+              if (item.value != null && item.value!.isNotEmpty)
+                _MetadataLine(
+                  label: item.label,
+                  value: item.value!,
+                  onTap: _commonListCallback(
+                    context,
+                    label: item.label,
+                    value: item.value,
+                    category: item.category,
+                    id: item.id,
+                  ),
+                ),
             if (detail.score != null)
               Row(
                 spacing: 6,
@@ -558,17 +603,87 @@ class _MovieInfoCard extends StatelessWidget {
       ),
     );
   }
+
+  VoidCallback? _commonListCallback(
+    BuildContext context, {
+    required String label,
+    required String? value,
+    required String? category,
+    required String? id,
+  }) {
+    final targetValue = value?.trim();
+    final targetCategory = category?.trim();
+    final targetId = id?.trim();
+    if (targetValue == null ||
+        targetValue.isEmpty ||
+        targetCategory == null ||
+        targetCategory.isEmpty ||
+        targetId == null ||
+        targetId.isEmpty) {
+      return null;
+    }
+
+    return () => context.push(
+      Uri(
+        path: AppRoutes.commonList,
+        queryParameters: {
+          'title': '$label - $targetValue',
+          'type': '${detail.type}',
+          'category': targetCategory,
+          'id': targetId,
+        },
+      ).toString(),
+    );
+  }
 }
 
 class _MetadataLine extends StatelessWidget {
-  const _MetadataLine({required this.label, required this.value});
+  const _MetadataLine({required this.label, required this.value, this.onTap});
 
   final String label;
   final String value;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Text('$label: $value');
+    final foregroundColor = Theme.of(context).colorScheme.onSurface;
+    final textStyle = DefaultTextStyle.of(
+      context,
+    ).style.copyWith(color: foregroundColor);
+    final valueText = Text(
+      value,
+      style: textStyle.copyWith(
+        decoration: onTap == null ? null : TextDecoration.underline,
+        decorationColor: foregroundColor,
+      ),
+    );
+    final valueWidget = onTap == null
+        ? valueText
+        : Semantics(
+            button: true,
+            label: '查看$value的$label影片列表',
+            excludeSemantics: true,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(4),
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: valueText,
+                ),
+              ),
+            ),
+          );
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 4,
+      children: [
+        Text('$label:', style: textStyle),
+        Flexible(child: valueWidget),
+      ],
+    );
   }
 }
 
@@ -835,9 +950,10 @@ class _SaveToListSheetState extends State<_SaveToListSheet> {
 }
 
 class _CategorySection extends StatelessWidget {
-  const _CategorySection({required this.tags});
+  const _CategorySection({required this.tags, required this.type});
 
-  final List<String> tags;
+  final List<Tag> tags;
+  final int type;
 
   @override
   Widget build(BuildContext context) {
@@ -863,7 +979,24 @@ class _CategorySection extends StatelessWidget {
               child: Row(
                 spacing: 4,
                 children: [
-                  for (final tag in tags) TagChip(label: tag, compact: true),
+                  for (final tag in tags)
+                    TagChip(
+                      label: tag.name,
+                      compact: true,
+                      onTap: tag.id.trim().isEmpty
+                          ? null
+                          : () => context.push(
+                              Uri(
+                                path: AppRoutes.commonList,
+                                queryParameters: {
+                                  'title': '类别 - ${tag.name}',
+                                  'type': '$type',
+                                  'category': 't',
+                                  'id': tag.id.trim(),
+                                },
+                              ).toString(),
+                            ),
+                    ),
                 ],
               ),
             ),

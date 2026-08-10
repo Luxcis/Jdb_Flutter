@@ -33,7 +33,9 @@ class TagMoviesService implements TagMoviesDataSource {
     String orderBy = 'desc',
     int page = 1,
   }) async {
-    final filterBy = filter.isEmpty
+    final filterBy = category == 't'
+        ? '$type:t:$filter:$id'
+        : filter.isEmpty
         ? '$type:$category:$id'
         : '$type:$category:$id:$filter';
     final query = <String, dynamic>{
@@ -52,7 +54,8 @@ class TagMoviesService implements TagMoviesDataSource {
       keys: const ['movies', 'items'],
       page: page,
       pageSize: _pageSize,
-      fromJson: (json) => MovieSummary.fromJson(normalizeMovieSummaryJson(json)),
+      fromJson: (json) =>
+          MovieSummary.fromJson(normalizeMovieSummaryJson(json)),
     );
   }
 }

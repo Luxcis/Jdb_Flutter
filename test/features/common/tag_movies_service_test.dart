@@ -43,6 +43,33 @@ void main() {
     );
   });
 
+  test('category=t 将筛选条件放在标签 ID 前', () async {
+    final fixture = await buildTagMoviesFixture();
+    fixture.adapter.enqueueSequence(Endpoints.moviesTags, [
+      tagMoviesResponse(),
+      tagMoviesResponse(),
+      tagMoviesResponse(),
+      tagMoviesResponse(),
+    ]);
+
+    for (final filter in ['', 'p', 'm', 'c']) {
+      await fixture.service.getMovies(
+        type: 1,
+        category: 't',
+        id: 'tag-9',
+        filter: filter,
+        sortBy: 'hit',
+      );
+    }
+
+    expect(
+      fixture.adapter.requests.map(
+        (request) => request.queryParameters['filter_by'],
+      ),
+      ['1:t::tag-9', '1:t:p:tag-9', '1:t:m:tag-9', '1:t:c:tag-9'],
+    );
+  });
+
   test('sort_by=release 携带 order_by，其他排序不携带', () async {
     final fixture = await buildTagMoviesFixture();
     fixture.adapter.enqueueSequence(Endpoints.moviesTags, [
