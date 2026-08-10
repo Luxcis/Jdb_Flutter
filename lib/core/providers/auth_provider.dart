@@ -29,11 +29,38 @@ class AuthProvider extends ChangeNotifier implements TokenProvider {
     required String token,
     required Map<String, dynamic> user,
   }) async {
+    final previousToken = _prefs.getString(StorageKeys.token);
+    final previousUser = _prefs.getString(StorageKeys.user);
+    final encodedUser = jsonEncode(user);
+
+    try {
+      final userSaved = await _prefs.setString(StorageKeys.user, encodedUser);
+      final tokenSaved =
+          userSaved && await _prefs.setString(StorageKeys.token, token);
+      if (!userSaved || !tokenSaved) {
+        throw StateError('Failed to persist authenticated session');
+      }
+    } catch (error, stackTrace) {
+      await _restoreValue(StorageKeys.user, previousUser);
+      await _restoreValue(StorageKeys.token, previousToken);
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+
     _token = token;
-    _user = user;
-    await _prefs.setString(StorageKeys.token, token);
-    await _prefs.setString(StorageKeys.user, jsonEncode(user));
+    _user = Map<String, dynamic>.from(user);
     notifyListeners();
+  }
+
+  Future<void> _restoreValue(String key, String? value) async {
+    try {
+      if (value == null) {
+        await _prefs.remove(key);
+      } else {
+        await _prefs.setString(key, value);
+      }
+    } catch (_) {
+      // 已保留内存中的旧会话；缓存回滚采用最大努力策略。
+    }
   }
 
   Future<void> logout() async {
