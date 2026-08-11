@@ -221,9 +221,9 @@ void main() {
     );
     await _pumpPreviewPage(tester, playback);
 
-    await tester.tap(find.byKey(const Key('movie-preview-gesture-surface')));
+    await tester.tapAt(_backgroundPoint(tester));
     await tester.pump(const Duration(milliseconds: 50));
-    await tester.tap(find.byKey(const Key('movie-preview-gesture-surface')));
+    await tester.tapAt(_backgroundPoint(tester));
     await tester.pump();
 
     expect(playback.commands, ['initialize', 'play', 'seek:0', 'play']);
@@ -236,9 +236,9 @@ void main() {
     );
     await _pumpPreviewPage(tester, playback);
 
-    await tester.tap(find.byKey(const Key('movie-preview-gesture-surface')));
+    await tester.tapAt(_backgroundPoint(tester));
     await tester.pump(const Duration(milliseconds: 50));
-    await tester.tap(find.byKey(const Key('movie-preview-gesture-surface')));
+    await tester.tapAt(_backgroundPoint(tester));
     await tester.pump();
 
     expect(playback.commands, ['initialize', 'play', 'play']);
@@ -254,9 +254,9 @@ void main() {
     );
     await _pumpPreviewPage(tester, playback);
 
-    await tester.tap(find.byKey(const Key('movie-preview-gesture-surface')));
+    await tester.tapAt(_backgroundPoint(tester));
     await tester.pump(const Duration(milliseconds: 50));
-    await tester.tap(find.byKey(const Key('movie-preview-gesture-surface')));
+    await tester.tapAt(_backgroundPoint(tester));
     await tester.pump();
 
     expect(playback.commands, ['initialize', 'play', 'pause']);
@@ -317,6 +317,13 @@ Future<void> _pumpPreviewPage(
     ),
   );
   await tester.pump();
+}
+
+Offset _backgroundPoint(WidgetTester tester) {
+  return tester.getTopLeft(
+        find.byKey(const Key('movie-preview-gesture-surface')),
+      ) +
+      const Offset(64, 240);
 }
 
 class _FakePlayback implements MoviePreviewPlayback {

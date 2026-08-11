@@ -55,7 +55,11 @@ class _MoviePreviewControlsState extends State<MoviePreviewControls> {
         oldState.isCompleted != newState.isCompleted ||
         oldState.errorDescription != newState.errorDescription) {
       _cancelAutoHide();
-      if (newState.isCompleted) {
+      if (!newState.isInitialized ||
+          !newState.isPlaying ||
+          newState.isBuffering ||
+          newState.isCompleted ||
+          (newState.errorDescription?.isNotEmpty ?? false)) {
         _controlsVisible = true;
         return;
       }
@@ -69,7 +73,12 @@ class _MoviePreviewControlsState extends State<MoviePreviewControls> {
   void dispose() {
     _cancelAutoHide();
     if (_isLongPressing) {
-      unawaited(widget.onSetPlaybackSpeed(1.0));
+      unawaited(
+        _runCommand(
+          () => widget.onSetPlaybackSpeed(1.0),
+          keepControlsVisibleOnFailure: false,
+        ),
+      );
     }
     super.dispose();
   }
@@ -80,41 +89,40 @@ class _MoviePreviewControlsState extends State<MoviePreviewControls> {
     final hasError = state.errorDescription?.isNotEmpty ?? false;
     return ColoredBox(
       color: Colors.black,
-      child: GestureDetector(
-        key: const Key('movie-preview-gesture-surface'),
-        behavior: HitTestBehavior.opaque,
-        onTap: hasError ? null : _toggleControlsVisibility,
-        onDoubleTap: hasError ? null : _togglePlayback,
-        onLongPressStart: hasError ? null : _startLongPress,
-        onLongPressEnd: hasError ? null : (_) => _finishLongPress(),
-        onLongPressCancel: hasError ? null : _finishLongPress,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Center(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          GestureDetector(
+            key: const Key('movie-preview-gesture-surface'),
+            behavior: HitTestBehavior.opaque,
+            onTap: hasError ? null : _toggleControlsVisibility,
+            onDoubleTap: hasError ? null : _togglePlayback,
+            onLongPressStart: hasError ? null : _startLongPress,
+            onLongPressEnd: hasError ? null : (_) => _finishLongPress(),
+            onLongPressCancel: hasError ? null : _finishLongPress,
+            child: Center(
               child: AspectRatio(
                 aspectRatio: state.aspectRatio,
                 child: widget.video,
               ),
             ),
-            if (state.isBuffering)
-              const Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              ),
-            if (_isLongPressing) const Center(child: _SpeedIndicator()),
-            if (_controlsVisible)
-              _PreviewOverlay(
-                title: widget.title,
-                playbackState: state,
-                dragPositionMilliseconds: _dragPositionMilliseconds,
-                onBack: widget.onBack,
-                onRetry: widget.onRetry,
-                onChanged: _changePosition,
-                onChangeStart: _startDragging,
-                onChangeEnd: _endDragging,
-              ),
-          ],
-        ),
+          ),
+          if (state.isBuffering)
+            const Center(child: CircularProgressIndicator(color: Colors.white)),
+          if (_isLongPressing) const Center(child: _SpeedIndicator()),
+          if (_controlsVisible)
+            _PreviewOverlay(
+              title: widget.title,
+              playbackState: state,
+              dragPositionMilliseconds: _dragPositionMilliseconds,
+              onBack: widget.onBack,
+              onTogglePlayback: _togglePlayback,
+              onRetry: _retry,
+              onChanged: _changePosition,
+              onChangeStart: _startDragging,
+              onChangeEnd: _endDragging,
+            ),
+        ],
       ),
     );
   }
@@ -147,8 +155,13 @@ class _MoviePreviewControlsState extends State<MoviePreviewControls> {
         _controlsVisible = true;
       });
     }
-    unawaited(widget.onTogglePlayback());
-    _scheduleAutoHide();
+    unawaited(_runTogglePlayback());
+  }
+
+  Future<void> _runTogglePlayback() async {
+    if (await _runCommand(widget.onTogglePlayback) && mounted) {
+      _scheduleAutoHide();
+    }
   }
 
   void _startLongPress(LongPressStartDetails _) {
@@ -158,7 +171,7 @@ class _MoviePreviewControlsState extends State<MoviePreviewControls> {
       _controlsVisible = true;
       _isLongPressing = true;
     });
-    unawaited(widget.onSetPlaybackSpeed(2.0));
+    unawaited(_setPlaybackSpeed(2.0));
   }
 
   void _finishLongPress() {
@@ -166,8 +179,18 @@ class _MoviePreviewControlsState extends State<MoviePreviewControls> {
     setState(() {
       _isLongPressing = false;
     });
-    unawaited(widget.onSetPlaybackSpeed(1.0));
-    _scheduleAutoHide();
+    unawaited(_setPlaybackSpeed(1.0, scheduleAfterSuccess: true));
+  }
+
+  Future<void> _setPlaybackSpeed(
+    double speed, {
+    bool scheduleAfterSuccess = false,
+  }) async {
+    if (await _runCommand(() => widget.onSetPlaybackSpeed(speed)) &&
+        scheduleAfterSuccess &&
+        mounted) {
+      _scheduleAutoHide();
+    }
   }
 
   void _startDragging(double _) {
@@ -185,12 +208,47 @@ class _MoviePreviewControlsState extends State<MoviePreviewControls> {
   }
 
   void _endDragging(double value) {
+    unawaited(_seek(value));
+  }
+
+  Future<void> _seek(double value) async {
+    final succeeded = await _runCommand(
+      () => widget.onSeek(Duration(milliseconds: value.round())),
+    );
+    if (!succeeded || !mounted) return;
     setState(() {
       _isDragging = false;
       _dragPositionMilliseconds = null;
     });
-    unawaited(widget.onSeek(Duration(milliseconds: value.round())));
     _scheduleAutoHide();
+  }
+
+  void _retry() {
+    unawaited(_runRetry());
+  }
+
+  Future<void> _runRetry() async {
+    if (await _runCommand(widget.onRetry) && mounted) {
+      _scheduleAutoHide();
+    }
+  }
+
+  Future<bool> _runCommand(
+    Future<void> Function() command, {
+    bool keepControlsVisibleOnFailure = true,
+  }) async {
+    try {
+      await command();
+      return true;
+    } catch (_) {
+      if (keepControlsVisibleOnFailure && mounted) {
+        _cancelAutoHide();
+        setState(() {
+          _controlsVisible = true;
+        });
+      }
+      return false;
+    }
   }
 
   void _scheduleAutoHide() {
@@ -217,6 +275,7 @@ class _PreviewOverlay extends StatelessWidget {
     required this.playbackState,
     required this.dragPositionMilliseconds,
     required this.onBack,
+    required this.onTogglePlayback,
     required this.onRetry,
     required this.onChanged,
     required this.onChangeStart,
@@ -227,7 +286,8 @@ class _PreviewOverlay extends StatelessWidget {
   final MoviePreviewPlaybackState playbackState;
   final double? dragPositionMilliseconds;
   final VoidCallback onBack;
-  final Future<void> Function() onRetry;
+  final VoidCallback onTogglePlayback;
+  final VoidCallback onRetry;
   final ValueChanged<double>? onChanged;
   final ValueChanged<double>? onChangeStart;
   final ValueChanged<double>? onChangeEnd;
@@ -244,92 +304,100 @@ class _PreviewOverlay extends StatelessWidget {
     final canSeek = durationMilliseconds > 0;
 
     return Positioned.fill(
-      child: Container(
+      child: Stack(
         key: const Key('movie-preview-controls-overlay'),
-        color: Colors.black54,
-        child: SafeArea(
-          child: Stack(
-            children: [
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: onBack,
-                      tooltip: '返回',
-                      color: Colors.white,
-                      icon: const Icon(Icons.arrow_back),
-                    ),
-                    Expanded(
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+        children: [
+          const Positioned.fill(
+            child: IgnorePointer(child: ColoredBox(color: Colors.black54)),
+          ),
+          SafeArea(
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: onBack,
+                        tooltip: '返回',
+                        color: Colors.white,
+                        icon: const Icon(Icons.arrow_back),
+                      ),
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Center(
+                  child: hasError
+                      ? Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              '预告片播放失败',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            const SizedBox(height: 12),
+                            ElevatedButton(
+                              onPressed: onRetry,
+                              child: const Text('重试'),
+                            ),
+                          ],
+                        )
+                      : IconButton(
+                          onPressed: onTogglePlayback,
+                          tooltip: playbackState.isPlaying ? '暂停' : '播放',
+                          color: Colors.white,
+                          iconSize: 52,
+                          icon: Icon(
+                            playbackState.isPlaying
+                                ? Icons.pause_circle_outline
+                                : Icons.play_circle_outline,
+                          ),
+                        ),
+                ),
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 0,
+                  child: Row(
+                    children: [
+                      Text(
+                        _formatDuration(
+                          Duration(milliseconds: positionMilliseconds.round()),
+                        ),
                         style: const TextStyle(color: Colors.white),
                       ),
-                    ),
-                  ],
+                      Expanded(
+                        child: Slider(
+                          value: positionMilliseconds,
+                          max: durationMilliseconds.toDouble(),
+                          onChanged: canSeek ? onChanged : null,
+                          onChangeStart: canSeek ? onChangeStart : null,
+                          onChangeEnd: canSeek ? onChangeEnd : null,
+                        ),
+                      ),
+                      Text(
+                        canSeek
+                            ? _formatDuration(playbackState.duration)
+                            : '--:--',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Center(
-                child: hasError
-                    ? Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            '预告片播放失败',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                          const SizedBox(height: 12),
-                          ElevatedButton(
-                            onPressed: () => unawaited(onRetry()),
-                            child: const Text('重试'),
-                          ),
-                        ],
-                      )
-                    : Icon(
-                        playbackState.isPlaying
-                            ? Icons.pause_circle_outline
-                            : Icons.play_circle_outline,
-                        color: Colors.white,
-                        size: 52,
-                      ),
-              ),
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom: 0,
-                child: Row(
-                  children: [
-                    Text(
-                      _formatDuration(
-                        Duration(milliseconds: positionMilliseconds.round()),
-                      ),
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    Expanded(
-                      child: Slider(
-                        value: positionMilliseconds,
-                        max: durationMilliseconds.toDouble(),
-                        onChanged: canSeek ? onChanged : null,
-                        onChangeStart: canSeek ? onChangeStart : null,
-                        onChangeEnd: canSeek ? onChangeEnd : null,
-                      ),
-                    ),
-                    Text(
-                      canSeek
-                          ? _formatDuration(playbackState.duration)
-                          : '--:--',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

@@ -20,7 +20,7 @@ void main() {
     );
     await tester.pump(kDoubleTapTimeout);
 
-    await tester.tap(find.byKey(const Key('movie-preview-gesture-surface')));
+    await tester.tapAt(_backgroundPoint(tester));
     await tester.pump(kDoubleTapTimeout);
     expect(
       find.byKey(const Key('movie-preview-controls-overlay')),
@@ -28,12 +28,10 @@ void main() {
     );
     expect(togglePlaybackCalls, 0);
 
-    final center = tester.getCenter(
-      find.byKey(const Key('movie-preview-gesture-surface')),
-    );
-    await tester.tapAt(center);
+    final backgroundPoint = _backgroundPoint(tester);
+    await tester.tapAt(backgroundPoint);
     await tester.pump(const Duration(milliseconds: 50));
-    await tester.tapAt(center);
+    await tester.tapAt(backgroundPoint);
     await tester.pump();
     expect(togglePlaybackCalls, 1);
     expect(
@@ -53,10 +51,7 @@ void main() {
       ),
     );
 
-    final center = tester.getCenter(
-      find.byKey(const Key('movie-preview-gesture-surface')),
-    );
-    final gesture = await tester.startGesture(center);
+    final gesture = await tester.startGesture(_backgroundPoint(tester));
     await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
 
     expect(speeds, [2.0]);
@@ -78,10 +73,7 @@ void main() {
       ),
     );
 
-    final center = tester.getCenter(
-      find.byKey(const Key('movie-preview-gesture-surface')),
-    );
-    final gesture = await tester.startGesture(center);
+    final gesture = await tester.startGesture(_backgroundPoint(tester));
     await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
     await gesture.cancel();
     await tester.pump();
@@ -155,7 +147,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byKey(const Key('movie-preview-gesture-surface')));
+    await tester.tapAt(_backgroundPoint(tester));
     await tester.pump(kDoubleTapTimeout);
     expect(
       find.byKey(const Key('movie-preview-controls-overlay')),
@@ -209,6 +201,116 @@ void main() {
     );
   });
 
+  testWidgets('隐藏后暂停、缓冲或错误时重新显示控制层', (tester) async {
+    var playbackState = _state();
+    late StateSetter updatePlaybackState;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              updatePlaybackState = setState;
+              return MoviePreviewControls(
+                title: '测试影片',
+                video: const SizedBox.expand(),
+                playbackState: playbackState,
+                onBack: () {},
+                onTogglePlayback: () async {},
+                onSeek: (_) async {},
+                onSetPlaybackSpeed: (_) async {},
+                onRetry: () async {},
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    Future<void> hideControls() async {
+      await tester.tapAt(_backgroundPoint(tester));
+      await tester.pump(kDoubleTapTimeout);
+      expect(
+        find.byKey(const Key('movie-preview-controls-overlay')),
+        findsNothing,
+      );
+    }
+
+    await hideControls();
+    updatePlaybackState(() {
+      playbackState = _state(isPlaying: false);
+    });
+    await tester.pump();
+    expect(
+      find.byKey(const Key('movie-preview-controls-overlay')),
+      findsOneWidget,
+    );
+
+    updatePlaybackState(() {
+      playbackState = _state();
+    });
+    await tester.pump();
+    await hideControls();
+    updatePlaybackState(() {
+      playbackState = _state(isBuffering: true);
+    });
+    await tester.pump();
+    expect(
+      find.byKey(const Key('movie-preview-controls-overlay')),
+      findsOneWidget,
+    );
+
+    updatePlaybackState(() {
+      playbackState = _state();
+    });
+    await tester.pump();
+    await hideControls();
+    updatePlaybackState(() {
+      playbackState = _state(errorDescription: 'media error');
+    });
+    await tester.pump();
+    expect(find.text('预告片播放失败'), findsOneWidget);
+    expect(find.text('重试'), findsOneWidget);
+  });
+
+  testWidgets('点击中央播放暂停按钮只切换播放状态', (tester) async {
+    var togglePlaybackCalls = 0;
+    await tester.pumpWidget(
+      _buildControls(
+        onTogglePlayback: () async {
+          togglePlaybackCalls++;
+        },
+      ),
+    );
+
+    await tester.tap(find.byTooltip('暂停'));
+    await tester.pump();
+
+    expect(togglePlaybackCalls, 1);
+    expect(
+      find.byKey(const Key('movie-preview-controls-overlay')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('播放命令失败不会冒泡且控制层保持可见', (tester) async {
+    await tester.pumpWidget(
+      _buildControls(
+        onTogglePlayback: () async {
+          throw StateError('playback failed');
+        },
+      ),
+    );
+
+    await tester.tap(find.byTooltip('暂停'));
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(
+      find.byKey(const Key('movie-preview-controls-overlay')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('未知时长显示占位并禁用进度条', (tester) async {
     await tester.pumpWidget(
       _buildControls(playbackState: _state(duration: Duration.zero)),
@@ -248,6 +350,13 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+}
+
+Offset _backgroundPoint(WidgetTester tester) {
+  return tester.getTopLeft(
+        find.byKey(const Key('movie-preview-gesture-surface')),
+      ) +
+      const Offset(64, 240);
 }
 
 MoviePreviewPlaybackState _state({
