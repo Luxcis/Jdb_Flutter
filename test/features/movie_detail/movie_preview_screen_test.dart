@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -211,6 +212,57 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('完成状态从零开始重新播放', (tester) async {
+    final playback = _FakePlayback(
+      initialState: const MoviePreviewPlaybackState(
+        isInitialized: true,
+        isCompleted: true,
+      ),
+    );
+    await _pumpPreviewPage(tester, playback);
+
+    await tester.tap(find.byKey(const Key('movie-preview-gesture-surface')));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(find.byKey(const Key('movie-preview-gesture-surface')));
+    await tester.pump();
+
+    expect(playback.commands, ['initialize', 'play', 'seek:0', 'play']);
+    await tester.pump(kDoubleTapTimeout);
+  });
+
+  testWidgets('暂停状态双击只恢复播放', (tester) async {
+    final playback = _FakePlayback(
+      initialState: const MoviePreviewPlaybackState(isInitialized: true),
+    );
+    await _pumpPreviewPage(tester, playback);
+
+    await tester.tap(find.byKey(const Key('movie-preview-gesture-surface')));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(find.byKey(const Key('movie-preview-gesture-surface')));
+    await tester.pump();
+
+    expect(playback.commands, ['initialize', 'play', 'play']);
+    await tester.pump(kDoubleTapTimeout);
+  });
+
+  testWidgets('播放状态双击只暂停', (tester) async {
+    final playback = _FakePlayback(
+      initialState: const MoviePreviewPlaybackState(
+        isInitialized: true,
+        isPlaying: true,
+      ),
+    );
+    await _pumpPreviewPage(tester, playback);
+
+    await tester.tap(find.byKey(const Key('movie-preview-gesture-surface')));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(find.byKey(const Key('movie-preview-gesture-surface')));
+    await tester.pump();
+
+    expect(playback.commands, ['initialize', 'play', 'pause']);
+    await tester.pump(kDoubleTapTimeout);
+  });
+
   test('映射 VideoPlayerValue 的完成和错误状态', () {
     final state = moviePreviewPlaybackStateFromVideoPlayerValue(
       const VideoPlayerValue(
@@ -247,12 +299,38 @@ void main() {
   });
 }
 
+Future<void> _pumpPreviewPage(
+  WidgetTester tester,
+  _FakePlayback playback,
+) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      home: MoviePreviewPage(
+        args: const MoviePreviewArgs(
+          movieId: 'm1',
+          title: '测试影片',
+          videoUrl: 'https://media.example.com/preview.m3u8',
+        ),
+        playbackFactory: (_) => playback,
+        orientationSetter: (_) async {},
+      ),
+    ),
+  );
+  await tester.pump();
+}
+
 class _FakePlayback implements MoviePreviewPlayback {
-  _FakePlayback({this.initializeError, this.disposeCompleter});
+  _FakePlayback({
+    this.initializeError,
+    this.disposeCompleter,
+    this.initialState = const MoviePreviewPlaybackState(),
+  });
 
   final Object? initializeError;
   final Completer<void>? disposeCompleter;
-  final _state = ValueNotifier(const MoviePreviewPlaybackState());
+  final MoviePreviewPlaybackState initialState;
+  late final _state = ValueNotifier(initialState);
+  final commands = <String>[];
   final speedCalls = <double>[];
   int initializeCalls = 0;
   int playCalls = 0;
@@ -268,24 +346,33 @@ class _FakePlayback implements MoviePreviewPlayback {
   @override
   Future<void> initialize() async {
     initializeCalls++;
+    commands.add('initialize');
     if (initializeError != null) {
       throw initializeError!;
     }
-    _state.value = const MoviePreviewPlaybackState(isInitialized: true);
+    _state.value = MoviePreviewPlaybackState(
+      isInitialized: true,
+      isPlaying: initialState.isPlaying,
+      isCompleted: initialState.isCompleted,
+    );
   }
 
   @override
   Future<void> play() async {
     playCalls++;
+    commands.add('play');
   }
 
   @override
   Future<void> pause() async {
     pauseCalls++;
+    commands.add('pause');
   }
 
   @override
-  Future<void> seekTo(Duration position) async {}
+  Future<void> seekTo(Duration position) async {
+    commands.add('seek:${position.inMilliseconds}');
+  }
 
   @override
   Future<void> setPlaybackSpeed(double speed) async {

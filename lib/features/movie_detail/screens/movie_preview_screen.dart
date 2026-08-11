@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_playback.dart';
+import 'package:jade/features/movie_detail/widgets/movie_preview_controls.dart';
 
 typedef PreferredOrientationsSetter =
     Future<void> Function(List<DeviceOrientation> orientations);
@@ -84,15 +85,32 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
     return ValueListenableBuilder<MoviePreviewPlaybackState>(
       valueListenable: playback.state,
       builder: (context, state, child) {
-        if (!state.isInitialized) {
-          return const CircularProgressIndicator(color: Colors.white);
-        }
-        return AspectRatio(
-          aspectRatio: state.aspectRatio,
-          child: playback.buildView(),
+        return MoviePreviewControls(
+          title: widget.args?.title ?? '',
+          video: playback.buildView(),
+          playbackState: state,
+          onBack: () => Navigator.of(context).pop(),
+          onTogglePlayback: _togglePlayback,
+          onSeek: playback.seekTo,
+          onSetPlaybackSpeed: playback.setPlaybackSpeed,
+          onRetry: _retry,
         );
       },
     );
+  }
+
+  Future<void> _togglePlayback() async {
+    final playback = _playback;
+    if (playback == null) return;
+    final value = playback.state.value;
+    if (value.isCompleted) {
+      await playback.seekTo(Duration.zero);
+      await playback.play();
+    } else if (value.isPlaying) {
+      await playback.pause();
+    } else {
+      await playback.play();
+    }
   }
 
   Future<void> _start() async {
