@@ -453,6 +453,52 @@ void main() {
     await tester.pump(kDoubleTapTimeout);
   });
 
+  testWidgets('播放中底层媒体错误切换到可退出可重试页面', (tester) async {
+    final playback = _FakePlayback();
+    await _pumpPreviewPage(tester, playback);
+
+    playback.emit(
+      const MoviePreviewPlaybackState(
+        isInitialized: true,
+        errorDescription: 'media error',
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('预告片播放失败'), findsOneWidget);
+    expect(find.text('重试'), findsOneWidget);
+    expect(find.byTooltip('返回'), findsOneWidget);
+    expect(
+      find.byKey(const Key('movie-preview-gesture-surface')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('长按恢复 1.0× 失败会暂停并进入可重试错误页', (tester) async {
+    final playback = _FakePlayback(
+      initialState: const MoviePreviewPlaybackState(
+        isInitialized: true,
+        isPlaying: true,
+      ),
+      onSetPlaybackSpeed: (speed) async {
+        if (speed == 1.0) throw StateError('restore failed');
+      },
+    );
+    await _pumpPreviewPage(tester, playback);
+
+    final gesture = await tester.startGesture(_backgroundPoint(tester));
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+    await gesture.up();
+    await tester.pump();
+    await tester.pump();
+
+    expect(playback.speedCalls, [2.0, 1.0]);
+    expect(playback.pauseCalls, 1);
+    expect(find.text('预告片播放失败'), findsOneWidget);
+    expect(find.text('重试'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   test('映射 VideoPlayerValue 的完成和错误状态', () {
     final state = moviePreviewPlaybackStateFromVideoPlayerValue(
       const VideoPlayerValue(
@@ -583,6 +629,7 @@ class _FakePlayback implements MoviePreviewPlayback {
     this.initializeCompleter,
     this.seekCompleter,
     this.disposeCompleter,
+    this.onSetPlaybackSpeed,
     this.initialState = const MoviePreviewPlaybackState(),
   });
 
@@ -590,6 +637,7 @@ class _FakePlayback implements MoviePreviewPlayback {
   final Completer<void>? initializeCompleter;
   final Completer<void>? seekCompleter;
   final Completer<void>? disposeCompleter;
+  final Future<void> Function(double speed)? onSetPlaybackSpeed;
   final MoviePreviewPlaybackState initialState;
   late final _state = ValueNotifier(initialState);
   final commands = <String>[];
@@ -641,6 +689,11 @@ class _FakePlayback implements MoviePreviewPlayback {
   @override
   Future<void> setPlaybackSpeed(double speed) async {
     speedCalls.add(speed);
+    await onSetPlaybackSpeed?.call(speed);
+  }
+
+  void emit(MoviePreviewPlaybackState value) {
+    _state.value = value;
   }
 
   @override

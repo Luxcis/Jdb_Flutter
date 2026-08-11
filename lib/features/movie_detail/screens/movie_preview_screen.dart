@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_orientation.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_playback.dart';
-import 'package:jade/features/movie_detail/widgets/movie_preview_controls.dart';
+import 'package:jade/features/movie_detail/widgets/movie_preview_gesture_layer.dart';
 
 typedef PreferredOrientationsSetter = MoviePreviewPreferredOrientationsSetter;
 
@@ -82,29 +82,50 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
   Widget _buildBody() {
     final session = _session;
     if (!_isLoading && !_hasError && session != null) {
-      final playback = session.playback;
-      return ValueListenableBuilder<MoviePreviewPlaybackState>(
-        valueListenable: playback.state,
-        builder: (context, state, child) {
-          return MoviePreviewControls(
-            title: _title,
-            video: playback.buildView(),
-            playbackState: state,
-            onBack: () => Navigator.of(context).pop(),
-            onTogglePlayback: _togglePlayback,
-            onSeek: _seek,
-            onSetPlaybackSpeed: _setPlaybackSpeed,
-            onRetry: _retry,
-          );
-        },
-      );
+      return _buildPlaybackBody(session);
     }
+    return _buildStatusBody(hasError: _hasError);
+  }
 
+  Widget _buildPlaybackBody(_PlaybackSession session) {
+    final playback = session.playback;
+    return ValueListenableBuilder<MoviePreviewPlaybackState>(
+      valueListenable: playback.state,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          MoviePreviewGestureLayer(
+            onTogglePlayback: _togglePlayback,
+            onSetPlaybackSpeed: _setPlaybackSpeed,
+            onSpeedRecoveryFailure: _handleSpeedRecoveryFailure,
+            child: playback.buildView(),
+          ),
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: MoviePreviewHeader(
+                title: _title,
+                onBack: () => Navigator.of(context).pop(),
+              ),
+            ),
+          ),
+        ],
+      ),
+      builder: (context, state, child) {
+        if (state.errorDescription?.isNotEmpty ?? false) {
+          return _buildStatusBody(hasError: true);
+        }
+        return child!;
+      },
+    );
+  }
+
+  Widget _buildStatusBody({required bool hasError}) {
     return Stack(
       fit: StackFit.expand,
       children: [
         Center(
-          child: _hasError
+          child: hasError
               ? Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -153,18 +174,22 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
     }
   }
 
-  Future<void> _seek(Duration position) async {
-    final command = _currentCommand();
-    if (command == null) return;
-    await command.session.playback.seekTo(position);
-    _ensureCommandIsCurrent(command);
-  }
-
   Future<void> _setPlaybackSpeed(double speed) async {
     final command = _currentCommand();
     if (command == null) return;
     await command.session.playback.setPlaybackSpeed(speed);
     _ensureCommandIsCurrent(command);
+  }
+
+  Future<void> _handleSpeedRecoveryFailure() async {
+    final command = _currentCommand();
+    if (command == null) return;
+    try {
+      await command.session.playback.pause();
+    } catch (_) {}
+    if (_isCommandCurrent(command)) {
+      _showPageError();
+    }
   }
 
   _PlaybackCommand? _currentCommand() {
@@ -173,10 +198,14 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
     return _PlaybackCommand(session: session, generation: _lifecycleGeneration);
   }
 
+  bool _isCommandCurrent(_PlaybackCommand command) {
+    return mounted &&
+        command.generation == _lifecycleGeneration &&
+        identical(_session, command.session);
+  }
+
   void _ensureCommandIsCurrent(_PlaybackCommand command) {
-    if (!mounted ||
-        command.generation != _lifecycleGeneration ||
-        !identical(_session, command.session)) {
+    if (!_isCommandCurrent(command)) {
       throw const _PlaybackCommandInvalidated();
     }
   }
@@ -334,4 +363,40 @@ class _PlaybackCommand {
 
 class _PlaybackCommandInvalidated implements Exception {
   const _PlaybackCommandInvalidated();
+}
+
+class MoviePreviewHeader extends StatelessWidget {
+  const MoviePreviewHeader({
+    super.key,
+    required this.title,
+    required this.onBack,
+  });
+
+  final String title;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        IconButton(
+          onPressed: onBack,
+          tooltip: '返回',
+          color: Colors.white,
+          icon: const Icon(Icons.arrow_back),
+        ),
+        Expanded(
+          child: Semantics(
+            header: true,
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
