@@ -97,7 +97,7 @@ class _MoviePreviewGestureLayerState extends State<MoviePreviewGestureLayer> {
           _isDoubleSpeedConfirmed = false;
         });
       } catch (_) {
-        if (!mounted) return;
+        if (!mounted || generation != _speedGestureGeneration) return;
         setState(() {
           _speedGestureGeneration++;
           _isLongPressing = false;

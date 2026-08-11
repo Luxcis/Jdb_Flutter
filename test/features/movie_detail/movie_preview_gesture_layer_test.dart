@@ -163,6 +163,49 @@ void main() {
     expect(speeds, [2.0, 1.0]);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('旧代恢复失败不破坏期间开始的新一轮长按', (tester) async {
+    final allowFirstRestoreFailure = Completer<void>();
+    final speeds = <double>[];
+    var restoreCalls = 0;
+    var recoveryFailureCalls = 0;
+    await tester.pumpWidget(
+      _buildLayer(
+        onSetPlaybackSpeed: (speed) async {
+          speeds.add(speed);
+          if (speed == 1.0 && ++restoreCalls == 1) {
+            await allowFirstRestoreFailure.future;
+            throw StateError('first restore failed');
+          }
+        },
+        onSpeedRecoveryFailure: () async => recoveryFailureCalls++,
+      ),
+    );
+
+    final firstGesture = await tester.startGesture(_surfacePoint(tester));
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+    await firstGesture.up();
+    await tester.pump();
+    await tester.pump(kDoubleTapTimeout);
+
+    final secondGesture = await tester.startGesture(_surfaceEdgePoint(tester));
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+    allowFirstRestoreFailure.complete();
+    await tester.pump();
+    await tester.pump();
+
+    expect(speeds, [2.0, 1.0, 2.0]);
+    expect(find.text('2.0×'), findsOneWidget);
+    expect(recoveryFailureCalls, 0);
+
+    await secondGesture.up();
+    await tester.pump();
+    await tester.pump();
+
+    expect(speeds, [2.0, 1.0, 2.0, 1.0]);
+    expect(recoveryFailureCalls, 0);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 Widget _buildLayer({
@@ -187,4 +230,11 @@ Offset _surfacePoint(WidgetTester tester) {
   return tester.getCenter(
     find.byKey(const Key('movie-preview-gesture-surface')),
   );
+}
+
+Offset _surfaceEdgePoint(WidgetTester tester) {
+  return tester.getTopLeft(
+        find.byKey(const Key('movie-preview-gesture-surface')),
+      ) +
+      const Offset(10, 10);
 }
