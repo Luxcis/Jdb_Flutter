@@ -163,6 +163,44 @@ void main() {
     expect(movie.actors.single.avatarUrl, '');
   });
 
+  test('normalizeMovieDetailJson 解析并清理预告片地址', () {
+    final movie = MovieDetail.fromJson(
+      normalizeMovieDetailJson({
+        'movie': {
+          'id': 'm1',
+          'number': 'ABC-001',
+          'title': 'Title',
+          'cover_url': 'cover.jpg',
+          'preview_video_url':
+              '  https://media.example.com/preview.m3u8?token=a  ',
+        },
+      }),
+    );
+
+    expect(
+      movie.previewVideoUrl,
+      'https://media.example.com/preview.m3u8?token=a',
+    );
+  });
+
+  test('normalizeMovieDetailJson 将缺失或空白预告片地址归一化为 null', () {
+    for (final raw in <Object?>[null, '', '   ']) {
+      final movie = MovieDetail.fromJson(
+        normalizeMovieDetailJson({
+          'movie': {
+            'id': 'm1',
+            'number': 'ABC-001',
+            'title': 'Title',
+            'cover_url': 'cover.jpg',
+            if (raw != null) 'preview_video_url': raw,
+          },
+        }),
+      );
+
+      expect(movie.previewVideoUrl, isNull, reason: 'raw=$raw');
+    }
+  });
+
   test('normalizeMovieDetailJson 保留基础信息跳转所需的 OpenAPI 字段', () {
     final movie = MovieDetail.fromJson(
       normalizeMovieDetailJson({
@@ -309,13 +347,19 @@ void main() {
   group('normalizeArticleSummaryJson', () {
     test('author 支持字符串/对象/缺失三种形态', () {
       expect(
-        normalizeArticleSummaryJson({'id': 1, 'title': 't', 'author': '作者'})['author'],
+        normalizeArticleSummaryJson({
+          'id': 1,
+          'title': 't',
+          'author': '作者',
+        })['author'],
         '作者',
       );
       expect(
-        normalizeArticleSummaryJson(
-          {'id': 1, 'title': 't', 'author': {'name': '作者'}},
-        )['author'],
+        normalizeArticleSummaryJson({
+          'id': 1,
+          'title': 't',
+          'author': {'name': '作者'},
+        })['author'],
         '作者',
       );
       expect(

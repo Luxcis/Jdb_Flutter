@@ -142,6 +142,7 @@ Map<String, dynamic> normalizeMovieDetailJson(dynamic data) {
   ]).map(normalizeMovieSummaryJson);
   return {
     ...normalizeMovieSummaryJson(movie),
+    'preview_video_url': _nonEmptyApiString(movie['preview_video_url']),
     'type': apiInt(movie['type'], 0),
     'number_letter': _nonEmptyApiString(movie['number_letter']),
     'director_id': _nonEmptyApiString(movie['director_id']),

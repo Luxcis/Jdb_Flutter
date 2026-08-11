@@ -40,6 +40,7 @@ class MovieDetail extends MovieSummary {
     super.releaseDate,
     super.duration,
     super.score,
+    this.previewVideoUrl,
     this.type = 0,
     this.numberLetter,
     this.directorId,
@@ -64,6 +65,7 @@ class MovieDetail extends MovieSummary {
   });
 
   final int type;
+  final String? previewVideoUrl;
   final String? numberLetter;
   final String? directorId;
   final String? director;
