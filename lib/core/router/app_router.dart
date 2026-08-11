@@ -173,10 +173,7 @@ class AppRouter {
         ),
       ],
     ),
-    GoRoute(
-      path: AppRoutes.reviews,
-      builder: (c, s) => const ReviewsPage(),
-    ),
+    GoRoute(path: AppRoutes.reviews, builder: (c, s) => const ReviewsPage()),
     GoRoute(
       path: AppRoutes.magnetSearch,
       builder: (context, state) => const MagnetSearchPage(),
@@ -197,14 +194,8 @@ class AppRouter {
         ),
       ],
     ),
-    GoRoute(
-      path: AppRoutes.series,
-      builder: (c, s) => const SeriesPage(),
-    ),
-    GoRoute(
-      path: AppRoutes.makers,
-      builder: (c, s) => const MakersPage(),
-    ),
+    GoRoute(path: AppRoutes.series, builder: (c, s) => const SeriesPage()),
+    GoRoute(path: AppRoutes.makers, builder: (c, s) => const MakersPage()),
     GoRoute(
       path: AppRoutes.directors,
       builder: (c, s) => const DirectorsPage(),
