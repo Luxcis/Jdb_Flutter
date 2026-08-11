@@ -23,6 +23,7 @@ import 'package:jade/core/widgets/movie_screenshot_image.dart';
 import 'package:jade/core/widgets/review_tile.dart';
 import 'package:jade/core/widgets/star_rating.dart';
 import 'package:jade/core/widgets/tag_chip.dart';
+import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/services/movie_detail_service.dart';
 
 class MovieDetailPage extends StatefulWidget {
@@ -278,6 +279,14 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
               relatedListsLoading: _relatedListsLoading,
               onRetryRelatedLists: _retryRelatedLists,
               onSaveToList: _openSaveToListSheet,
+              onPreviewTap: () => context.push(
+                AppRoutes.moviePreviewLocation(detail.id),
+                extra: MoviePreviewArgs(
+                  movieId: detail.id,
+                  title: detail.title,
+                  videoUrl: detail.previewVideoUrl!,
+                ),
+              ),
               onActorTap: (actor) => context.push('/actor/${actor.id}'),
             ),
           ),
@@ -339,6 +348,7 @@ class _MovieDetailTabs extends StatelessWidget {
     required this.relatedListsLoading,
     required this.onRetryRelatedLists,
     required this.onSaveToList,
+    required this.onPreviewTap,
     required this.onActorTap,
   });
 
@@ -356,6 +366,7 @@ class _MovieDetailTabs extends StatelessWidget {
   final bool relatedListsLoading;
   final VoidCallback onRetryRelatedLists;
   final VoidCallback onSaveToList;
+  final VoidCallback onPreviewTap;
   final ValueChanged<ActorSummary> onActorTap;
 
   @override
@@ -386,6 +397,7 @@ class _MovieDetailTabs extends StatelessWidget {
           _BasicInfoTab(
             detail: detail,
             onSaveToList: onSaveToList,
+            onPreviewTap: onPreviewTap,
             onActorTap: onActorTap,
           ),
           _MagnetList(
@@ -416,11 +428,13 @@ class _BasicInfoTab extends StatelessWidget {
   const _BasicInfoTab({
     required this.detail,
     required this.onSaveToList,
+    required this.onPreviewTap,
     required this.onActorTap,
   });
 
   final MovieDetail detail;
   final VoidCallback onSaveToList;
+  final VoidCallback onPreviewTap;
   final ValueChanged<ActorSummary> onActorTap;
 
   @override
@@ -437,8 +451,15 @@ class _BasicInfoTab extends StatelessWidget {
           _CategorySection(tags: detail.tagItems, type: detail.type),
         if (detail.actors.isNotEmpty)
           _ActorSection(actors: detail.actors, onActorTap: onActorTap),
-        if (detail.screenshots.isNotEmpty)
-          _ScreenshotSection(urls: detail.screenshots),
+        if (detail.previewVideoUrl != null || detail.screenshots.isNotEmpty)
+          _ScreenshotSection(
+            urls: detail.screenshots,
+            previewCoverUrl: detail.previewVideoUrl == null
+                ? null
+                : detail.coverUrl,
+            previewTitle: detail.title,
+            onPreviewTap: onPreviewTap,
+          ),
         if (detail.actorMovies.isNotEmpty)
           _MovieRowSection(title: 'TA还出演过', movies: detail.actorMovies),
         if (detail.relativeMovies.isNotEmpty)
@@ -1045,41 +1066,100 @@ class _ActorSection extends StatelessWidget {
 }
 
 class _ScreenshotSection extends StatelessWidget {
-  const _ScreenshotSection({required this.urls});
+  const _ScreenshotSection({
+    required this.urls,
+    required this.previewCoverUrl,
+    required this.previewTitle,
+    required this.onPreviewTap,
+  });
 
   final List<String> urls;
+  final String? previewCoverUrl;
+  final String previewTitle;
+  final VoidCallback onPreviewTap;
 
   @override
   Widget build(BuildContext context) {
+    final hasPreview = previewCoverUrl != null;
     return _Section(
       title: '预告片 / 剧照',
       height: 164,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
-        itemCount: urls.length,
+        itemCount: urls.length + (hasPreview ? 1 : 0),
         separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (_, index) => Semantics(
-          button: true,
-          label: '查看剧照 ${index + 1}，共 ${urls.length} 张',
-          child: AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Material(
-              clipBehavior: Clip.antiAlias,
-              borderRadius: BorderRadius.circular(8),
-              child: InkWell(
-                key: Key('movie-detail-screenshot-$index'),
-                onTap: () => showDialog<void>(
-                  context: context,
-                  useSafeArea: false,
-                  builder: (_) =>
-                      ImageGalleryViewer(urls: urls, initialIndex: index),
+        itemBuilder: (_, index) {
+          if (index == 0 && hasPreview) {
+            return Semantics(
+              button: true,
+              label: '播放《$previewTitle》预告片',
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Material(
+                  clipBehavior: Clip.antiAlias,
+                  borderRadius: BorderRadius.circular(8),
+                  child: InkWell(
+                    key: const Key('movie-detail-preview'),
+                    onTap: onPreviewTap,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        MovieCoverImage(
+                          previewCoverUrl!,
+                          variant: MovieImageVariant.cover,
+                          fit: BoxFit.cover,
+                        ),
+                        const Center(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: Color(0x99000000),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Padding(
+                              padding: EdgeInsets.all(10),
+                              child: Icon(
+                                Icons.play_arrow_rounded,
+                                key: Key('movie-detail-preview-play-icon'),
+                                color: Colors.white,
+                                size: 32,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                child: MovieScreenshotImage(urls[index]),
+              ),
+            );
+          }
+
+          final screenshotIndex = index - (hasPreview ? 1 : 0);
+          return Semantics(
+            button: true,
+            label: '查看剧照 ${screenshotIndex + 1}，共 ${urls.length} 张',
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Material(
+                clipBehavior: Clip.antiAlias,
+                borderRadius: BorderRadius.circular(8),
+                child: InkWell(
+                  key: Key('movie-detail-screenshot-$screenshotIndex'),
+                  onTap: () => showDialog<void>(
+                    context: context,
+                    useSafeArea: false,
+                    builder: (_) => ImageGalleryViewer(
+                      urls: urls,
+                      initialIndex: screenshotIndex,
+                    ),
+                  ),
+                  child: MovieScreenshotImage(urls[screenshotIndex]),
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

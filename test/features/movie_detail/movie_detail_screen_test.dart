@@ -16,6 +16,7 @@ import 'package:jade/core/widgets/star_rating.dart';
 import 'package:jade/core/widgets/tag_chip.dart';
 import 'package:jade/features/common/screens/common_list_page.dart';
 import 'package:jade/features/common/services/tag_movies_service.dart';
+import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/screens/movie_detail_screen.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
@@ -72,7 +73,25 @@ Future<void> _pumpUntilText(WidgetTester tester, String text) async {
   }
 }
 
-void _enqueueCompleteMovieDetail(FakeAdapter adapter) {
+Future<void> _scrollUntilFound(
+  WidgetTester tester, {
+  required Finder target,
+  required Finder scrollable,
+}) async {
+  for (var i = 0; i < 10 && target.evaluate().isEmpty; i++) {
+    await tester.drag(scrollable, const Offset(0, -300));
+    await tester.pump();
+  }
+}
+
+void _enqueueCompleteMovieDetail(
+  FakeAdapter adapter, {
+  String? previewVideoUrl,
+  List<Object?> previewImages = const [
+    {'url': 'screenshots/test.jpg'},
+    {'url': 'screenshots/test-2.jpg'},
+  ],
+}) {
   adapter.enqueue('/api/v4/movies/m1', {
     'success': 1,
     'data': {
@@ -83,6 +102,7 @@ void _enqueueCompleteMovieDetail(FakeAdapter adapter) {
         'number_letter': 'SSIS',
         'title': '测试影片',
         'cover_url': 'covers/test.jpg',
+        'preview_video_url': ?previewVideoUrl,
         'release_date': '2026-07-22',
         'duration': 120,
         'director_id': 'director-1',
@@ -99,10 +119,7 @@ void _enqueueCompleteMovieDetail(FakeAdapter adapter) {
         'actors': [
           {'id': 'a1', 'name': '测试演员', 'avatar_url': 'actors/test.jpg'},
         ],
-        'preview_images': [
-          {'url': 'screenshots/test.jpg'},
-          {'url': 'screenshots/test-2.jpg'},
-        ],
+        'preview_images': previewImages,
         'actor_movies': [
           {
             'id': 'actor-movie',
@@ -231,10 +248,17 @@ void _enqueueMinimalDetail(FakeAdapter adapter) {
   });
 }
 
-GoRouter _buildMovieDetailRouter() {
+GoRouter _buildMovieDetailRouter({ValueChanged<Object?>? onPreviewExtra}) {
   return GoRouter(
     initialLocation: '/movie/m1',
     routes: [
+      GoRoute(
+        path: '/movie/:id/preview',
+        builder: (_, state) {
+          onPreviewExtra?.call(state.extra);
+          return const Scaffold(body: Center(child: Text('预告播放页')));
+        },
+      ),
       GoRoute(
         path: AppRoutes.movieDetail,
         builder: (_, state) => MovieDetailPage(id: state.pathParameters['id']!),
@@ -304,6 +328,156 @@ void main() {
       scrollable: innerScrollable,
     );
     expect(find.text('剧情'), findsOneWidget);
+  });
+
+  testWidgets('有预告片时封面入口位于第一项并具有播放语义', (tester) async {
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(
+      adapter,
+      previewVideoUrl: 'https://media.example.com/preview.m3u8',
+    );
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final innerScrollable = find
+        .descendant(
+          of: find.byType(TabBarView),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Scrollable &&
+                widget.axisDirection == AxisDirection.down,
+          ),
+        )
+        .first;
+    await tester.scrollUntilVisible(
+      find.text('预告片 / 剧照'),
+      300,
+      scrollable: innerScrollable,
+    );
+
+    final preview = find.byKey(const Key('movie-detail-preview'));
+    final playIcon = find.byKey(const Key('movie-detail-preview-play-icon'));
+    final firstScreenshot = find.byKey(const Key('movie-detail-screenshot-0'));
+    expect(preview, findsOneWidget);
+    expect(playIcon, findsOneWidget);
+    expect(firstScreenshot, findsOneWidget);
+    expect(
+      tester.getTopLeft(preview).dx,
+      lessThan(tester.getTopLeft(firstScreenshot).dx),
+    );
+    expect(find.bySemanticsLabel('播放《测试影片》预告片'), findsOneWidget);
+  });
+
+  testWidgets('只有预告片时仍显示预告片剧照区域', (tester) async {
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(
+      adapter,
+      previewVideoUrl: 'https://media.example.com/preview.m3u8',
+      previewImages: const [],
+    );
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final innerScrollable = find
+        .descendant(
+          of: find.byType(TabBarView),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Scrollable &&
+                widget.axisDirection == AxisDirection.down,
+          ),
+        )
+        .first;
+    final preview = find.byKey(const Key('movie-detail-preview'));
+    await _scrollUntilFound(
+      tester,
+      target: preview,
+      scrollable: innerScrollable,
+    );
+
+    expect(find.text('预告片 / 剧照'), findsOneWidget);
+    expect(preview, findsOneWidget);
+    expect(find.byType(MovieScreenshotImage), findsNothing);
+  });
+
+  testWidgets('没有预告片时保持普通剧照列表', (tester) async {
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(adapter);
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final innerScrollable = find
+        .descendant(
+          of: find.byType(TabBarView),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Scrollable &&
+                widget.axisDirection == AxisDirection.down,
+          ),
+        )
+        .first;
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('movie-detail-screenshot-1')),
+      300,
+      scrollable: innerScrollable,
+    );
+
+    expect(find.byKey(const Key('movie-detail-preview')), findsNothing);
+    expect(find.byKey(const Key('movie-detail-screenshot-0')), findsOneWidget);
+    expect(find.byKey(const Key('movie-detail-screenshot-1')), findsOneWidget);
+  });
+
+  testWidgets('点击预告入口传递播放参数', (tester) async {
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(
+      adapter,
+      previewVideoUrl: 'https://media.example.com/preview.m3u8',
+    );
+    Object? capturedArgs;
+    final router = _buildMovieDetailRouter(
+      onPreviewExtra: (extra) => capturedArgs = extra,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final innerScrollable = find
+        .descendant(
+          of: find.byType(TabBarView),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Scrollable &&
+                widget.axisDirection == AxisDirection.down,
+          ),
+        )
+        .first;
+    final preview = find.byKey(const Key('movie-detail-preview'));
+    await _scrollUntilFound(
+      tester,
+      target: preview,
+      scrollable: innerScrollable,
+    );
+    expect(preview, findsOneWidget);
+    await Scrollable.ensureVisible(tester.element(preview), alignment: 0.5);
+    await tester.pump();
+    await tester.tap(preview);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(router.state.uri.path, '/movie/m1/preview');
+    expect(capturedArgs, isA<MoviePreviewArgs>());
+    final args = capturedArgs! as MoviePreviewArgs;
+    expect(args.movieId, 'm1');
+    expect(args.title, '测试影片');
+    expect(args.videoUrl, 'https://media.example.com/preview.m3u8');
   });
 
   for (final target in [
@@ -1132,7 +1306,10 @@ void main() {
   testWidgets('从第二张剧照打开 PhotoView 图库并可翻页关闭', (tester) async {
     _mockPathProvider(tester);
     final adapter = await _setupApiClient();
-    _enqueueCompleteMovieDetail(adapter);
+    _enqueueCompleteMovieDetail(
+      adapter,
+      previewVideoUrl: 'https://media.example.com/preview.m3u8',
+    );
 
     await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));

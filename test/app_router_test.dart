@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:jade/core/network/api_client.dart';
@@ -147,5 +148,24 @@ void main() {
     expect(page.type, 0);
     expect(page.category, '');
     expect(page.id, '');
+  });
+
+  testWidgets('预告片路由缺少参数时显示安全错误页', (tester) async {
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (_) async => null,
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    await tester.pumpWidget(_buildApp(initialLocation: '/movie/m1/preview'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+
+    expect(find.text('预告片播放失败'), findsOneWidget);
   });
 }

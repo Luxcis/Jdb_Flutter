@@ -131,6 +131,14 @@ class AppRouter {
       ],
     ),
     GoRoute(
+      path: AppRoutes.moviePreview,
+      builder: (context, state) => MoviePreviewPage(
+        args: state.extra is MoviePreviewArgs
+            ? state.extra! as MoviePreviewArgs
+            : null,
+      ),
+    ),
+    GoRoute(
       path: AppRoutes.movieDetail,
       builder: (c, s) => MovieDetailPage(id: s.pathParameters['id']!),
     ),

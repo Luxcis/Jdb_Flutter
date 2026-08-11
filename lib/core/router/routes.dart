@@ -12,6 +12,7 @@ class AppRoutes {
   static const String search = '/search';
   static const String searchResults = '/search/results';
   static const String actorDetail = '/actor/:id';
+  static const String moviePreview = '/movie/:id/preview';
   static const String movieDetail = '/movie/:id';
   static const String articles = '/articles';
   static const String articleDetail = '/articles/:id';
@@ -22,6 +23,9 @@ class AppRoutes {
   static const String makers = '/makers';
   static const String directors = '/directors';
   static const String commonList = '/common-list';
+
+  static String moviePreviewLocation(String movieId) =>
+      '/movie/${Uri.encodeComponent(movieId)}/preview';
 
   // Profile 子页面
   static const String profileWantWatch = '/profile/want-watch';
