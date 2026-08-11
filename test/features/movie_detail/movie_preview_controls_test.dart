@@ -311,6 +311,100 @@ void main() {
     );
   });
 
+  testWidgets('恢复 1 倍速失败不会冒泡且控制层保持可恢复', (tester) async {
+    final speeds = <double>[];
+    await tester.pumpWidget(
+      _buildControls(
+        onSetPlaybackSpeed: (speed) async {
+          speeds.add(speed);
+          if (speed == 1.0) {
+            throw StateError('restore speed failed');
+          }
+        },
+      ),
+    );
+
+    final gesture = await tester.startGesture(_backgroundPoint(tester));
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+    await gesture.up();
+    await tester.pump();
+
+    expect(speeds, [2.0, 1.0]);
+    expect(tester.takeException(), isNull);
+    expect(
+      find.byKey(const Key('movie-preview-controls-overlay')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('seek 失败保留拖动显示且不会重启自动隐藏', (tester) async {
+    await tester.pumpWidget(
+      _buildControls(
+        onSeek: (_) async {
+          throw StateError('seek failed');
+        },
+      ),
+    );
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(Slider)),
+    );
+    await gesture.moveBy(const Offset(24, 0));
+    await tester.pump();
+    final dragValue = tester.widget<Slider>(find.byType(Slider)).value;
+    expect(dragValue, isNot(10000));
+
+    await gesture.up();
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(tester.widget<Slider>(find.byType(Slider)).value, dragValue);
+    await tester.pump(const Duration(seconds: 4));
+    expect(
+      find.byKey(const Key('movie-preview-controls-overlay')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('重试失败不会冒泡且错误入口保持可见', (tester) async {
+    await tester.pumpWidget(
+      _buildControls(
+        playbackState: _state(errorDescription: 'media error'),
+        onRetry: () async {
+          throw StateError('retry failed');
+        },
+      ),
+    );
+
+    await tester.tap(find.text('重试'));
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('预告片播放失败'), findsOneWidget);
+    expect(find.text('重试'), findsOneWidget);
+  });
+
+  testWidgets('长按中销毁且恢复倍速失败不会产生异步异常', (tester) async {
+    final speeds = <double>[];
+    await tester.pumpWidget(
+      _buildControls(
+        onSetPlaybackSpeed: (speed) async {
+          speeds.add(speed);
+          if (speed == 1.0) {
+            throw StateError('dispose restore failed');
+          }
+        },
+      ),
+    );
+
+    await tester.startGesture(_backgroundPoint(tester));
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+
+    expect(speeds, [2.0, 1.0]);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('未知时长显示占位并禁用进度条', (tester) async {
     await tester.pumpWidget(
       _buildControls(playbackState: _state(duration: Duration.zero)),
