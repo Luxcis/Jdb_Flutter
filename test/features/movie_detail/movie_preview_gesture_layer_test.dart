@@ -101,6 +101,43 @@ void main() {
     expect(find.text('2.0×'), findsNothing);
   });
 
+  testWidgets('旧恢复阻塞期间第二次长按已松手不会再应用 2.0×', (tester) async {
+    final allowFirstRestore = Completer<void>();
+    final speeds = <double>[];
+    var restoreCalls = 0;
+    await tester.pumpWidget(
+      _buildLayer(
+        onSetPlaybackSpeed: (speed) async {
+          speeds.add(speed);
+          if (speed == 1.0 && ++restoreCalls == 1) {
+            await allowFirstRestore.future;
+          }
+        },
+      ),
+    );
+
+    final firstGesture = await tester.startGesture(_surfacePoint(tester));
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+    await firstGesture.up();
+    await tester.pump();
+    await tester.pump(kDoubleTapTimeout);
+
+    final secondGesture = await tester.startGesture(_surfaceEdgePoint(tester));
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+    await secondGesture.up();
+    await tester.pump();
+
+    expect(speeds, [2.0, 1.0]);
+
+    allowFirstRestore.complete();
+    await tester.pump();
+    await tester.pump();
+
+    expect(speeds, [2.0, 1.0, 1.0]);
+    expect(find.text('2.0×'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('设置 2.0× 失败不显示提示且不进入恢复错误', (tester) async {
     var recoveryFailureCalls = 0;
     await tester.pumpWidget(
@@ -146,12 +183,14 @@ void main() {
 
   testWidgets('长按中销毁且恢复失败不产生异步异常', (tester) async {
     final speeds = <double>[];
+    var recoveryFailureCalls = 0;
     await tester.pumpWidget(
       _buildLayer(
         onSetPlaybackSpeed: (speed) async {
           speeds.add(speed);
           if (speed == 1.0) throw StateError('dispose restore failed');
         },
+        onSpeedRecoveryFailure: () async => recoveryFailureCalls++,
       ),
     );
 
@@ -161,6 +200,7 @@ void main() {
     await tester.pump();
 
     expect(speeds, [2.0, 1.0]);
+    expect(recoveryFailureCalls, 0);
     expect(tester.takeException(), isNull);
   });
 

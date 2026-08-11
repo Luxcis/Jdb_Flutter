@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_orientation.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_playback.dart';
+import 'package:jade/features/movie_detail/services/movie_preview_wakelock.dart';
 import 'package:jade/features/movie_detail/widgets/movie_preview_gesture_layer.dart';
 
 typedef PreferredOrientationsSetter = MoviePreviewPreferredOrientationsSetter;
@@ -15,6 +16,7 @@ class MoviePreviewPage extends StatefulWidget {
     this.playbackFactory,
     this.orientationSetter,
     this.orientationCoordinator,
+    this.wakelockCoordinator,
   }) : assert(
          orientationSetter == null || orientationCoordinator == null,
          'Only one orientation dependency can be provided.',
@@ -24,6 +26,7 @@ class MoviePreviewPage extends StatefulWidget {
   final MoviePreviewPlaybackFactory? playbackFactory;
   final PreferredOrientationsSetter? orientationSetter;
   final MoviePreviewOrientationCoordinator? orientationCoordinator;
+  final MoviePreviewWakelockCoordinator? wakelockCoordinator;
 
   @override
   State<MoviePreviewPage> createState() => _MoviePreviewPageState();
@@ -33,9 +36,11 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
   static const _cleanupStepTimeout = Duration(milliseconds: 1500);
 
   late final MoviePreviewOrientationCoordinator _orientationCoordinator;
+  late final MoviePreviewWakelockCoordinator _wakelockCoordinator;
 
   _PlaybackSession? _session;
   MoviePreviewOrientationLease? _orientationLease;
+  MoviePreviewWakelockLease? _wakelockLease;
   var _isLoading = true;
   var _hasError = false;
   var _isRetrying = false;
@@ -57,6 +62,8 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
             : MoviePreviewOrientationCoordinator(
                 setPreferredOrientations: widget.orientationSetter!,
               ));
+    _wakelockCoordinator =
+        widget.wakelockCoordinator ?? MoviePreviewWakelockCoordinator.system;
     final generation = ++_lifecycleGeneration;
     unawaited(_acquireOrientationAndInitialize(generation));
   }
@@ -68,8 +75,11 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
     _session = null;
     final orientationLease = _orientationLease;
     _orientationLease = null;
+    final wakelockLease = _wakelockLease;
+    _wakelockLease = null;
     _orientationReady = false;
     unawaited(_releaseOrientation(orientationLease));
+    unawaited(_releaseWakelock(wakelockLease));
     unawaited(_cleanupSession(session));
     super.dispose();
   }
@@ -89,15 +99,19 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
 
   Widget _buildPlaybackBody(_PlaybackSession session) {
     final playback = session.playback;
+    final command = _PlaybackCommand(
+      session: session,
+      generation: _lifecycleGeneration,
+    );
     return ValueListenableBuilder<MoviePreviewPlaybackState>(
       valueListenable: playback.state,
       child: Stack(
         fit: StackFit.expand,
         children: [
           MoviePreviewGestureLayer(
-            onTogglePlayback: _togglePlayback,
-            onSetPlaybackSpeed: _setPlaybackSpeed,
-            onSpeedRecoveryFailure: _handleSpeedRecoveryFailure,
+            onTogglePlayback: () => _togglePlayback(command),
+            onSetPlaybackSpeed: (speed) => _setPlaybackSpeed(command, speed),
+            onSpeedRecoveryFailure: () => _handleSpeedRecoveryFailure(command),
             child: playback.buildView(),
           ),
           SafeArea(
@@ -155,9 +169,8 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
     );
   }
 
-  Future<void> _togglePlayback() async {
-    final command = _currentCommand();
-    if (command == null) return;
+  Future<void> _togglePlayback(_PlaybackCommand command) async {
+    _ensureCommandIsCurrent(command);
     final playback = command.session.playback;
     final value = playback.state.value;
     if (value.isCompleted) {
@@ -174,28 +187,19 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
     }
   }
 
-  Future<void> _setPlaybackSpeed(double speed) async {
-    final command = _currentCommand();
-    if (command == null) return;
+  Future<void> _setPlaybackSpeed(_PlaybackCommand command, double speed) async {
+    _ensureCommandIsCurrent(command);
     await command.session.playback.setPlaybackSpeed(speed);
     _ensureCommandIsCurrent(command);
   }
 
-  Future<void> _handleSpeedRecoveryFailure() async {
-    final command = _currentCommand();
-    if (command == null) return;
+  Future<void> _handleSpeedRecoveryFailure(_PlaybackCommand command) async {
+    _ensureCommandIsCurrent(command);
+    _showPageError();
     try {
-      await command.session.playback.pause();
+      await command.session.playback.pause().timeout(_cleanupStepTimeout);
     } catch (_) {}
-    if (_isCommandCurrent(command)) {
-      _showPageError();
-    }
-  }
-
-  _PlaybackCommand? _currentCommand() {
-    final session = _session;
-    if (session == null || !mounted) return null;
-    return _PlaybackCommand(session: session, generation: _lifecycleGeneration);
+    _ensureCommandIsCurrent(command);
   }
 
   bool _isCommandCurrent(_PlaybackCommand command) {
@@ -258,6 +262,7 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
         _detachAndCleanup(session);
         return;
       }
+      _acquireWakelock();
       setState(() {
         _isLoading = false;
         _hasError = false;
@@ -326,6 +331,24 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
     if (lease == null) return;
     try {
       await lease.release();
+    } catch (_) {}
+  }
+
+  void _acquireWakelock() {
+    if (_wakelockLease != null) return;
+    final lease = _wakelockCoordinator.acquire();
+    _wakelockLease = lease;
+    unawaited(_ignoreWakelockOperation(lease.enabled));
+  }
+
+  Future<void> _releaseWakelock(MoviePreviewWakelockLease? lease) async {
+    if (lease == null) return;
+    await _ignoreWakelockOperation(lease.release());
+  }
+
+  Future<void> _ignoreWakelockOperation(Future<void> operation) async {
+    try {
+      await operation;
     } catch (_) {}
   }
 

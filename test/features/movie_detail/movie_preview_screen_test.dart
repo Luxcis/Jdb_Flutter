@@ -474,6 +474,63 @@ void main() {
     );
   });
 
+  testWidgets('旧手势队列在媒体错误重试后不会改变新 session 倍速', (tester) async {
+    final allowOldRestore = Completer<void>();
+    var oldRestoreCalls = 0;
+    final oldPlayback = _FakePlayback(
+      onSetPlaybackSpeed: (speed) async {
+        if (speed == 1.0 && ++oldRestoreCalls == 1) {
+          await allowOldRestore.future;
+        }
+      },
+    );
+    final newPlayback = _FakePlayback();
+    final playbacks = [oldPlayback, newPlayback];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MoviePreviewPage(
+          args: _validArgs,
+          playbackFactory: (_) => playbacks.removeAt(0),
+          orientationSetter: (_) async {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final firstGesture = await tester.startGesture(_backgroundPoint(tester));
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+    await firstGesture.up();
+    await tester.pump();
+    await tester.pump(kDoubleTapTimeout);
+
+    final secondGesture = await tester.startGesture(_backgroundPoint(tester));
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+    await secondGesture.up();
+    await tester.pump();
+
+    oldPlayback.emit(
+      const MoviePreviewPlaybackState(
+        isInitialized: true,
+        errorDescription: 'media error',
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text('重试'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(newPlayback.playCalls, 1);
+    expect(newPlayback.speedCalls, isEmpty);
+
+    allowOldRestore.complete();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+
+    expect(newPlayback.speedCalls, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('长按恢复 1.0× 失败会暂停并进入可重试错误页', (tester) async {
     final playback = _FakePlayback(
       initialState: const MoviePreviewPlaybackState(
@@ -496,6 +553,35 @@ void main() {
     expect(playback.pauseCalls, 1);
     expect(find.text('预告片播放失败'), findsOneWidget);
     expect(find.text('重试'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('长按恢复失败时 pause 永不完成仍及时显示错误重试页', (tester) async {
+    final playback = _FakePlayback(
+      initialState: const MoviePreviewPlaybackState(
+        isInitialized: true,
+        isPlaying: true,
+      ),
+      pauseCompleter: Completer<void>(),
+      onSetPlaybackSpeed: (speed) async {
+        if (speed == 1.0) throw StateError('restore failed');
+      },
+    );
+    await _pumpPreviewPage(tester, playback);
+
+    final gesture = await tester.startGesture(_backgroundPoint(tester));
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+    await gesture.up();
+    await tester.pump();
+    await tester.pump();
+
+    expect(playback.pauseCalls, 1);
+    expect(find.text('预告片播放失败'), findsOneWidget);
+    expect(find.text('重试'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump();
     expect(tester.takeException(), isNull);
   });
 
@@ -628,6 +714,7 @@ class _FakePlayback implements MoviePreviewPlayback {
     this.initializeError,
     this.initializeCompleter,
     this.seekCompleter,
+    this.pauseCompleter,
     this.disposeCompleter,
     this.onSetPlaybackSpeed,
     this.initialState = const MoviePreviewPlaybackState(),
@@ -636,6 +723,7 @@ class _FakePlayback implements MoviePreviewPlayback {
   final Object? initializeError;
   final Completer<void>? initializeCompleter;
   final Completer<void>? seekCompleter;
+  final Completer<void>? pauseCompleter;
   final Completer<void>? disposeCompleter;
   final Future<void> Function(double speed)? onSetPlaybackSpeed;
   final MoviePreviewPlaybackState initialState;
@@ -678,6 +766,7 @@ class _FakePlayback implements MoviePreviewPlayback {
   Future<void> pause() async {
     pauseCalls++;
     commands.add('pause');
+    await pauseCompleter?.future;
   }
 
   @override

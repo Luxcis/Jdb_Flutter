@@ -2,6 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+/// Owns only double-tap playback and temporary hold-to-2× gestures.
+///
+/// Single taps remain owned by [child]. If restoring normal speed fails after
+/// this widget is disposed, [onSpeedRecoveryFailure] is not invoked.
 class MoviePreviewGestureLayer extends StatefulWidget {
   const MoviePreviewGestureLayer({
     super.key,
@@ -62,6 +66,11 @@ class _MoviePreviewGestureLayerState extends State<MoviePreviewGestureLayer> {
       _isDoubleSpeedConfirmed = false;
     });
     _enqueueSpeedTransition(() async {
+      if (!mounted ||
+          generation != _speedGestureGeneration ||
+          !_isLongPressing) {
+        return;
+      }
       try {
         await widget.onSetPlaybackSpeed(2.0);
       } catch (_) {
@@ -123,9 +132,11 @@ class _MoviePreviewGestureLayerState extends State<MoviePreviewGestureLayer> {
 
   @override
   void dispose() {
+    final generation = _speedGestureGeneration;
+    _speedGestureGeneration++;
     if (_isLongPressing || _isDoubleSpeedConfirmed) {
       _isLongPressing = false;
-      _queueDefaultSpeedRestore(_speedGestureGeneration);
+      _queueDefaultSpeedRestore(generation);
     }
     super.dispose();
   }
