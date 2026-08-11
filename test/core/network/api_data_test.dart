@@ -192,7 +192,7 @@ void main() {
             'number': 'ABC-001',
             'title': 'Title',
             'cover_url': 'cover.jpg',
-            if (raw != null) 'preview_video_url': raw,
+            'preview_video_url': ?raw,
           },
         }),
       );
