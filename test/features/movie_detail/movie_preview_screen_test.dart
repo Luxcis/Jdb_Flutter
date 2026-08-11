@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/screens/movie_preview_screen.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_playback.dart';
+import 'package:jade/features/movie_detail/widgets/movie_preview_header.dart';
 import 'package:video_player/video_player.dart';
 
 void main() {
@@ -74,6 +75,16 @@ void main() {
     expect(playback.disposeCalls, 1);
     expect(orientationCalls.last, isEmpty);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('正常播放只保留 playback controls 内的一份顶部栏', (tester) async {
+    final playback = _FakePlayback();
+
+    await _pumpPreviewPage(tester, playback);
+    await tester.pump();
+
+    expect(find.byType(MoviePreviewHeader), findsOneWidget);
+    expect(find.byTooltip('返回'), findsOneWidget);
   });
 
   testWidgets('非法 URL 显示失败提示且不创建播放驱动', (tester) async {
@@ -739,7 +750,30 @@ class _FakePlayback implements MoviePreviewPlayback {
   ValueListenable<MoviePreviewPlaybackState> get state => _state;
 
   @override
-  Widget buildView() => const SizedBox();
+  Widget buildView() {
+    return Builder(
+      builder: (context) {
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            const ColoredBox(
+              key: Key('fake-preview-video'),
+              color: Colors.black,
+            ),
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: MoviePreviewHeader(
+                  title: '测试影片',
+                  onBack: () => Navigator.of(context).pop(),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Future<void> initialize() async {

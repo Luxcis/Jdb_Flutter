@@ -5,6 +5,7 @@ import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_orientation.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_playback.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_wakelock.dart';
+import 'package:jade/features/movie_detail/widgets/movie_preview_chewie_controls.dart';
 import 'package:jade/features/movie_detail/widgets/movie_preview_gesture_layer.dart';
 import 'package:jade/features/movie_detail/widgets/movie_preview_header.dart';
 
@@ -48,10 +49,20 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
   var _orientationReady = false;
   var _lifecycleGeneration = 0;
 
-  MoviePreviewPlaybackFactory get _playbackFactory =>
-      widget.playbackFactory ?? ChewieMoviePreviewPlayback.new;
-
   String get _title => widget.args?.title ?? '预告片';
+
+  void _pop() => Navigator.of(context).pop();
+
+  MoviePreviewPlayback _createPlayback(Uri uri) {
+    final injectedFactory = widget.playbackFactory;
+    if (injectedFactory != null) {
+      return injectedFactory(uri);
+    }
+    return ChewieMoviePreviewPlayback(
+      uri,
+      customControls: MoviePreviewChewieControls(title: _title, onBack: _pop),
+    );
+  }
 
   @override
   void initState() {
@@ -106,25 +117,11 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
     );
     return ValueListenableBuilder<MoviePreviewPlaybackState>(
       valueListenable: playback.state,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          MoviePreviewGestureLayer(
-            onTogglePlayback: () => _togglePlayback(command),
-            onSetPlaybackSpeed: (speed) => _setPlaybackSpeed(command, speed),
-            onSpeedRecoveryFailure: () => _handleSpeedRecoveryFailure(command),
-            child: playback.buildView(),
-          ),
-          SafeArea(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: MoviePreviewHeader(
-                title: _title,
-                onBack: () => Navigator.of(context).pop(),
-              ),
-            ),
-          ),
-        ],
+      child: MoviePreviewGestureLayer(
+        onTogglePlayback: () => _togglePlayback(command),
+        onSetPlaybackSpeed: (speed) => _setPlaybackSpeed(command, speed),
+        onSpeedRecoveryFailure: () => _handleSpeedRecoveryFailure(command),
+        child: playback.buildView(),
       ),
       builder: (context, state, child) {
         if (state.errorDescription?.isNotEmpty ?? false) {
@@ -160,10 +157,7 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
         SafeArea(
           child: Align(
             alignment: Alignment.topCenter,
-            child: MoviePreviewHeader(
-              title: _title,
-              onBack: () => Navigator.of(context).pop(),
-            ),
+            child: MoviePreviewHeader(title: _title, onBack: _pop),
           ),
         ),
       ],
@@ -251,7 +245,7 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
 
     _PlaybackSession? session;
     try {
-      session = _PlaybackSession(_playbackFactory(uri));
+      session = _PlaybackSession(_createPlayback(uri));
       _session = session;
       await session.playback.initialize();
       if (!_isCurrentSession(generation, session)) {
