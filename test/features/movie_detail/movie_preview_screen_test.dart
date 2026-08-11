@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -5,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/screens/movie_preview_screen.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_playback.dart';
+import 'package:video_player/video_player.dart';
 
 void main() {
   test('MoviePreviewArgs 只接受带 host 的 HTTP(S) 地址', () {
@@ -130,12 +133,125 @@ void main() {
     expect(successfulPlayback.playCalls, 1);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('重试清理进行中时只启动一次新播放驱动', (tester) async {
+    final disposeCompleter = Completer<void>();
+    final failedPlayback = _FakePlayback(
+      initializeError: Exception('network'),
+      disposeCompleter: disposeCompleter,
+    );
+    final successfulPlayback = _FakePlayback();
+    final playbacks = [failedPlayback, successfulPlayback];
+    var factoryCalls = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MoviePreviewPage(
+          args: const MoviePreviewArgs(
+            movieId: 'm1',
+            title: '测试影片',
+            videoUrl: 'https://media.example.com/preview.m3u8',
+          ),
+          playbackFactory: (_) {
+            factoryCalls++;
+            return playbacks.removeAt(0);
+          },
+          orientationSetter: (_) async {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final retry = tester
+        .widget<ElevatedButton>(find.byType(ElevatedButton))
+        .onPressed;
+    expect(retry, isNotNull);
+    retry!();
+    retry();
+    await tester.pump();
+
+    expect(failedPlayback.disposeCalls, 1);
+    expect(factoryCalls, 1);
+    expect(
+      tester.widget<ElevatedButton>(find.byType(ElevatedButton)).onPressed,
+      isNull,
+    );
+
+    disposeCompleter.complete();
+    await tester.pump();
+
+    expect(factoryCalls, 2);
+    expect(successfulPlayback.initializeCalls, 1);
+    expect(successfulPlayback.playCalls, 1);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+    expect(successfulPlayback.disposeCalls, 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('同步 factory 异常显示失败提示且不会冒泡', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MoviePreviewPage(
+          args: const MoviePreviewArgs(
+            movieId: 'm1',
+            title: '测试影片',
+            videoUrl: 'https://media.example.com/preview.m3u8',
+          ),
+          playbackFactory: (_) => throw StateError('factory'),
+          orientationSetter: (_) async {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('预告片播放失败'), findsOneWidget);
+    expect(find.text('重试'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  test('映射 VideoPlayerValue 的完成和错误状态', () {
+    final state = moviePreviewPlaybackStateFromVideoPlayerValue(
+      const VideoPlayerValue(
+        duration: Duration(minutes: 2),
+        position: Duration(seconds: 20),
+        size: Size(1920, 1080),
+        isInitialized: true,
+        isPlaying: true,
+        isBuffering: true,
+        isCompleted: true,
+        errorDescription: 'media error',
+      ),
+    );
+
+    expect(state.isInitialized, isTrue);
+    expect(state.isPlaying, isTrue);
+    expect(state.isBuffering, isTrue);
+    expect(state.isCompleted, isTrue);
+    expect(state.position, const Duration(seconds: 20));
+    expect(state.duration, const Duration(minutes: 2));
+    expect(state.aspectRatio, 16 / 9);
+    expect(state.errorDescription, 'media error');
+  });
+
+  test('controller 释放抛错时仍释放 playback state', () async {
+    final playback = VideoPlayerMoviePreviewPlayback.withController(
+      _ThrowingDisposeVideoPlayerController(),
+    );
+    final state = playback.state;
+
+    await expectLater(playback.dispose(), throwsA(isA<StateError>()));
+
+    expect(() => state.addListener(() {}), throwsFlutterError);
+  });
 }
 
 class _FakePlayback implements MoviePreviewPlayback {
-  _FakePlayback({this.initializeError});
+  _FakePlayback({this.initializeError, this.disposeCompleter});
 
   final Object? initializeError;
+  final Completer<void>? disposeCompleter;
   final _state = ValueNotifier(const MoviePreviewPlaybackState());
   final speedCalls = <double>[];
   int initializeCalls = 0;
@@ -179,5 +295,20 @@ class _FakePlayback implements MoviePreviewPlayback {
   @override
   Future<void> dispose() async {
     disposeCalls++;
+    await disposeCompleter?.future;
+  }
+}
+
+class _ThrowingDisposeVideoPlayerController extends VideoPlayerController {
+  _ThrowingDisposeVideoPlayerController()
+    : super.networkUrl(
+        Uri.parse('https://media.example.com/preview.m3u8'),
+        formatHint: VideoFormat.hls,
+      );
+
+  @override
+  Future<void> dispose() async {
+    await super.dispose();
+    throw StateError('controller dispose');
   }
 }

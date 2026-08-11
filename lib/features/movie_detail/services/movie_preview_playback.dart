@@ -39,12 +39,33 @@ abstract interface class MoviePreviewPlayback {
 
 typedef MoviePreviewPlaybackFactory = MoviePreviewPlayback Function(Uri uri);
 
+MoviePreviewPlaybackState moviePreviewPlaybackStateFromVideoPlayerValue(
+  VideoPlayerValue value,
+) {
+  return MoviePreviewPlaybackState(
+    isInitialized: value.isInitialized,
+    isPlaying: value.isPlaying,
+    isBuffering: value.isBuffering,
+    isCompleted: value.isCompleted,
+    position: value.position,
+    duration: value.duration,
+    aspectRatio: value.aspectRatio,
+    errorDescription: value.errorDescription,
+  );
+}
+
 class VideoPlayerMoviePreviewPlayback implements MoviePreviewPlayback {
   VideoPlayerMoviePreviewPlayback(Uri uri)
-    : _controller = VideoPlayerController.networkUrl(
-        uri,
-        formatHint: VideoFormat.hls,
-      ) {
+    : this._(
+        VideoPlayerController.networkUrl(uri, formatHint: VideoFormat.hls),
+      );
+
+  @visibleForTesting
+  VideoPlayerMoviePreviewPlayback.withController(
+    VideoPlayerController controller,
+  ) : this._(controller);
+
+  VideoPlayerMoviePreviewPlayback._(this._controller) {
     _controller.addListener(_syncState);
     _syncState();
   }
@@ -77,21 +98,16 @@ class VideoPlayerMoviePreviewPlayback implements MoviePreviewPlayback {
   @override
   Future<void> dispose() async {
     _controller.removeListener(_syncState);
-    await _controller.dispose();
-    _state.dispose();
+    try {
+      await _controller.dispose();
+    } finally {
+      _state.dispose();
+    }
   }
 
   void _syncState() {
-    final value = _controller.value;
-    _state.value = MoviePreviewPlaybackState(
-      isInitialized: value.isInitialized,
-      isPlaying: value.isPlaying,
-      isBuffering: value.isBuffering,
-      isCompleted: value.isCompleted,
-      position: value.position,
-      duration: value.duration,
-      aspectRatio: value.aspectRatio,
-      errorDescription: value.errorDescription,
+    _state.value = moviePreviewPlaybackStateFromVideoPlayerValue(
+      _controller.value,
     );
   }
 }

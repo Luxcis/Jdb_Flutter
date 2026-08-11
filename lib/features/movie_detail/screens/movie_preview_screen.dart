@@ -28,7 +28,9 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
   MoviePreviewPlayback? _playback;
   var _isLoading = true;
   var _hasError = false;
+  var _isRetrying = false;
   var _initializationGeneration = 0;
+  final _disposedPlaybacks = Set<MoviePreviewPlayback>.identity();
 
   PreferredOrientationsSetter get _orientationSetter =>
       widget.orientationSetter ?? SystemChrome.setPreferredOrientations;
@@ -66,7 +68,10 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
         children: [
           const Text('预告片播放失败', style: TextStyle(color: Colors.white)),
           const SizedBox(height: 12),
-          ElevatedButton(onPressed: _retry, child: const Text('重试')),
+          ElevatedButton(
+            onPressed: _isRetrying ? null : _retry,
+            child: const Text('重试'),
+          ),
         ],
       );
     }
@@ -118,20 +123,30 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
     }
 
     final generation = ++_initializationGeneration;
-    final playback = _playbackFactory(uri);
-    _playback = playback;
+    MoviePreviewPlayback? playback;
 
     try {
+      playback = _playbackFactory(uri);
+      _playback = playback;
       await playback.initialize();
-      if (!mounted || generation != _initializationGeneration) return;
+      if (!mounted || generation != _initializationGeneration) {
+        await _disposeStalePlayback(playback);
+        return;
+      }
       await playback.play();
-      if (!mounted || generation != _initializationGeneration) return;
+      if (!mounted || generation != _initializationGeneration) {
+        await _disposeStalePlayback(playback);
+        return;
+      }
       setState(() {
         _isLoading = false;
         _hasError = false;
       });
     } catch (_) {
-      if (!mounted || generation != _initializationGeneration) return;
+      if (!mounted || generation != _initializationGeneration) {
+        await _disposeStalePlayback(playback);
+        return;
+      }
       setState(() {
         _isLoading = false;
         _hasError = true;
@@ -140,16 +155,28 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
   }
 
   Future<void> _retry() async {
-    final playback = _playback;
-    _playback = null;
-    _initializationGeneration++;
-    await _disposePlayback(playback);
-    if (!mounted) return;
+    if (_isRetrying) return;
     setState(() {
-      _isLoading = true;
-      _hasError = false;
+      _isRetrying = true;
     });
-    await _initializePlayback();
+    try {
+      final playback = _playback;
+      _playback = null;
+      _initializationGeneration++;
+      await _disposePlayback(playback);
+      if (!mounted) return;
+      setState(() {
+        _isLoading = true;
+        _hasError = false;
+      });
+      await _initializePlayback();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRetrying = false;
+        });
+      }
+    }
   }
 
   Future<void> _disposeAndRestoreOrientation(
@@ -162,7 +189,7 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
   }
 
   Future<void> _disposePlayback(MoviePreviewPlayback? playback) async {
-    if (playback == null) return;
+    if (playback == null || !_disposedPlaybacks.add(playback)) return;
     try {
       await playback.setPlaybackSpeed(1.0);
     } catch (_) {}
@@ -172,5 +199,12 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
     try {
       await playback.dispose();
     } catch (_) {}
+  }
+
+  Future<void> _disposeStalePlayback(MoviePreviewPlayback? playback) async {
+    if (identical(_playback, playback)) {
+      _playback = null;
+    }
+    await _disposePlayback(playback);
   }
 }
