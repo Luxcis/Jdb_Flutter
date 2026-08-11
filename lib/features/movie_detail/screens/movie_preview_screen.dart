@@ -6,6 +6,7 @@ import 'package:jade/features/movie_detail/services/movie_preview_orientation.da
 import 'package:jade/features/movie_detail/services/movie_preview_playback.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_wakelock.dart';
 import 'package:jade/features/movie_detail/widgets/movie_preview_gesture_layer.dart';
+import 'package:jade/features/movie_detail/widgets/movie_preview_header.dart';
 
 typedef PreferredOrientationsSetter = MoviePreviewPreferredOrientationsSetter;
 
@@ -386,40 +387,4 @@ class _PlaybackCommand {
 
 class _PlaybackCommandInvalidated implements Exception {
   const _PlaybackCommandInvalidated();
-}
-
-class MoviePreviewHeader extends StatelessWidget {
-  const MoviePreviewHeader({
-    super.key,
-    required this.title,
-    required this.onBack,
-  });
-
-  final String title;
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        IconButton(
-          onPressed: onBack,
-          tooltip: '返回',
-          color: Colors.white,
-          icon: const Icon(Icons.arrow_back),
-        ),
-        Expanded(
-          child: Semantics(
-            header: true,
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }
