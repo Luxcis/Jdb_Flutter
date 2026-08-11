@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:video_player/video_player.dart';
@@ -72,6 +74,8 @@ class VideoPlayerMoviePreviewPlayback implements MoviePreviewPlayback {
 
   final VideoPlayerController _controller;
   final _state = ValueNotifier(const MoviePreviewPlaybackState());
+  bool _initializationFailedWithoutMediaError = false;
+  Future<void>? _disposeOperation;
 
   @override
   ValueListenable<MoviePreviewPlaybackState> get state => _state;
@@ -80,7 +84,14 @@ class VideoPlayerMoviePreviewPlayback implements MoviePreviewPlayback {
   Widget buildView() => VideoPlayer(_controller);
 
   @override
-  Future<void> initialize() => _controller.initialize();
+  Future<void> initialize() async {
+    try {
+      await _controller.initialize();
+    } catch (_) {
+      _initializationFailedWithoutMediaError = !_controller.value.hasError;
+      rethrow;
+    }
+  }
 
   @override
   Future<void> play() => _controller.play();
@@ -96,10 +107,21 @@ class VideoPlayerMoviePreviewPlayback implements MoviePreviewPlayback {
       _controller.setPlaybackSpeed(speed);
 
   @override
-  Future<void> dispose() async {
+  Future<void> dispose() => _disposeOperation ??= _dispose();
+
+  Future<void> _dispose() async {
     _controller.removeListener(_syncState);
     try {
-      await _controller.dispose();
+      if (_initializationFailedWithoutMediaError) {
+        try {
+          await _controller.dispose().timeout(const Duration(seconds: 1));
+        } on TimeoutException {
+          // video_player 2.10.1 never completes dispose when platform creation
+          // throws before its private creation completer is completed.
+        }
+      } else {
+        await _controller.dispose();
+      }
     } finally {
       _state.dispose();
     }

@@ -1,13 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
+import 'package:jade/features/movie_detail/services/movie_preview_orientation.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_playback.dart';
 import 'package:jade/features/movie_detail/widgets/movie_preview_controls.dart';
 
-typedef PreferredOrientationsSetter =
-    Future<void> Function(List<DeviceOrientation> orientations);
+typedef PreferredOrientationsSetter = MoviePreviewPreferredOrientationsSetter;
 
 class MoviePreviewPage extends StatefulWidget {
   const MoviePreviewPage({
@@ -15,145 +14,219 @@ class MoviePreviewPage extends StatefulWidget {
     required this.args,
     this.playbackFactory,
     this.orientationSetter,
-  });
+    this.orientationCoordinator,
+  }) : assert(
+         orientationSetter == null || orientationCoordinator == null,
+         'Only one orientation dependency can be provided.',
+       );
 
   final MoviePreviewArgs? args;
   final MoviePreviewPlaybackFactory? playbackFactory;
   final PreferredOrientationsSetter? orientationSetter;
+  final MoviePreviewOrientationCoordinator? orientationCoordinator;
 
   @override
   State<MoviePreviewPage> createState() => _MoviePreviewPageState();
 }
 
 class _MoviePreviewPageState extends State<MoviePreviewPage> {
-  MoviePreviewPlayback? _playback;
+  static const _cleanupStepTimeout = Duration(milliseconds: 1500);
+
+  late final MoviePreviewOrientationCoordinator _orientationCoordinator;
+
+  _PlaybackSession? _session;
+  MoviePreviewOrientationLease? _orientationLease;
   var _isLoading = true;
   var _hasError = false;
   var _isRetrying = false;
-  var _initializationGeneration = 0;
-  final _disposedPlaybacks = Set<MoviePreviewPlayback>.identity();
-
-  PreferredOrientationsSetter get _orientationSetter =>
-      widget.orientationSetter ?? SystemChrome.setPreferredOrientations;
+  var _orientationReady = false;
+  var _lifecycleGeneration = 0;
 
   MoviePreviewPlaybackFactory get _playbackFactory =>
       widget.playbackFactory ?? VideoPlayerMoviePreviewPlayback.new;
 
+  String get _title => widget.args?.title ?? '预告片';
+
   @override
   void initState() {
     super.initState();
-    unawaited(_start());
+    _orientationCoordinator =
+        widget.orientationCoordinator ??
+        (widget.orientationSetter == null
+            ? MoviePreviewOrientationCoordinator.system
+            : MoviePreviewOrientationCoordinator(
+                setPreferredOrientations: widget.orientationSetter!,
+              ));
+    final generation = ++_lifecycleGeneration;
+    unawaited(_acquireOrientationAndInitialize(generation));
   }
 
   @override
   void dispose() {
-    _initializationGeneration++;
-    final playback = _playback;
-    _playback = null;
-    unawaited(_disposeAndRestoreOrientation(playback));
+    _lifecycleGeneration++;
+    final session = _session;
+    _session = null;
+    final orientationLease = _orientationLease;
+    _orientationLease = null;
+    _orientationReady = false;
+    unawaited(_releaseOrientation(orientationLease));
+    unawaited(_cleanupSession(session));
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Center(child: _buildBody()),
-    );
+    return Scaffold(backgroundColor: Colors.black, body: _buildBody());
   }
 
   Widget _buildBody() {
-    if (_hasError) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('预告片播放失败', style: TextStyle(color: Colors.white)),
-          const SizedBox(height: 12),
-          ElevatedButton(
-            onPressed: _isRetrying ? null : _retry,
-            child: const Text('重试'),
-          ),
-        ],
+    final session = _session;
+    if (!_isLoading && !_hasError && session != null) {
+      final playback = session.playback;
+      return ValueListenableBuilder<MoviePreviewPlaybackState>(
+        valueListenable: playback.state,
+        builder: (context, state, child) {
+          return MoviePreviewControls(
+            title: _title,
+            video: playback.buildView(),
+            playbackState: state,
+            onBack: () => Navigator.of(context).pop(),
+            onTogglePlayback: _togglePlayback,
+            onSeek: _seek,
+            onSetPlaybackSpeed: _setPlaybackSpeed,
+            onRetry: _retry,
+          );
+        },
       );
     }
 
-    final playback = _playback;
-    if (_isLoading || playback == null) {
-      return const CircularProgressIndicator(color: Colors.white);
-    }
-
-    return ValueListenableBuilder<MoviePreviewPlaybackState>(
-      valueListenable: playback.state,
-      builder: (context, state, child) {
-        return MoviePreviewControls(
-          title: widget.args?.title ?? '',
-          video: playback.buildView(),
-          playbackState: state,
-          onBack: () => Navigator.of(context).pop(),
-          onTogglePlayback: _togglePlayback,
-          onSeek: playback.seekTo,
-          onSetPlaybackSpeed: playback.setPlaybackSpeed,
-          onRetry: _retry,
-        );
-      },
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Center(
+          child: _hasError
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      '预告片播放失败',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: _isRetrying ? null : _retry,
+                      child: const Text('重试'),
+                    ),
+                  ],
+                )
+              : const CircularProgressIndicator(color: Colors.white),
+        ),
+        SafeArea(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: MoviePreviewHeader(
+              title: _title,
+              onBack: () => Navigator.of(context).pop(),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Future<void> _togglePlayback() async {
-    final playback = _playback;
-    if (playback == null) return;
+    final command = _currentCommand();
+    if (command == null) return;
+    final playback = command.session.playback;
     final value = playback.state.value;
     if (value.isCompleted) {
       await playback.seekTo(Duration.zero);
+      _ensureCommandIsCurrent(command);
       await playback.play();
+      _ensureCommandIsCurrent(command);
     } else if (value.isPlaying) {
       await playback.pause();
+      _ensureCommandIsCurrent(command);
     } else {
       await playback.play();
+      _ensureCommandIsCurrent(command);
     }
   }
 
-  Future<void> _start() async {
-    await _setLandscapeOrientations();
-    if (!mounted) return;
-    await _initializePlayback();
+  Future<void> _seek(Duration position) async {
+    final command = _currentCommand();
+    if (command == null) return;
+    await command.session.playback.seekTo(position);
+    _ensureCommandIsCurrent(command);
   }
 
-  Future<void> _setLandscapeOrientations() async {
+  Future<void> _setPlaybackSpeed(double speed) async {
+    final command = _currentCommand();
+    if (command == null) return;
+    await command.session.playback.setPlaybackSpeed(speed);
+    _ensureCommandIsCurrent(command);
+  }
+
+  _PlaybackCommand? _currentCommand() {
+    final session = _session;
+    if (session == null || !mounted) return null;
+    return _PlaybackCommand(session: session, generation: _lifecycleGeneration);
+  }
+
+  void _ensureCommandIsCurrent(_PlaybackCommand command) {
+    if (!mounted ||
+        command.generation != _lifecycleGeneration ||
+        !identical(_session, command.session)) {
+      throw const _PlaybackCommandInvalidated();
+    }
+  }
+
+  Future<void> _acquireOrientationAndInitialize(int generation) async {
+    final lease = _orientationCoordinator.acquire();
+    _orientationLease = lease;
     try {
-      await _orientationSetter([
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
-    } catch (_) {}
+      await lease.locked;
+    } catch (_) {
+      if (_isCurrentGeneration(generation) &&
+          identical(_orientationLease, lease)) {
+        _orientationLease = null;
+        _orientationReady = false;
+        _showPageError();
+      }
+      unawaited(_releaseOrientation(lease));
+      return;
+    }
+
+    if (!_isCurrentGeneration(generation) ||
+        !identical(_orientationLease, lease)) {
+      unawaited(_releaseOrientation(lease));
+      return;
+    }
+    _orientationReady = true;
+    await _initializePlayback(generation);
   }
 
-  Future<void> _initializePlayback() async {
+  Future<void> _initializePlayback(int generation) async {
     final uri = widget.args?.videoUri;
     if (uri == null) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _hasError = true;
-        });
+      if (_isCurrentGeneration(generation)) {
+        _showPageError();
       }
       return;
     }
 
-    final generation = ++_initializationGeneration;
-    MoviePreviewPlayback? playback;
-
+    _PlaybackSession? session;
     try {
-      playback = _playbackFactory(uri);
-      _playback = playback;
-      await playback.initialize();
-      if (!mounted || generation != _initializationGeneration) {
-        await _disposeStalePlayback(playback);
+      session = _PlaybackSession(_playbackFactory(uri));
+      _session = session;
+      await session.playback.initialize();
+      if (!_isCurrentSession(generation, session)) {
+        _detachAndCleanup(session);
         return;
       }
-      await playback.play();
-      if (!mounted || generation != _initializationGeneration) {
-        await _disposeStalePlayback(playback);
+      await session.playback.play();
+      if (!_isCurrentSession(generation, session)) {
+        _detachAndCleanup(session);
         return;
       }
       setState(() {
@@ -161,33 +234,36 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
         _hasError = false;
       });
     } catch (_) {
-      if (!mounted || generation != _initializationGeneration) {
-        await _disposeStalePlayback(playback);
+      if (session != null && !_isCurrentSession(generation, session)) {
+        _detachAndCleanup(session);
         return;
       }
-      setState(() {
-        _isLoading = false;
-        _hasError = true;
-      });
+      if (_isCurrentGeneration(generation)) {
+        _showPageError();
+      }
     }
   }
 
   Future<void> _retry() async {
-    if (_isRetrying) return;
+    if (_isRetrying || !mounted) return;
     setState(() {
       _isRetrying = true;
     });
+    final generation = ++_lifecycleGeneration;
+    final session = _session;
+    _session = null;
     try {
-      final playback = _playback;
-      _playback = null;
-      _initializationGeneration++;
-      await _disposePlayback(playback);
-      if (!mounted) return;
+      await _cleanupSession(session);
+      if (!_isCurrentGeneration(generation)) return;
       setState(() {
         _isLoading = true;
         _hasError = false;
       });
-      await _initializePlayback();
+      if (_orientationReady) {
+        await _initializePlayback(generation);
+      } else {
+        await _acquireOrientationAndInitialize(generation);
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -197,32 +273,65 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
     }
   }
 
-  Future<void> _disposeAndRestoreOrientation(
-    MoviePreviewPlayback? playback,
-  ) async {
-    await _disposePlayback(playback);
-    try {
-      await _orientationSetter([]);
-    } catch (_) {}
+  bool _isCurrentGeneration(int generation) =>
+      mounted && generation == _lifecycleGeneration;
+
+  bool _isCurrentSession(int generation, _PlaybackSession session) =>
+      _isCurrentGeneration(generation) && identical(_session, session);
+
+  void _showPageError() {
+    setState(() {
+      _isLoading = false;
+      _hasError = true;
+    });
   }
 
-  Future<void> _disposePlayback(MoviePreviewPlayback? playback) async {
-    if (playback == null || !_disposedPlaybacks.add(playback)) return;
-    try {
-      await playback.setPlaybackSpeed(1.0);
-    } catch (_) {}
-    try {
-      await playback.pause();
-    } catch (_) {}
-    try {
-      await playback.dispose();
-    } catch (_) {}
-  }
-
-  Future<void> _disposeStalePlayback(MoviePreviewPlayback? playback) async {
-    if (identical(_playback, playback)) {
-      _playback = null;
+  void _detachAndCleanup(_PlaybackSession session) {
+    if (identical(_session, session)) {
+      _session = null;
     }
-    await _disposePlayback(playback);
+    unawaited(_cleanupSession(session));
   }
+
+  Future<void> _releaseOrientation(MoviePreviewOrientationLease? lease) async {
+    if (lease == null) return;
+    try {
+      await lease.release();
+    } catch (_) {}
+  }
+
+  Future<void> _cleanupSession(_PlaybackSession? session) {
+    if (session == null) return Future<void>.value();
+    return session.cleanupOperation ??= _runCleanup(session.playback);
+  }
+
+  Future<void> _runCleanup(MoviePreviewPlayback playback) async {
+    await _ignoreBoundedCleanup(() => playback.setPlaybackSpeed(1.0));
+    await _ignoreBoundedCleanup(playback.pause);
+    await _ignoreBoundedCleanup(playback.dispose);
+  }
+
+  Future<void> _ignoreBoundedCleanup(Future<void> Function() command) async {
+    try {
+      await command().timeout(_cleanupStepTimeout);
+    } catch (_) {}
+  }
+}
+
+class _PlaybackSession {
+  _PlaybackSession(this.playback);
+
+  final MoviePreviewPlayback playback;
+  Future<void>? cleanupOperation;
+}
+
+class _PlaybackCommand {
+  const _PlaybackCommand({required this.session, required this.generation});
+
+  final _PlaybackSession session;
+  final int generation;
+}
+
+class _PlaybackCommandInvalidated implements Exception {
+  const _PlaybackCommandInvalidated();
 }

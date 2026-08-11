@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -79,6 +81,58 @@ void main() {
     await tester.pump();
 
     expect(speeds, [2.0, 1.0]);
+  });
+
+  testWidgets('切换 2 倍速失败时不显示 2.0× 提示', (tester) async {
+    await tester.pumpWidget(
+      _buildControls(
+        onSetPlaybackSpeed: (speed) async {
+          if (speed == 2.0) {
+            throw StateError('set 2x failed');
+          }
+        },
+      ),
+    );
+
+    final gesture = await tester.startGesture(_backgroundPoint(tester));
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+    await tester.pump();
+
+    expect(find.text('2.0×'), findsNothing);
+
+    await gesture.up();
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('切换 2 倍速延迟时提前松手最终串行恢复 1 倍速', (tester) async {
+    final allowDoubleSpeed = Completer<void>();
+    final speedCalls = <double>[];
+    var appliedSpeed = 1.0;
+    await tester.pumpWidget(
+      _buildControls(
+        onSetPlaybackSpeed: (speed) async {
+          speedCalls.add(speed);
+          if (speed == 2.0) {
+            await allowDoubleSpeed.future;
+          }
+          appliedSpeed = speed;
+        },
+      ),
+    );
+
+    final gesture = await tester.startGesture(_backgroundPoint(tester));
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+    await gesture.up();
+    await tester.pump();
+
+    allowDoubleSpeed.complete();
+    await tester.pump();
+    await tester.pump();
+
+    expect(speedCalls, [2.0, 1.0]);
+    expect(appliedSpeed, 1.0);
+    expect(find.text('2.0×'), findsNothing);
   });
 
   testWidgets('播放时三秒后隐藏控制层', (tester) async {
@@ -311,7 +365,7 @@ void main() {
     );
   });
 
-  testWidgets('恢复 1 倍速失败不会冒泡且控制层保持可恢复', (tester) async {
+  testWidgets('恢复 1 倍速失败进入可重试错误状态且不会静默播放', (tester) async {
     final speeds = <double>[];
     await tester.pumpWidget(
       _buildControls(
@@ -331,6 +385,8 @@ void main() {
 
     expect(speeds, [2.0, 1.0]);
     expect(tester.takeException(), isNull);
+    expect(find.text('预告片播放失败'), findsOneWidget);
+    expect(find.text('重试'), findsOneWidget);
     expect(
       find.byKey(const Key('movie-preview-controls-overlay')),
       findsOneWidget,

@@ -35,8 +35,13 @@ class _MoviePreviewControlsState extends State<MoviePreviewControls> {
   bool _controlsVisible = true;
   bool _isDragging = false;
   bool _isLongPressing = false;
+  bool _isDoubleSpeedConfirmed = false;
+  bool _hasSpeedRecoveryError = false;
   double? _dragPositionMilliseconds;
   Timer? _hideTimer;
+  Future<void> _speedTransitions = Future<void>.value();
+  int _speedGestureGeneration = 0;
+  final _queuedSpeedRestores = <int>{};
 
   @override
   void initState() {
@@ -72,13 +77,9 @@ class _MoviePreviewControlsState extends State<MoviePreviewControls> {
   @override
   void dispose() {
     _cancelAutoHide();
-    if (_isLongPressing) {
-      unawaited(
-        _runCommand(
-          () => widget.onSetPlaybackSpeed(1.0),
-          keepControlsVisibleOnFailure: false,
-        ),
-      );
+    if (_isLongPressing || _isDoubleSpeedConfirmed) {
+      _isLongPressing = false;
+      _queueDefaultSpeedRestore(_speedGestureGeneration);
     }
     super.dispose();
   }
@@ -86,7 +87,8 @@ class _MoviePreviewControlsState extends State<MoviePreviewControls> {
   @override
   Widget build(BuildContext context) {
     final state = widget.playbackState;
-    final hasError = state.errorDescription?.isNotEmpty ?? false;
+    final hasError =
+        (state.errorDescription?.isNotEmpty ?? false) || _hasSpeedRecoveryError;
     return ColoredBox(
       color: Colors.black,
       child: Stack(
@@ -109,7 +111,7 @@ class _MoviePreviewControlsState extends State<MoviePreviewControls> {
           ),
           if (state.isBuffering)
             const Center(child: CircularProgressIndicator(color: Colors.white)),
-          if (_isLongPressing) const Center(child: _SpeedIndicator()),
+          if (_isDoubleSpeedConfirmed) const Center(child: _SpeedIndicator()),
           if (_controlsVisible)
             _PreviewOverlay(
               title: widget.title,
@@ -121,6 +123,7 @@ class _MoviePreviewControlsState extends State<MoviePreviewControls> {
               onChanged: _changePosition,
               onChangeStart: _startDragging,
               onChangeEnd: _endDragging,
+              hasSpeedRecoveryError: _hasSpeedRecoveryError,
             ),
         ],
       ),
@@ -135,6 +138,8 @@ class _MoviePreviewControlsState extends State<MoviePreviewControls> {
         !state.isCompleted &&
         !_isDragging &&
         !_isLongPressing &&
+        !_isDoubleSpeedConfirmed &&
+        !_hasSpeedRecoveryError &&
         !(state.errorDescription?.isNotEmpty ?? false);
   }
 
@@ -166,31 +171,86 @@ class _MoviePreviewControlsState extends State<MoviePreviewControls> {
 
   void _startLongPress(LongPressStartDetails _) {
     _cancelAutoHide();
-    if (_isLongPressing) return;
+    if (_isLongPressing || _hasSpeedRecoveryError) return;
+    final generation = ++_speedGestureGeneration;
     setState(() {
       _controlsVisible = true;
       _isLongPressing = true;
+      _isDoubleSpeedConfirmed = false;
     });
-    unawaited(_setPlaybackSpeed(2.0));
+    _enqueueSpeedTransition(() async {
+      if (!mounted ||
+          generation != _speedGestureGeneration ||
+          !_isLongPressing) {
+        return;
+      }
+      final succeeded = await _runCommand(() => widget.onSetPlaybackSpeed(2.0));
+      if (!succeeded ||
+          !mounted ||
+          generation != _speedGestureGeneration ||
+          !_isLongPressing) {
+        return;
+      }
+      setState(() {
+        _isDoubleSpeedConfirmed = true;
+      });
+    });
   }
 
   void _finishLongPress() {
     if (!_isLongPressing) return;
+    final generation = _speedGestureGeneration;
     setState(() {
       _isLongPressing = false;
     });
-    unawaited(_setPlaybackSpeed(1.0, scheduleAfterSuccess: true));
+    _queueDefaultSpeedRestore(generation);
   }
 
-  Future<void> _setPlaybackSpeed(
-    double speed, {
-    bool scheduleAfterSuccess = false,
-  }) async {
-    if (await _runCommand(() => widget.onSetPlaybackSpeed(speed)) &&
-        scheduleAfterSuccess &&
-        mounted) {
-      _scheduleAutoHide();
-    }
+  void _queueDefaultSpeedRestore(int generation) {
+    if (!_queuedSpeedRestores.add(generation)) return;
+    _enqueueSpeedTransition(() async {
+      try {
+        final restored = await _runCommand(
+          () => widget.onSetPlaybackSpeed(1.0),
+        );
+        if (!restored) {
+          if (mounted) {
+            _cancelAutoHide();
+            setState(() {
+              _speedGestureGeneration++;
+              _isLongPressing = false;
+              _isDoubleSpeedConfirmed = false;
+              _hasSpeedRecoveryError = true;
+              _controlsVisible = true;
+            });
+          }
+          return;
+        }
+        if (!mounted || generation != _speedGestureGeneration) return;
+        setState(() {
+          _isDoubleSpeedConfirmed = false;
+        });
+        _scheduleAutoHide();
+      } finally {
+        _queuedSpeedRestores.remove(generation);
+      }
+    });
+  }
+
+  void _enqueueSpeedTransition(Future<void> Function() transition) {
+    final result = _speedTransitions.then((_) => transition());
+    _speedTransitions = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    unawaited(_speedTransitions);
+  }
+
+  void _clearSpeedRecoveryError() {
+    if (!_hasSpeedRecoveryError || !mounted) return;
+    setState(() {
+      _hasSpeedRecoveryError = false;
+    });
   }
 
   void _startDragging(double _) {
@@ -229,6 +289,7 @@ class _MoviePreviewControlsState extends State<MoviePreviewControls> {
 
   Future<void> _runRetry() async {
     if (await _runCommand(widget.onRetry) && mounted) {
+      _clearSpeedRecoveryError();
       _scheduleAutoHide();
     }
   }
@@ -269,6 +330,42 @@ class _MoviePreviewControlsState extends State<MoviePreviewControls> {
   }
 }
 
+class MoviePreviewHeader extends StatelessWidget {
+  const MoviePreviewHeader({
+    super.key,
+    required this.title,
+    required this.onBack,
+  });
+
+  final String title;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        IconButton(
+          onPressed: onBack,
+          tooltip: '返回',
+          color: Colors.white,
+          icon: const Icon(Icons.arrow_back),
+        ),
+        Expanded(
+          child: Semantics(
+            header: true,
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _PreviewOverlay extends StatelessWidget {
   const _PreviewOverlay({
     required this.title,
@@ -280,6 +377,7 @@ class _PreviewOverlay extends StatelessWidget {
     required this.onChanged,
     required this.onChangeStart,
     required this.onChangeEnd,
+    required this.hasSpeedRecoveryError,
   });
 
   final String title;
@@ -291,6 +389,7 @@ class _PreviewOverlay extends StatelessWidget {
   final ValueChanged<double>? onChanged;
   final ValueChanged<double>? onChangeStart;
   final ValueChanged<double>? onChangeEnd;
+  final bool hasSpeedRecoveryError;
 
   @override
   Widget build(BuildContext context) {
@@ -300,7 +399,9 @@ class _PreviewOverlay extends StatelessWidget {
                 playbackState.position.inMilliseconds.toDouble())
             .clamp(0, durationMilliseconds)
             .toDouble();
-    final hasError = playbackState.errorDescription?.isNotEmpty ?? false;
+    final hasError =
+        (playbackState.errorDescription?.isNotEmpty ?? false) ||
+        hasSpeedRecoveryError;
     final canSeek = durationMilliseconds > 0;
 
     return Positioned.fill(
@@ -317,24 +418,7 @@ class _PreviewOverlay extends StatelessWidget {
                   top: 0,
                   left: 0,
                   right: 0,
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: onBack,
-                        tooltip: '返回',
-                        color: Colors.white,
-                        icon: const Icon(Icons.arrow_back),
-                      ),
-                      Expanded(
-                        child: Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
+                  child: MoviePreviewHeader(title: title, onBack: onBack),
                 ),
                 Center(
                   child: hasError

@@ -191,6 +191,74 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('重试时旧 playback 清理永不完成也会有界地创建新驱动', (tester) async {
+    final disposeCompleter = Completer<void>();
+    final failedPlayback = _FakePlayback(
+      initializeError: Exception('network'),
+      disposeCompleter: disposeCompleter,
+    );
+    final successfulPlayback = _FakePlayback();
+    final playbacks = [failedPlayback, successfulPlayback];
+    var factoryCalls = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MoviePreviewPage(
+          args: _validArgs,
+          playbackFactory: (_) {
+            factoryCalls++;
+            return playbacks.removeAt(0);
+          },
+          orientationSetter: (_) async {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('重试'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump();
+
+    expect(factoryCalls, 2);
+    expect(successfulPlayback.initializeCalls, 1);
+    expect(successfulPlayback.playCalls, 1);
+    expect(find.text('重试'), findsNothing);
+
+    disposeCompleter.complete();
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('退出页面不等待 playback 清理完成即可恢复方向', (tester) async {
+    final disposeCompleter = Completer<void>();
+    final playback = _FakePlayback(disposeCompleter: disposeCompleter);
+    final orientationCalls = <List<DeviceOrientation>>[];
+
+    await _pumpPreviewRoute(
+      tester,
+      MoviePreviewPage(
+        args: _validArgs,
+        playbackFactory: (_) => playback,
+        orientationSetter: (orientations) async {
+          orientationCalls.add(List.of(orientations));
+        },
+      ),
+    );
+
+    await tester.tap(find.byTooltip('返回'));
+    await tester.pump();
+
+    expect(find.byKey(const Key('preview-launcher')), findsOneWidget);
+    expect(orientationCalls.last, isEmpty);
+    expect(playback.disposeCalls, 1);
+
+    disposeCompleter.complete();
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('同步 factory 异常显示失败提示且不会冒泡', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -209,6 +277,128 @@ void main() {
 
     expect(find.text('预告片播放失败'), findsOneWidget);
     expect(find.text('重试'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('完成态 seek 尚未完成时退出不会继续调用 play', (tester) async {
+    final seekCompleter = Completer<void>();
+    final playback = _FakePlayback(
+      seekCompleter: seekCompleter,
+      initialState: const MoviePreviewPlaybackState(
+        isInitialized: true,
+        isCompleted: true,
+      ),
+    );
+    await _pumpPreviewPage(tester, playback);
+
+    await tester.tapAt(_backgroundPoint(tester));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tapAt(_backgroundPoint(tester));
+    await tester.pump();
+    expect(playback.commands, ['initialize', 'play', 'seek:0']);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+    seekCompleter.complete();
+    await tester.pump();
+
+    expect(playback.playCalls, 1);
+    expect(tester.takeException(), isNull);
+    await tester.pump(kDoubleTapTimeout);
+  });
+
+  testWidgets('横屏锁定失败不创建 playback 且显示可退出错误页并尝试恢复', (tester) async {
+    final orientationCalls = <List<DeviceOrientation>>[];
+    var factoryCalls = 0;
+
+    await _pumpPreviewRoute(
+      tester,
+      MoviePreviewPage(
+        args: _validArgs,
+        playbackFactory: (_) {
+          factoryCalls++;
+          return _FakePlayback();
+        },
+        orientationSetter: (orientations) async {
+          orientationCalls.add(List.of(orientations));
+          if (orientations.isNotEmpty) {
+            throw StateError('orientation lock failed');
+          }
+        },
+      ),
+    );
+    await tester.pump();
+
+    expect(factoryCalls, 0);
+    expect(find.text('预告片播放失败'), findsOneWidget);
+    expect(find.text('测试影片'), findsOneWidget);
+    expect(find.byTooltip('返回'), findsOneWidget);
+    expect(orientationCalls, [
+      [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight],
+      <DeviceOrientation>[],
+    ]);
+
+    await tester.tap(find.byTooltip('返回'));
+    await tester.pump();
+    expect(find.byKey(const Key('preview-launcher')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('加载状态显示安全区返回按钮和标题且可以退出', (tester) async {
+    final initializeCompleter = Completer<void>();
+
+    await _pumpPreviewRoute(
+      tester,
+      MoviePreviewPage(
+        args: _validArgs,
+        playbackFactory: (_) =>
+            _FakePlayback(initializeCompleter: initializeCompleter),
+        orientationSetter: (_) async {},
+      ),
+    );
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    await _expectHeaderAndExit(tester);
+
+    initializeCompleter.complete();
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('非法参数错误状态显示安全区返回按钮和标题且可以退出', (tester) async {
+    await _pumpPreviewRoute(
+      tester,
+      MoviePreviewPage(
+        args: const MoviePreviewArgs(
+          movieId: 'm1',
+          title: '测试影片',
+          videoUrl: 'file:///tmp/preview.m3u8',
+        ),
+        playbackFactory: (_) => _FakePlayback(),
+        orientationSetter: (_) async {},
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('预告片播放失败'), findsOneWidget);
+    await _expectHeaderAndExit(tester);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('初始化错误状态显示安全区返回按钮和标题且可以退出', (tester) async {
+    await _pumpPreviewRoute(
+      tester,
+      MoviePreviewPage(
+        args: _validArgs,
+        playbackFactory: (_) =>
+            _FakePlayback(initializeError: StateError('init failed')),
+        orientationSetter: (_) async {},
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('预告片播放失败'), findsOneWidget);
+    await _expectHeaderAndExit(tester);
     expect(tester.takeException(), isNull);
   });
 
@@ -297,6 +487,67 @@ void main() {
 
     expect(() => state.addListener(() {}), throwsFlutterError);
   });
+
+  test('平台创建失败后 playback dispose 会有界完成并释放 state', () async {
+    final playback = VideoPlayerMoviePreviewPlayback.withController(
+      _CreateFailureVideoPlayerController(),
+    );
+    final state = playback.state;
+
+    await expectLater(playback.initialize(), throwsA(isA<StateError>()));
+    await expectLater(
+      playback.dispose().timeout(const Duration(seconds: 2)),
+      completes,
+    );
+
+    expect(() => state.addListener(() {}), throwsFlutterError);
+  });
+}
+
+const _validArgs = MoviePreviewArgs(
+  movieId: 'm1',
+  title: '测试影片',
+  videoUrl: 'https://media.example.com/preview.m3u8',
+);
+
+Future<void> _pumpPreviewRoute(WidgetTester tester, Widget previewPage) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Builder(
+        builder: (context) {
+          return Scaffold(
+            body: Center(
+              child: ElevatedButton(
+                key: const Key('preview-launcher'),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    PageRouteBuilder<void>(
+                      pageBuilder: (_, _, _) => previewPage,
+                      transitionDuration: Duration.zero,
+                      reverseTransitionDuration: Duration.zero,
+                    ),
+                  );
+                },
+                child: const Text('打开预告片'),
+              ),
+            ),
+          );
+        },
+      ),
+    ),
+  );
+  await tester.tap(find.byKey(const Key('preview-launcher')));
+  await tester.pump();
+}
+
+Future<void> _expectHeaderAndExit(WidgetTester tester) async {
+  expect(find.text('测试影片'), findsOneWidget);
+  expect(find.byTooltip('返回'), findsOneWidget);
+
+  await tester.tap(find.byTooltip('返回'));
+  await tester.pump();
+
+  expect(find.byKey(const Key('preview-launcher')), findsOneWidget);
 }
 
 Future<void> _pumpPreviewPage(
@@ -329,11 +580,15 @@ Offset _backgroundPoint(WidgetTester tester) {
 class _FakePlayback implements MoviePreviewPlayback {
   _FakePlayback({
     this.initializeError,
+    this.initializeCompleter,
+    this.seekCompleter,
     this.disposeCompleter,
     this.initialState = const MoviePreviewPlaybackState(),
   });
 
   final Object? initializeError;
+  final Completer<void>? initializeCompleter;
+  final Completer<void>? seekCompleter;
   final Completer<void>? disposeCompleter;
   final MoviePreviewPlaybackState initialState;
   late final _state = ValueNotifier(initialState);
@@ -357,6 +612,7 @@ class _FakePlayback implements MoviePreviewPlayback {
     if (initializeError != null) {
       throw initializeError!;
     }
+    await initializeCompleter?.future;
     _state.value = MoviePreviewPlaybackState(
       isInitialized: true,
       isPlaying: initialState.isPlaying,
@@ -379,6 +635,7 @@ class _FakePlayback implements MoviePreviewPlayback {
   @override
   Future<void> seekTo(Duration position) async {
     commands.add('seek:${position.inMilliseconds}');
+    await seekCompleter?.future;
   }
 
   @override
@@ -404,5 +661,24 @@ class _ThrowingDisposeVideoPlayerController extends VideoPlayerController {
   Future<void> dispose() async {
     await super.dispose();
     throw StateError('controller dispose');
+  }
+}
+
+class _CreateFailureVideoPlayerController extends VideoPlayerController {
+  _CreateFailureVideoPlayerController()
+    : super.networkUrl(
+        Uri.parse('https://media.example.com/preview.m3u8'),
+        formatHint: VideoFormat.hls,
+      );
+
+  @override
+  Future<void> initialize() async {
+    throw StateError('platform create failed');
+  }
+
+  @override
+  Future<void> dispose() async {
+    await super.dispose();
+    await Completer<void>().future;
   }
 }
