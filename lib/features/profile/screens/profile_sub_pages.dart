@@ -9,6 +9,7 @@ import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/cache_service.dart';
 import 'package:jade/core/network/domain_manager.dart';
+import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/providers/theme_provider.dart';
 import 'package:jade/core/router/routes.dart';
@@ -17,6 +18,9 @@ import 'package:jade/core/widgets/filter_drawer.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/movie_list_tile.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
+import 'package:jade/features/profile/services/app_version_service.dart';
+import 'package:jade/features/profile/services/token_authentication_service.dart';
+import 'package:jade/features/profile/widgets/token_authentication_dialog.dart';
 import 'package:provider/provider.dart';
 
 class ProfileMovieCollectionPage extends StatefulWidget {
@@ -320,29 +324,98 @@ class ProfileInfoPage extends StatelessWidget {
 }
 
 class ProfileSettingsPage extends StatefulWidget {
-  const ProfileSettingsPage({super.key, this.cacheService});
+  const ProfileSettingsPage({
+    super.key,
+    this.cacheService,
+    this.appVersionService,
+    this.tokenAuthenticationService,
+  });
 
   final CacheService? cacheService;
+  final AppVersionService? appVersionService;
+  final TokenAuthenticationService? tokenAuthenticationService;
 
   @override
   State<ProfileSettingsPage> createState() => _ProfileSettingsPageState();
 }
 
 class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
-  late final CacheService _cacheService =
-      widget.cacheService ?? JdbImageCacheService();
+  static const _tokenTapWindow = Duration(seconds: 2);
+
+  late final CacheService _cacheService;
+  late final AppVersionService _appVersionService;
+  Timer? _tokenTapTimer;
+  var _versionTapCount = 0;
   int? _cacheSizeBytes;
+  String _appVersion = '…';
 
   @override
   void initState() {
     super.initState();
-    _loadCacheSize();
+    _cacheService = widget.cacheService ?? JdbImageCacheService();
+    _appVersionService =
+        widget.appVersionService ?? const PackageAppVersionService();
+    unawaited(_loadCacheSize());
+    unawaited(_loadAppVersion());
+  }
+
+  void _onVersionTap() {
+    if (_versionTapCount == 0) {
+      _tokenTapTimer = Timer(_tokenTapWindow, _resetVersionTapCount);
+    }
+    _versionTapCount++;
+    if (_versionTapCount < 5) return;
+    _resetVersionTapCount();
+    unawaited(_openTokenAuthenticationDialog());
+  }
+
+  void _resetVersionTapCount() {
+    _tokenTapTimer?.cancel();
+    _tokenTapTimer = null;
+    _versionTapCount = 0;
+  }
+
+  Future<void> _openTokenAuthenticationDialog() async {
+    final auth = context.read<AuthProvider>();
+    final service =
+        widget.tokenAuthenticationService ??
+        ApiTokenAuthenticationService(ApiClient.instance);
+    final updated = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => TokenAuthenticationDialog(
+        authenticate: service.authenticate,
+        saveSession: auth.login,
+      ),
+    );
+    if (updated == true && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('认证 Token 已更新')));
+    }
+  }
+
+  @override
+  void dispose() {
+    _tokenTapTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadCacheSize() async {
     final size = await _cacheService.getCacheSizeBytes();
     if (!mounted) return;
     setState(() => _cacheSizeBytes = size);
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final version = await _appVersionService.loadVersion();
+      if (!mounted) return;
+      setState(() => _appVersion = version);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _appVersion = '未知');
+    }
   }
 
   Future<void> _confirmAndClearCache() async {
@@ -368,14 +441,14 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       await _cacheService.clearAll();
       if (!mounted) return;
       setState(() => _cacheSizeBytes = 0);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('缓存已清除')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('缓存已清除')));
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('清除失败，请稍后重试')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('清除失败，请稍后重试')));
     }
   }
 
@@ -416,6 +489,12 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
         ),
         trailing: const Icon(Icons.chevron_right),
         onTap: _confirmAndClearCache,
+      ),
+      ListTile(
+        leading: const Icon(Icons.info_outline),
+        title: const Text('当前版本'),
+        subtitle: Text(_appVersion),
+        onTap: _onVersionTap,
       ),
     ];
     return Scaffold(

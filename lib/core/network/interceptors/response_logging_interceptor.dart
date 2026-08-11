@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:jade/core/network/auth_request_context.dart';
 import 'package:logger/logger.dart';
 
 class ResponseLoggingInterceptor extends Interceptor {
@@ -24,6 +25,7 @@ class ResponseLoggingInterceptor extends Interceptor {
        );
 
   static const _loggedKey = 'response_logging_interceptor.logged';
+  static const _redactedResponseBody = '[REDACTED_SECRET]';
 
   final bool _enabled;
   final Logger _logger;
@@ -82,7 +84,7 @@ class ResponseLoggingInterceptor extends Interceptor {
         'Request Body: ${_compactJson(options.data, empty: '无请求内容')}\n'
         'Status: $status\n'
         'Result: $result\n'
-        'Body: ${_compactJson(responseBody, empty: '无响应内容')}',
+        'Body: ${AuthRequestContext.hasSensitiveResponseBody(options) ? _redactedResponseBody : _compactJson(responseBody, empty: '无响应内容')}',
       );
     } catch (_) {
       // 调试日志不得改变请求结果。
