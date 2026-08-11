@@ -478,7 +478,7 @@ void main() {
   });
 
   test('controller 释放抛错时仍释放 playback state', () async {
-    final playback = VideoPlayerMoviePreviewPlayback.withController(
+    final playback = ChewieMoviePreviewPlayback.withController(
       _ThrowingDisposeVideoPlayerController(),
     );
     final state = playback.state;
@@ -489,7 +489,7 @@ void main() {
   });
 
   test('平台创建失败后 playback dispose 会有界完成并释放 state', () async {
-    final playback = VideoPlayerMoviePreviewPlayback.withController(
+    final playback = ChewieMoviePreviewPlayback.withController(
       _CreateFailureVideoPlayerController(),
     );
     final state = playback.state;

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:chewie/chewie.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:video_player/video_player.dart';
@@ -41,6 +42,29 @@ abstract interface class MoviePreviewPlayback {
 
 typedef MoviePreviewPlaybackFactory = MoviePreviewPlayback Function(Uri uri);
 
+typedef MoviePreviewChewieControllerFactory =
+    ChewieController Function(VideoPlayerController controller);
+
+ChewieController createMoviePreviewChewieController(
+  VideoPlayerController controller,
+) {
+  return ChewieController(
+    videoPlayerController: controller,
+    autoInitialize: false,
+    autoPlay: false,
+    looping: false,
+    showControls: true,
+    showControlsOnInitialize: true,
+    draggableProgressBar: true,
+    hideControlsTimer: const Duration(seconds: 3),
+    allowFullScreen: false,
+    allowPlaybackSpeedChanging: false,
+    showOptions: false,
+    allowMuting: true,
+    allowedScreenSleep: false,
+  );
+}
+
 MoviePreviewPlaybackState moviePreviewPlaybackStateFromVideoPlayerValue(
   VideoPlayerValue value,
 ) {
@@ -56,24 +80,32 @@ MoviePreviewPlaybackState moviePreviewPlaybackStateFromVideoPlayerValue(
   );
 }
 
-class VideoPlayerMoviePreviewPlayback implements MoviePreviewPlayback {
-  VideoPlayerMoviePreviewPlayback(Uri uri)
+class ChewieMoviePreviewPlayback implements MoviePreviewPlayback {
+  ChewieMoviePreviewPlayback(Uri uri)
     : this._(
         VideoPlayerController.networkUrl(uri, formatHint: VideoFormat.hls),
+        createMoviePreviewChewieController,
       );
 
   @visibleForTesting
-  VideoPlayerMoviePreviewPlayback.withController(
-    VideoPlayerController controller,
-  ) : this._(controller);
+  ChewieMoviePreviewPlayback.withController(
+    VideoPlayerController controller, {
+    MoviePreviewChewieControllerFactory chewieControllerFactory =
+        createMoviePreviewChewieController,
+  }) : this._(controller, chewieControllerFactory);
 
-  VideoPlayerMoviePreviewPlayback._(this._controller) {
-    _controller.addListener(_syncState);
+  ChewieMoviePreviewPlayback._(
+    this._videoController,
+    this._chewieControllerFactory,
+  ) {
+    _videoController.addListener(_syncState);
     _syncState();
   }
 
-  final VideoPlayerController _controller;
+  final VideoPlayerController _videoController;
+  final MoviePreviewChewieControllerFactory _chewieControllerFactory;
   final _state = ValueNotifier(const MoviePreviewPlaybackState());
+  ChewieController? _chewieController;
   bool _initializationFailedWithoutMediaError = false;
   Future<void>? _disposeOperation;
 
@@ -81,55 +113,80 @@ class VideoPlayerMoviePreviewPlayback implements MoviePreviewPlayback {
   ValueListenable<MoviePreviewPlaybackState> get state => _state;
 
   @override
-  Widget buildView() => VideoPlayer(_controller);
+  Widget buildView() {
+    final controller = _chewieController;
+    if (controller == null) {
+      throw StateError('Movie preview playback is not initialized.');
+    }
+    return Chewie(controller: controller);
+  }
 
   @override
   Future<void> initialize() async {
     try {
-      await _controller.initialize();
+      await _videoController.initialize();
     } catch (_) {
-      _initializationFailedWithoutMediaError = !_controller.value.hasError;
+      _initializationFailedWithoutMediaError = !_videoController.value.hasError;
       rethrow;
     }
+    _chewieController ??= _chewieControllerFactory(_videoController);
   }
 
   @override
-  Future<void> play() => _controller.play();
+  Future<void> play() => _videoController.play();
 
   @override
-  Future<void> pause() => _controller.pause();
+  Future<void> pause() => _videoController.pause();
 
   @override
-  Future<void> seekTo(Duration position) => _controller.seekTo(position);
+  Future<void> seekTo(Duration position) => _videoController.seekTo(position);
 
   @override
   Future<void> setPlaybackSpeed(double speed) =>
-      _controller.setPlaybackSpeed(speed);
+      _videoController.setPlaybackSpeed(speed);
 
   @override
   Future<void> dispose() => _disposeOperation ??= _dispose();
 
   Future<void> _dispose() async {
-    _controller.removeListener(_syncState);
+    _videoController.removeListener(_syncState);
+    Object? firstError;
+    StackTrace? firstStackTrace;
     try {
-      if (_initializationFailedWithoutMediaError) {
-        try {
-          await _controller.dispose().timeout(const Duration(seconds: 1));
-        } on TimeoutException {
-          // video_player 2.10.1 never completes dispose when platform creation
-          // throws before its private creation completer is completed.
+      try {
+        _chewieController?.dispose();
+      } catch (error, stackTrace) {
+        firstError = error;
+        firstStackTrace = stackTrace;
+      } finally {
+        _chewieController = null;
+      }
+
+      try {
+        if (_initializationFailedWithoutMediaError) {
+          await _videoController.dispose().timeout(const Duration(seconds: 1));
+        } else {
+          await _videoController.dispose();
         }
-      } else {
-        await _controller.dispose();
+      } on TimeoutException {
+        if (!_initializationFailedWithoutMediaError) {
+          rethrow;
+        }
+      } catch (error, stackTrace) {
+        firstError ??= error;
+        firstStackTrace ??= stackTrace;
       }
     } finally {
       _state.dispose();
+    }
+    if (firstError case final error?) {
+      Error.throwWithStackTrace(error, firstStackTrace!);
     }
   }
 
   void _syncState() {
     _state.value = moviePreviewPlaybackStateFromVideoPlayerValue(
-      _controller.value,
+      _videoController.value,
     );
   }
 }

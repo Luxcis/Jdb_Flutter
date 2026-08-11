@@ -55,6 +55,7 @@ dependencies:
   path_provider: ^2.1.6
   carousel_slider: ^5.1.2
   package_info_plus: ^8.3.1
+  chewie: 1.13.1
   video_player: 2.10.1
 
 dev_dependencies:

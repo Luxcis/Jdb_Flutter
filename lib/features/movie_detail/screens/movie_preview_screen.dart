@@ -43,7 +43,7 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
   var _lifecycleGeneration = 0;
 
   MoviePreviewPlaybackFactory get _playbackFactory =>
-      widget.playbackFactory ?? VideoPlayerMoviePreviewPlayback.new;
+      widget.playbackFactory ?? ChewieMoviePreviewPlayback.new;
 
   String get _title => widget.args?.title ?? '预告片';
 
