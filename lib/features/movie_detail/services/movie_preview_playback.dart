@@ -43,11 +43,15 @@ abstract interface class MoviePreviewPlayback {
 typedef MoviePreviewPlaybackFactory = MoviePreviewPlayback Function(Uri uri);
 
 typedef MoviePreviewChewieControllerFactory =
-    ChewieController Function(VideoPlayerController controller);
+    ChewieController Function(
+      VideoPlayerController controller, {
+      Widget? customControls,
+    });
 
 ChewieController createMoviePreviewChewieController(
-  VideoPlayerController controller,
-) {
+  VideoPlayerController controller, {
+  Widget? customControls,
+}) {
   return ChewieController(
     videoPlayerController: controller,
     autoInitialize: false,
@@ -62,6 +66,7 @@ ChewieController createMoviePreviewChewieController(
     showOptions: false,
     allowMuting: true,
     allowedScreenSleep: false,
+    customControls: customControls,
   );
 }
 
@@ -81,10 +86,11 @@ MoviePreviewPlaybackState moviePreviewPlaybackStateFromVideoPlayerValue(
 }
 
 class ChewieMoviePreviewPlayback implements MoviePreviewPlayback {
-  ChewieMoviePreviewPlayback(Uri uri)
+  ChewieMoviePreviewPlayback(Uri uri, {Widget? customControls})
     : this._(
         VideoPlayerController.networkUrl(uri, formatHint: VideoFormat.hls),
         createMoviePreviewChewieController,
+        customControls,
       );
 
   @visibleForTesting
@@ -92,11 +98,13 @@ class ChewieMoviePreviewPlayback implements MoviePreviewPlayback {
     VideoPlayerController controller, {
     MoviePreviewChewieControllerFactory chewieControllerFactory =
         createMoviePreviewChewieController,
-  }) : this._(controller, chewieControllerFactory);
+    Widget? customControls,
+  }) : this._(controller, chewieControllerFactory, customControls);
 
   ChewieMoviePreviewPlayback._(
     this._videoController,
     this._chewieControllerFactory,
+    this._customControls,
   ) {
     _videoController.addListener(_syncState);
     _syncState();
@@ -104,6 +112,7 @@ class ChewieMoviePreviewPlayback implements MoviePreviewPlayback {
 
   final VideoPlayerController _videoController;
   final MoviePreviewChewieControllerFactory _chewieControllerFactory;
+  final Widget? _customControls;
   final _state = ValueNotifier(const MoviePreviewPlaybackState());
   ChewieController? _chewieController;
   bool _initializationFailedWithoutMediaError = false;
@@ -129,7 +138,10 @@ class ChewieMoviePreviewPlayback implements MoviePreviewPlayback {
       _initializationFailedWithoutMediaError = !_videoController.value.hasError;
       rethrow;
     }
-    _chewieController ??= _chewieControllerFactory(_videoController);
+    _chewieController ??= _chewieControllerFactory(
+      _videoController,
+      customControls: _customControls,
+    );
   }
 
   @override

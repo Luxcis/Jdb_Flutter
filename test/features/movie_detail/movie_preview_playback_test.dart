@@ -29,6 +29,25 @@ void main() {
     expect(chewieController.showOptions, isFalse);
     expect(chewieController.allowMuting, isTrue);
     expect(chewieController.allowedScreenSleep, isFalse);
+    expect(chewieController.customControls, isNull);
+
+    await playback.dispose();
+  });
+
+  testWidgets('把页面提供的组合控件传给 ChewieController', (tester) async {
+    const customControls = KeyedSubtree(
+      key: Key('movie-preview-custom-controls'),
+      child: SizedBox(),
+    );
+    final playback = ChewieMoviePreviewPlayback.withController(
+      _FakeVideoPlayerController(),
+      customControls: customControls,
+    );
+
+    await playback.initialize();
+
+    final view = playback.buildView() as Chewie;
+    expect(view.controller.customControls, same(customControls));
 
     await playback.dispose();
   });
@@ -48,7 +67,7 @@ void main() {
     );
     final playback = ChewieMoviePreviewPlayback.withController(
       videoController,
-      chewieControllerFactory: (controller) =>
+      chewieControllerFactory: (controller, {customControls}) =>
           _RecordingChewieController(controller, events),
     );
     await playback.initialize();
@@ -66,7 +85,7 @@ void main() {
         initializeError: StateError('platform create failed'),
         neverCompleteDispose: true,
       ),
-      chewieControllerFactory: (controller) {
+      chewieControllerFactory: (controller, {customControls}) {
         chewieCreateCalls++;
         return ChewieController(videoPlayerController: controller);
       },
@@ -84,7 +103,7 @@ void main() {
     var videoDisposeCalls = 0;
     final playback = ChewieMoviePreviewPlayback.withController(
       _FakeVideoPlayerController(onDispose: () => videoDisposeCalls++),
-      chewieControllerFactory: (_) {
+      chewieControllerFactory: (_, {customControls}) {
         throw StateError('Chewie create failed');
       },
     );
