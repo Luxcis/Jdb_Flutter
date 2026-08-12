@@ -25,6 +25,7 @@ import 'package:jade/core/widgets/star_rating.dart';
 import 'package:jade/core/widgets/tag_chip.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/services/movie_detail_service.dart';
+import 'package:jade/features/movie_detail/widgets/top_ranking_tile.dart';
 
 class MovieDetailPage extends StatefulWidget {
   const MovieDetailPage({super.key, required this.id});
@@ -598,6 +599,12 @@ class _MovieInfoCard extends StatelessWidget {
                   Text(detail.score!.toString()),
                 ],
               ),
+            for (final ranking in detail.topRankings)
+              if ((ranking.title ?? '').isNotEmpty)
+                TopRankingTile(
+                  ranking: ranking.ranking,
+                  title: ranking.title ?? '',
+                ),
             Wrap(
               key: const Key('movie-detail-actions'),
               spacing: 8,

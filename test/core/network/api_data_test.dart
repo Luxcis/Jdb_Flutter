@@ -163,6 +163,31 @@ void main() {
     expect(movie.actors.single.avatarUrl, '');
   });
 
+  test('normalizeMovieDetailJson 将 top_rankings 的字符串数值转为数字', () {
+    final movie = MovieDetail.fromJson(
+      normalizeMovieDetailJson({
+        'movie': {
+          'id': 'm1',
+          'number': 'ABC-001',
+          'title': 'Title',
+          'cover_url': 'cover.jpg',
+          'top_rankings': [
+            {'ranking': '1', 'title': '全网热播榜', 'top_type': '2'},
+            {'ranking': 3, 'title': null, 'top_type': null},
+          ],
+        },
+      }),
+    );
+
+    expect(movie.topRankings, hasLength(2));
+    expect(movie.topRankings[0].ranking, 1);
+    expect(movie.topRankings[0].title, '全网热播榜');
+    expect(movie.topRankings[0].topType, 2);
+    expect(movie.topRankings[1].ranking, 3);
+    expect(movie.topRankings[1].title, isNull);
+    expect(movie.topRankings[1].topType, isNull);
+  });
+
   test('normalizeMovieDetailJson 解析并清理预告片地址', () {
     final movie = MovieDetail.fromJson(
       normalizeMovieDetailJson({

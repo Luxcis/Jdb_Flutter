@@ -164,6 +164,15 @@ Map<String, dynamic> normalizeMovieDetailJson(dynamic data) {
     'relative_movies': relativeMovies.toList(),
     'tags': _tagLabels(tags),
     'tag_items': _tagItems(tags),
+    'top_rankings': apiList(movie, const ['top_rankings'])
+        .map(
+          (item) => {
+            'ranking': apiIntOrNull(item['ranking']),
+            'title': apiString(item['title']),
+            'top_type': apiIntOrNull(item['top_type']),
+          },
+        )
+        .toList(),
   };
 }
 

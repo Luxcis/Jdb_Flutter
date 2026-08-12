@@ -18,6 +18,7 @@ import 'package:jade/features/common/screens/common_list_page.dart';
 import 'package:jade/features/common/services/tag_movies_service.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/screens/movie_detail_screen.dart';
+import 'package:jade/features/movie_detail/widgets/top_ranking_tile.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -91,6 +92,7 @@ void _enqueueCompleteMovieDetail(
     {'url': 'screenshots/test.jpg'},
     {'url': 'screenshots/test-2.jpg'},
   ],
+  List<Object?> topRankings = const [],
 }) {
   adapter.enqueue('/api/v4/movies/m1', {
     'success': 1,
@@ -141,6 +143,7 @@ void _enqueueCompleteMovieDetail(
           {'name': '角色扮演'},
           {'name': '高画质'},
         ],
+        'top_rankings': topRankings,
       },
     },
   });
@@ -1387,5 +1390,180 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.byKey(const Key('image-gallery-viewer')), findsNothing);
+  });
+
+  testWidgets('详情页在评分下方按序渲染 top_rankings 榜单行', (tester) async {
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(
+      adapter,
+      topRankings: [
+        {'ranking': '1', 'title': '全网热播榜', 'top_type': '1'},
+        {'ranking': '3', 'title': '人气榜', 'top_type': '2'},
+      ],
+    );
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final innerScrollable = find
+        .descendant(
+          of: find.byType(TabBarView),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Scrollable &&
+                widget.axisDirection == AxisDirection.down,
+          ),
+        )
+        .first;
+    await _scrollUntilFound(
+      tester,
+      target: find.text('No.1'),
+      scrollable: innerScrollable,
+    );
+
+    expect(find.text('No.1'), findsOneWidget);
+    expect(find.text('全网热播榜'), findsOneWidget);
+    expect(find.text('No.3'), findsOneWidget);
+    expect(find.text('人气榜'), findsOneWidget);
+
+    final infoColumn = tester.widget<Column>(
+      find.byKey(const Key('movie-detail-info-column')),
+    );
+    final scoreRowIndex = infoColumn.children.indexWhere(
+      (child) =>
+          child is Row &&
+          child.children.any(
+            (widget) => widget is Text && widget.data == '评分: ',
+          ),
+    );
+    final firstTileIndex = infoColumn.children.indexWhere(
+      (child) => child is TopRankingTile,
+    );
+    final actionsIndex = infoColumn.children.indexWhere(
+      (child) => child is Wrap,
+    );
+    expect(scoreRowIndex, isNot(-1));
+    expect(firstTileIndex, greaterThan(scoreRowIndex));
+    expect(firstTileIndex, lessThan(actionsIndex));
+
+    final tiles = infoColumn.children.whereType<TopRankingTile>().toList();
+    expect(tiles, hasLength(2));
+    expect(tiles[0].ranking, 1);
+    expect(tiles[0].title, '全网热播榜');
+    expect(tiles[1].ranking, 3);
+    expect(tiles[1].title, '人气榜');
+
+    final leftText = tester.widget<Text>(find.text('No.1'));
+    expect(leftText.style?.color, const Color(0xFF9F6000));
+    expect(leftText.style?.fontSize, 12);
+    expect(leftText.style?.fontWeight, FontWeight.w400);
+    expect(leftText.style?.height, 1.5);
+
+    final rightText = tester.widget<Text>(find.text('全网热播榜'));
+    expect(rightText.style?.color, const Color(0xFFFFCA7A));
+    expect(rightText.style?.fontSize, 12);
+    expect(rightText.style?.fontWeight, FontWeight.w400);
+    expect(rightText.style?.height, 1.5);
+  });
+
+  testWidgets('top_rankings 中 title 为空或缺失的项被过滤', (tester) async {
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(
+      adapter,
+      topRankings: [
+        {'ranking': 1, 'title': '有效榜单', 'top_type': 1},
+        {'ranking': 2, 'title': ''},
+        {'ranking': 3},
+      ],
+    );
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final innerScrollable = find
+        .descendant(
+          of: find.byType(TabBarView),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Scrollable &&
+                widget.axisDirection == AxisDirection.down,
+          ),
+        )
+        .first;
+    await _scrollUntilFound(
+      tester,
+      target: find.text('有效榜单'),
+      scrollable: innerScrollable,
+    );
+
+    expect(find.text('有效榜单'), findsOneWidget);
+    expect(find.text('No.1'), findsOneWidget);
+    expect(find.byType(TopRankingTile), findsOneWidget);
+    expect(find.text('No.2'), findsNothing);
+    expect(find.text('No.3'), findsNothing);
+  });
+
+  testWidgets('ranking 为 null 时榜单行左侧显示 No.', (tester) async {
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(
+      adapter,
+      topRankings: [
+        {'ranking': null, 'title': '无排名榜单'},
+      ],
+    );
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final innerScrollable = find
+        .descendant(
+          of: find.byType(TabBarView),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Scrollable &&
+                widget.axisDirection == AxisDirection.down,
+          ),
+        )
+        .first;
+    await _scrollUntilFound(
+      tester,
+      target: find.text('无排名榜单'),
+      scrollable: innerScrollable,
+    );
+
+    expect(find.text('无排名榜单'), findsOneWidget);
+    expect(find.text('No.'), findsOneWidget);
+    expect(find.text('No.null'), findsNothing);
+  });
+
+  testWidgets('无 top_rankings 时不渲染榜单行', (tester) async {
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(adapter);
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final innerScrollable = find
+        .descendant(
+          of: find.byType(TabBarView),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Scrollable &&
+                widget.axisDirection == AxisDirection.down,
+          ),
+        )
+        .first;
+    await _scrollUntilFound(
+      tester,
+      target: find.text('评分: '),
+      scrollable: innerScrollable,
+    );
+
+    expect(find.text('评分: '), findsOneWidget);
+    expect(find.byType(TopRankingTile), findsNothing);
   });
 }

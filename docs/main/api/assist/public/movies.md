@@ -128,6 +128,8 @@ Source: [docs/javdb_api_notes.md](/F:/codx/javdbweb/docs/javdb_api_notes.md)
       together
     - detail page now also loads `GET /api/v1/lists/related?movie_id={movie.id}` for the `相关清单`
       block
+    - detail page renders `top_rankings` as gradient rank rows below the score row
+      (render-only, no navigation; skips items with empty `title`)
 - Known errors: none observed
 
 ## `GET /api/v1/movies/%s/magnets`

@@ -77,6 +77,11 @@ MovieDetail _$MovieDetailFromJson(Map<String, dynamic> json) => MovieDetail(
           ?.map((e) => Tag.fromJson(e as Map<String, dynamic>))
           .toList() ??
       const [],
+  topRankings:
+      (json['top_rankings'] as List<dynamic>?)
+          ?.map((e) => TopRanking.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
   magnetCount: (json['magnet_count'] as num?)?.toInt() ?? 0,
   wantWatchCount: (json['want_watch_count'] as num?)?.toInt() ?? 0,
   watchedCount: (json['watched_count'] as num?)?.toInt() ?? 0,
@@ -110,9 +115,23 @@ Map<String, dynamic> _$MovieDetailToJson(MovieDetail instance) =>
       'actor_movies': instance.actorMovies,
       'relative_movies': instance.relativeMovies,
       'tags': instance.tags,
+      'top_rankings': instance.topRankings,
       'magnet_count': instance.magnetCount,
       'want_watch_count': instance.wantWatchCount,
       'watched_count': instance.watchedCount,
       'playable': instance.playable,
       'has_subtitle': instance.hasSubtitle,
+    };
+
+TopRanking _$TopRankingFromJson(Map<String, dynamic> json) => TopRanking(
+  ranking: (json['ranking'] as num?)?.toInt(),
+  title: json['title'] as String?,
+  topType: (json['top_type'] as num?)?.toInt(),
+);
+
+Map<String, dynamic> _$TopRankingToJson(TopRanking instance) =>
+    <String, dynamic>{
+      'ranking': instance.ranking,
+      'title': instance.title,
+      'top_type': instance.topType,
     };

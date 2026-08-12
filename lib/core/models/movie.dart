@@ -57,6 +57,7 @@ class MovieDetail extends MovieSummary {
     this.relativeMovies = const [],
     this.tags = const [],
     this.tagItems = const [],
+    this.topRankings = const [],
     this.magnetCount = 0,
     this.wantWatchCount = 0,
     this.watchedCount = 0,
@@ -82,6 +83,7 @@ class MovieDetail extends MovieSummary {
   final List<String> tags;
   @JsonKey(includeToJson: false)
   final List<Tag> tagItems;
+  final List<TopRanking> topRankings;
   final int magnetCount;
   final int wantWatchCount;
   final int watchedCount;
@@ -91,4 +93,17 @@ class MovieDetail extends MovieSummary {
       _$MovieDetailFromJson(json);
   @override
   Map<String, dynamic> toJson() => _$MovieDetailToJson(this);
+}
+
+@JsonSerializable(fieldRename: FieldRename.snake)
+class TopRanking {
+  const TopRanking({this.ranking, this.title, this.topType});
+
+  final int? ranking;
+  final String? title;
+  final int? topType;
+
+  factory TopRanking.fromJson(Map<String, dynamic> json) =>
+      _$TopRankingFromJson(json);
+  Map<String, dynamic> toJson() => _$TopRankingToJson(this);
 }
