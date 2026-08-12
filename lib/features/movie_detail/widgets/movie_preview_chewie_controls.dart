@@ -1,5 +1,4 @@
 import 'package:chewie/chewie.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:jade/features/movie_detail/widgets/movie_preview_header.dart';
 
