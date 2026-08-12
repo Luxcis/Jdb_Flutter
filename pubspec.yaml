@@ -74,6 +74,7 @@ dev_dependencies:
   json_serializable: ^6.8.0
   path_provider_platform_interface: ^2.1.2
   sqflite_common_ffi: ^2.4.2
+  video_player_platform_interface: 6.9.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

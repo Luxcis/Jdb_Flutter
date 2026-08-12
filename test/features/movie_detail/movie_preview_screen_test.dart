@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:chewie/chewie.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -8,8 +9,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/screens/movie_preview_screen.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_playback.dart';
+import 'package:jade/features/movie_detail/services/movie_preview_wakelock.dart';
+import 'package:jade/features/movie_detail/widgets/movie_preview_chewie_controls.dart';
 import 'package:jade/features/movie_detail/widgets/movie_preview_header.dart';
 import 'package:video_player/video_player.dart';
+import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
 void main() {
   test('MoviePreviewArgs 只接受带 host 的 HTTP(S) 地址', () {
@@ -85,6 +89,34 @@ void main() {
 
     expect(find.byType(MoviePreviewHeader), findsOneWidget);
     expect(find.byTooltip('返回'), findsOneWidget);
+  });
+
+  testWidgets('默认 playback 把组合控件接入 Chewie 且只显示一份顶部栏', (tester) async {
+    final originalPlatform = VideoPlayerPlatform.instance;
+    VideoPlayerPlatform.instance = _FakeVideoPlayerPlatform();
+    addTearDown(() => VideoPlayerPlatform.instance = originalPlatform);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MoviePreviewPage(
+          args: _validArgs,
+          orientationSetter: (_) async {},
+          wakelockCoordinator: MoviePreviewWakelockCoordinator(
+            setWakelockEnabled: (_) async {},
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final chewie = tester.widget<Chewie>(find.byType(Chewie));
+    expect(chewie.controller.customControls, isA<MoviePreviewChewieControls>());
+    expect(find.byType(MoviePreviewHeader), findsOneWidget);
+    expect(find.byTooltip('返回'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 2));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('非法 URL 显示失败提示且不创建播放驱动', (tester) async {
@@ -823,6 +855,65 @@ class _FakePlayback implements MoviePreviewPlayback {
   Future<void> dispose() async {
     disposeCalls++;
     await disposeCompleter?.future;
+  }
+}
+
+class _FakeVideoPlayerPlatform extends VideoPlayerPlatform {
+  final _eventStreams = <int, StreamController<VideoEvent>>{};
+  var _nextPlayerId = 0;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<int?> createWithOptions(VideoCreationOptions options) async {
+    final playerId = _nextPlayerId++;
+    final events = StreamController<VideoEvent>();
+    _eventStreams[playerId] = events;
+    events.add(
+      VideoEvent(
+        eventType: VideoEventType.initialized,
+        duration: const Duration(minutes: 1),
+        size: const Size(1920, 1080),
+      ),
+    );
+    return playerId;
+  }
+
+  @override
+  Stream<VideoEvent> videoEventsFor(int playerId) {
+    return _eventStreams[playerId]!.stream;
+  }
+
+  @override
+  Future<void> dispose(int playerId) async {
+    _eventStreams.remove(playerId);
+  }
+
+  @override
+  Future<void> play(int playerId) async {}
+
+  @override
+  Future<void> pause(int playerId) async {}
+
+  @override
+  Future<void> setLooping(int playerId, bool looping) async {}
+
+  @override
+  Future<void> setVolume(int playerId, double volume) async {}
+
+  @override
+  Future<void> setPlaybackSpeed(int playerId, double speed) async {}
+
+  @override
+  Future<void> seekTo(int playerId, Duration position) async {}
+
+  @override
+  Future<Duration> getPosition(int playerId) async => Duration.zero;
+
+  @override
+  Widget buildView(int playerId) {
+    return const ColoredBox(color: Colors.black);
   }
 }
 
