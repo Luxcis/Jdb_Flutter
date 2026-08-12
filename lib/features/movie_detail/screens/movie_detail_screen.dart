@@ -284,7 +284,10 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                 extra: MoviePreviewArgs(
                   movieId: detail.id,
                   title: detail.title,
-                  videoUrl: detail.previewVideoUrl!,
+                  videoUrl: MoviePreviewArgs.replaceHostWithLine(
+                    detail.previewVideoUrl!,
+                    ApiClient.instanceOrNull?.domainManager.currentUrl,
+                  ),
                 ),
               ),
               onActorTap: (actor) => context.push('/actor/${actor.id}'),

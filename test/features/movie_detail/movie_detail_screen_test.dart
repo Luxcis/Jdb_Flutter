@@ -437,7 +437,8 @@ void main() {
     final adapter = await _setupApiClient();
     _enqueueCompleteMovieDetail(
       adapter,
-      previewVideoUrl: 'https://media.example.com/preview.m3u8',
+      previewVideoUrl:
+          'https://media.example.com/preview.m3u8?sign=a%2Bb%3Dc&t=123',
     );
     Object? capturedArgs;
     final router = _buildMovieDetailRouter(
@@ -477,7 +478,10 @@ void main() {
     final args = capturedArgs! as MoviePreviewArgs;
     expect(args.movieId, 'm1');
     expect(args.title, '测试影片');
-    expect(args.videoUrl, 'https://media.example.com/preview.m3u8');
+    expect(
+      args.videoUrl,
+      'https://jdforrepam.com/preview.m3u8?sign=a%2Bb%3Dc&t=123',
+    );
   });
 
   for (final target in [
