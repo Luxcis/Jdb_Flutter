@@ -118,6 +118,43 @@ void main() {
     }
   });
 
+  testWidgets('播放中同时携带完成或错误仍保持显示', (tester) async {
+    for (final state in [
+      _state(playing: true, completed: true),
+      _state(playing: true, error: 'media error'),
+    ]) {
+      final notifier = ValueNotifier(state);
+      await tester.pumpWidget(_wrap(notifier));
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(_opacity(tester), 1.0);
+
+      await tester.pumpWidget(const SizedBox());
+      notifier.dispose();
+    }
+  });
+
+  testWidgets('已隐藏后切入完成或错误立即显示', (tester) async {
+    final notifier = ValueNotifier(_state());
+    await tester.pumpWidget(_wrap(notifier));
+    await tester.pump(const Duration(seconds: 3));
+    expect(_opacity(tester), 0.0);
+
+    for (final state in [
+      _state(playing: true, completed: true),
+      _state(playing: false, error: 'media error'),
+    ]) {
+      notifier.value = state;
+      await tester.pump();
+
+      expect(_opacity(tester), 1.0);
+      expect(_ignoring(tester), isFalse);
+    }
+
+    await tester.pumpWidget(const SizedBox());
+    notifier.dispose();
+  });
+
   testWidgets('重新进入播放状态重新计时', (tester) async {
     final notifier = ValueNotifier(_state(playing: false));
     await tester.pumpWidget(_wrap(notifier));

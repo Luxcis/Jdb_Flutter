@@ -51,7 +51,9 @@ class _MoviePreviewHeaderOverlayState extends State<MoviePreviewHeaderOverlay> {
 
   void _onStateChanged() {
     final value = widget.state.value;
-    final hideEligible = value.isPlaying && !value.isBuffering;
+    final hasError = value.errorDescription != null && value.errorDescription!.isNotEmpty;
+    final hideEligible =
+        value.isPlaying && !value.isBuffering && !value.isCompleted && !hasError;
     if (hideEligible && !_wasHideEligible) {
       if (_hidden.value) {
         _hidden.value = false;
