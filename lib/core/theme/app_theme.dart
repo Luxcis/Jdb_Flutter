@@ -36,19 +36,27 @@ abstract final class AppTheme {
     );
   }
 
-  static AppBarTheme _appBarTheme(Brightness brightness) {
+  /// 全局沉浸式系统覆盖样式(状态栏透明、关闭对比遮罩)
+  ///
+  /// 供 [AppBarTheme.systemOverlayStyle] 与应用根级 `AnnotatedRegion` 共用,
+  /// 确保没有 AppBar 的页面(启动页、首页)也保持一致。
+  static SystemUiOverlayStyle systemUiOverlayStyle(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
+    return SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      systemStatusBarContrastEnforced: false,
+    );
+  }
+
+  static AppBarTheme _appBarTheme(Brightness brightness) {
     return AppBarTheme(
       backgroundColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
-      systemOverlayStyle: SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
-        systemStatusBarContrastEnforced: false,
-      ),
+      systemOverlayStyle: systemUiOverlayStyle(brightness),
     );
   }
 }

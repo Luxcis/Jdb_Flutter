@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -44,6 +45,13 @@ class _MyAppState extends State<MyApp> {
           themeMode: themeProvider.themeMode,
           routerConfig: _router,
           debugShowCheckedModeBanner: false,
+          builder: (context, child) {
+            final brightness = Theme.of(context).colorScheme.brightness;
+            return AnnotatedRegion<SystemUiOverlayStyle>(
+              value: AppTheme.systemUiOverlayStyle(brightness),
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
         );
       },
     );

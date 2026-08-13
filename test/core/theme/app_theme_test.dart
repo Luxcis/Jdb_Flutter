@@ -44,5 +44,19 @@ void main() {
         Colors.transparent,
       );
     });
+
+    test('全局覆盖样式与亮色主题 AppBar 样式保持一致', () {
+      expect(
+        AppTheme.systemUiOverlayStyle(Brightness.light),
+        AppTheme.light().appBarTheme.systemOverlayStyle,
+      );
+    });
+
+    test('全局覆盖样式与深色主题 AppBar 样式保持一致', () {
+      expect(
+        AppTheme.systemUiOverlayStyle(Brightness.dark),
+        AppTheme.dark().appBarTheme.systemOverlayStyle,
+      );
+    });
   });
 }
