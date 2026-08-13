@@ -93,7 +93,7 @@ pubspec.yaml：
 文件：`lib/features/movie_detail/services/movie_preview_playback.dart`
 
 - 保留 `MoviePreviewPlayback`、`MoviePreviewPlaybackState`、`MoviePreviewPlaybackFactory`；从接口移除 `setPlaybackSpeed`（页面不再发起倍速命令）。
-- 新增薄接口 `MediaKitPreviewPlayer`（open/play/pause/seek/setRate/dispose 与各 stream），生产实现包装真 `Player`，测试注入 fake —— 与现有 `withController` 注入模式一致。
+- 测试接缝使用 media_kit 官方注入点 `Player(platformPlayer: ...)`：测试注入继承 `PlatformPlayer` 的 fake（其公开的 `*Controller` 可直接驱动状态流），生产代码与测试共用同一 `Player` API，与现有 `withController` 注入模式一致。
 - 构造时创建 `Player()` 与 `VideoController(player)`。
 - `initialize()` = `await player.open(Media(uri), play: false)`，成功后 `isInitialized = true`。
 - 订阅 `stream.playing / buffering / completed / error / position / duration / width / height` 映射为 `MoviePreviewPlaybackState`：
@@ -215,7 +215,7 @@ Stack
 
 - `pubspec.yaml`：替换依赖。
 - `lib/main.dart`：`main()` 增加 `MediaKit.ensureInitialized()`。
-- `lib/features/movie_detail/services/movie_preview_playback.dart`：`ChewieMoviePreviewPlayback` 替换为 `MediaKitMoviePreviewPlayback`，新增 `MediaKitPreviewPlayer` 接缝。
+- `lib/features/movie_detail/services/movie_preview_playback.dart`：`ChewieMoviePreviewPlayback` 替换为 `MediaKitMoviePreviewPlayback`，通过 `Player(platformPlayer: ...)` 注入点支持测试替身。
 - `lib/features/movie_detail/screens/movie_preview_screen.dart`：接入双击检测与头部显隐，删除手势层与 `setPlaybackSpeed` 相关命令。
 
 新增：
