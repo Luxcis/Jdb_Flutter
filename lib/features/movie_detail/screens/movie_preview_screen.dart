@@ -5,9 +5,9 @@ import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_orientation.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_playback.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_wakelock.dart';
-import 'package:jade/features/movie_detail/widgets/movie_preview_chewie_controls.dart';
-import 'package:jade/features/movie_detail/widgets/movie_preview_gesture_layer.dart';
+import 'package:jade/features/movie_detail/widgets/movie_preview_double_tap_detector.dart';
 import 'package:jade/features/movie_detail/widgets/movie_preview_header.dart';
+import 'package:jade/features/movie_detail/widgets/movie_preview_header_overlay.dart';
 
 typedef PreferredOrientationsSetter = MoviePreviewPreferredOrientationsSetter;
 
@@ -58,10 +58,7 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
     if (injectedFactory != null) {
       return injectedFactory(uri);
     }
-    return ChewieMoviePreviewPlayback(
-      uri,
-      customControls: MoviePreviewChewieControls(title: _title, onBack: _pop),
-    );
+    return MediaKitMoviePreviewPlayback(uri);
   }
 
   @override
@@ -117,17 +114,25 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
     );
     return ValueListenableBuilder<MoviePreviewPlaybackState>(
       valueListenable: playback.state,
-      child: MoviePreviewGestureLayer(
-        onTogglePlayback: () => _togglePlayback(command),
-        onSetPlaybackSpeed: (speed) => _setPlaybackSpeed(command, speed),
-        onSpeedRecoveryFailure: () => _handleSpeedRecoveryFailure(command),
+      child: MoviePreviewDoubleTapDetector(
+        onDoubleTap: () => _onDoubleTap(command),
         child: playback.buildView(),
       ),
       builder: (context, state, child) {
         if (state.errorDescription?.isNotEmpty ?? false) {
           return _buildStatusBody(hasError: true);
         }
-        return child!;
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            child!,
+            MoviePreviewHeaderOverlay(
+              title: _title,
+              onBack: _pop,
+              state: playback.state,
+            ),
+          ],
+        );
       },
     );
   }
@@ -182,19 +187,12 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
     }
   }
 
-  Future<void> _setPlaybackSpeed(_PlaybackCommand command, double speed) async {
-    _ensureCommandIsCurrent(command);
-    await command.session.playback.setPlaybackSpeed(speed);
-    _ensureCommandIsCurrent(command);
-  }
-
-  Future<void> _handleSpeedRecoveryFailure(_PlaybackCommand command) async {
-    _ensureCommandIsCurrent(command);
-    _showPageError();
-    try {
-      await command.session.playback.pause().timeout(_cleanupStepTimeout);
-    } catch (_) {}
-    _ensureCommandIsCurrent(command);
+  void _onDoubleTap(_PlaybackCommand command) {
+    unawaited(() async {
+      try {
+        await _togglePlayback(command);
+      } catch (_) {}
+    }());
   }
 
   bool _isCommandCurrent(_PlaybackCommand command) {
@@ -353,7 +351,6 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
   }
 
   Future<void> _runCleanup(MoviePreviewPlayback playback) async {
-    await _ignoreBoundedCleanup(() => playback.setPlaybackSpeed(1.0));
     await _ignoreBoundedCleanup(playback.pause);
     await _ignoreBoundedCleanup(playback.dispose);
   }

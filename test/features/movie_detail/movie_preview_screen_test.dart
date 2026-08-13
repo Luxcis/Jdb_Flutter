@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:chewie/chewie.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -9,11 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/screens/movie_preview_screen.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_playback.dart';
-import 'package:jade/features/movie_detail/services/movie_preview_wakelock.dart';
-import 'package:jade/features/movie_detail/widgets/movie_preview_chewie_controls.dart';
 import 'package:jade/features/movie_detail/widgets/movie_preview_header.dart';
-import 'package:video_player/video_player.dart';
-import 'package:video_player_platform_interface/video_player_platform_interface.dart';
+import 'package:jade/features/movie_detail/widgets/movie_preview_header_overlay.dart';
 
 void main() {
   test('MoviePreviewArgs 只接受带 host 的 HTTP(S) 地址', () {
@@ -75,13 +71,12 @@ void main() {
     await tester.pump();
 
     expect(playback.pauseCalls, 1);
-    expect(playback.speedCalls.last, 1.0);
     expect(playback.disposeCalls, 1);
     expect(orientationCalls.last, isEmpty);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('正常播放只保留 playback controls 内的一份顶部栏', (tester) async {
+  testWidgets('正常播放页面只显示一份顶部栏', (tester) async {
     final playback = _FakePlayback();
 
     await _pumpPreviewPage(tester, playback);
@@ -89,34 +84,6 @@ void main() {
 
     expect(find.byType(MoviePreviewHeader), findsOneWidget);
     expect(find.byTooltip('返回'), findsOneWidget);
-  });
-
-  testWidgets('默认 playback 把组合控件接入 Chewie 且只显示一份顶部栏', (tester) async {
-    final originalPlatform = VideoPlayerPlatform.instance;
-    VideoPlayerPlatform.instance = _FakeVideoPlayerPlatform();
-    addTearDown(() => VideoPlayerPlatform.instance = originalPlatform);
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: MoviePreviewPage(
-          args: _validArgs,
-          orientationSetter: (_) async {},
-          wakelockCoordinator: MoviePreviewWakelockCoordinator(
-            setWakelockEnabled: (_) async {},
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-
-    final chewie = tester.widget<Chewie>(find.byType(Chewie));
-    expect(chewie.controller.customControls, isA<MoviePreviewChewieControls>());
-    expect(find.byType(MoviePreviewHeader), findsOneWidget);
-    expect(find.byTooltip('返回'), findsOneWidget);
-
-    await tester.pumpWidget(const SizedBox());
-    await tester.pump(const Duration(seconds: 2));
-    expect(tester.takeException(), isNull);
   });
 
   testWidgets('非法 URL 显示失败提示且不创建播放驱动', (tester) async {
@@ -512,170 +479,9 @@ void main() {
     expect(find.text('重试'), findsOneWidget);
     expect(find.byTooltip('返回'), findsOneWidget);
     expect(
-      find.byKey(const Key('movie-preview-gesture-surface')),
+      find.byKey(MoviePreviewHeaderOverlay.headerOpacityKey),
       findsNothing,
     );
-  });
-
-  testWidgets('旧手势队列在媒体错误重试后不会改变新 session 倍速', (tester) async {
-    final allowOldRestore = Completer<void>();
-    var oldRestoreCalls = 0;
-    final oldPlayback = _FakePlayback(
-      onSetPlaybackSpeed: (speed) async {
-        if (speed == 1.0 && ++oldRestoreCalls == 1) {
-          await allowOldRestore.future;
-        }
-      },
-    );
-    final newPlayback = _FakePlayback();
-    final playbacks = [oldPlayback, newPlayback];
-    await tester.pumpWidget(
-      MaterialApp(
-        home: MoviePreviewPage(
-          args: _validArgs,
-          playbackFactory: (_) => playbacks.removeAt(0),
-          orientationSetter: (_) async {},
-        ),
-      ),
-    );
-    await tester.pump();
-
-    final firstGesture = await tester.startGesture(_backgroundPoint(tester));
-    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
-    await firstGesture.up();
-    await tester.pump();
-    await tester.pump(kDoubleTapTimeout);
-
-    final secondGesture = await tester.startGesture(_backgroundPoint(tester));
-    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
-    await secondGesture.up();
-    await tester.pump();
-
-    oldPlayback.emit(
-      const MoviePreviewPlaybackState(
-        isInitialized: true,
-        errorDescription: 'media error',
-      ),
-    );
-    await tester.pump();
-    await tester.tap(find.text('重试'));
-    await tester.pump();
-    await tester.pump();
-
-    expect(newPlayback.playCalls, 1);
-    expect(newPlayback.speedCalls, isEmpty);
-
-    allowOldRestore.complete();
-    await tester.pump();
-    await tester.pump();
-    await tester.pump();
-
-    expect(newPlayback.speedCalls, isEmpty);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('长按恢复 1.0× 失败会暂停并进入可重试错误页', (tester) async {
-    final playback = _FakePlayback(
-      initialState: const MoviePreviewPlaybackState(
-        isInitialized: true,
-        isPlaying: true,
-      ),
-      onSetPlaybackSpeed: (speed) async {
-        if (speed == 1.0) throw StateError('restore failed');
-      },
-    );
-    await _pumpPreviewPage(tester, playback);
-
-    final gesture = await tester.startGesture(_backgroundPoint(tester));
-    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
-    await gesture.up();
-    await tester.pump();
-    await tester.pump();
-
-    expect(playback.speedCalls, [2.0, 1.0]);
-    expect(playback.pauseCalls, 1);
-    expect(find.text('预告片播放失败'), findsOneWidget);
-    expect(find.text('重试'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('长按恢复失败时 pause 永不完成仍及时显示错误重试页', (tester) async {
-    final playback = _FakePlayback(
-      initialState: const MoviePreviewPlaybackState(
-        isInitialized: true,
-        isPlaying: true,
-      ),
-      pauseCompleter: Completer<void>(),
-      onSetPlaybackSpeed: (speed) async {
-        if (speed == 1.0) throw StateError('restore failed');
-      },
-    );
-    await _pumpPreviewPage(tester, playback);
-
-    final gesture = await tester.startGesture(_backgroundPoint(tester));
-    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
-    await gesture.up();
-    await tester.pump();
-    await tester.pump();
-
-    expect(playback.pauseCalls, 1);
-    expect(find.text('预告片播放失败'), findsOneWidget);
-    expect(find.text('重试'), findsOneWidget);
-
-    await tester.pumpWidget(const SizedBox());
-    await tester.pump(const Duration(seconds: 2));
-    await tester.pump();
-    expect(tester.takeException(), isNull);
-  });
-
-  test('映射 VideoPlayerValue 的完成和错误状态', () {
-    final state = moviePreviewPlaybackStateFromVideoPlayerValue(
-      const VideoPlayerValue(
-        duration: Duration(minutes: 2),
-        position: Duration(seconds: 20),
-        size: Size(1920, 1080),
-        isInitialized: true,
-        isPlaying: true,
-        isBuffering: true,
-        isCompleted: true,
-        errorDescription: 'media error',
-      ),
-    );
-
-    expect(state.isInitialized, isTrue);
-    expect(state.isPlaying, isTrue);
-    expect(state.isBuffering, isTrue);
-    expect(state.isCompleted, isTrue);
-    expect(state.position, const Duration(seconds: 20));
-    expect(state.duration, const Duration(minutes: 2));
-    expect(state.aspectRatio, 16 / 9);
-    expect(state.errorDescription, 'media error');
-  });
-
-  test('controller 释放抛错时仍释放 playback state', () async {
-    final playback = ChewieMoviePreviewPlayback.withController(
-      _ThrowingDisposeVideoPlayerController(),
-    );
-    final state = playback.state;
-
-    await expectLater(playback.dispose(), throwsA(isA<StateError>()));
-
-    expect(() => state.addListener(() {}), throwsFlutterError);
-  });
-
-  test('平台创建失败后 playback dispose 会有界完成并释放 state', () async {
-    final playback = ChewieMoviePreviewPlayback.withController(
-      _CreateFailureVideoPlayerController(),
-    );
-    final state = playback.state;
-
-    await expectLater(playback.initialize(), throwsA(isA<StateError>()));
-    await expectLater(
-      playback.dispose().timeout(const Duration(seconds: 2)),
-      completes,
-    );
-
-    expect(() => state.addListener(() {}), throwsFlutterError);
   });
 }
 
@@ -746,9 +552,7 @@ Future<void> _pumpPreviewPage(
 }
 
 Offset _backgroundPoint(WidgetTester tester) {
-  return tester.getTopLeft(
-        find.byKey(const Key('movie-preview-gesture-surface')),
-      ) +
+  return tester.getTopLeft(find.byKey(const Key('fake-preview-video'))) +
       const Offset(64, 240);
 }
 
@@ -757,22 +561,17 @@ class _FakePlayback implements MoviePreviewPlayback {
     this.initializeError,
     this.initializeCompleter,
     this.seekCompleter,
-    this.pauseCompleter,
     this.disposeCompleter,
-    this.onSetPlaybackSpeed,
     this.initialState = const MoviePreviewPlaybackState(),
   });
 
   final Object? initializeError;
   final Completer<void>? initializeCompleter;
   final Completer<void>? seekCompleter;
-  final Completer<void>? pauseCompleter;
   final Completer<void>? disposeCompleter;
-  final Future<void> Function(double speed)? onSetPlaybackSpeed;
   final MoviePreviewPlaybackState initialState;
   late final _state = ValueNotifier(initialState);
   final commands = <String>[];
-  final speedCalls = <double>[];
   int initializeCalls = 0;
   int playCalls = 0;
   int pauseCalls = 0;
@@ -783,27 +582,9 @@ class _FakePlayback implements MoviePreviewPlayback {
 
   @override
   Widget buildView() {
-    return Builder(
-      builder: (context) {
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            const ColoredBox(
-              key: Key('fake-preview-video'),
-              color: Colors.black,
-            ),
-            SafeArea(
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: MoviePreviewHeader(
-                  title: '测试影片',
-                  onBack: () => Navigator.of(context).pop(),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+    return const ColoredBox(
+      key: Key('fake-preview-video'),
+      color: Colors.black,
     );
   }
 
@@ -832,19 +613,12 @@ class _FakePlayback implements MoviePreviewPlayback {
   Future<void> pause() async {
     pauseCalls++;
     commands.add('pause');
-    await pauseCompleter?.future;
   }
 
   @override
   Future<void> seekTo(Duration position) async {
     commands.add('seek:${position.inMilliseconds}');
     await seekCompleter?.future;
-  }
-
-  @override
-  Future<void> setPlaybackSpeed(double speed) async {
-    speedCalls.add(speed);
-    await onSetPlaybackSpeed?.call(speed);
   }
 
   void emit(MoviePreviewPlaybackState value) {
@@ -855,97 +629,5 @@ class _FakePlayback implements MoviePreviewPlayback {
   Future<void> dispose() async {
     disposeCalls++;
     await disposeCompleter?.future;
-  }
-}
-
-class _FakeVideoPlayerPlatform extends VideoPlayerPlatform {
-  final _eventStreams = <int, StreamController<VideoEvent>>{};
-  var _nextPlayerId = 0;
-
-  @override
-  Future<void> init() async {}
-
-  @override
-  Future<int?> createWithOptions(VideoCreationOptions options) async {
-    final playerId = _nextPlayerId++;
-    final events = StreamController<VideoEvent>();
-    _eventStreams[playerId] = events;
-    events.add(
-      VideoEvent(
-        eventType: VideoEventType.initialized,
-        duration: const Duration(minutes: 1),
-        size: const Size(1920, 1080),
-      ),
-    );
-    return playerId;
-  }
-
-  @override
-  Stream<VideoEvent> videoEventsFor(int playerId) {
-    return _eventStreams[playerId]!.stream;
-  }
-
-  @override
-  Future<void> dispose(int playerId) async {
-    _eventStreams.remove(playerId);
-  }
-
-  @override
-  Future<void> play(int playerId) async {}
-
-  @override
-  Future<void> pause(int playerId) async {}
-
-  @override
-  Future<void> setLooping(int playerId, bool looping) async {}
-
-  @override
-  Future<void> setVolume(int playerId, double volume) async {}
-
-  @override
-  Future<void> setPlaybackSpeed(int playerId, double speed) async {}
-
-  @override
-  Future<void> seekTo(int playerId, Duration position) async {}
-
-  @override
-  Future<Duration> getPosition(int playerId) async => Duration.zero;
-
-  @override
-  Widget buildView(int playerId) {
-    return const ColoredBox(color: Colors.black);
-  }
-}
-
-class _ThrowingDisposeVideoPlayerController extends VideoPlayerController {
-  _ThrowingDisposeVideoPlayerController()
-    : super.networkUrl(
-        Uri.parse('https://media.example.com/preview.m3u8'),
-        formatHint: VideoFormat.hls,
-      );
-
-  @override
-  Future<void> dispose() async {
-    await super.dispose();
-    throw StateError('controller dispose');
-  }
-}
-
-class _CreateFailureVideoPlayerController extends VideoPlayerController {
-  _CreateFailureVideoPlayerController()
-    : super.networkUrl(
-        Uri.parse('https://media.example.com/preview.m3u8'),
-        formatHint: VideoFormat.hls,
-      );
-
-  @override
-  Future<void> initialize() async {
-    throw StateError('platform create failed');
-  }
-
-  @override
-  Future<void> dispose() async {
-    await super.dispose();
-    await Completer<void>().future;
   }
 }
