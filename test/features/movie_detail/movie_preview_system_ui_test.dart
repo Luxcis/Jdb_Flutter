@@ -23,10 +23,9 @@ void main() {
     final lease = coordinator.acquire();
     await lease.enabled;
 
-    expect(
-      setter.calls,
-      [(mode: SystemUiMode.immersiveSticky, overlays: null)],
-    );
+    expect(setter.calls, [
+      (mode: SystemUiMode.immersiveSticky, overlays: null),
+    ]);
     await lease.release();
   });
 
@@ -41,10 +40,10 @@ void main() {
     await lease.release();
 
     expect(setter.calls.last.mode, SystemUiMode.manual);
-    expect(
-      setter.calls.last.overlays,
-      [SystemUiOverlay.top, SystemUiOverlay.bottom],
-    );
+    expect(setter.calls.last.overlays, [
+      SystemUiOverlay.top,
+      SystemUiOverlay.bottom,
+    ]);
   });
 
   test('旧 lease 被取代后，其迟到释放不触发恢复', () async {

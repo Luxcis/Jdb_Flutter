@@ -208,9 +208,9 @@ class MoviePreviewSystemUiCoordinator {
     if (!identical(_owner, lease)) {
       return Future<void>.value();
     }
-    _owner = null;
     return _enqueue(() async {
-      if (_owner != null) return;
+      if (!identical(_owner, lease)) return;
+      _owner = null;
       await _setSystemUiMode(exitMode, overlays: exitOverlays);
     });
   }
@@ -289,7 +289,7 @@ final _testSystemUiCoordinator = MoviePreviewSystemUiCoordinator(
 
 1c. 给测试文件中全部 12 处 `MoviePreviewPage(` 构造添加 `systemUiCoordinator: _testSystemUiCoordinator`（其中 1 处在 `_pumpPreviewPage` 内，其余为直接构造；每个构造的命名参数块内任选一行后追加即可）。
 
-1d. 在文件末尾（`_FakePlayback` 类之后）新增 3 个用例：
+1d. 在 main() 末尾（`_FakePlayback` 类定义之前）新增 3 个用例：
 
 ```dart
   testWidgets('进入页面设置沉浸模式，退出恢复默认双栏', (tester) async {

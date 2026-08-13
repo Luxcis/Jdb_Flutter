@@ -516,19 +516,13 @@ void main() {
     );
     await tester.pump();
 
-    expect(
-      calls.first,
-      (mode: SystemUiMode.immersiveSticky, overlays: null),
-    );
+    expect(calls.first, (mode: SystemUiMode.immersiveSticky, overlays: null));
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
 
     expect(calls.last.mode, SystemUiMode.manual);
-    expect(
-      calls.last.overlays,
-      [SystemUiOverlay.top, SystemUiOverlay.bottom],
-    );
+    expect(calls.last.overlays, [SystemUiOverlay.top, SystemUiOverlay.bottom]);
     expect(tester.takeException(), isNull);
   });
 
@@ -570,7 +564,8 @@ void main() {
     final coordinator = MoviePreviewSystemUiCoordinator(
       setSystemUiMode: (mode, {overlays}) async {
         calls.add(mode);
-        if (mode == SystemUiMode.manual && calls.where((m) => m == SystemUiMode.manual).length == 1) {
+        if (mode == SystemUiMode.manual &&
+            calls.where((m) => m == SystemUiMode.manual).length == 1) {
           await releaseGate.future;
         }
       },
@@ -600,6 +595,73 @@ void main() {
     await tester.pump();
 
     expect(calls.last, SystemUiMode.immersiveSticky);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('系统 UI 设置失败不影响播放', (tester) async {
+    final playback = _FakePlayback();
+    final coordinator = MoviePreviewSystemUiCoordinator(
+      setSystemUiMode: (mode, {overlays}) async {
+        throw StateError('system ui failed');
+      },
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MoviePreviewPage(
+          args: _validArgs,
+          playbackFactory: (_) => playback,
+          orientationSetter: (_) async {},
+          systemUiCoordinator: coordinator,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(playback.initializeCalls, 1);
+    expect(playback.playCalls, 1);
+    expect(find.text('预告片播放失败'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('重试不会重复设置沉浸模式', (tester) async {
+    final calls = <SystemUiMode>[];
+    final coordinator = MoviePreviewSystemUiCoordinator(
+      setSystemUiMode: (mode, {overlays}) async {
+        calls.add(mode);
+      },
+    );
+    final failedPlayback = _FakePlayback(initializeError: Exception('network'));
+    final successfulPlayback = _FakePlayback();
+    final playbacks = [failedPlayback, successfulPlayback];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MoviePreviewPage(
+          args: _validArgs,
+          playbackFactory: (_) => playbacks.removeAt(0),
+          orientationSetter: (_) async {},
+          systemUiCoordinator: coordinator,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('预告片播放失败'), findsOneWidget);
+    await tester.tap(find.text('重试'));
+    await tester.pump();
+
+    expect(successfulPlayback.playCalls, 1);
+    expect(
+      calls.where((mode) => mode == SystemUiMode.immersiveSticky).length,
+      1,
+    );
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
     expect(tester.takeException(), isNull);
   });
 }
