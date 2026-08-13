@@ -19,9 +19,16 @@ class MoviePreviewHeaderOverlay extends StatefulWidget {
   static const headerOpacityKey = Key('movie-preview-header-opacity');
   static const _opacityDuration = Duration(milliseconds: 250);
 
+  /// 标题文本。
   final String title;
+
+  /// 返回按钮回调。
   final VoidCallback onBack;
+
+  /// 播放状态监听源，驱动头部显隐。
   final ValueListenable<MoviePreviewPlaybackState> state;
+
+  /// 进入可隐藏状态后延迟隐藏的时长。
   final Duration hideDelay;
 
   @override
@@ -51,9 +58,13 @@ class _MoviePreviewHeaderOverlayState extends State<MoviePreviewHeaderOverlay> {
 
   void _onStateChanged() {
     final value = widget.state.value;
-    final hasError = value.errorDescription != null && value.errorDescription!.isNotEmpty;
+    final hasError =
+        value.errorDescription != null && value.errorDescription!.isNotEmpty;
     final hideEligible =
-        value.isPlaying && !value.isBuffering && !value.isCompleted && !hasError;
+        value.isPlaying &&
+        !value.isBuffering &&
+        !value.isCompleted &&
+        !hasError;
     if (hideEligible && !_wasHideEligible) {
       if (_hidden.value) {
         _hidden.value = false;

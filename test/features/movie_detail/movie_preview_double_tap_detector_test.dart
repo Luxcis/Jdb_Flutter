@@ -124,4 +124,44 @@ void main() {
 
     expect(calls, 2);
   });
+
+  testWidgets('不干扰子树手势：单击与长按透传，双击仍触发', (tester) async {
+    final clock = _FakeClock();
+    var doubleTapCalls = 0;
+    var tapCalls = 0;
+    var longPressCalls = 0;
+
+    await tester.pumpWidget(
+      _wrap(
+        clock: clock,
+        onDoubleTap: () => doubleTapCalls++,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => tapCalls++,
+          onLongPress: () => longPressCalls++,
+          child: const SizedBox.expand(),
+        ),
+      ),
+    );
+
+    // 单击一次：child onTap 收到，doubleTap 回调不触发。
+    await tester.tapAt(const Offset(100, 100));
+    await tester.pump();
+    expect(tapCalls, 1);
+    expect(doubleTapCalls, 0);
+
+    // 长按一次：child onLongPress 收到（先推进时钟避免误判双击）。
+    clock.current = clock.current.add(const Duration(milliseconds: 500));
+    await tester.longPressAt(const Offset(100, 100));
+    await tester.pump();
+    expect(longPressCalls, 1);
+
+    // 双击：两次快速 tapAt 触发一次 doubleTap 回调。
+    clock.current = clock.current.add(const Duration(milliseconds: 500));
+    await tester.tapAt(const Offset(150, 150));
+    clock.current = clock.current.add(const Duration(milliseconds: 100));
+    await tester.tapAt(const Offset(155, 152));
+
+    expect(doubleTapCalls, 1);
+  });
 }

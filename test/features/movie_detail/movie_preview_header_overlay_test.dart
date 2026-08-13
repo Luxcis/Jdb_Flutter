@@ -39,10 +39,12 @@ double _opacity(WidgetTester tester) {
 bool _ignoring(WidgetTester tester) {
   return tester
       .widget<IgnorePointer>(
-        find.ancestor(
-          of: find.byKey(MoviePreviewHeaderOverlay.headerOpacityKey),
-          matching: find.byType(IgnorePointer),
-        ).first,
+        find
+            .ancestor(
+              of: find.byKey(MoviePreviewHeaderOverlay.headerOpacityKey),
+              matching: find.byType(IgnorePointer),
+            )
+            .first,
       )
       .ignoring;
 }

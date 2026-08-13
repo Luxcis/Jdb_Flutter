@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+/// 可注入的时钟函数，返回当前 [DateTime]，用于测试控制双击判定时间。
 typedef MoviePreviewClock = DateTime Function();
 
 /// 页面级原始事件双击检测。
@@ -17,10 +18,19 @@ class MoviePreviewDoubleTapDetector extends StatefulWidget {
     this.clock = DateTime.now,
   });
 
+  /// 被包裹的子组件，双击检测不改变其手势语义。
   final Widget child;
+
+  /// 双击命中时触发的回调。
   final VoidCallback onDoubleTap;
+
+  /// 判定双击的两次按下时间窗上限。
   final Duration doubleTapWindow;
+
+  /// 判定双击的两次按下位置最大容差（逻辑像素）。
   final double doubleTapSlop;
+
+  /// 可注入时钟；默认取系统当前时间。
   final MoviePreviewClock clock;
 
   @override

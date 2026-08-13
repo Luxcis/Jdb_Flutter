@@ -14,6 +14,7 @@ class _FakePlatformPlayer extends PlatformPlayer {
 
   final Object? openError;
   final Object? disposeError;
+  Object? seekError;
   final events = <String>[];
   final opened = <({String uri, bool play})>[];
 
@@ -32,8 +33,12 @@ class _FakePlatformPlayer extends PlatformPlayer {
   Future<void> pause() async => events.add('pause');
 
   @override
-  Future<void> seek(Duration position) async =>
-      events.add('seek:${position.inMilliseconds}');
+  Future<void> seek(Duration position) async {
+    if (seekError != null) {
+      throw seekError!;
+    }
+    events.add('seek:${position.inMilliseconds}');
+  }
 
   @override
   Future<void> dispose() async {
@@ -145,6 +150,34 @@ void main() {
     await pumpEventQueue();
 
     expect(platform.events, ['seek:0']);
+    await playback.dispose();
+  });
+
+  test('completed 且 seek 抛错时进入可重试错误态', () async {
+    final platform = _FakePlatformPlayer()
+      ..seekError = StateError('seek failed');
+    final playback = _build(platform);
+    await playback.initialize();
+
+    platform.completedController.add(true);
+
+    await pumpEventQueue();
+
+    expect(playback.state.value.errorDescription, isNotNull);
+    expect(playback.state.value.errorDescription, isNotEmpty);
+    await playback.dispose();
+  });
+
+  test('completed=false 不触发 seek', () async {
+    final platform = _FakePlatformPlayer();
+    final playback = _build(platform);
+    await playback.initialize();
+
+    platform.completedController.add(false);
+
+    await pumpEventQueue();
+
+    expect(platform.events.where((event) => event == 'seek:0'), isEmpty);
     await playback.dispose();
   });
 

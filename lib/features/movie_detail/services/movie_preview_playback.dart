@@ -46,6 +46,10 @@ typedef MoviePreviewPlaybackFactory = MoviePreviewPlayback Function(Uri uri);
 /// 测试通过 [Player.platformPlayer] 注入 fake（见
 /// `movie_preview_playback_test.dart`），生产环境默认创建真实 [Player]。
 class MediaKitMoviePreviewPlayback implements MoviePreviewPlayback {
+  /// 构造播放适配器。
+  ///
+  /// [uri] 为预告片地址；[player] 可注入自定义 [Player]（测试用 fake），
+  /// 省略时创建真实 [Player]。
   MediaKitMoviePreviewPlayback(Uri uri, {Player? player})
     : _uri = uri,
       _player = player ?? Player() {
@@ -161,9 +165,18 @@ class MediaKitMoviePreviewPlayback implements MoviePreviewPlayback {
   void _onCompleted(bool value) {
     _isCompleted = value;
     if (value) {
-      unawaited(_player.seek(Duration.zero));
+      unawaited(_seekToStartOnCompleted());
     }
     _syncState();
+  }
+
+  Future<void> _seekToStartOnCompleted() async {
+    try {
+      await _player.seek(Duration.zero);
+    } catch (error) {
+      _errorDescription = error.toString();
+      _syncState();
+    }
   }
 
   void _onError(String value) {
