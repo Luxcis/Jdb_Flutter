@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/screens/movie_preview_screen.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_playback.dart';
+import 'package:jade/features/movie_detail/services/movie_preview_system_ui.dart';
 import 'package:jade/features/movie_detail/widgets/movie_preview_header.dart';
 import 'package:jade/features/movie_detail/widgets/movie_preview_header_overlay.dart';
 
@@ -55,6 +56,7 @@ void main() {
           orientationSetter: (orientations) async {
             orientationCalls.add(List.of(orientations));
           },
+          systemUiCoordinator: _testSystemUiCoordinator,
         ),
       ),
     );
@@ -102,6 +104,7 @@ void main() {
             return _FakePlayback();
           },
           orientationSetter: (_) async {},
+          systemUiCoordinator: _testSystemUiCoordinator,
         ),
       ),
     );
@@ -127,6 +130,7 @@ void main() {
           ),
           playbackFactory: (_) => playbacks.removeAt(0),
           orientationSetter: (_) async {},
+          systemUiCoordinator: _testSystemUiCoordinator,
         ),
       ),
     );
@@ -168,6 +172,7 @@ void main() {
             return playbacks.removeAt(0);
           },
           orientationSetter: (_) async {},
+          systemUiCoordinator: _testSystemUiCoordinator,
         ),
       ),
     );
@@ -220,6 +225,7 @@ void main() {
             return playbacks.removeAt(0);
           },
           orientationSetter: (_) async {},
+          systemUiCoordinator: _testSystemUiCoordinator,
         ),
       ),
     );
@@ -254,6 +260,7 @@ void main() {
         orientationSetter: (orientations) async {
           orientationCalls.add(List.of(orientations));
         },
+        systemUiCoordinator: _testSystemUiCoordinator,
       ),
     );
 
@@ -280,6 +287,7 @@ void main() {
           ),
           playbackFactory: (_) => throw StateError('factory'),
           orientationSetter: (_) async {},
+          systemUiCoordinator: _testSystemUiCoordinator,
         ),
       ),
     );
@@ -335,6 +343,7 @@ void main() {
             throw StateError('orientation lock failed');
           }
         },
+        systemUiCoordinator: _testSystemUiCoordinator,
       ),
     );
     await tester.pump();
@@ -364,6 +373,7 @@ void main() {
         playbackFactory: (_) =>
             _FakePlayback(initializeCompleter: initializeCompleter),
         orientationSetter: (_) async {},
+        systemUiCoordinator: _testSystemUiCoordinator,
       ),
     );
 
@@ -386,6 +396,7 @@ void main() {
         ),
         playbackFactory: (_) => _FakePlayback(),
         orientationSetter: (_) async {},
+        systemUiCoordinator: _testSystemUiCoordinator,
       ),
     );
     await tester.pump();
@@ -403,6 +414,7 @@ void main() {
         playbackFactory: (_) =>
             _FakePlayback(initializeError: StateError('init failed')),
         orientationSetter: (_) async {},
+        systemUiCoordinator: _testSystemUiCoordinator,
       ),
     );
     await tester.pump();
@@ -483,12 +495,123 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets('进入页面设置沉浸模式，退出恢复默认双栏', (tester) async {
+    final calls = <({SystemUiMode mode, List<SystemUiOverlay>? overlays})>[];
+    final coordinator = MoviePreviewSystemUiCoordinator(
+      setSystemUiMode: (mode, {overlays}) async {
+        calls.add((mode: mode, overlays: overlays));
+      },
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MoviePreviewPage(
+          args: _validArgs,
+          playbackFactory: (_) => _FakePlayback(),
+          orientationSetter: (_) async {},
+          systemUiCoordinator: coordinator,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      calls.first,
+      (mode: SystemUiMode.immersiveSticky, overlays: null),
+    );
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+
+    expect(calls.last.mode, SystemUiMode.manual);
+    expect(
+      calls.last.overlays,
+      [SystemUiOverlay.top, SystemUiOverlay.bottom],
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('横屏锁定失败时仍保持沉浸，退出时恢复', (tester) async {
+    final calls = <SystemUiMode>[];
+    final coordinator = MoviePreviewSystemUiCoordinator(
+      setSystemUiMode: (mode, {overlays}) async {
+        calls.add(mode);
+      },
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MoviePreviewPage(
+          args: _validArgs,
+          playbackFactory: (_) => _FakePlayback(),
+          orientationSetter: (_) async {
+            throw StateError('orientation lock failed');
+          },
+          systemUiCoordinator: coordinator,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('预告片播放失败'), findsOneWidget);
+    expect(calls, [SystemUiMode.immersiveSticky]);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+
+    expect(calls.last, SystemUiMode.manual);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('旧页面迟到恢复不会破坏新页面的沉浸模式', (tester) async {
+    final releaseGate = Completer<void>();
+    final calls = <SystemUiMode>[];
+    final coordinator = MoviePreviewSystemUiCoordinator(
+      setSystemUiMode: (mode, {overlays}) async {
+        calls.add(mode);
+        if (mode == SystemUiMode.manual && calls.where((m) => m == SystemUiMode.manual).length == 1) {
+          await releaseGate.future;
+        }
+      },
+    );
+
+    Widget buildPage() {
+      return MaterialApp(
+        home: MoviePreviewPage(
+          args: _validArgs,
+          playbackFactory: (_) => _FakePlayback(),
+          orientationSetter: (_) async {},
+          systemUiCoordinator: coordinator,
+        ),
+      );
+    }
+
+    await tester.pumpWidget(buildPage());
+    await tester.pump();
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+
+    await tester.pumpWidget(buildPage());
+    await tester.pump();
+
+    releaseGate.complete();
+    await tester.pump();
+
+    expect(calls.last, SystemUiMode.immersiveSticky);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 const _validArgs = MoviePreviewArgs(
   movieId: 'm1',
   title: '测试影片',
   videoUrl: 'https://media.example.com/preview.m3u8',
+);
+
+final _testSystemUiCoordinator = MoviePreviewSystemUiCoordinator(
+  setSystemUiMode: (mode, {overlays}) async {},
 );
 
 Future<void> _pumpPreviewRoute(WidgetTester tester, Widget previewPage) async {
@@ -545,6 +668,7 @@ Future<void> _pumpPreviewPage(
         ),
         playbackFactory: (_) => playback,
         orientationSetter: (_) async {},
+        systemUiCoordinator: _testSystemUiCoordinator,
       ),
     ),
   );
