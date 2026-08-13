@@ -664,6 +664,7 @@ git commit -m "feat: add auto-hiding header overlay for movie preview"
 - Rewrite: `test/features/movie_detail/movie_preview_playback_test.dart`
 - Modify: `lib/features/movie_detail/screens/movie_preview_screen.dart`
 - Modify: `test/features/movie_detail/movie_preview_screen_test.dart`
+- Modify: `test/features/movie_detail/movie_preview_wakelock_test.dart`（删除其 fake 中悬空的 `setPlaybackSpeed` override）
 - Modify: `pubspec.yaml`（移除 chewie/video_player）
 - Delete: `lib/features/movie_detail/widgets/movie_preview_chewie_controls.dart`
 - Delete: `lib/features/movie_detail/widgets/movie_preview_gesture_layer.dart`
@@ -730,6 +731,8 @@ MediaKitMoviePreviewPlayback _build(_FakePlatformPlayer platform) {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('initialize 以 play:false 打开给定 URL 并标记已初始化', () async {
     final platform = _FakePlatformPlayer();
     final playback = _build(platform);
@@ -768,7 +771,7 @@ void main() {
     expect(video.controller.player, isA<Player>());
     expect(video.wakelock, isFalse);
     expect(video.fit, BoxFit.contain);
-    expect(video.controls, MaterialVideoControls.new);
+    expect(video.controls, same(MaterialVideoControls));
     await playback.dispose();
   });
 
@@ -785,6 +788,7 @@ void main() {
     platform.durationController.add(const Duration(minutes: 2));
     platform.widthController.add(1920);
     platform.heightController.add(1080);
+    await pumpEventQueue();
 
     final state = playback.state.value;
     expect(state.isPlaying, isTrue);
@@ -815,6 +819,7 @@ void main() {
     await playback.initialize();
 
     platform.completedController.add(true);
+    await pumpEventQueue();
 
     expect(platform.events, ['seek:0']);
     await playback.dispose();
@@ -962,12 +967,13 @@ class MediaKitMoviePreviewPlayback implements MoviePreviewPlayback {
     }
     return MaterialVideoControlsTheme(
       normal: const MaterialVideoControlsThemeData(speedUpOnLongPress: true),
+      fullscreen: const MaterialVideoControlsThemeData(speedUpOnLongPress: true),
       child: Video(
         controller: _videoController,
         fit: BoxFit.contain,
         fill: Colors.black,
         wakelock: false,
-        controls: MaterialVideoControls.new,
+        controls: MaterialVideoControls,
       ),
     );
   }
