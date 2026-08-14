@@ -38,7 +38,10 @@ class MovieDetailService {
     ]).map((j) => Review.fromJson(normalizeReviewJson(j))).toList();
   }
 
-  /// Creates or updates the movie review using the status-specific payload.
+  /// 创建或更新影片影评。
+  ///
+  /// `watched` 状态下的无效评分或评论内容会抛出 [ArgumentError]；响应
+  /// 缺少 `review` 或其值不是对象时会抛出 [FormatException]。
   Future<Review> createOrUpdateReview({
     required String movieId,
     required MovieReviewStatus status,

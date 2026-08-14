@@ -51,6 +51,25 @@ void main() {
     expect(review.status, 'want_watch');
   });
 
+  test('想看忽略调用方传入的评分和评论', () async {
+    final fixture = await _buildFixture();
+    fixture.adapter.enqueue('/api/v1/movies/m1/reviews', {
+      'success': 1,
+      'data': {
+        'review': {'id': 11, 'status': 'want_watch'},
+      },
+    });
+
+    await fixture.service.createOrUpdateReview(
+      movieId: 'm1',
+      status: MovieReviewStatus.wantWatch,
+      score: 5,
+      content: '会被忽略',
+    );
+
+    expect(fixture.adapter.requests.single.data, {'status': 'want_watch'});
+  });
+
   test('看过发送 1 到 5 分 裁剪评论和 watched 状态', () async {
     final fixture = await _buildFixture();
     fixture.adapter.enqueue('/api/v1/movies/m1/reviews', {
@@ -124,6 +143,31 @@ void main() {
         throwsArgumentError,
       );
       expect(fixture.adapter.requests, isEmpty);
+    }
+  });
+
+  test('响应缺少或非对象 review 时抛出 FormatException', () async {
+    for (final responseData in <Map<String, dynamic>>[
+      {},
+      {'review': null},
+      {'review': 'invalid'},
+    ]) {
+      final fixture = await _buildFixture();
+      fixture.adapter.enqueue('/api/v1/movies/m1/reviews', {
+        'success': 1,
+        'data': responseData,
+      });
+
+      await expectLater(
+        fixture.service.createOrUpdateReview(
+          movieId: 'm1',
+          status: MovieReviewStatus.wantWatch,
+        ),
+        throwsFormatException,
+      );
+      expect(fixture.adapter.requests, hasLength(1));
+      expect(fixture.adapter.requests.single.method, 'POST');
+      expect(fixture.adapter.requests.single.path, '/api/v1/movies/m1/reviews');
     }
   });
 
