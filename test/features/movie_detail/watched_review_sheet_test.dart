@@ -10,15 +10,27 @@ void main() {
     ({int score, String content})? submitted;
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(
-          body: WatchedReviewSheet(
-            onSubmit: ({required score, required content}) async {
-              submitted = (score: score, content: content);
-            },
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: FilledButton(
+              key: const Key('open-watched-review-sheet'),
+              onPressed: () => showModalBottomSheet<void>(
+                context: context,
+                builder: (_) => WatchedReviewSheet(
+                  onSubmit: ({required score, required content}) async {
+                    submitted = (score: score, content: content);
+                  },
+                ),
+              ),
+              child: const Text('打开'),
+            ),
           ),
         ),
       ),
     );
+
+    await tester.tap(find.byKey(const Key('open-watched-review-sheet')));
+    await tester.pumpAndSettle();
 
     FilledButton submitButton() =>
         tester.widget(find.byKey(const Key('watched-review-submit-button')));
@@ -38,6 +50,7 @@ void main() {
     await tester.tap(find.byKey(const Key('watched-review-submit-button')));
     await tester.pumpAndSettle();
     expect(submitted, (score: 3, content: '评论内容'));
+    expect(find.byType(WatchedReviewSheet), findsNothing);
   });
 
   testWidgets('提交期间禁用表单且重复点击只提交一次', (tester) async {
