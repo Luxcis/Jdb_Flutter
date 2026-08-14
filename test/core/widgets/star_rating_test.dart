@@ -71,4 +71,18 @@ void main() {
     }
     handle.dispose();
   });
+
+  testWidgets('交互评分每颗星点击区域至少 48 像素', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: StarRating(score: 0, size: 18, onChanged: (_) {})),
+      ),
+    );
+
+    for (var value = 1; value <= 5; value++) {
+      final size = tester.getSize(find.byKey(Key('star-rating-$value')));
+      expect(size.width, greaterThanOrEqualTo(48));
+      expect(size.height, greaterThanOrEqualTo(48));
+    }
+  });
 }
