@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/router/app_router.dart';
+import 'package:jade/features/profile/index.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -43,5 +44,17 @@ void main() {
 
     expect(find.text('我的收藏'), findsOneWidget);
     expect(find.text('收藏的演员'), findsOneWidget);
+  });
+
+  testWidgets('我想看的路由渲染真实评价影片页且不再使用占位集合页', (tester) async {
+    await tester.pumpWidget(
+      await _buildApp(initialLocation: '/profile/want-watch'),
+    );
+    await tester.pump();
+
+    expect(find.byType(ProfileReviewMoviesPage), findsOneWidget);
+    expect(find.byType(ProfileMovieCollectionPage), findsNothing);
+    expect(find.text('我想看的'), findsOneWidget);
+    expect(find.byIcon(Icons.filter_list), findsNothing);
   });
 }

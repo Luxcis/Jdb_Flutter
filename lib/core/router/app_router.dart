@@ -216,9 +216,9 @@ class AppRouter {
       path: AppRoutes.profileWantWatch,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileWantWatch,
-        child: const ProfileMovieCollectionPage(
+        child: const ProfileReviewMoviesPage(
           title: '我想看的',
-          filterButton: true,
+          status: 'want_watch',
         ),
       ),
     ),
