@@ -9,7 +9,7 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: StarRating(
-            score: selected?.toDouble() ?? 0,
+            score: 0,
             size: 32,
             onChanged: (value) => selected = value,
           ),
