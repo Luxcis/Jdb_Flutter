@@ -131,6 +131,7 @@ Map<String, dynamic> normalizeMovieDetailJson(dynamic data) {
   final movie = apiMap(root['movie']).isNotEmpty ? apiMap(root['movie']) : root;
   final tags = movie['tags'];
   final previewImages = movie['screenshots'] ?? movie['preview_images'];
+  final review = movie['review'];
   final actors = apiList(movie, const [
     'actors',
   ]).map(normalizeActorSummaryJson);
@@ -173,6 +174,9 @@ Map<String, dynamic> normalizeMovieDetailJson(dynamic data) {
           },
         )
         .toList(),
+    'review': review is Map
+        ? normalizeReviewJson(Map<String, dynamic>.from(review))
+        : null,
   };
 }
 

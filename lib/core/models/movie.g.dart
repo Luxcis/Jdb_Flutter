@@ -82,6 +82,9 @@ MovieDetail _$MovieDetailFromJson(Map<String, dynamic> json) => MovieDetail(
           ?.map((e) => TopRanking.fromJson(e as Map<String, dynamic>))
           .toList() ??
       const [],
+  review: json['review'] == null
+      ? null
+      : Review.fromJson(json['review'] as Map<String, dynamic>),
   magnetCount: (json['magnet_count'] as num?)?.toInt() ?? 0,
   wantWatchCount: (json['want_watch_count'] as num?)?.toInt() ?? 0,
   watchedCount: (json['watched_count'] as num?)?.toInt() ?? 0,

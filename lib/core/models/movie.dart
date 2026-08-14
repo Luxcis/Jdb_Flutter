@@ -1,4 +1,5 @@
 import 'package:jade/core/models/actor.dart';
+import 'package:jade/core/models/review.dart';
 import 'package:jade/core/models/tag.dart';
 import 'package:json_annotation/json_annotation.dart';
 
@@ -58,6 +59,7 @@ class MovieDetail extends MovieSummary {
     this.tags = const [],
     this.tagItems = const [],
     this.topRankings = const [],
+    this.review,
     this.magnetCount = 0,
     this.wantWatchCount = 0,
     this.watchedCount = 0,
@@ -84,6 +86,8 @@ class MovieDetail extends MovieSummary {
   @JsonKey(includeToJson: false)
   final List<Tag> tagItems;
   final List<TopRanking> topRankings;
+  @JsonKey(includeToJson: false)
+  final Review? review;
   final int magnetCount;
   final int wantWatchCount;
   final int watchedCount;

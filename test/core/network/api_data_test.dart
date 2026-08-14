@@ -226,6 +226,46 @@ void main() {
     }
   });
 
+  test('normalizeMovieDetailJson 解析当前用户影评并统一数字 ID', () {
+    final movie = MovieDetail.fromJson(
+      normalizeMovieDetailJson({
+        'movie': {
+          'id': 'm1',
+          'number': 'ABC-001',
+          'title': 'Title',
+          'cover_url': '',
+          'review': {
+            'id': 245236128,
+            'status': 'watched',
+            'score': 3,
+            'content': '评论内容',
+          },
+        },
+      }),
+    );
+
+    expect(movie.review?.id, '245236128');
+    expect(movie.review?.status, 'watched');
+    expect(movie.review?.score, 3);
+    expect(movie.review?.content, '评论内容');
+  });
+
+  test('normalizeMovieDetailJson 将缺失或 null review 解析为 null', () {
+    for (final review in <Object?>[null, const _AbsentReview()]) {
+      final json = <String, dynamic>{
+        'id': 'm1',
+        'number': 'ABC-001',
+        'title': 'Title',
+        'cover_url': '',
+      };
+      if (review is! _AbsentReview) json['review'] = review;
+
+      final movie = MovieDetail.fromJson(normalizeMovieDetailJson(json));
+
+      expect(movie.review, isNull);
+    }
+  });
+
   test('normalizeMovieDetailJson 保留基础信息跳转所需的 OpenAPI 字段', () {
     final movie = MovieDetail.fromJson(
       normalizeMovieDetailJson({
@@ -531,4 +571,8 @@ void main() {
       expect(result.total, 1);
     });
   });
+}
+
+class _AbsentReview {
+  const _AbsentReview();
 }
