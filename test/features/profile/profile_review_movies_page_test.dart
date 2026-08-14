@@ -127,6 +127,27 @@ void main() {
     ));
   });
 
+  testWidgets('想看页面保持排序控件的 8px/4px 间距契约', (tester) async {
+    await _pumpPage(tester);
+
+    final bodyColumn = tester
+        .widgetList<Column>(find.byType(Column))
+        .singleWhere((column) {
+          if (column.children.length != 3) return false;
+          final firstChild = column.children.first;
+          return firstChild is Padding &&
+              firstChild.child is SortSegmented<String> &&
+              (firstChild.child as SortSegmented<String>).key ==
+                  const Key('profile-review-movies-sort');
+        });
+    final sortPadding = bodyColumn.children[0] as Padding;
+    final orderPadding = bodyColumn.children[1] as Padding;
+
+    expect(bodyColumn.spacing, 4);
+    expect(sortPadding.padding, const EdgeInsets.fromLTRB(8, 8, 8, 0));
+    expect(orderPadding.padding, const EdgeInsets.fromLTRB(8, 4, 8, 0));
+  });
+
   testWidgets('跨 Tab 动画结束后仅请求目标 type 1 且切回不重复首屏请求', (tester) async {
     final source = await _pumpPage(tester);
     final tabBar = tester.widget<TabBar>(find.byType(TabBar));
