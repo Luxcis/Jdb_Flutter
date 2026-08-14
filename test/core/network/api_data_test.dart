@@ -248,6 +248,7 @@ void main() {
     expect(movie.review?.status, 'watched');
     expect(movie.review?.score, 3);
     expect(movie.review?.content, '评论内容');
+    expect(movie.toJson(), isNot(contains('review')));
   });
 
   test('normalizeMovieDetailJson 将缺失或 null review 解析为 null', () {
