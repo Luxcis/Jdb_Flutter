@@ -6,11 +6,15 @@ class StarRating extends StatelessWidget {
     required this.score,
     this.semanticLabel = '评分',
     this.size = 18,
+    this.onChanged,
+    this.enabled = true,
   });
 
   final double score;
   final String semanticLabel;
   final double size;
+  final ValueChanged<int>? onChanged;
+  final bool enabled;
 
   double get _starScore {
     final normalized = score > 5 ? score / 2 : score;
@@ -21,6 +25,9 @@ class StarRating extends StatelessWidget {
   Widget build(BuildContext context) {
     final value = _starScore;
     final color = Theme.of(context).colorScheme.tertiary;
+    if (onChanged != null) {
+      return _buildInteractive(value, color);
+    }
     return Semantics(
       label: '$semanticLabel ${_formatScore(score)} 分',
       child: ExcludeSemantics(
@@ -32,6 +39,42 @@ class StarRating extends StatelessWidget {
               Icon(_iconFor(value - index), size: size, color: color),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildInteractive(double value, Color color) {
+    return Semantics(
+      label: value == 0
+          ? '$semanticLabel 未评分'
+          : '$semanticLabel ${value.toInt()} 分',
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: 1,
+        children: [
+          for (var index = 0; index < 5; index++)
+            Semantics(
+              button: true,
+              enabled: enabled,
+              selected: value >= index + 1,
+              label: '${index + 1}分',
+              child: InkResponse(
+                key: Key('star-rating-${index + 1}'),
+                onTap: enabled ? () => onChanged!(index + 1) : null,
+                radius: 24,
+                child: SizedBox.square(
+                  dimension: size < 48 ? 48 : size,
+                  child: Icon(
+                    value >= index + 1
+                        ? Icons.star_rounded
+                        : Icons.star_border_rounded,
+                    size: size,
+                    color: color,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
