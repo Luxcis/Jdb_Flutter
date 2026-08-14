@@ -81,7 +81,9 @@ Future<_RecordingSource> _pumpPage(
 
 Future<void> _pumpTabAnimation(WidgetTester tester) async {
   await tester.pump();
-  await tester.pump(const Duration(milliseconds: 350));
+  await tester.pump(const Duration(milliseconds: 100));
+  await tester.pump(const Duration(milliseconds: 100));
+  await tester.pump(const Duration(milliseconds: 150));
   await tester.pump();
   await tester.pump();
 }
@@ -125,18 +127,27 @@ void main() {
     ));
   });
 
-  testWidgets('切换无码 Tab 首次请求 type 1 且切回不重复首屏请求', (tester) async {
+  testWidgets('跨 Tab 动画结束后仅请求目标 type 1 且切回不重复首屏请求', (tester) async {
     final source = await _pumpPage(tester);
     final tabBar = tester.widget<TabBar>(find.byType(TabBar));
 
     tabBar.controller!.animateTo(2);
-    await _pumpTabAnimation(tester);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(source.requests.where((request) => request.type == '0'), isEmpty);
+    expect(source.requests.where((request) => request.type == '1'), isEmpty);
+
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump();
+    await tester.pump();
     expect(
       source.requests
           .where((request) => request.type == '1')
           .map((request) => request.page),
       [1],
     );
+    expect(source.requests.where((request) => request.type == '0'), isEmpty);
 
     tabBar.controller!.animateTo(0);
     await _pumpTabAnimation(tester);

@@ -71,6 +71,13 @@ class _ProfileReviewMoviesPageState extends State<ProfileReviewMoviesPage>
           source: _dataSource,
         ),
     ];
+    _tabController.addListener(_initializeSelectedTab);
+    unawaited(_controllers[_tabController.index].initialize());
+  }
+
+  void _initializeSelectedTab() {
+    if (_tabController.indexIsChanging) return;
+    unawaited(_controllers[_tabController.index].initialize());
   }
 
   void _changeSortBy(String value) {
@@ -93,6 +100,7 @@ class _ProfileReviewMoviesPageState extends State<ProfileReviewMoviesPage>
 
   @override
   void dispose() {
+    _tabController.removeListener(_initializeSelectedTab);
     _tabController.dispose();
     for (final controller in _controllers) {
       controller.dispose();
@@ -167,12 +175,6 @@ class _ReviewMoviesTabState extends State<_ReviewMoviesTab>
     with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(widget.controller.initialize());
-  }
 
   @override
   Widget build(BuildContext context) {
