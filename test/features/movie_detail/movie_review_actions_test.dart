@@ -175,10 +175,7 @@ void main() {
       ),
     );
 
-    expect(
-      errors.where((error) => error.toString().contains('overflow')),
-      isEmpty,
-    );
+    expect(errors, isEmpty);
     final topPositions = [
       tester.getTopLeft(find.byKey(const Key('movie-want-watch-button'))).dy,
       tester.getTopLeft(find.byKey(const Key('movie-watched-button'))).dy,
