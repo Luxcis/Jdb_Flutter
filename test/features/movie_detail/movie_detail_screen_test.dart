@@ -18,6 +18,7 @@ import 'package:jade/features/common/screens/common_list_page.dart';
 import 'package:jade/features/common/services/tag_movies_service.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/screens/movie_detail_screen.dart';
+import 'package:jade/features/movie_detail/widgets/movie_review_actions.dart';
 import 'package:jade/features/movie_detail/widgets/top_ranking_tile.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
@@ -59,10 +60,16 @@ void _mockPathProvider(WidgetTester tester) {
 Future<void> _pumpUntilRequest(
   WidgetTester tester,
   FakeAdapter adapter,
-  String path,
-) async {
+  String path, {
+  String? method,
+  int count = 1,
+}) async {
   for (var i = 0; i < 20; i++) {
-    if (adapter.requests.any((request) => request.path == path)) return;
+    final matchingRequests = adapter.requests.where(
+      (request) =>
+          request.path == path && (method == null || request.method == method),
+    );
+    if (matchingRequests.length >= count) return;
     await tester.pump(const Duration(milliseconds: 50));
   }
 }
@@ -88,6 +95,7 @@ Future<void> _scrollUntilFound(
 void _enqueueCompleteMovieDetail(
   FakeAdapter adapter, {
   String? previewVideoUrl,
+  Map<String, dynamic>? userReview,
   List<Object?> previewImages = const [
     {'url': 'screenshots/test.jpg'},
     {'url': 'screenshots/test-2.jpg'},
@@ -118,6 +126,7 @@ void _enqueueCompleteMovieDetail(
         'score': '4.33',
         'want_watch_count': 12,
         'watched_count': 8,
+        'review': userReview,
         'actors': [
           {'id': 'a1', 'name': '测试演员', 'avatar_url': 'actors/test.jpg'},
         ],
@@ -231,6 +240,40 @@ void _enqueueCompleteMovieDetail(
   });
 }
 
+Map<String, dynamic> _detailResponse({
+  Map<String, dynamic>? review,
+  int wantWatchCount = 12,
+  int watchedCount = 8,
+}) {
+  return {
+    'success': 1,
+    'data': {
+      'movie': {
+        'id': 'm1',
+        'number': 'SSIS-001',
+        'title': '测试影片',
+        'cover_url': 'covers/test.jpg',
+        'want_watch_count': wantWatchCount,
+        'watched_count': watchedCount,
+        'review': review,
+        'actors': <Map<String, dynamic>>[],
+        'tags': <Map<String, dynamic>>[],
+      },
+    },
+  };
+}
+
+void _enqueueMutationAncillaries(FakeAdapter adapter) {
+  adapter.enqueue('/api/v1/movies/m1/magnets', {
+    'success': 1,
+    'data': {'magnets': <Map<String, dynamic>>[]},
+  });
+  adapter.enqueue(Endpoints.listsRelated, {
+    'success': 1,
+    'data': {'lists': <Map<String, dynamic>>[]},
+  });
+}
+
 void _enqueueMinimalDetail(FakeAdapter adapter) {
   adapter.enqueue('/api/v4/movies/m1', {
     'success': 1,
@@ -288,6 +331,391 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  testWidgets('详情无 review 时想看按钮发送单字段 JSON 并变为删除想看', (tester) async {
+    _mockPathProvider(tester);
+    final adapter = await _setupApiClient();
+    _enqueueMutationAncillaries(adapter);
+    adapter.enqueueSequence('/api/v4/movies/m1', [
+      _detailResponse(review: null, wantWatchCount: 12, watchedCount: 8),
+      _detailResponse(
+        review: {'id': 'r1', 'status': 'want_watch'},
+        wantWatchCount: 13,
+        watchedCount: 8,
+      ),
+    ]);
+    adapter.enqueueSequence('/api/v1/movies/m1/reviews', [
+      {
+        'success': 1,
+        'data': {'reviews': <Map<String, dynamic>>[]},
+      },
+      {
+        'success': 1,
+        'data': {
+          'review': {'id': 'r1', 'status': 'want_watch'},
+        },
+      },
+    ]);
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('movie-want-watch-button')));
+    await _pumpUntilRequest(
+      tester,
+      adapter,
+      '/api/v1/movies/m1/reviews',
+      method: 'POST',
+    );
+    await _pumpUntilText(tester, '删除想看');
+
+    final request = adapter.requests.lastWhere(
+      (request) =>
+          request.path == '/api/v1/movies/m1/reviews' &&
+          request.method == 'POST',
+    );
+    expect(request.data, {'status': 'want_watch'});
+    expect(find.text('13人想看，8人看过'), findsOneWidget);
+  });
+
+  testWidgets('已想看点击看过填写 3 分与评论后直接 POST watched 且不 DELETE', (tester) async {
+    _mockPathProvider(tester);
+    final adapter = await _setupApiClient();
+    _enqueueMutationAncillaries(adapter);
+    adapter.enqueueSequence('/api/v4/movies/m1', [
+      _detailResponse(
+        review: {'id': 'r-want', 'status': 'want_watch'},
+        wantWatchCount: 12,
+        watchedCount: 8,
+      ),
+      _detailResponse(
+        review: {
+          'id': 'r-watched',
+          'status': 'watched',
+          'score': 3,
+          'content': '评论内容',
+        },
+        wantWatchCount: 12,
+        watchedCount: 9,
+      ),
+    ]);
+    adapter.enqueueSequence('/api/v1/movies/m1/reviews', [
+      {
+        'success': 1,
+        'data': {'reviews': <Map<String, dynamic>>[]},
+      },
+      {
+        'success': 1,
+        'data': {
+          'review': {
+            'id': 'r-watched',
+            'status': 'watched',
+            'score': 3,
+            'content': '评论内容',
+          },
+        },
+      },
+    ]);
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('movie-watched-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const Key('star-rating-3')));
+    await tester.enterText(
+      find.byKey(const Key('watched-review-content-field')),
+      '评论内容',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('watched-review-submit-button')));
+    await _pumpUntilRequest(
+      tester,
+      adapter,
+      '/api/v1/movies/m1/reviews',
+      method: 'POST',
+    );
+
+    final post = adapter.requests.lastWhere(
+      (request) =>
+          request.path == '/api/v1/movies/m1/reviews' &&
+          request.method == 'POST',
+    );
+    expect(post.data, {'score': 3, 'content': '评论内容', 'status': 'watched'});
+    expect(
+      adapter.requests.where((request) => request.method == 'DELETE'),
+      isEmpty,
+    );
+    await _pumpUntilText(tester, '删除看过');
+    expect(find.byKey(const Key('movie-want-watch-button')), findsNothing);
+  });
+
+  testWidgets('已看过只显示删除看过并用详情 review ID 删除', (tester) async {
+    _mockPathProvider(tester);
+    final adapter = await _setupApiClient();
+    _enqueueMutationAncillaries(adapter);
+    adapter.enqueueSequence('/api/v4/movies/m1', [
+      _detailResponse(
+        review: {'id': 'r9', 'status': 'watched'},
+        wantWatchCount: 12,
+        watchedCount: 8,
+      ),
+      _detailResponse(review: null, wantWatchCount: 12, watchedCount: 7),
+    ]);
+    adapter.enqueue('/api/v1/movies/m1/reviews', {
+      'success': 1,
+      'data': {'reviews': <Map<String, dynamic>>[]},
+    });
+    adapter.enqueue('/api/v1/movies/m1/reviews/r9', {
+      'success': 1,
+      'data': <String, dynamic>{},
+    });
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(
+      find.byKey(const Key('movie-delete-watched-button')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('movie-want-watch-button')), findsNothing);
+    expect(find.byKey(const Key('movie-watched-button')), findsNothing);
+    await tester.tap(find.byKey(const Key('movie-delete-watched-button')));
+    await _pumpUntilRequest(
+      tester,
+      adapter,
+      '/api/v1/movies/m1/reviews/r9',
+      method: 'DELETE',
+    );
+    expect(
+      adapter.requests.lastWhere((request) => request.method == 'DELETE').path,
+      '/api/v1/movies/m1/reviews/r9',
+    );
+    await _pumpUntilText(tester, '想看');
+    expect(find.byKey(const Key('movie-watched-button')), findsOneWidget);
+  });
+
+  testWidgets('已想看删除时使用详情 review ID', (tester) async {
+    _mockPathProvider(tester);
+    final adapter = await _setupApiClient();
+    _enqueueMutationAncillaries(adapter);
+    adapter.enqueueSequence('/api/v4/movies/m1', [
+      _detailResponse(
+        review: {'id': 'r-want', 'status': 'want_watch'},
+        wantWatchCount: 12,
+        watchedCount: 8,
+      ),
+      _detailResponse(review: null, wantWatchCount: 11, watchedCount: 8),
+    ]);
+    adapter.enqueue('/api/v1/movies/m1/reviews', {
+      'success': 1,
+      'data': {'reviews': <Map<String, dynamic>>[]},
+    });
+    adapter.enqueue('/api/v1/movies/m1/reviews/r-want', {
+      'success': 1,
+      'data': <String, dynamic>{},
+    });
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('movie-delete-want-watch-button')));
+    await _pumpUntilRequest(
+      tester,
+      adapter,
+      '/api/v1/movies/m1/reviews/r-want',
+      method: 'DELETE',
+    );
+    expect(
+      adapter.requests.lastWhere((request) => request.method == 'DELETE').path,
+      '/api/v1/movies/m1/reviews/r-want',
+    );
+    await _pumpUntilText(tester, '想看');
+    expect(
+      find.byKey(const Key('movie-delete-want-watch-button')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('影评 mutation 延迟期间重复点击只发送一个请求', (tester) async {
+    _mockPathProvider(tester);
+    final adapter = await _setupApiClient();
+    _enqueueMutationAncillaries(adapter);
+    adapter.enqueueSequence('/api/v4/movies/m1', [
+      _detailResponse(review: null, wantWatchCount: 12, watchedCount: 8),
+      _detailResponse(
+        review: {'id': 'r1', 'status': 'want_watch'},
+        wantWatchCount: 13,
+        watchedCount: 8,
+      ),
+    ]);
+    adapter.enqueueSequence('/api/v1/movies/m1/reviews', [
+      {
+        'success': 1,
+        'data': {'reviews': <Map<String, dynamic>>[]},
+      },
+      {
+        'success': 1,
+        'data': {
+          'review': {'id': 'r1', 'status': 'want_watch'},
+        },
+      },
+    ]);
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    adapter.responseDelay = const Duration(milliseconds: 200);
+    final button = tester.widget<FilledButton>(
+      find.byKey(const Key('movie-want-watch-button')),
+    );
+    button.onPressed!();
+    button.onPressed!();
+    await _pumpUntilRequest(
+      tester,
+      adapter,
+      '/api/v1/movies/m1/reviews',
+      method: 'POST',
+    );
+
+    expect(
+      adapter.requests.where(
+        (request) =>
+            request.path == '/api/v1/movies/m1/reviews' &&
+            request.method == 'POST',
+      ),
+      hasLength(1),
+    );
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+    expect(
+      adapter.requests.where(
+        (request) =>
+            request.path == '/api/v1/movies/m1/reviews' &&
+            request.method == 'POST',
+      ),
+      hasLength(1),
+    );
+  });
+
+  testWidgets('影评 mutation 非认证失败保持原按钮状态', (tester) async {
+    _mockPathProvider(tester);
+    final adapter = await _setupApiClient();
+    _enqueueMutationAncillaries(adapter);
+    adapter.enqueue('/api/v4/movies/m1', _detailResponse());
+    adapter.enqueueSequence(
+      '/api/v1/movies/m1/reviews',
+      [
+        {
+          'success': 1,
+          'data': {'reviews': <Map<String, dynamic>>[]},
+        },
+        {'success': 0, 'message': 'server failed'},
+      ],
+      codes: [200, 500],
+    );
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('movie-want-watch-button')));
+    await _pumpUntilRequest(
+      tester,
+      adapter,
+      '/api/v1/movies/m1/reviews',
+      method: 'POST',
+    );
+    await tester.pump();
+
+    expect(find.byKey(const Key('movie-want-watch-button')), findsOneWidget);
+    expect(find.byKey(const Key('movie-watched-button')), findsOneWidget);
+    expect(
+      find.byKey(const Key('movie-delete-want-watch-button')),
+      findsNothing,
+    );
+    expect(find.text('操作失败，请重试'), findsOneWidget);
+  });
+
+  testWidgets('影评认证失败触发现有全局认证处理且无普通失败提示', (tester) async {
+    _mockPathProvider(tester);
+    var authCalled = false;
+    final adapter = await _setupApiClient(onAuthError: () => authCalled = true);
+    _enqueueMutationAncillaries(adapter);
+    adapter.enqueue('/api/v4/movies/m1', _detailResponse());
+    adapter.enqueueSequence(
+      '/api/v1/movies/m1/reviews',
+      [
+        {
+          'success': 1,
+          'data': {'reviews': <Map<String, dynamic>>[]},
+        },
+        {'success': 0, 'action': 'JWTVerificationError', 'message': '请登录'},
+      ],
+      codes: [200, 401],
+    );
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('movie-want-watch-button')));
+    await _pumpUntilRequest(
+      tester,
+      adapter,
+      '/api/v1/movies/m1/reviews',
+      method: 'POST',
+    );
+    await tester.pump();
+
+    expect(authCalled, isTrue);
+    expect(find.text('操作失败，请重试'), findsNothing);
+    expect(find.byKey(const Key('movie-want-watch-button')), findsOneWidget);
+  });
+
+  testWidgets('mutation 成功但详情校准失败保留新按钮状态并提示刷新失败', (tester) async {
+    _mockPathProvider(tester);
+    final adapter = await _setupApiClient();
+    _enqueueMutationAncillaries(adapter);
+    adapter.enqueueSequence(
+      '/api/v4/movies/m1',
+      [
+        _detailResponse(review: null, wantWatchCount: 12, watchedCount: 8),
+        {'success': 0, 'message': 'refresh failed'},
+      ],
+      codes: [200, 500],
+    );
+    adapter.enqueueSequence('/api/v1/movies/m1/reviews', [
+      {
+        'success': 1,
+        'data': {'reviews': <Map<String, dynamic>>[]},
+      },
+      {
+        'success': 1,
+        'data': {
+          'review': {'id': 'r1', 'status': 'want_watch'},
+        },
+      },
+    ]);
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('movie-want-watch-button')));
+    await _pumpUntilRequest(
+      tester,
+      adapter,
+      '/api/v1/movies/m1/reviews',
+      method: 'POST',
+    );
+    await _pumpUntilText(tester, '删除想看');
+
+    expect(
+      find.byKey(const Key('movie-delete-want-watch-button')),
+      findsOneWidget,
+    );
+    expect(find.text('状态已更新，详情刷新失败'), findsOneWidget);
   });
 
   testWidgets('MovieDetailPage 主详情成功时附属接口失败不影响渲染', (tester) async {
@@ -797,10 +1225,10 @@ void main() {
     expect(actions, findsOneWidget);
     expect(
       find.descendant(of: actions, matching: find.byType(FilledButton)),
-      findsOneWidget,
+      findsNWidgets(3),
     );
-    expect(find.text('想看'), findsNothing);
-    expect(find.text('看过'), findsNothing);
+    expect(find.text('想看'), findsOneWidget);
+    expect(find.text('看过'), findsOneWidget);
     expect(find.text('存入清单'), findsOneWidget);
     for (final button in tester.widgetList<FilledButton>(
       find.descendant(of: actions, matching: find.byType(FilledButton)),
@@ -1441,7 +1869,7 @@ void main() {
       (child) => child is TopRankingTile,
     );
     final actionsIndex = infoColumn.children.indexWhere(
-      (child) => child is Wrap,
+      (child) => child is MovieReviewActions,
     );
     expect(scoreRowIndex, isNot(-1));
     expect(firstTileIndex, greaterThan(scoreRowIndex));

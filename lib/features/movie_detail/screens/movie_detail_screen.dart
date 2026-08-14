@@ -24,8 +24,11 @@ import 'package:jade/core/widgets/review_tile.dart';
 import 'package:jade/core/widgets/star_rating.dart';
 import 'package:jade/core/widgets/tag_chip.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
+import 'package:jade/features/movie_detail/models/movie_review_status.dart';
 import 'package:jade/features/movie_detail/services/movie_detail_service.dart';
+import 'package:jade/features/movie_detail/widgets/movie_review_actions.dart';
 import 'package:jade/features/movie_detail/widgets/top_ranking_tile.dart';
+import 'package:jade/features/movie_detail/widgets/watched_review_sheet.dart';
 
 class MovieDetailPage extends StatefulWidget {
   const MovieDetailPage({super.key, required this.id});
@@ -50,6 +53,8 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   bool _relatedListsLoading = true;
   bool _loading = true;
   bool _saveToListOpening = false;
+  Review? _currentReview;
+  bool _reviewMutationLoading = false;
   String? _error;
 
   @override
@@ -71,6 +76,8 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       _relatedLists = [];
       _relatedListsError = null;
       _relatedListsLoading = true;
+      _currentReview = null;
+      _reviewMutationLoading = false;
     });
     try {
       final api = ApiClient.instanceOrNull;
@@ -87,6 +94,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       setState(() {
         _service = service;
         _detail = detail;
+        _currentReview = detail.review;
         _loading = false;
       });
       unawaited(_loadMagnets(service));
@@ -187,6 +195,114 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     if (service != null) unawaited(_loadReviews(service, sort: sort));
   }
 
+  Future<void> _createOrUpdateReview(
+    MovieReviewStatus status, {
+    int? score,
+    String? content,
+  }) async {
+    if (_reviewMutationLoading) return;
+    final service = _service;
+    if (service == null) return;
+    setState(() => _reviewMutationLoading = true);
+    try {
+      final review = await service.createOrUpdateReview(
+        movieId: widget.id,
+        status: status,
+        score: score,
+        content: content,
+      );
+      if (!mounted) return;
+      setState(() => _currentReview = review);
+      await _refreshDetailAfterReview();
+    } on DioException catch (error) {
+      if (_isAuthError(error)) return;
+      rethrow;
+    } finally {
+      if (mounted) {
+        setState(() => _reviewMutationLoading = false);
+      } else {
+        _reviewMutationLoading = false;
+      }
+    }
+  }
+
+  Future<void> _deleteCurrentReview() async {
+    if (_reviewMutationLoading) return;
+    final service = _service;
+    final review = _currentReview;
+    if (service == null || review == null) return;
+    setState(() => _reviewMutationLoading = true);
+    try {
+      await service.deleteReview(movieId: widget.id, reviewId: review.id);
+      if (!mounted) return;
+      setState(() => _currentReview = null);
+      await _refreshDetailAfterReview();
+    } on DioException catch (error) {
+      if (_isAuthError(error)) return;
+      rethrow;
+    } finally {
+      if (mounted) {
+        setState(() => _reviewMutationLoading = false);
+      } else {
+        _reviewMutationLoading = false;
+      }
+    }
+  }
+
+  Future<void> _refreshDetailAfterReview() async {
+    final service = _service;
+    if (service == null) return;
+    try {
+      final detail = await service.getDetail(widget.id);
+      if (!mounted) return;
+      setState(() {
+        _detail = detail;
+        _currentReview = detail.review;
+      });
+    } catch (_) {
+      if (mounted) _showSnackBar('状态已更新，详情刷新失败');
+    }
+  }
+
+  Future<void> _markWantWatch() async {
+    try {
+      await _createOrUpdateReview(MovieReviewStatus.wantWatch);
+    } catch (_) {
+      if (mounted) _showSnackBar('操作失败，请重试');
+    }
+  }
+
+  Future<void> _submitWatchedReview({
+    required int score,
+    required String content,
+  }) {
+    return _createOrUpdateReview(
+      MovieReviewStatus.watched,
+      score: score,
+      content: content,
+    );
+  }
+
+  Future<void> _removeCurrentReview() async {
+    try {
+      await _deleteCurrentReview();
+    } catch (_) {
+      if (mounted) _showSnackBar('操作失败，请重试');
+    }
+  }
+
+  Future<void> _openWatchedReviewSheet() {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => WatchedReviewSheet(
+        onSubmit: ({required score, required content}) =>
+            _submitWatchedReview(score: score, content: content),
+      ),
+    );
+  }
+
   Future<void> _openSaveToListSheet() async {
     if (_saveToListOpening) return;
     final api = ApiClient.instanceOrNull;
@@ -279,6 +395,11 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
               relatedListsError: _relatedListsError,
               relatedListsLoading: _relatedListsLoading,
               onRetryRelatedLists: _retryRelatedLists,
+              review: _currentReview,
+              reviewMutationLoading: _reviewMutationLoading,
+              onWantWatch: () => unawaited(_markWantWatch()),
+              onWatched: () => unawaited(_openWatchedReviewSheet()),
+              onDeleteReview: () => unawaited(_removeCurrentReview()),
               onSaveToList: _openSaveToListSheet,
               onPreviewTap: () => context.push(
                 AppRoutes.moviePreviewLocation(detail.id),
@@ -351,6 +472,11 @@ class _MovieDetailTabs extends StatelessWidget {
     required this.relatedListsError,
     required this.relatedListsLoading,
     required this.onRetryRelatedLists,
+    required this.review,
+    required this.reviewMutationLoading,
+    required this.onWantWatch,
+    required this.onWatched,
+    required this.onDeleteReview,
     required this.onSaveToList,
     required this.onPreviewTap,
     required this.onActorTap,
@@ -369,6 +495,11 @@ class _MovieDetailTabs extends StatelessWidget {
   final Object? relatedListsError;
   final bool relatedListsLoading;
   final VoidCallback onRetryRelatedLists;
+  final Review? review;
+  final bool reviewMutationLoading;
+  final VoidCallback onWantWatch;
+  final VoidCallback onWatched;
+  final VoidCallback onDeleteReview;
   final VoidCallback onSaveToList;
   final VoidCallback onPreviewTap;
   final ValueChanged<ActorSummary> onActorTap;
@@ -400,6 +531,11 @@ class _MovieDetailTabs extends StatelessWidget {
         children: [
           _BasicInfoTab(
             detail: detail,
+            review: review,
+            reviewMutationLoading: reviewMutationLoading,
+            onWantWatch: onWantWatch,
+            onWatched: onWatched,
+            onDeleteReview: onDeleteReview,
             onSaveToList: onSaveToList,
             onPreviewTap: onPreviewTap,
             onActorTap: onActorTap,
@@ -431,12 +567,22 @@ class _MovieDetailTabs extends StatelessWidget {
 class _BasicInfoTab extends StatelessWidget {
   const _BasicInfoTab({
     required this.detail,
+    required this.review,
+    required this.reviewMutationLoading,
+    required this.onWantWatch,
+    required this.onWatched,
+    required this.onDeleteReview,
     required this.onSaveToList,
     required this.onPreviewTap,
     required this.onActorTap,
   });
 
   final MovieDetail detail;
+  final Review? review;
+  final bool reviewMutationLoading;
+  final VoidCallback onWantWatch;
+  final VoidCallback onWatched;
+  final VoidCallback onDeleteReview;
   final VoidCallback onSaveToList;
   final VoidCallback onPreviewTap;
   final ValueChanged<ActorSummary> onActorTap;
@@ -449,7 +595,15 @@ class _BasicInfoTab extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: _MovieInfoCard(detail: detail, onSaveToList: onSaveToList),
+          child: _MovieInfoCard(
+            detail: detail,
+            review: review,
+            reviewMutationLoading: reviewMutationLoading,
+            onWantWatch: onWantWatch,
+            onWatched: onWatched,
+            onDeleteReview: onDeleteReview,
+            onSaveToList: onSaveToList,
+          ),
         ),
         if (detail.tagItems.isNotEmpty)
           _CategorySection(tags: detail.tagItems, type: detail.type),
@@ -514,9 +668,22 @@ class _MovieDetailTabHeaderDelegate extends SliverPersistentHeaderDelegate {
 }
 
 class _MovieInfoCard extends StatelessWidget {
-  const _MovieInfoCard({required this.detail, required this.onSaveToList});
+  const _MovieInfoCard({
+    required this.detail,
+    required this.review,
+    required this.reviewMutationLoading,
+    required this.onWantWatch,
+    required this.onWatched,
+    required this.onDeleteReview,
+    required this.onSaveToList,
+  });
 
   final MovieDetail detail;
+  final Review? review;
+  final bool reviewMutationLoading;
+  final VoidCallback onWantWatch;
+  final VoidCallback onWatched;
+  final VoidCallback onDeleteReview;
   final VoidCallback onSaveToList;
 
   @override
@@ -550,13 +717,6 @@ class _MovieInfoCard extends StatelessWidget {
             id: detail.seriesId,
           ),
         ];
-    final actionStyle = FilledButton.styleFrom(
-      minimumSize: const Size(0, 32),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      visualDensity: VisualDensity.compact,
-      textStyle: Theme.of(context).textTheme.labelMedium,
-    );
-
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
@@ -605,18 +765,14 @@ class _MovieInfoCard extends StatelessWidget {
                   ranking: ranking.ranking,
                   title: ranking.title ?? '',
                 ),
-            Wrap(
+            MovieReviewActions(
               key: const Key('movie-detail-actions'),
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-                FilledButton(
-                  key: const Key('movie-save-to-list-button'),
-                  style: actionStyle,
-                  onPressed: onSaveToList,
-                  child: const Text('存入清单'),
-                ),
-              ],
+              review: review,
+              loading: reviewMutationLoading,
+              onWantWatch: onWantWatch,
+              onWatched: onWatched,
+              onDelete: onDeleteReview,
+              onSaveToList: onSaveToList,
             ),
             Divider(
               key: const Key('movie-detail-actions-divider'),
