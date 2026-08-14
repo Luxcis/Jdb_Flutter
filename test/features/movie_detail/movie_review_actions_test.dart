@@ -97,6 +97,94 @@ void main() {
           .onPressed,
       isNotNull,
     );
+
+    await pumpActions(
+      tester,
+      review: const Review(id: 'r1', status: 'want_watch'),
+      loading: true,
+    );
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const Key('movie-delete-want-watch-button')),
+          )
+          .onPressed,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const Key('movie-watched-button')))
+          .onPressed,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const Key('movie-save-to-list-button')),
+          )
+          .onPressed,
+      isNotNull,
+    );
+
+    await pumpActions(
+      tester,
+      review: const Review(id: 'r2', status: 'watched'),
+      loading: true,
+    );
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const Key('movie-delete-watched-button')),
+          )
+          .onPressed,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const Key('movie-save-to-list-button')),
+          )
+          .onPressed,
+      isNotNull,
+    );
+  });
+
+  testWidgets('窄宽度下默认操作通过 Wrap 换行且无溢出', (tester) async {
+    final errors = <FlutterError>[];
+    final previousOnError = FlutterError.onError;
+    FlutterError.onError = (details) {
+      errors.add(FlutterError(details.exceptionAsString()));
+    };
+    addTearDown(() => FlutterError.onError = previousOnError);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 180,
+            child: MovieReviewActions(
+              review: null,
+              loading: false,
+              onWantWatch: () {},
+              onWatched: () {},
+              onDelete: () {},
+              onSaveToList: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      errors.where((error) => error.toString().contains('overflow')),
+      isEmpty,
+    );
+    final topPositions = [
+      tester.getTopLeft(find.byKey(const Key('movie-want-watch-button'))).dy,
+      tester.getTopLeft(find.byKey(const Key('movie-watched-button'))).dy,
+      tester.getTopLeft(find.byKey(const Key('movie-save-to-list-button'))).dy,
+    ];
+    expect(topPositions.toSet().length, greaterThan(1));
   });
 
   testWidgets('可见按钮 key 均调用对应 callback', (tester) async {
