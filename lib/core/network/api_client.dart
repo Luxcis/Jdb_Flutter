@@ -69,6 +69,11 @@ class ApiClient {
     return dio.post(path, data: data);
   }
 
+  /// Sends a DELETE request through the configured Dio client.
+  Future<Response> delete(String path, {dynamic data}) {
+    return dio.delete(path, data: data);
+  }
+
   /// 手动切换 baseUrl（用于设置页线路切换）。
   void swapBaseUrl(String url) {
     dio.options.baseUrl = url;

@@ -6,6 +6,7 @@ import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/magnet.dart';
 import 'package:jade/core/models/list_model.dart';
 import 'package:jade/core/models/review.dart';
+import 'package:jade/features/movie_detail/models/movie_review_status.dart';
 
 class MovieDetailService {
   MovieDetailService(this._api);
@@ -35,6 +36,44 @@ class MovieDetailService {
       'reviews',
       'items',
     ]).map((j) => Review.fromJson(normalizeReviewJson(j))).toList();
+  }
+
+  /// Creates or updates the movie review using the status-specific payload.
+  Future<Review> createOrUpdateReview({
+    required String movieId,
+    required MovieReviewStatus status,
+    int? score,
+    String? content,
+  }) async {
+    final data = switch (status) {
+      MovieReviewStatus.wantWatch => <String, dynamic>{
+        'status': status.wireValue,
+      },
+      MovieReviewStatus.watched => _watchedReviewData(
+        status: status,
+        score: score,
+        content: content,
+      ),
+    };
+    final response = await _api.post(
+      '/api/v1/movies/$movieId/reviews',
+      data: data,
+    );
+    final review = apiMap(response.data)['review'];
+    if (review is! Map) {
+      throw const FormatException('影评响应缺少 review');
+    }
+    return Review.fromJson(
+      normalizeReviewJson(Map<String, dynamic>.from(review)),
+    );
+  }
+
+  /// Deletes a review belonging to the specified movie.
+  Future<void> deleteReview({
+    required String movieId,
+    required String reviewId,
+  }) async {
+    await _api.delete('/api/v1/movies/$movieId/reviews/$reviewId');
   }
 
   Future<List<ListModel>> getRelatedLists(String id) async {
@@ -82,5 +121,24 @@ class MovieDetailService {
       Endpoints.lists,
       data: FormData.fromMap({'name': name, 'movie_id': movieId}),
     );
+  }
+
+  Map<String, dynamic> _watchedReviewData({
+    required MovieReviewStatus status,
+    required int? score,
+    required String? content,
+  }) {
+    if (score == null || score < 1 || score > 5) {
+      throw ArgumentError.value(score, 'score', '评分必须为 1 到 5');
+    }
+    final trimmedContent = content?.trim();
+    if (trimmedContent == null || trimmedContent.isEmpty) {
+      throw ArgumentError.value(content, 'content', '评论不能为空');
+    }
+    return {
+      'score': score,
+      'content': trimmedContent,
+      'status': status.wireValue,
+    };
   }
 }
