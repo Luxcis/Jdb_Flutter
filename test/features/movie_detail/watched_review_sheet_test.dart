@@ -6,6 +6,27 @@ import 'package:jade/core/widgets/star_rating.dart';
 import 'package:jade/features/movie_detail/widgets/watched_review_sheet.dart';
 
 void main() {
+  testWidgets('评论输入框公开为多行句子输入并使用换行操作', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: WatchedReviewSheet(
+            onSubmit: ({required score, required content}) async {},
+          ),
+        ),
+      ),
+    );
+
+    final field = tester.widget<TextField>(
+      find.byKey(const Key('watched-review-content-field')),
+    );
+    expect(field.keyboardType, TextInputType.multiline);
+    expect(field.textInputAction, TextInputAction.newline);
+    expect(field.textCapitalization, TextCapitalization.sentences);
+    expect(field.minLines, 3);
+    expect(field.maxLines, 5);
+  });
+
   testWidgets('评分和非空评论都满足后才允许提交', (tester) async {
     ({int score, String content})? submitted;
     await tester.pumpWidget(

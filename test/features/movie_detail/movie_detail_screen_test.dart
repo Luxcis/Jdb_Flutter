@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -30,8 +33,33 @@ class _TokenProvider implements TokenProvider {
   String? get token => null;
 }
 
-Future<FakeAdapter> _setupApiClient({VoidCallback? onAuthError}) async {
-  final adapter = FakeAdapter();
+class _DelayedFirstCalibrationAdapter extends FakeAdapter {
+  final firstCalibrationStarted = Completer<void>();
+  final releaseFirstCalibration = Completer<void>();
+  var detailRequestCount = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.path == '/api/v4/movies/m1' && options.method == 'GET') {
+      detailRequestCount++;
+      if (detailRequestCount == 2) {
+        firstCalibrationStarted.complete();
+        await releaseFirstCalibration.future;
+      }
+    }
+    return super.fetch(options, requestStream, cancelFuture);
+  }
+}
+
+Future<FakeAdapter> _setupApiClient({
+  VoidCallback? onAuthError,
+  FakeAdapter? adapter,
+}) async {
+  final resolvedAdapter = adapter ?? FakeAdapter();
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString(StorageKeys.baseUrl, 'https://jdforrepam.com');
   await prefs.setStringList(StorageKeys.apiDomains, ['https://jdforrepam.com']);
@@ -40,8 +68,8 @@ Future<FakeAdapter> _setupApiClient({VoidCallback? onAuthError}) async {
     tokenProvider: _TokenProvider(),
     onAuthError: onAuthError ?? () {},
   );
-  api.setAdapterForTest(adapter);
-  return adapter;
+  api.setAdapterForTest(resolvedAdapter);
+  return resolvedAdapter;
 }
 
 void _mockPathProvider(WidgetTester tester) {
@@ -73,6 +101,10 @@ Future<void> _pumpUntilRequest(
     if (matchingRequests.length >= count) return;
     await tester.pump(const Duration(milliseconds: 50));
   }
+  fail(
+    '等待请求超时：method=${method ?? 'ANY'} path=$path count=$count；'
+    '实际请求=${adapter.requests.length}',
+  );
 }
 
 Future<void> _pumpUntilText(WidgetTester tester, String text) async {
@@ -80,6 +112,7 @@ Future<void> _pumpUntilText(WidgetTester tester, String text) async {
     if (find.text(text).evaluate().isNotEmpty) return;
     await tester.pump(const Duration(milliseconds: 50));
   }
+  fail('等待文本超时：$text');
 }
 
 Future<void> _scrollUntilFound(
@@ -450,7 +483,188 @@ void main() {
       isEmpty,
     );
     await _pumpUntilText(tester, '删除看过');
+    await _pumpUntilText(tester, '12人想看，9人看过');
+    for (var i = 0; i < 20; i++) {
+      if (find.byType(WatchedReviewSheet).evaluate().isEmpty) break;
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(
+      find.byKey(const Key('movie-delete-watched-button')),
+      findsOneWidget,
+    );
+    expect(find.byType(WatchedReviewSheet), findsNothing);
+    expect(find.text('12人想看，9人看过'), findsOneWidget);
     expect(find.byKey(const Key('movie-want-watch-button')), findsNothing);
+  });
+
+  testWidgets('看过 POST 成功后表单与本地状态不等待详情校准', (tester) async {
+    _mockPathProvider(tester);
+    final delayedAdapter = _DelayedFirstCalibrationAdapter();
+    addTearDown(() {
+      if (!delayedAdapter.releaseFirstCalibration.isCompleted) {
+        delayedAdapter.releaseFirstCalibration.complete();
+      }
+    });
+    final adapter = await _setupApiClient(adapter: delayedAdapter);
+    _enqueueMutationAncillaries(adapter);
+    adapter.enqueueSequence('/api/v4/movies/m1', [
+      _detailResponse(review: null, wantWatchCount: 12, watchedCount: 8),
+      _detailResponse(
+        review: {
+          'id': 'r-watched',
+          'status': 'watched',
+          'score': 4,
+          'content': '延迟校准评论',
+        },
+        wantWatchCount: 12,
+        watchedCount: 9,
+      ),
+    ]);
+    adapter.enqueueSequence('/api/v1/movies/m1/reviews', [
+      {
+        'success': 1,
+        'data': {'reviews': <Map<String, dynamic>>[]},
+      },
+      {
+        'success': 1,
+        'data': {
+          'review': {
+            'id': 'r-watched',
+            'status': 'watched',
+            'score': 4,
+            'content': '延迟校准评论',
+          },
+        },
+      },
+    ]);
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('movie-watched-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const Key('star-rating-4')));
+    await tester.enterText(
+      find.byKey(const Key('watched-review-content-field')),
+      '延迟校准评论',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('watched-review-submit-button')));
+    await _pumpUntilRequest(
+      tester,
+      adapter,
+      '/api/v1/movies/m1/reviews',
+      method: 'POST',
+    );
+    for (var i = 0; i < 20; i++) {
+      if (delayedAdapter.firstCalibrationStarted.isCompleted &&
+          find.byType(WatchedReviewSheet).evaluate().isEmpty) {
+        break;
+      }
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    expect(delayedAdapter.firstCalibrationStarted.isCompleted, isTrue);
+    expect(find.byType(WatchedReviewSheet), findsNothing);
+    expect(
+      find.byKey(const Key('movie-delete-watched-button')),
+      findsOneWidget,
+    );
+    expect(find.text('12人想看，8人看过'), findsOneWidget);
+
+    delayedAdapter.releaseFirstCalibration.complete();
+    await _pumpUntilRequest(
+      tester,
+      adapter,
+      '/api/v4/movies/m1',
+      method: 'GET',
+      count: 2,
+    );
+    await _pumpUntilText(tester, '12人想看，9人看过');
+  });
+
+  testWidgets('旧详情校准不能覆盖更新一代的删除操作', (tester) async {
+    _mockPathProvider(tester);
+    final delayedAdapter = _DelayedFirstCalibrationAdapter();
+    addTearDown(() {
+      if (!delayedAdapter.releaseFirstCalibration.isCompleted) {
+        delayedAdapter.releaseFirstCalibration.complete();
+      }
+    });
+    final adapter = await _setupApiClient(adapter: delayedAdapter);
+    _enqueueMutationAncillaries(adapter);
+    adapter.enqueueSequence('/api/v4/movies/m1', [
+      _detailResponse(review: null, wantWatchCount: 12, watchedCount: 8),
+      _detailResponse(review: null, wantWatchCount: 11, watchedCount: 8),
+      _detailResponse(
+        review: {'id': 'r-want', 'status': 'want_watch'},
+        wantWatchCount: 13,
+        watchedCount: 8,
+      ),
+    ]);
+    adapter.enqueueSequence('/api/v1/movies/m1/reviews', [
+      {
+        'success': 1,
+        'data': {'reviews': <Map<String, dynamic>>[]},
+      },
+      {
+        'success': 1,
+        'data': {
+          'review': {'id': 'r-want', 'status': 'want_watch'},
+        },
+      },
+    ]);
+    adapter.enqueue('/api/v1/movies/m1/reviews/r-want', {
+      'success': 1,
+      'data': <String, dynamic>{},
+    });
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('movie-want-watch-button')));
+    await _pumpUntilText(tester, '删除想看');
+    expect(delayedAdapter.firstCalibrationStarted.isCompleted, isTrue);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const Key('movie-delete-want-watch-button')),
+          )
+          .onPressed,
+      isNotNull,
+    );
+
+    await tester.tap(find.byKey(const Key('movie-delete-want-watch-button')));
+    await _pumpUntilRequest(
+      tester,
+      adapter,
+      '/api/v1/movies/m1/reviews/r-want',
+      method: 'DELETE',
+    );
+    await _pumpUntilText(tester, '11人想看，8人看过');
+    expect(find.byKey(const Key('movie-want-watch-button')), findsOneWidget);
+    expect(
+      find.byKey(const Key('movie-delete-want-watch-button')),
+      findsNothing,
+    );
+
+    delayedAdapter.releaseFirstCalibration.complete();
+    await _pumpUntilRequest(
+      tester,
+      adapter,
+      '/api/v4/movies/m1',
+      method: 'GET',
+      count: 3,
+    );
+    await tester.pump();
+
+    expect(find.text('11人想看，8人看过'), findsOneWidget);
+    expect(find.byKey(const Key('movie-want-watch-button')), findsOneWidget);
+    expect(
+      find.byKey(const Key('movie-delete-want-watch-button')),
+      findsNothing,
+    );
   });
 
   testWidgets('已看过只显示删除看过并用详情 review ID 删除', (tester) async {
@@ -715,6 +929,96 @@ void main() {
     expect(find.text('操作失败，请重试'), findsNothing);
   });
 
+  testWidgets('mutation 成功后的 action 认证校准错误静默且保留本地状态', (tester) async {
+    _mockPathProvider(tester);
+    var authCalled = false;
+    final adapter = await _setupApiClient(onAuthError: () => authCalled = true);
+    _enqueueMutationAncillaries(adapter);
+    adapter.enqueueSequence('/api/v4/movies/m1', [
+      _detailResponse(review: null),
+      {'success': 0, 'action': 'JWTVerificationError', 'message': '请重新登录'},
+    ]);
+    adapter.enqueueSequence('/api/v1/movies/m1/reviews', [
+      {
+        'success': 1,
+        'data': {'reviews': <Map<String, dynamic>>[]},
+      },
+      {
+        'success': 1,
+        'data': {
+          'review': {'id': 'r1', 'status': 'want_watch'},
+        },
+      },
+    ]);
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('movie-want-watch-button')));
+    await _pumpUntilRequest(
+      tester,
+      adapter,
+      '/api/v4/movies/m1',
+      method: 'GET',
+      count: 2,
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(authCalled, isTrue);
+    expect(
+      find.byKey(const Key('movie-delete-want-watch-button')),
+      findsOneWidget,
+    );
+    expect(find.text('状态已更新，详情刷新失败'), findsNothing);
+  });
+
+  testWidgets('mutation 成功后的 actionless 401 校准错误静默且保留本地状态', (tester) async {
+    _mockPathProvider(tester);
+    var authCalled = false;
+    final adapter = await _setupApiClient(onAuthError: () => authCalled = true);
+    _enqueueMutationAncillaries(adapter);
+    adapter.enqueueSequence(
+      '/api/v4/movies/m1',
+      [
+        _detailResponse(review: null),
+        {'success': 0, 'message': 'unauthorized'},
+      ],
+      codes: [200, 401],
+    );
+    adapter.enqueueSequence('/api/v1/movies/m1/reviews', [
+      {
+        'success': 1,
+        'data': {'reviews': <Map<String, dynamic>>[]},
+      },
+      {
+        'success': 1,
+        'data': {
+          'review': {'id': 'r1', 'status': 'want_watch'},
+        },
+      },
+    ]);
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('movie-want-watch-button')));
+    await _pumpUntilRequest(
+      tester,
+      adapter,
+      '/api/v4/movies/m1',
+      method: 'GET',
+      count: 2,
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(authCalled, isTrue);
+    expect(
+      find.byKey(const Key('movie-delete-want-watch-button')),
+      findsOneWidget,
+    );
+    expect(find.text('状态已更新，详情刷新失败'), findsNothing);
+  });
+
   testWidgets('看过表单 actionless HTTP 401 触发认证处理且不显示表单普通失败', (tester) async {
     _mockPathProvider(tester);
     var authCalled = false;
@@ -806,6 +1110,181 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('状态已更新，详情刷新失败'), findsOneWidget);
+  });
+
+  testWidgets('非认证 DELETE 失败保留想看状态并显示普通失败', (tester) async {
+    _mockPathProvider(tester);
+    final adapter = await _setupApiClient();
+    _enqueueMutationAncillaries(adapter);
+    adapter.enqueue(
+      '/api/v4/movies/m1',
+      _detailResponse(
+        review: {'id': 'r-want', 'status': 'want_watch'},
+        wantWatchCount: 12,
+        watchedCount: 8,
+      ),
+    );
+    adapter.enqueue('/api/v1/movies/m1/reviews', {
+      'success': 1,
+      'data': {'reviews': <Map<String, dynamic>>[]},
+    });
+    adapter.enqueue('/api/v1/movies/m1/reviews/r-want', {
+      'success': 0,
+      'message': 'delete failed',
+    }, statusCode: 500);
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('movie-delete-want-watch-button')));
+    await _pumpUntilRequest(
+      tester,
+      adapter,
+      '/api/v1/movies/m1/reviews/r-want',
+      method: 'DELETE',
+    );
+    await _pumpUntilText(tester, '操作失败，请重试');
+
+    expect(
+      find.byKey(const Key('movie-delete-want-watch-button')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('movie-want-watch-button')), findsNothing);
+  });
+
+  testWidgets('actionless 401 DELETE 触发全局认证并保留看过状态', (tester) async {
+    _mockPathProvider(tester);
+    var authCalled = false;
+    final adapter = await _setupApiClient(onAuthError: () => authCalled = true);
+    _enqueueMutationAncillaries(adapter);
+    adapter.enqueue(
+      '/api/v4/movies/m1',
+      _detailResponse(
+        review: {'id': 'r-watched', 'status': 'watched'},
+        wantWatchCount: 12,
+        watchedCount: 8,
+      ),
+    );
+    adapter.enqueue('/api/v1/movies/m1/reviews', {
+      'success': 1,
+      'data': {'reviews': <Map<String, dynamic>>[]},
+    });
+    adapter.enqueue('/api/v1/movies/m1/reviews/r-watched', {
+      'success': 0,
+      'message': 'unauthorized',
+    }, statusCode: 401);
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('movie-delete-watched-button')));
+    await _pumpUntilRequest(
+      tester,
+      adapter,
+      '/api/v1/movies/m1/reviews/r-watched',
+      method: 'DELETE',
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(authCalled, isTrue);
+    expect(
+      find.byKey(const Key('movie-delete-watched-button')),
+      findsOneWidget,
+    );
+    expect(find.text('操作失败，请重试'), findsNothing);
+  });
+
+  testWidgets('DELETE 成功但校准失败保留本地未标记状态并显示刷新失败', (tester) async {
+    _mockPathProvider(tester);
+    final adapter = await _setupApiClient();
+    _enqueueMutationAncillaries(adapter);
+    adapter.enqueueSequence(
+      '/api/v4/movies/m1',
+      [
+        _detailResponse(
+          review: {'id': 'r-watched', 'status': 'watched'},
+          wantWatchCount: 12,
+          watchedCount: 8,
+        ),
+        {'success': 0, 'message': 'refresh failed'},
+      ],
+      codes: [200, 500],
+    );
+    adapter.enqueue('/api/v1/movies/m1/reviews', {
+      'success': 1,
+      'data': {'reviews': <Map<String, dynamic>>[]},
+    });
+    adapter.enqueue('/api/v1/movies/m1/reviews/r-watched', {
+      'success': 1,
+      'data': <String, dynamic>{},
+    });
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('movie-delete-watched-button')));
+    await _pumpUntilRequest(
+      tester,
+      adapter,
+      '/api/v1/movies/m1/reviews/r-watched',
+      method: 'DELETE',
+    );
+    await _pumpUntilText(tester, '状态已更新，详情刷新失败');
+
+    expect(find.byKey(const Key('movie-want-watch-button')), findsOneWidget);
+    expect(find.byKey(const Key('movie-watched-button')), findsOneWidget);
+    expect(find.byKey(const Key('movie-delete-watched-button')), findsNothing);
+  });
+
+  testWidgets('DELETE 成功后的详情校准更新想看看过人数', (tester) async {
+    _mockPathProvider(tester);
+    final adapter = await _setupApiClient();
+    _enqueueMutationAncillaries(adapter);
+    adapter.enqueueSequence('/api/v4/movies/m1', [
+      _detailResponse(
+        review: {'id': 'r-want', 'status': 'want_watch'},
+        wantWatchCount: 12,
+        watchedCount: 8,
+      ),
+      _detailResponse(review: null, wantWatchCount: 11, watchedCount: 8),
+    ]);
+    adapter.enqueue('/api/v1/movies/m1/reviews', {
+      'success': 1,
+      'data': {'reviews': <Map<String, dynamic>>[]},
+    });
+    adapter.enqueue('/api/v1/movies/m1/reviews/r-want', {
+      'success': 1,
+      'data': <String, dynamic>{},
+    });
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('movie-delete-want-watch-button')));
+    await _pumpUntilRequest(
+      tester,
+      adapter,
+      '/api/v1/movies/m1/reviews/r-want',
+      method: 'DELETE',
+    );
+    await _pumpUntilText(tester, '11人想看，8人看过');
+
+    expect(find.byKey(const Key('movie-want-watch-button')), findsOneWidget);
+    expect(
+      find.byKey(const Key('movie-delete-want-watch-button')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('等待 helper 在请求或文本超时时抛出测试失败', (tester) async {
+    await expectLater(
+      () => _pumpUntilRequest(tester, FakeAdapter(), '/never-requested'),
+      throwsA(isA<TestFailure>()),
+    );
+    await expectLater(
+      () => _pumpUntilText(tester, '永远不会出现的文本'),
+      throwsA(isA<TestFailure>()),
+    );
   });
 
   testWidgets('MovieDetailPage 主详情成功时附属接口失败不影响渲染', (tester) async {
@@ -1152,12 +1631,28 @@ void main() {
     addTearDown(router.dispose);
 
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
-    await _pumpUntilText(tester, '漫画游戏改编');
+    await _pumpUntilText(tester, '测试影片');
 
     final chipFinder = find.byWidgetPredicate(
       (widget) => widget is TagChip && widget.label == '漫画游戏改编',
       skipOffstage: false,
     );
+    final innerScrollable = find
+        .descendant(
+          of: find.byType(TabBarView),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Scrollable &&
+                widget.axisDirection == AxisDirection.down,
+          ),
+        )
+        .first;
+    await _scrollUntilFound(
+      tester,
+      target: chipFinder,
+      scrollable: innerScrollable,
+    );
+    expect(chipFinder, findsOneWidget);
     final chip = tester.widget<TagChip>(chipFinder);
     expect(chip.onTap, isNull);
     expect(router.state.uri.path, '/movie/m1');

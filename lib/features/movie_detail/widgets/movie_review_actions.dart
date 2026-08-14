@@ -45,16 +45,16 @@ class MovieReviewActions extends StatelessWidget {
 
     if (status == 'want_watch') {
       buttons.add(
-        _button(
-          key: const Key('movie-delete-want-watch-button'),
+        _ReviewActionButton(
+          buttonKey: const Key('movie-delete-want-watch-button'),
           label: '删除想看',
           onPressed: loading ? null : onDelete,
           style: actionStyle,
         ),
       );
       buttons.add(
-        _button(
-          key: const Key('movie-watched-button'),
+        _ReviewActionButton(
+          buttonKey: const Key('movie-watched-button'),
           label: '看过',
           onPressed: loading ? null : onWatched,
           style: actionStyle,
@@ -62,8 +62,8 @@ class MovieReviewActions extends StatelessWidget {
       );
     } else if (status == 'watched') {
       buttons.add(
-        _button(
-          key: const Key('movie-delete-watched-button'),
+        _ReviewActionButton(
+          buttonKey: const Key('movie-delete-watched-button'),
           label: '删除看过',
           onPressed: loading ? null : onDelete,
           style: actionStyle,
@@ -71,16 +71,16 @@ class MovieReviewActions extends StatelessWidget {
       );
     } else {
       buttons.add(
-        _button(
-          key: const Key('movie-want-watch-button'),
+        _ReviewActionButton(
+          buttonKey: const Key('movie-want-watch-button'),
           label: '想看',
           onPressed: loading ? null : onWantWatch,
           style: actionStyle,
         ),
       );
       buttons.add(
-        _button(
-          key: const Key('movie-watched-button'),
+        _ReviewActionButton(
+          buttonKey: const Key('movie-watched-button'),
           label: '看过',
           onPressed: loading ? null : onWatched,
           style: actionStyle,
@@ -89,8 +89,8 @@ class MovieReviewActions extends StatelessWidget {
     }
 
     buttons.add(
-      _button(
-        key: const Key('movie-save-to-list-button'),
+      _ReviewActionButton(
+        buttonKey: const Key('movie-save-to-list-button'),
         label: '存入清单',
         onPressed: onSaveToList,
         style: actionStyle,
@@ -99,18 +99,31 @@ class MovieReviewActions extends StatelessWidget {
 
     return Wrap(spacing: 8, runSpacing: 6, children: buttons);
   }
+}
 
-  FilledButton _button({
-    required Key key,
+class _ReviewActionButton extends StatelessWidget {
+  const _ReviewActionButton({
+    required Key buttonKey,
     required String label,
     required VoidCallback? onPressed,
     required ButtonStyle style,
-  }) {
+  }) : _buttonKey = buttonKey,
+       _label = label,
+       _onPressed = onPressed,
+       _style = style;
+
+  final Key _buttonKey;
+  final String _label;
+  final VoidCallback? _onPressed;
+  final ButtonStyle _style;
+
+  @override
+  Widget build(BuildContext context) {
     return FilledButton(
-      key: key,
-      style: style,
-      onPressed: onPressed,
-      child: Text(label),
+      key: _buttonKey,
+      style: _style,
+      onPressed: _onPressed,
+      child: Text(_label),
     );
   }
 }

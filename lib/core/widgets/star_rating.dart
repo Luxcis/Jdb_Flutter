@@ -13,7 +13,11 @@ class StarRating extends StatelessWidget {
   final double score;
   final String semanticLabel;
   final double size;
+
+  /// 评分改变时调用；非空时组件进入交互模式。
   final ValueChanged<int>? onChanged;
+
+  /// 交互模式是否接受输入；只读模式不受此值影响。
   final bool enabled;
 
   double get _starScore {

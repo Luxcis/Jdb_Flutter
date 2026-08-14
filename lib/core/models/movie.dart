@@ -86,6 +86,8 @@ class MovieDetail extends MovieSummary {
   @JsonKey(includeToJson: false)
   final List<Tag> tagItems;
   final List<TopRanking> topRankings;
+
+  /// 当前登录用户的影评状态；尚未标记该影片时为 `null`。
   @JsonKey(includeToJson: false)
   final Review? review;
   final int magnetCount;

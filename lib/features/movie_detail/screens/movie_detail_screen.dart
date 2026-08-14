@@ -55,6 +55,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   bool _saveToListOpening = false;
   Review? _currentReview;
   bool _reviewMutationLoading = false;
+  int _reviewMutationGeneration = 0;
   String? _error;
 
   @override
@@ -212,8 +213,9 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
         content: content,
       );
       if (!mounted) return;
+      final generation = ++_reviewMutationGeneration;
       setState(() => _currentReview = review);
-      await _refreshDetailAfterReview();
+      unawaited(_refreshDetailAfterReview(generation));
     } on DioException catch (error) {
       if (_isAuthError(error)) return;
       rethrow;
@@ -235,8 +237,9 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     try {
       await service.deleteReview(movieId: widget.id, reviewId: review.id);
       if (!mounted) return;
+      final generation = ++_reviewMutationGeneration;
       setState(() => _currentReview = null);
-      await _refreshDetailAfterReview();
+      unawaited(_refreshDetailAfterReview(generation));
     } on DioException catch (error) {
       if (_isAuthError(error)) return;
       rethrow;
@@ -249,18 +252,27 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     }
   }
 
-  Future<void> _refreshDetailAfterReview() async {
+  Future<void> _refreshDetailAfterReview(int generation) async {
     final service = _service;
     if (service == null) return;
     try {
       final detail = await service.getDetail(widget.id);
-      if (!mounted) return;
+      if (!mounted || generation != _reviewMutationGeneration) return;
       setState(() {
         _detail = detail;
         _currentReview = detail.review;
       });
+    } on DioException catch (error) {
+      if (!mounted ||
+          generation != _reviewMutationGeneration ||
+          _isAuthError(error)) {
+        return;
+      }
+      _showSnackBar('状态已更新，详情刷新失败');
     } catch (_) {
-      if (mounted) _showSnackBar('状态已更新，详情刷新失败');
+      if (mounted && generation == _reviewMutationGeneration) {
+        _showSnackBar('状态已更新，详情刷新失败');
+      }
     }
   }
 

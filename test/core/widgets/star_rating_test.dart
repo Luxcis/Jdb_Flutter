@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/widgets/star_rating.dart';
 
@@ -51,25 +52,31 @@ void main() {
   });
 
   testWidgets('交互评分每颗星具有独立按钮语义', (tester) async {
-    final handle = tester.ensureSemantics();
+    final semanticsHandle = tester.ensureSemantics();
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(body: StarRating(score: 0, onChanged: (_) {})),
       ),
     );
 
-    for (var value = 1; value <= 5; value++) {
-      expect(
-        find.byWidgetPredicate(
-          (widget) =>
-              widget is Semantics &&
-              widget.properties.label == '$value分' &&
-              widget.properties.button == true,
-        ),
-        findsOneWidget,
-      );
+    final nodesByLabel = <String, SemanticsNode>{};
+    void collectNodes(SemanticsNode node) {
+      final label = node.getSemanticsData().label;
+      if (label.isNotEmpty) nodesByLabel[label] = node;
+      node.visitChildren((child) {
+        collectNodes(child);
+        return true;
+      });
     }
-    handle.dispose();
+
+    collectNodes(tester.getSemantics(find.byType(StarRating)));
+    for (var value = 1; value <= 5; value++) {
+      final data = nodesByLabel['$value分']?.getSemanticsData();
+      expect(data, isNotNull, reason: '缺少 $value 分的独立语义节点');
+      expect(data!.flagsCollection.isButton, isTrue);
+      expect(data.hasAction(SemanticsAction.tap), isTrue);
+    }
+    semanticsHandle.dispose();
   });
 
   testWidgets('交互评分每颗星点击区域至少 48 像素', (tester) async {
