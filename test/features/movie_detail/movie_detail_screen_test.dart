@@ -20,6 +20,7 @@ import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/screens/movie_detail_screen.dart';
 import 'package:jade/features/movie_detail/widgets/movie_review_actions.dart';
 import 'package:jade/features/movie_detail/widgets/top_ranking_tile.dart';
+import 'package:jade/features/movie_detail/widgets/watched_review_sheet.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -672,6 +673,95 @@ void main() {
     expect(authCalled, isTrue);
     expect(find.text('操作失败，请重试'), findsNothing);
     expect(find.byKey(const Key('movie-want-watch-button')), findsOneWidget);
+  });
+
+  testWidgets('想看 actionless HTTP 401 触发认证处理且不显示普通失败', (tester) async {
+    _mockPathProvider(tester);
+    var authCalled = false;
+    final adapter = await _setupApiClient(onAuthError: () => authCalled = true);
+    _enqueueMutationAncillaries(adapter);
+    adapter.enqueue('/api/v4/movies/m1', _detailResponse());
+    adapter.enqueueSequence(
+      '/api/v1/movies/m1/reviews',
+      [
+        {
+          'success': 1,
+          'data': {'reviews': <Map<String, dynamic>>[]},
+        },
+        {'success': 0, 'message': 'unauthorized'},
+      ],
+      codes: [200, 401],
+    );
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('movie-want-watch-button')));
+    await _pumpUntilRequest(
+      tester,
+      adapter,
+      '/api/v1/movies/m1/reviews',
+      method: 'POST',
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(authCalled, isTrue);
+    expect(find.byKey(const Key('movie-want-watch-button')), findsOneWidget);
+    expect(find.byKey(const Key('movie-watched-button')), findsOneWidget);
+    expect(
+      find.byKey(const Key('movie-delete-want-watch-button')),
+      findsNothing,
+    );
+    expect(find.text('操作失败，请重试'), findsNothing);
+  });
+
+  testWidgets('看过表单 actionless HTTP 401 触发认证处理且不显示表单普通失败', (tester) async {
+    _mockPathProvider(tester);
+    var authCalled = false;
+    final adapter = await _setupApiClient(onAuthError: () => authCalled = true);
+    _enqueueMutationAncillaries(adapter);
+    adapter.enqueue('/api/v4/movies/m1', _detailResponse());
+    adapter.enqueueSequence(
+      '/api/v1/movies/m1/reviews',
+      [
+        {
+          'success': 1,
+          'data': {'reviews': <Map<String, dynamic>>[]},
+        },
+        {'success': 0, 'message': 'unauthorized'},
+      ],
+      codes: [200, 401],
+    );
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('movie-watched-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const Key('star-rating-3')));
+    await tester.enterText(
+      find.byKey(const Key('watched-review-content-field')),
+      'actionless 401 评论',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('watched-review-submit-button')));
+    await _pumpUntilRequest(
+      tester,
+      adapter,
+      '/api/v1/movies/m1/reviews',
+      method: 'POST',
+    );
+    for (var i = 0; i < 20; i++) {
+      if (find.byType(WatchedReviewSheet).evaluate().isEmpty) break;
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    expect(authCalled, isTrue);
+    expect(find.text('操作失败，请重试'), findsNothing);
+    expect(find.byType(WatchedReviewSheet), findsNothing);
+    expect(find.byKey(const Key('movie-want-watch-button')), findsOneWidget);
+    expect(find.byKey(const Key('movie-watched-button')), findsOneWidget);
   });
 
   testWidgets('mutation 成功但详情校准失败保留新按钮状态并提示刷新失败', (tester) async {

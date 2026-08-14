@@ -345,6 +345,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   }
 
   bool _isAuthError(DioException error) {
+    if (error.response?.statusCode == 401) return true;
     final apiError = error.error;
     if (apiError is ApiException) return apiError.isAuthError;
     final data = error.response?.data;
