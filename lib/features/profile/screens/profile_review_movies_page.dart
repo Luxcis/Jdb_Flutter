@@ -9,7 +9,11 @@ import 'package:jade/features/profile/services/review_movies_tab_controller.dart
 
 typedef _MovieTypeTab = ({String label, String value});
 
+/// 展示已认证用户指定状态的评鉴影片网格页。
+///
+/// 可通过 [dataSource] 注入数据源以复用页面或替换默认 API 实现。
 class ProfileReviewMoviesPage extends StatefulWidget {
+  /// 创建使用 [title]、[status] 及可选 [dataSource] 的评鉴影片页。
   const ProfileReviewMoviesPage({
     super.key,
     required this.title,
@@ -17,8 +21,13 @@ class ProfileReviewMoviesPage extends StatefulWidget {
     this.dataSource,
   });
 
+  /// 显示在应用栏中的页面标题。
   final String title;
+
+  /// 请求评鉴影片时使用的状态 wire value。
   final String status;
+
+  /// 可选的评鉴影片数据源；未提供时使用默认 API 数据源。
   final ReviewMoviesDataSource? dataSource;
 
   @override
@@ -120,9 +129,10 @@ class _ProfileReviewMoviesPageState extends State<ProfileReviewMoviesPage>
         ),
       ),
       body: Column(
+        spacing: 4,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+            padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
             child: SortSegmented<String>(
               key: const Key('profile-review-movies-sort'),
               compact: true,
@@ -143,7 +153,6 @@ class _ProfileReviewMoviesPageState extends State<ProfileReviewMoviesPage>
               onChanged: _changeOrderBy,
             ),
           ),
-          const SizedBox(height: 4),
           Expanded(
             child: TabBarView(
               controller: _tabController,
