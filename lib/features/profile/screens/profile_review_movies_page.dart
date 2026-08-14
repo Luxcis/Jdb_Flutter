@@ -133,24 +133,30 @@ class _ProfileReviewMoviesPageState extends State<ProfileReviewMoviesPage>
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-            child: SortSegmented<String>(
-              key: const Key('profile-review-movies-sort'),
-              compact: true,
-              expanded: true,
-              options: _sortOptions,
-              value: _sortBy,
-              onChanged: _changeSortBy,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
-            child: SortSegmented<String>(
-              key: const Key('profile-review-movies-order'),
-              compact: true,
-              expanded: true,
-              options: _orderOptions,
-              value: _orderBy,
-              onChanged: _changeOrderBy,
+            child: Row(
+              spacing: 8,
+              children: [
+                Expanded(
+                  child: SortSegmented<String>(
+                    key: const Key('profile-review-movies-sort'),
+                    compact: true,
+                    expanded: true,
+                    options: _sortOptions,
+                    value: _sortBy,
+                    onChanged: _changeSortBy,
+                  ),
+                ),
+                Expanded(
+                  child: SortSegmented<String>(
+                    key: const Key('profile-review-movies-order'),
+                    compact: true,
+                    expanded: true,
+                    options: _orderOptions,
+                    value: _orderBy,
+                    onChanged: _changeOrderBy,
+                  ),
+                ),
+              ],
             ),
           ),
           Expanded(

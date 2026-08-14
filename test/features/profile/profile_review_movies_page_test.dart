@@ -127,25 +127,31 @@ void main() {
     ));
   });
 
-  testWidgets('想看页面保持排序控件的 8px/4px 间距契约', (tester) async {
+  testWidgets('想看页面排序控件共享一行并保持间距契约', (tester) async {
     await _pumpPage(tester);
 
-    final bodyColumn = tester
-        .widgetList<Column>(find.byType(Column))
-        .singleWhere((column) {
-          if (column.children.length != 3) return false;
-          final firstChild = column.children.first;
-          return firstChild is Padding &&
-              firstChild.child is SortSegmented<String> &&
-              (firstChild.child as SortSegmented<String>).key ==
-                  const Key('profile-review-movies-sort');
-        });
-    final sortPadding = bodyColumn.children[0] as Padding;
-    final orderPadding = bodyColumn.children[1] as Padding;
+    final sort = find.byKey(const Key('profile-review-movies-sort'));
+    final order = find.byKey(const Key('profile-review-movies-order'));
+    final row = find.ancestor(of: sort, matching: find.byType(Row));
+    expect(row, findsOneWidget);
+    expect(find.descendant(of: row, matching: sort), findsOneWidget);
+    expect(find.descendant(of: row, matching: order), findsOneWidget);
 
-    expect(bodyColumn.spacing, 4);
-    expect(sortPadding.padding, const EdgeInsets.fromLTRB(8, 8, 8, 0));
-    expect(orderPadding.padding, const EdgeInsets.fromLTRB(8, 4, 8, 0));
+    final sortRect = tester.getRect(sort);
+    final orderRect = tester.getRect(order);
+    final rowRect = tester.getRect(row);
+    expect(sortRect.width, orderRect.width);
+    expect(sortRect.width, closeTo((rowRect.width - 8) / 2, 0.001));
+    expect(orderRect.left - sortRect.right, 8);
+
+    final rowPadding = find.ancestor(of: row, matching: find.byType(Padding));
+    expect(
+      tester.widget<Padding>(rowPadding).padding,
+      const EdgeInsets.fromLTRB(8, 8, 8, 0),
+    );
+    final grid = find.byType(MovieGridView);
+    expect(tester.getTopLeft(grid).dy - tester.getBottomLeft(row).dy, 4);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('跨 Tab 动画结束后仅请求目标 type 1 且切回不重复首屏请求', (tester) async {
