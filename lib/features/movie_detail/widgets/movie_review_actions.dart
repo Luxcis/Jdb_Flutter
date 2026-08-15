@@ -34,11 +34,20 @@ class MovieReviewActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final actionStyle = FilledButton.styleFrom(
       minimumSize: const Size(0, 32),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       visualDensity: VisualDensity.compact,
       textStyle: Theme.of(context).textTheme.labelMedium,
+    );
+    final deleteStyle = FilledButton.styleFrom(
+      minimumSize: const Size(0, 32),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      visualDensity: VisualDensity.compact,
+      textStyle: Theme.of(context).textTheme.labelMedium,
+      backgroundColor: colorScheme.error,
+      foregroundColor: colorScheme.onError,
     );
     final status = review?.status;
     final buttons = <Widget>[];
@@ -49,7 +58,7 @@ class MovieReviewActions extends StatelessWidget {
           buttonKey: const Key('movie-delete-want-watch-button'),
           label: '删除想看',
           onPressed: loading ? null : onDelete,
-          style: actionStyle,
+          style: deleteStyle,
         ),
       );
       buttons.add(
@@ -66,7 +75,7 @@ class MovieReviewActions extends StatelessWidget {
           buttonKey: const Key('movie-delete-watched-button'),
           label: '删除看过',
           onPressed: loading ? null : onDelete,
-          style: actionStyle,
+          style: deleteStyle,
         ),
       );
     } else {

@@ -226,4 +226,40 @@ void main() {
 
     expect(calls, ['delete', 'save']);
   });
+
+  testWidgets('删除按钮使用主题错误色而其它操作不使用', (tester) async {
+    Color? deleteBackground(String key, BuildContext context) {
+      final button = tester.widget<FilledButton>(find.byKey(Key(key)));
+      return button.style?.backgroundColor?.resolve({});
+    }
+
+    await pumpActions(
+      tester,
+      review: const Review(id: 'r1', status: 'want_watch'),
+    );
+    var context = tester.element(
+      find.byKey(const Key('movie-delete-want-watch-button')),
+    );
+    final error = Theme.of(context).colorScheme.error;
+
+    expect(deleteBackground('movie-delete-want-watch-button', context), error);
+    expect(deleteBackground('movie-watched-button', context), isNot(error));
+    expect(
+      deleteBackground('movie-save-to-list-button', context),
+      isNot(error),
+    );
+
+    await pumpActions(
+      tester,
+      review: const Review(id: 'r2', status: 'watched'),
+    );
+    context = tester.element(
+      find.byKey(const Key('movie-delete-watched-button')),
+    );
+    expect(deleteBackground('movie-delete-watched-button', context), error);
+    expect(
+      deleteBackground('movie-save-to-list-button', context),
+      isNot(error),
+    );
+  });
 }
