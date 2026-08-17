@@ -83,9 +83,13 @@ void main() {
     final source = await _pumpPage(tester);
 
     expect(find.text('最新影片'), findsOneWidget);
-    for (final label in ['全部', '有码', '无码', '欧美', 'FC2', '动漫']) {
+    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+    expect(tabBar.tabs.length, 6);
+    for (final label in ['有码', '无码', '欧美', 'FC2', '动漫']) {
       expect(find.text(label), findsOneWidget);
     }
+    // TabBar 与筛选控件均有「全部」文案，至少出现两处
+    expect(find.text('全部'), findsWidgets);
     expect(find.byType(SortSegmented<String>), findsOneWidget);
     expect(find.byType(SortSelect<String>), findsOneWidget);
     expect(find.byType(MovieGridView), findsOneWidget);
@@ -133,7 +137,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('latest-tab-sort')));
     await tester.pump();
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.text('发布日期').last);
     await tester.pump();
     await tester.pump();
@@ -146,7 +150,9 @@ void main() {
     final tabBar = tester.widget<TabBar>(find.byType(TabBar));
 
     tabBar.controller!.animateTo(2);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump();
     expect(
       source.requests
           .where((request) => request.type == '1')
@@ -155,14 +161,18 @@ void main() {
     );
 
     tabBar.controller!.animateTo(0);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump();
     final allRequests = source.requests
         .where((request) => request.type == 'all')
         .toList();
     expect(allRequests.map((request) => request.page), [1]);
     // Tab B 改变筛选不影响 Tab A 的已加载状态
     tabBar.controller!.animateTo(2);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump();
     await tester.tap(find.text('含字幕'));
     await tester.pump();
     await tester.pump();
@@ -175,7 +185,9 @@ void main() {
     );
     // 切回 Tab A 不重新加载（keepAlive 保留）
     tabBar.controller!.animateTo(0);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump();
     expect(
       source.requests
           .where((request) => request.type == 'all')
