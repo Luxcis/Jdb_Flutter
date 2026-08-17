@@ -49,3 +49,5 @@ app.*.map.json
 .superpowers/
 .worktrees/
 worktrees
+dsh-usage/
+.mnemon

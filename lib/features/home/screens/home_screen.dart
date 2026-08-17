@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/widgets/empty_state.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/movie_card.dart';
@@ -74,6 +75,10 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void _openHistoryRecommend() {
+    context.push(AppRoutes.historyRecommend);
+  }
+
   void _showRefreshError() {
     ScaffoldMessenger.of(
       context,
@@ -89,8 +94,13 @@ class _HomePageState extends State<HomePage> {
           slivers: [
             const SliverToBoxAdapter(child: HomeSearchBar()),
             const SliverToBoxAdapter(child: TofuScroll()),
-            const SliverToBoxAdapter(
-              child: SectionHeader(title: '佳片推荐', trailing: '往期推荐', bold: true),
+            SliverToBoxAdapter(
+              child: SectionHeader(
+                title: '佳片推荐',
+                trailing: '往期推荐',
+                bold: true,
+                onTrailing: _openHistoryRecommend,
+              ),
             ),
             _recommendSection(p?.recommends),
             SliverToBoxAdapter(

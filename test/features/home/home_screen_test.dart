@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/providers/auth_provider.dart';
+import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/widgets/search_entry.dart';
+import 'package:jade/features/home/screens/history_recommend_page.dart';
 import 'package:jade/features/home/screens/home_screen.dart';
 import 'package:jade/features/home/widgets/tofu_scroll.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-Future<FakeAdapter> _pumpHome(
+Future<FakeAdapter> _prepareApi(
   WidgetTester tester, {
   Duration responseDelay = Duration.zero,
   List<Map<String, dynamic>>? latestBodies,
@@ -21,7 +24,6 @@ Future<FakeAdapter> _pumpHome(
       'cover_url': 'recommend.jpg',
     },
   ],
-  bool settle = true,
 }) async {
   tester.view.physicalSize = const Size(390, 1600);
   tester.view.devicePixelRatio = 1;
@@ -61,6 +63,29 @@ Future<FakeAdapter> _pumpHome(
       },
     });
   }
+  return adapter;
+}
+
+Future<FakeAdapter> _pumpHome(
+  WidgetTester tester, {
+  Duration responseDelay = Duration.zero,
+  List<Map<String, dynamic>>? latestBodies,
+  List<Map<String, dynamic>> recommends = const [
+    {
+      'id': 'recommend',
+      'number': 'R-1',
+      'title': 'Recommend',
+      'cover_url': 'recommend.jpg',
+    },
+  ],
+  bool settle = true,
+}) async {
+  final adapter = await _prepareApi(
+    tester,
+    responseDelay: responseDelay,
+    latestBodies: latestBodies,
+    recommends: recommends,
+  );
 
   await tester.pumpWidget(const MaterialApp(home: HomePage()));
   await tester.pump();
@@ -275,5 +300,46 @@ void main() {
         .where((r) => r.path == Endpoints.moviesRecommend)
         .length;
     expect(recommendRequests, 1);
+  });
+
+  testWidgets('点击佳片推荐右侧往期推荐进入往期推荐列表页', (tester) async {
+    final adapter = await _prepareApi(tester);
+    adapter.enqueue(Endpoints.moviesRecommendPeriods, {
+      'success': 1,
+      'data': {
+        'periods': [
+          {
+            'period': 586,
+            'movies_count': 10,
+            'views_count': 0,
+            'created_at': '2026-08-17T00:30:02.367Z',
+          },
+        ],
+        'current_page': 1,
+      },
+    });
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(path: '/', builder: (_, _) => const HomePage()),
+        GoRoute(
+          path: AppRoutes.historyRecommend,
+          builder: (_, _) => const HistoryRecommendPage(),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    await tester.tap(find.text('往期推荐'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+
+    expect(router.state.uri.path, AppRoutes.historyRecommend);
+    expect(find.text('往期推荐'), findsWidgets);
   });
 }

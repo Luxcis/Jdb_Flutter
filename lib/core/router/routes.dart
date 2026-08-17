@@ -3,6 +3,9 @@ class AppRoutes {
 
   static const String startup = '/startup';
   static const String home = '/home';
+  static const String historyRecommend = '/home/history-recommend';
+  static const String historyRecommendDetail =
+      '/home/history-recommend/:period';
   static const String rankings = '/rankings';
   static const String categories = '/categories';
   static const String actors = '/actors';
@@ -26,6 +29,9 @@ class AppRoutes {
 
   static String moviePreviewLocation(String movieId) =>
       '/movie/${Uri.encodeComponent(movieId)}/preview';
+
+  static String historyRecommendDetailLocation(String period) =>
+      '/home/history-recommend/${Uri.encodeComponent(period)}';
 
   // Profile 子页面
   static const String profileWantWatch = '/profile/want-watch';

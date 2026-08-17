@@ -84,6 +84,15 @@ class AppRouter {
     ),
     GoRoute(path: AppRoutes.login, builder: (c, s) => const LoginPage()),
     GoRoute(path: AppRoutes.register, builder: (c, s) => const RegisterPage()),
+    GoRoute(
+      path: AppRoutes.historyRecommend,
+      builder: (c, s) => const HistoryRecommendPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.historyRecommendDetail,
+      builder: (c, s) =>
+          HistoryRecommendDetailPage(period: s.pathParameters['period']!),
+    ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, shell) => MainShell(navigationShell: shell),
       branches: [
