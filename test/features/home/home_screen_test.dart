@@ -342,4 +342,60 @@ void main() {
     expect(router.state.uri.path, AppRoutes.historyRecommend);
     expect(find.text('往期推荐'), findsWidgets);
   });
+
+  testWidgets('点击最新上架全部跳转最新影片页', (tester) async {
+    await _prepareApi(tester);
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(path: '/', builder: (_, _) => const HomePage()),
+        GoRoute(
+          path: AppRoutes.latestMovies,
+          builder: (_, _) => Scaffold(body: Text('最新影片页')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    await tester.tap(find.text('全部').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+
+    expect(router.state.uri.path, AppRoutes.latestMovies);
+    expect(router.state.uri.queryParameters['section'], 'latest');
+    expect(find.text('最新影片页'), findsOneWidget);
+  });
+
+  testWidgets('点击近期磁链更新全部跳转磁链页', (tester) async {
+    await _prepareApi(tester);
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(path: '/', builder: (_, _) => const HomePage()),
+        GoRoute(
+          path: AppRoutes.latestMovies,
+          builder: (_, _) => Scaffold(body: Text('磁链更新页')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    await tester.tap(find.text('全部').last);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+
+    expect(router.state.uri.path, AppRoutes.latestMovies);
+    expect(router.state.uri.queryParameters['section'], 'magnets');
+    expect(find.text('磁链更新页'), findsOneWidget);
+  });
 }

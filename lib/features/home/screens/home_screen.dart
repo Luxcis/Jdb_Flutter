@@ -104,7 +104,13 @@ class _HomePageState extends State<HomePage> {
             ),
             _recommendSection(p?.recommends),
             SliverToBoxAdapter(
-              child: SectionHeader(title: '最新上架', trailing: '全部'),
+              child: SectionHeader(
+                title: '最新上架',
+                trailing: '全部',
+                onTrailing: () => context.push(
+                  '${AppRoutes.latestMovies}?section=latest&title=最新影片',
+                ),
+              ),
             ),
             _gridSection(p?.latest, kind: HomeSectionKind.latest),
             _shuffleButton(
@@ -113,7 +119,13 @@ class _HomePageState extends State<HomePage> {
               onPressed: _refreshLatest,
             ),
             SliverToBoxAdapter(
-              child: SectionHeader(title: '近期磁链更新', trailing: '全部'),
+              child: SectionHeader(
+                title: '近期磁链更新',
+                trailing: '全部',
+                onTrailing: () => context.push(
+                  '${AppRoutes.latestMovies}?section=magnets&title=磁链更新',
+                ),
+              ),
             ),
             _gridSection(p?.magnetUpdates, kind: HomeSectionKind.magnets),
             _shuffleButton(

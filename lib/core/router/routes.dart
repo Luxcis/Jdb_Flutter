@@ -26,6 +26,7 @@ class AppRoutes {
   static const String makers = '/makers';
   static const String directors = '/directors';
   static const String commonList = '/common-list';
+  static const String latestMovies = '/latest-movies';
 
   static String moviePreviewLocation(String movieId) =>
       '/movie/${Uri.encodeComponent(movieId)}/preview';

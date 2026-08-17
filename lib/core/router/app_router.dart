@@ -222,6 +222,16 @@ class AppRouter {
       },
     ),
     GoRoute(
+      path: AppRoutes.latestMovies,
+      builder: (c, s) {
+        final q = s.uri.queryParameters;
+        return LatestMoviesPage(
+          section: q['section'] ?? 'latest',
+          title: q['title'] ?? '最新影片',
+        );
+      },
+    ),
+    GoRoute(
       path: AppRoutes.profileWantWatch,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileWantWatch,
