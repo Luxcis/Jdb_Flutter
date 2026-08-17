@@ -51,7 +51,7 @@ class _HistoryRecommendPageState extends State<HistoryRecommendPage> {
         emptyMessage: '暂无往期推荐',
         itemBuilder: (context, item) {
           return EntityListTile(
-            name: '第${item.period}期(${_formatDay(item.createdAt)})',
+            name: '第${item.period}期 - ${_formatDay(item.createdAt)}',
             count: item.moviesCount,
             onTap: () => context.push(
               AppRoutes.historyRecommendDetailLocation('${item.period}'),
