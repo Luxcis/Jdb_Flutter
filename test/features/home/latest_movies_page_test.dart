@@ -131,7 +131,10 @@ void main() {
     await tester.pump();
     expect(source.requests.last.filterBy, 'magnets');
 
-    await tester.tap(find.text('发布日期'));
+    await tester.tap(find.byKey(const Key('latest-tab-sort')));
+    await tester.pump();
+    await tester.pump();
+    await tester.tap(find.text('发布日期').last);
     await tester.pump();
     await tester.pump();
     expect(source.requests.last.sortBy, 'release');
