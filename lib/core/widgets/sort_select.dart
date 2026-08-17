@@ -5,13 +5,13 @@ class SortSelect<T> extends StatelessWidget {
     super.key,
     required this.options,
     required this.value,
-    required this.onChanged,
+    this.onChanged,
     this.compact = false,
   });
 
   final List<({String label, T value})> options;
   final T value;
-  final ValueChanged<T?> onChanged;
+  final ValueChanged<T?>? onChanged;
   final bool compact;
 
   @override
@@ -19,7 +19,8 @@ class SortSelect<T> extends StatelessWidget {
     if (compact) {
       return PopupMenuButton<T>(
         initialValue: value,
-        onSelected: (selected) => onChanged(selected),
+        onSelected: (selected) => onChanged?.call(selected),
+        enabled: onChanged != null,
         itemBuilder: (_) => [
           for (final option in options)
             PopupMenuItem(value: option.value, child: Text(option.label)),
