@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/movie.dart';
+import 'package:jade/core/widgets/empty_state.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
@@ -31,6 +32,9 @@ class MovieGridView extends StatelessWidget {
             key: Key('movie-grid-initial-loading'),
             child: CircularProgressIndicator(),
           );
+        }
+        if (controller.items.isEmpty) {
+          return const EmptyState();
         }
         return NotificationListener<ScrollNotification>(
           onNotification: (notification) {

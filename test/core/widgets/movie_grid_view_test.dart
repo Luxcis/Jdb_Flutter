@@ -237,4 +237,22 @@ void main() {
 
     expect(find.byKey(const Key('movie-grid-refreshing')), findsNothing);
   });
+
+  testWidgets('空数据且非加载非错误时显示空态', (tester) async {
+    final controller = PaginationController<MovieSummary>(
+      fetch: (_) async =>
+          PagedResult(items: const [], currentPage: 1, totalPages: 1, total: 0),
+    );
+    addTearDown(controller.dispose);
+    await controller.fetchMore();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: MovieGridView(controller: controller)),
+      ),
+    );
+
+    expect(find.text('暂无数据'), findsOneWidget);
+    expect(find.byType(GridView), findsNothing);
+  });
 }
