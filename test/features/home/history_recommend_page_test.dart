@@ -25,11 +25,11 @@ void main() {
 
     expect(find.text('往期推荐'), findsOneWidget);
     expect(
-      find.text('第586期(${_day('2026-08-17T00:30:02.367Z')})'),
+      find.text('第586期 - ${_day('2026-08-17T00:30:02.367Z')}'),
       findsOneWidget,
     );
     expect(
-      find.text('第585期(${_day('2026-08-13T00:30:14.857Z')})'),
+      find.text('第585期 - ${_day('2026-08-13T00:30:14.857Z')}'),
       findsOneWidget,
     );
     expect(find.text('(10)'), findsNWidgets(2));
