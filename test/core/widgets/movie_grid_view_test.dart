@@ -253,6 +253,6 @@ void main() {
     );
 
     expect(find.text('暂无数据'), findsOneWidget);
-    expect(find.byType(GridView), findsNothing);
+    expect(find.byType(CustomScrollView), findsNothing);
   });
 }
