@@ -108,7 +108,13 @@ class _HomePageState extends State<HomePage> {
                 title: '最新上架',
                 trailing: '全部',
                 onTrailing: () => context.push(
-                  '${AppRoutes.latestMovies}?section=latest&title=最新影片',
+                  Uri(
+                    path: AppRoutes.latestMovies,
+                    queryParameters: {
+                      'section': 'latest',
+                      'title': '最新影片',
+                    },
+                  ).toString(),
                 ),
               ),
             ),
@@ -123,7 +129,13 @@ class _HomePageState extends State<HomePage> {
                 title: '近期磁链更新',
                 trailing: '全部',
                 onTrailing: () => context.push(
-                  '${AppRoutes.latestMovies}?section=magnets&title=磁链更新',
+                  Uri(
+                    path: AppRoutes.latestMovies,
+                    queryParameters: {
+                      'section': 'magnets',
+                      'title': '磁链更新',
+                    },
+                  ).toString(),
                 ),
               ),
             ),

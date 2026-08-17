@@ -114,7 +114,12 @@ void main() {
   testWidgets('筛选切换为全部时排序控件禁用且请求强制 release', (tester) async {
     final source = await _pumpPage(tester);
 
-    await tester.tap(find.text('全部').last);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(SortSegmented<String>),
+        matching: find.text('全部'),
+      ),
+    );
     await tester.pump();
     await tester.pump();
 
