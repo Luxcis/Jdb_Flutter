@@ -25,8 +25,29 @@ class SortSelect<T> extends StatelessWidget {
           for (final option in options)
             PopupMenuItem(value: option.value, child: Text(option.label)),
         ],
-        child: Text(
-          options.firstWhere((option) => option.value == value).label,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                options.firstWhere((option) => option.value == value).label,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.arrow_drop_down,
+                size: 18,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ],
+          ),
         ),
       );
     }
