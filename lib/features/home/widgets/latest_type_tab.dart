@@ -95,20 +95,19 @@ class _LatestTypeTabState extends State<LatestTypeTab>
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-          child: SortSegmented<String>(
-            key: const Key('latest-tab-filter'),
-            compact: true,
-            expanded: true,
-            options: _filterOptions,
-            value: _filter,
-            onChanged: _changeFilter,
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
             children: [
+              Expanded(
+                child: SortSegmented<String>(
+                  key: const Key('latest-tab-filter'),
+                  compact: true,
+                  expanded: true,
+                  options: _filterOptions,
+                  value: _filter,
+                  onChanged: _changeFilter,
+                ),
+              ),
+              const SizedBox(width: 8),
               SortSelect<String>(
                 key: const Key('latest-tab-sort'),
                 compact: true,
