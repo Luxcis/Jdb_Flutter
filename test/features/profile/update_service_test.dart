@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -116,6 +117,74 @@ void main() {
       final result = await checker.check();
 
       expect(result.hasUpdate, isFalse);
+    });
+  });
+
+  group('UpdateInstaller.pickAsset', () {
+    const abis = ['arm64-v8a', 'armeabi-v7a', 'x86_64'];
+
+    GitHubRelease releaseWith(List<String> names) => GitHubRelease(
+      tagName: 'v0.10.0',
+      body: '',
+      assets: [
+        for (final name in names)
+          GitHubReleaseAsset(
+            name: name,
+            size: 100,
+            downloadUrl: 'https://example.com/$name',
+          ),
+      ],
+    );
+
+    test('按 supportedAbis 顺序匹配资产', () {
+      final release = releaseWith([
+        'app-armeabi-v7a-release.apk',
+        'app-x86_64-release.apk',
+        'app-arm64-v8a-release.apk',
+      ]);
+      final installer = UpdateInstaller();
+
+      final asset = installer.pickAsset(release, abis);
+
+      expect(asset.name, contains('arm64-v8a'));
+    });
+
+    test('无匹配时回退第一个资产', () {
+      final release = releaseWith(['app-unknown-abi-release.apk']);
+      final installer = UpdateInstaller();
+
+      final asset = installer.pickAsset(release, abis);
+
+      expect(asset.name, 'app-unknown-abi-release.apk');
+    });
+  });
+
+  group('UpdateInstaller.download', () {
+    test('下载文件并报告进度', () async {
+      final installer = UpdateInstaller(
+        client: MockClient((request) async {
+          return http.Response.bytes(
+            List<int>.filled(1024, 7),
+            200,
+            headers: {'content-length': '1024'},
+          );
+        }),
+        downloadDir: Directory.systemTemp.createTempSync('update_test'),
+      );
+      final progress = <int>[];
+      final asset = const GitHubReleaseAsset(
+        name: 'app-arm64-v8a-release.apk',
+        size: 1024,
+        downloadUrl: 'https://example.com/app.apk',
+      );
+
+      final path = await installer.download(
+        asset,
+        onProgress: (received, total) => progress.add(received),
+      );
+
+      expect(await File(path).length(), 1024);
+      expect(progress.last, 1024);
     });
   });
 }

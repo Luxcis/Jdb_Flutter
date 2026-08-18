@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:pub_semver/pub_semver.dart';
 
 /// GitHub release 资产（APK）。
@@ -99,5 +101,55 @@ class UpdateChecker {
     } on FormatException {
       return false;
     }
+  }
+}
+
+/// 下载 APK 并调起系统安装器。
+class UpdateInstaller {
+  UpdateInstaller({http.Client? client, Directory? downloadDir})
+    : _client = client ?? http.Client(),
+      _downloadDir = downloadDir;
+
+  final http.Client _client;
+  final Directory? _downloadDir;
+
+  /// 按 ABI 优先级从 release 资产中挑选 APK。
+  GitHubReleaseAsset pickAsset(
+    GitHubRelease release,
+    List<String> supportedAbis,
+  ) {
+    for (final abi in supportedAbis) {
+      for (final asset in release.assets) {
+        if (asset.name.contains(abi)) return asset;
+      }
+    }
+    return release.assets.first;
+  }
+
+  /// 流式下载 APK 到应用文档目录，返回本地文件路径。
+  Future<String> download(
+    GitHubReleaseAsset asset, {
+    void Function(int received, int total)? onProgress,
+  }) async {
+    final dir = _downloadDir ?? await getApplicationDocumentsDirectory();
+    final targetDir = Directory('${dir.path}/update');
+    await targetDir.create(recursive: true);
+
+    final request = http.Request('GET', Uri.parse(asset.downloadUrl));
+    final streamed = await _client.send(request);
+    if (streamed.statusCode != 200) {
+      throw Exception('APK 下载失败：HTTP ${streamed.statusCode}');
+    }
+    final total = streamed.contentLength ?? asset.size;
+    final file = File('${targetDir.path}/app-jade.apk');
+    final sink = file.openWrite();
+    var received = 0;
+    await for (final chunk in streamed.stream) {
+      received += chunk.length;
+      sink.add(chunk);
+      onProgress?.call(received, total);
+    }
+    await sink.close();
+    return file.path;
   }
 }
