@@ -78,7 +78,7 @@ class _ReviewTileState extends State<ReviewTile> {
       });
     } catch (_) {
       if (!mounted) return;
-      _showSnackBar('点赞失败，请重试');
+      _showSnackBar('你已经点过赞了');
     } finally {
       if (mounted) setState(() => _liking = false);
     }
