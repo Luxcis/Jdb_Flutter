@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/review.dart';
+import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/network/review_api.dart';
+import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/widgets/movie_cover_image.dart';
 import 'package:jade/core/widgets/star_rating.dart';
+import 'package:provider/provider.dart';
 
 /// 短评卡片：评价内容上方展示影片信息区（数据驱动，仅评论携带影片信息时渲染）。
 class ReviewTile extends StatefulWidget {
@@ -33,6 +37,66 @@ class _ReviewTileState extends State<ReviewTile> {
       _liked = widget.review.liked;
       _likedCount = widget.review.likedCount;
     }
+  }
+
+  Future<void> _handleLikeTap() async {
+    final movie = widget.review.movie;
+    if (movie == null) {
+      _showSnackBar('无法点赞');
+      return;
+    }
+    if (_liked || _liking) return;
+
+    final AuthProvider? auth;
+    try {
+      auth = context.read<AuthProvider>();
+    } on ProviderNotFoundException {
+      auth = null;
+    }
+    if (auth == null || !auth.isLogged) {
+      _showSnackBar('请先登录', actionLabel: '去登录', onAction: () {
+        context.push('/login');
+      });
+      return;
+    }
+
+    final api = ApiClient.instanceOrNull;
+    if (api == null) {
+      _showSnackBar('点赞失败，请重试');
+      return;
+    }
+    setState(() => _liking = true);
+    try {
+      await ReviewApi(api).likeReview(
+        movieId: movie.id,
+        reviewId: widget.review.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        _liked = true;
+        _likedCount += 1;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      _showSnackBar('点赞失败，请重试');
+    } finally {
+      if (mounted) setState(() => _liking = false);
+    }
+  }
+
+  void _showSnackBar(
+    String message, {
+    String? actionLabel,
+    VoidCallback? onAction,
+  }) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        action: actionLabel == null
+            ? null
+            : SnackBarAction(label: actionLabel, onPressed: onAction ?? () {}),
+      ),
+    );
   }
 
   @override
@@ -86,30 +150,12 @@ class _ReviewTileState extends State<ReviewTile> {
             text: widget.review.content!,
             style: textTheme.bodyLarge,
           ),
-        // 任务 5 将替换为 _LikeRow（含点赞交互）
-        Row(
-          children: [
-            Icon(
-              Icons.thumb_up_alt_outlined,
-              size: 20,
-              color: colorScheme.primary,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              widget.review.likedCount.toString(),
-              style: textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const Spacer(),
-            if (widget.review.createdAt != null)
-              Text(
-                widget.review.createdAt!,
-                style: textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-          ],
+        _LikeRow(
+          liked: _liked,
+          likedCount: _likedCount,
+          liking: _liking,
+          createdAt: widget.review.createdAt,
+          onTap: _handleLikeTap,
         ),
       ],
     );
@@ -260,6 +306,76 @@ class _MovieHeader extends StatelessWidget {
           const SizedBox(height: 12),
         ],
       ),
+    );
+  }
+}
+
+/// 点赞行：点赞图标 + 数量 + 日期，点击触发点赞回调。
+class _LikeRow extends StatelessWidget {
+  const _LikeRow({
+    required this.liked,
+    required this.likedCount,
+    required this.liking,
+    required this.createdAt,
+    required this.onTap,
+  });
+
+  final bool liked;
+  final int likedCount;
+  final bool liking;
+  final String? createdAt;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        InkWell(
+          key: const Key('review-like-button'),
+          onTap: liking ? null : onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Semantics(
+                  button: true,
+                  label: liked ? '已点赞' : '点赞，当前 $likedCount 人已赞',
+                  child: ExcludeSemantics(
+                    child: Icon(
+                      liked
+                          ? Icons.thumb_up_alt
+                          : Icons.thumb_up_alt_outlined,
+                      key: liked
+                          ? const Key('review-liked-icon')
+                          : const Key('review-unliked-icon'),
+                      size: 20,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  likedCount.toString(),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const Spacer(),
+        if (createdAt != null)
+          Text(
+            createdAt!,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+      ],
     );
   }
 }
