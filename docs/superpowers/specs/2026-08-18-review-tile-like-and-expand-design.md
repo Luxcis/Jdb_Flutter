@@ -131,9 +131,11 @@ class ReviewApi {
 
 ### 5.3 点赞交互逻辑
 
+> **关键约束（用户确认）**：点赞逻辑在组件内部实现，但登录态**只在点击点赞时**通过 `context.read<AuthProvider>()` 读取（不依赖 Provider 包裹也能 build），避免破坏现有无 Provider 包裹的屏幕测试。`AuthProvider` 缺失时按未登录处理（提示登录）。
+
 点击点赞行：
 
-1. `context.read<AuthProvider>().isLogged == false` → SnackBar「请先登录」+ Action「去登录」→ `context.push('/login')`，不发请求
+1. **读取登录态**：`context.read<AuthProvider>()`（无 Provider 时捕获 `ProviderNotFoundException` 视为未登录）→ 未登录 → SnackBar「请先登录」+ Action「去登录」→ `context.push('/login')`，不发请求
 2. 已登录：
    - `_liked == true` → 不响应（幂等，已点赞）
    - `_liking == true` → 忽略（防连点）
@@ -144,9 +146,9 @@ class ReviewApi {
 
 ### 5.4 依赖与边界
 
-- 登录态：`context.read<AuthProvider>()`（provider 已在 main.dart 装配）
+- 登录态：**点击时** `context.read<AuthProvider>()`，缺失视为未登录（Provider 已在 main.dart 装配，仅测试场景可能缺失）
 - 网络：`ApiClient.instanceOrNull` 构造 `ReviewApi`（core 层，供组件复用）
-- 边界：`review.movie == null` 时点赞行仍渲染，点击提示「无法点赞」（防御性处理）
+- 边界：`review.movie == null` 时点赞行仍渲染，点击提示「无法点赞」（防御性处理，如影片详情页评论 fixture 无 movie 的场景）
 
 ### 5.5 无障碍
 
@@ -170,12 +172,13 @@ class ReviewApi {
 | 点击正文展开/收起 | 长评论点正文展开，再点收起 |
 | 短评论点击正文无效果 | 短评论无展开按钮 |
 | 未登录点击点赞 | SnackBar「请先登录」+「去登录」Action，无点赞请求 |
+| 无 Provider 包裹点击点赞 | 按未登录处理：SnackBar「请先登录」，不抛 ProviderNotFoundException |
 | 已登录点赞成功 | 图标变实心、数字 +1、`liked` 更新 |
 | 已登录但已点赞 | 点击无效果，不重复发请求 |
 | 点赞失败 | SnackBar「点赞失败，请重试」，数字不变 |
 | 点赞中防连点 | 请求未返回时再点不触发第二次请求 |
 
-> 组件测试需要：`ChangeNotifierProvider` 注入 `AuthProvider` + `FakeAdapter` 注入 `ApiClient.forTest`。
+> 组件测试需要：`ChangeNotifierProvider` 注入 `AuthProvider` + `FakeAdapter` 注入 `ApiClient.forTest`；「无 Provider」用例用裸 `MaterialApp` 渲染验证降级路径。
 
 ### 6.3 验证命令
 
