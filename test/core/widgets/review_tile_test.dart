@@ -184,7 +184,7 @@ void main() {
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
 
     await tester.tap(find.text('作者A'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(router.state.uri.path, '/reviews');
   });
