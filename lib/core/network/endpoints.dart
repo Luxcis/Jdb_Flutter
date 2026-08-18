@@ -66,6 +66,8 @@ class Endpoints {
 
   // ── 评论 ──
   static const String reviewsHotly = '/api/v1/reviews/hotly';
+  static const String reviewLike =
+      '/api/v1/movies/{movie_id}/reviews/{review_id}/like';
 
   // ── 清单 (需 BearerAuth: GET lists, POST lists, list actions) ──
   static const String lists = '/api/v1/lists';

@@ -2,18 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/review.dart';
+import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/network/testing/fake_adapter.dart';
+import 'package:jade/core/providers/auth_provider.dart';
+import 'package:jade/core/storage/storage_keys.dart';
 import 'package:jade/core/widgets/review_tile.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-Review _review({ReviewMovie? movie, String content = '评论内容'}) => Review(
-  id: '1',
-  author: const ReviewAuthor(name: '作者A'),
-  watchedCount: 3,
-  score: 4.5,
-  content: content,
-  likedCount: 17,
-  createdAt: '2016-09-24',
-  movie: movie,
-);
+Review _review({
+  ReviewMovie? movie,
+  String content = '评论内容',
+  bool liked = false,
+}) =>
+    Review(
+      id: 'r1',
+      author: const ReviewAuthor(name: '作者A'),
+      watchedCount: 3,
+      score: 4.5,
+      content: content,
+      likedCount: 17,
+      liked: liked,
+      createdAt: '2016-09-24',
+      movie: movie,
+    );
 
 const _movie = ReviewMovie(
   id: 'm1',
@@ -24,6 +36,44 @@ const _movie = ReviewMovie(
 );
 
 Widget _wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
+
+Widget _wrapWithAuth(Widget child, AuthProvider auth) =>
+    ChangeNotifierProvider<AuthProvider>.value(
+      value: auth,
+      child: MaterialApp(home: Scaffold(body: child)),
+    );
+
+Future<AuthProvider> _loggedOutAuth() async {
+  SharedPreferences.setMockInitialValues({});
+  final prefs = await SharedPreferences.getInstance();
+  return AuthProvider.create(prefs);
+}
+
+Future<AuthProvider> _loggedInAuth() async {
+  final auth = await _loggedOutAuth();
+  await auth.login(token: 't', user: {'id': 1, 'username': 'u'});
+  return auth;
+}
+
+class _TestTokenProvider implements TokenProvider {
+  @override
+  String? get token => null;
+}
+
+Future<FakeAdapter> _setupFakeApi() async {
+  SharedPreferences.setMockInitialValues({
+    StorageKeys.baseUrl: 'https://jdforrepam.com',
+  });
+  final prefs = await SharedPreferences.getInstance();
+  final api = await ApiClient.create(
+    prefs: prefs,
+    tokenProvider: _TestTokenProvider(),
+    onAuthError: () {},
+  );
+  final adapter = FakeAdapter();
+  api.setAdapterForTest(adapter);
+  return adapter;
+}
 
 void main() {
   testWidgets('有影片信息时渲染影片信息区', (tester) async {
@@ -38,14 +88,30 @@ void main() {
     expect(title.overflow, TextOverflow.ellipsis);
   });
 
-  testWidgets('无影片信息时不渲染影片信息区且不可点击', (tester) async {
+  testWidgets('无影片信息时不渲染影片信息区', (tester) async {
     await tester.pumpWidget(_wrap(ReviewTile(review: _review())));
 
     expect(find.text('ABC-001 / 2026-08-05'), findsNothing);
-    expect(find.byType(InkWell), findsNothing);
+    expect(find.text('这是一个非常长的影片标题需要省略显示最多两行'), findsNothing);
+    // 影片区不渲染，点赞行常驻为唯一 InkWell
+    expect(find.byType(InkWell), findsOneWidget);
   });
 
-  testWidgets('点击卡片跳转影片详情', (tester) async {
+  testWidgets('无影片信息点击点赞提示无法点赞且不发请求', (tester) async {
+    final auth = await _loggedInAuth();
+    final adapter = await _setupFakeApi();
+    await tester.pumpWidget(
+      _wrapWithAuth(ReviewTile(review: _review()), auth),
+    );
+
+    await tester.tap(find.byKey(const Key('review-like-button')));
+    await tester.pump();
+
+    expect(find.text('无法点赞'), findsOneWidget);
+    expect(adapter.requests, isEmpty);
+  });
+
+  testWidgets('点击影片信息区跳转影片详情', (tester) async {
     final router = GoRouter(
       initialLocation: '/reviews',
       routes: [
@@ -65,7 +131,7 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
 
-    await tester.tap(find.byType(InkWell));
+    await tester.tap(find.text('这是一个非常长的影片标题需要省略显示最多两行'));
     await tester.pumpAndSettle();
 
     expect(router.state.uri.path, '/movie/m1');
@@ -108,5 +174,235 @@ void main() {
     expect(collapsedAgain.maxLines, 5);
     expect(collapsedAgain.overflow, TextOverflow.ellipsis);
     expect(find.text('展开'), findsOneWidget);
+  });
+
+  testWidgets('点击正文展开收起，点击影片信息区跳转', (tester) async {
+    final longText = '这是一段非常长的评论内容。' * 30;
+    final router = GoRouter(
+      initialLocation: '/reviews',
+      routes: [
+        GoRoute(
+          path: '/reviews',
+          builder: (_, _) => Scaffold(
+            body: ReviewTile(review: _review(movie: _movie, content: longText)),
+          ),
+        ),
+        GoRoute(
+          path: '/movie/:id',
+          builder: (_, state) =>
+              Scaffold(body: Text('影片 ${state.pathParameters['id']}')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+
+    // 点击正文展开
+    await tester.tap(find.text('展开'));
+    await tester.pump();
+    final expanded = tester.widget<Text>(find.text(longText));
+    expect(expanded.maxLines, isNull);
+
+    // 点击影片标题跳转
+    await tester.tap(find.text('这是一个非常长的影片标题需要省略显示最多两行'));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.path, '/movie/m1');
+  });
+
+  testWidgets('点击作者行不跳转', (tester) async {
+    final router = GoRouter(
+      initialLocation: '/reviews',
+      routes: [
+        GoRoute(
+          path: '/reviews',
+          builder: (_, _) =>
+              Scaffold(body: ReviewTile(review: _review(movie: _movie))),
+        ),
+        GoRoute(
+          path: '/movie/:id',
+          builder: (_, state) =>
+              Scaffold(body: Text('影片 ${state.pathParameters['id']}')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+
+    await tester.tap(find.text('作者A'));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(router.state.uri.path, '/reviews');
+  });
+
+  testWidgets('点击评论正文展开收起', (tester) async {
+    final longText = '这是一段非常长的评论内容。' * 30;
+    await tester.pumpWidget(
+      _wrap(ReviewTile(review: _review(content: longText))),
+    );
+
+    final collapsed = tester.widget<Text>(find.text(longText));
+    expect(collapsed.maxLines, 5);
+
+    // 点击正文（非按钮）展开
+    await tester.tapAt(
+      tester.getCenter(find.text(longText)).translate(0, -20),
+    );
+    await tester.pump();
+
+    final expanded = tester.widget<Text>(find.text(longText));
+    expect(expanded.maxLines, isNull);
+
+    // 再点收起
+    await tester.tapAt(
+      tester.getCenter(find.text(longText)).translate(0, -20),
+    );
+    await tester.pump();
+
+    final collapsedAgain = tester.widget<Text>(find.text(longText));
+    expect(collapsedAgain.maxLines, 5);
+  });
+
+  testWidgets('点击展开收起按钮仍可用', (tester) async {
+    final longText = '这是一段非常长的评论内容。' * 30;
+    await tester.pumpWidget(
+      _wrap(ReviewTile(review: _review(content: longText))),
+    );
+
+    await tester.tap(find.text('展开'));
+    await tester.pump();
+    expect(find.text('收起'), findsOneWidget);
+
+    await tester.tap(find.text('收起'));
+    await tester.pump();
+    expect(find.text('展开'), findsOneWidget);
+  });
+
+  testWidgets('未登录点击点赞提示登录且不发请求', (tester) async {
+    final auth = await _loggedOutAuth();
+    final adapter = await _setupFakeApi();
+    await tester.pumpWidget(
+      _wrapWithAuth(ReviewTile(review: _review(movie: _movie)), auth),
+    );
+
+    await tester.tap(find.byKey(const Key('review-like-button')));
+    await tester.pump();
+
+    expect(find.text('请先登录'), findsOneWidget);
+    expect(find.text('去登录'), findsOneWidget);
+    expect(adapter.requests, isEmpty);
+  });
+
+  testWidgets('无 Provider 包裹点击点赞按未登录处理不崩溃', (tester) async {
+    await tester.pumpWidget(
+      _wrap(ReviewTile(review: _review(movie: _movie))),
+    );
+
+    await tester.tap(find.byKey(const Key('review-like-button')));
+    await tester.pump();
+
+    expect(find.text('请先登录'), findsOneWidget);
+  });
+
+  testWidgets('已登录点赞成功数字加一且图标变实心', (tester) async {
+    final auth = await _loggedInAuth();
+    final adapter = await _setupFakeApi();
+    adapter.enqueue(
+      '/api/v1/movies/m1/reviews/r1/like',
+      {'success': 1, 'data': null},
+    );
+
+    await tester.pumpWidget(
+      _wrapWithAuth(
+        ReviewTile(review: _review(movie: _movie)),
+        auth,
+      ),
+    );
+
+    expect(find.text('17'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('review-like-button')));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('18'), findsOneWidget);
+    expect(find.byKey(const Key('review-liked-icon')), findsOneWidget);
+  });
+
+  testWidgets('点赞中防连点：请求未返回时再点不触发第二次请求', (tester) async {
+    final auth = await _loggedInAuth();
+    final adapter = await _setupFakeApi();
+    adapter.responseDelay = const Duration(seconds: 2);
+    adapter.enqueue(
+      '/api/v1/movies/m1/reviews/r1/like',
+      {'success': 1, 'data': null},
+    );
+
+    await tester.pumpWidget(
+      _wrapWithAuth(
+        ReviewTile(review: _review(movie: _movie)),
+        auth,
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('review-like-button')));
+    await tester.pump(const Duration(milliseconds: 100));
+    // 请求在途（responseDelay 2s 未到），再次点击应被 _liking 守卫忽略
+    await tester.tap(find.byKey(const Key('review-like-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(adapter.requests, hasLength(1));
+
+    // 推进请求完成
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump();
+
+    expect(adapter.requests, hasLength(1));
+    expect(find.text('18'), findsOneWidget);
+  });
+
+  testWidgets('已点赞评论点击无效果', (tester) async {
+    final auth = await _loggedInAuth();
+    final adapter = await _setupFakeApi();
+    adapter.enqueue(
+      '/api/v1/movies/m1/reviews/r1/like',
+      {'success': 1, 'data': null},
+    );
+    await tester.pumpWidget(
+      _wrapWithAuth(
+        ReviewTile(
+          review: _review(movie: _movie, liked: true),
+        ),
+        auth,
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('review-like-button')));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('17'), findsOneWidget);
+    expect(find.byKey(const Key('review-liked-icon')), findsOneWidget);
+    expect(find.text('点赞失败，请重试'), findsNothing);
+    expect(adapter.requests, isEmpty);
+  });
+
+  testWidgets('点赞失败提示且数字不变', (tester) async {
+    final auth = await _loggedInAuth();
+    final adapter = await _setupFakeApi();
+    adapter.enqueue(
+      '/api/v1/movies/m1/reviews/r1/like',
+      {'success': 0, 'message': '失败'},
+    );
+
+    await tester.pumpWidget(
+      _wrapWithAuth(ReviewTile(review: _review(movie: _movie)), auth),
+    );
+
+    await tester.tap(find.byKey(const Key('review-like-button')));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('点赞失败，请重试'), findsOneWidget);
+    expect(find.text('17'), findsOneWidget);
   });
 }

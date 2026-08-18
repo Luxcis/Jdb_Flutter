@@ -42,6 +42,7 @@ class Review {
     this.status,
     this.author,
     this.likedCount = 0,
+    this.liked = false,
     this.watchedCount = 0,
     this.createdAt,
     this.movie,
@@ -52,6 +53,7 @@ class Review {
   final String? status;
   final ReviewAuthor? author;
   final int likedCount;
+  final bool liked;
   final int watchedCount;
   final String? createdAt;
   final ReviewMovie? movie;
