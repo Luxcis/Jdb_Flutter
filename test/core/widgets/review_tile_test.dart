@@ -344,10 +344,11 @@ void main() {
     );
 
     await tester.tap(find.byKey(const Key('review-like-button')));
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
     // 请求在途（responseDelay 2s 未到），再次点击应被 _liking 守卫忽略
     await tester.tap(find.byKey(const Key('review-like-button')));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(adapter.requests, hasLength(1));
 
