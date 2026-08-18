@@ -249,6 +249,7 @@ Map<String, dynamic> normalizeReviewJson(Map<String, dynamic> json) {
     ...json,
     'id': apiString(json['id']) ?? '',
     'liked_count': json['liked_count'] ?? json['likes_count'],
+    'liked': apiBool(json['liked'], false),
     'watched_count': apiInt(json['watched_count'], 0),
     'author': json['author'] ?? {'name': json['username'] ?? ''},
     if (movie is Map)

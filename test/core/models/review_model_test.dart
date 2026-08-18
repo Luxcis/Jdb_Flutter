@@ -54,4 +54,23 @@ void main() {
     final review = Review.fromJson(normalizeReviewJson({'id': '1', 'username': 'u'}));
     expect(review.movie, isNull);
   });
+
+  test('liked 字段解析：true / false / 缺失', () {
+    final liked = Review.fromJson(normalizeReviewJson({'id': '1', 'liked': true}));
+    expect(liked.liked, isTrue);
+
+    final unliked = Review.fromJson(normalizeReviewJson({'id': '2', 'liked': false}));
+    expect(unliked.liked, isFalse);
+
+    final missing = Review.fromJson(normalizeReviewJson({'id': '3'}));
+    expect(missing.liked, isFalse);
+  });
+
+  test('liked 为字符串或数字时归一化', () {
+    final fromString = Review.fromJson(normalizeReviewJson({'id': '1', 'liked': '1'}));
+    expect(fromString.liked, isTrue);
+
+    final fromNum = Review.fromJson(normalizeReviewJson({'id': '2', 'liked': 1}));
+    expect(fromNum.liked, isTrue);
+  });
 }

@@ -28,6 +28,7 @@ Review _$ReviewFromJson(Map<String, dynamic> json) => Review(
       ? null
       : ReviewAuthor.fromJson(json['author'] as Map<String, dynamic>),
   likedCount: (json['liked_count'] as num?)?.toInt() ?? 0,
+  liked: json['liked'] as bool? ?? false,
   watchedCount: (json['watched_count'] as num?)?.toInt() ?? 0,
   createdAt: json['created_at'] as String?,
   movie: json['movie'] == null
