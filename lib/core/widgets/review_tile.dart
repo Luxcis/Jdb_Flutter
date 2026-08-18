@@ -47,7 +47,7 @@ class _ReviewTileState extends State<ReviewTile> {
     }
     if (_liked || _liking) return;
 
-    final AuthProvider? auth;
+    AuthProvider? auth;
     try {
       auth = context.read<AuthProvider>();
     } on ProviderNotFoundException {
