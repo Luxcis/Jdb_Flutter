@@ -188,4 +188,47 @@ void main() {
 
     expect(router.state.uri.path, '/reviews');
   });
+
+  testWidgets('点击评论正文展开收起', (tester) async {
+    final longText = '这是一段非常长的评论内容。' * 30;
+    await tester.pumpWidget(
+      _wrap(ReviewTile(review: _review(content: longText))),
+    );
+
+    final collapsed = tester.widget<Text>(find.text(longText));
+    expect(collapsed.maxLines, 5);
+
+    // 点击正文（非按钮）展开
+    await tester.tapAt(
+      tester.getCenter(find.text(longText)).translate(0, -20),
+    );
+    await tester.pump();
+
+    final expanded = tester.widget<Text>(find.text(longText));
+    expect(expanded.maxLines, isNull);
+
+    // 再点收起
+    await tester.tapAt(
+      tester.getCenter(find.text(longText)).translate(0, -20),
+    );
+    await tester.pump();
+
+    final collapsedAgain = tester.widget<Text>(find.text(longText));
+    expect(collapsedAgain.maxLines, 5);
+  });
+
+  testWidgets('点击展开收起按钮仍可用', (tester) async {
+    final longText = '这是一段非常长的评论内容。' * 30;
+    await tester.pumpWidget(
+      _wrap(ReviewTile(review: _review(content: longText))),
+    );
+
+    await tester.tap(find.text('展开'));
+    await tester.pump();
+    expect(find.text('收起'), findsOneWidget);
+
+    await tester.tap(find.text('收起'));
+    await tester.pump();
+    expect(find.text('展开'), findsOneWidget);
+  });
 }

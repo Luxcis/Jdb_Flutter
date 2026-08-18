@@ -153,11 +153,15 @@ class _ExpandableReviewContentState extends State<_ExpandableReviewContent> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              widget.text,
-              style: widget.style,
-              maxLines: _expanded ? null : _ExpandableReviewContent.maxLines,
-              overflow: _expanded ? null : TextOverflow.ellipsis,
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => _expanded = !_expanded),
+              child: Text(
+                widget.text,
+                style: widget.style,
+                maxLines: _expanded ? null : _ExpandableReviewContent.maxLines,
+                overflow: _expanded ? null : TextOverflow.ellipsis,
+              ),
             ),
             Align(
               alignment: Alignment.centerRight,
