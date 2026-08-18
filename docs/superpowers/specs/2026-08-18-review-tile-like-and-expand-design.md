@@ -22,7 +22,7 @@
 | 已点赞状态来源 | 服务端 `liked` 字段（接口文档评论实体含 `liked: boolean`） |
 | 正文展开交互 | 点击正文展开/收起 + 保留右下角「展开/收起」按钮 |
 | 点击跳转区域 | **仅影片信息区**（封面+标题+番号）可跳转；作者行、正文、点赞行均不跳转 |
-| 实现方案 | **方案 A**：ReviewTile 自带点赞逻辑 + ReviewsService 增加 likeReview 方法 |
+| 实现方案 | **方案 A**：ReviewTile 自带点赞逻辑 + core 层 `ReviewApi.likeReview` 方法 |
 
 ## 3. 接口定义
 
@@ -48,22 +48,38 @@ static const String reviewLike =
 
 > 注：`/api/v1/reviews/hotly` POST 也是「热门评论点赞」，但路径参数不明确；热门列表评论均携带 movie，统一使用带 movie_id 的端点。
 
-### 3.3 Service 方法
+### 3.3 点赞 API 封装（core 层）
 
-`lib/features/reviews/services/reviews_service.dart` 新增：
+> **架构约束**：`ReviewTile` 位于 `lib/core/widgets/`，而 RULES.md 规定「core 不依赖具体 feature」，
+> 因此点赞调用不能放在 `ReviewsService`（features 层）。在 `lib/core/network/` 新建 `ReviewApi` 封装。
+
+`lib/core/network/review_api.dart` 新建：
 
 ```dart
-Future<void> likeReview({
-  required String movieId,
-  required String reviewId,
-}) async {
-  await _api.post(
-    Endpoints.reviewLike
-        .replaceAll('{movie_id}', movieId)
-        .replaceAll('{review_id}', reviewId),
-  );
+import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/network/endpoints.dart';
+
+/// 评论相关 API 封装（core 层，供通用组件复用）。
+class ReviewApi {
+  ReviewApi(this._api);
+
+  final ApiClient _api;
+
+  /// 为指定评论点赞（幂等）。
+  Future<void> likeReview({
+    required String movieId,
+    required String reviewId,
+  }) async {
+    await _api.post(
+      Endpoints.reviewLike
+          .replaceAll('{movie_id}', movieId)
+          .replaceAll('{review_id}', reviewId),
+    );
+  }
 }
 ```
+
+> `ReviewsService` 与 `MovieDetailService` 均不新增点赞方法，避免重复封装。
 
 ## 4. 数据模型
 
@@ -121,7 +137,7 @@ Future<void> likeReview({
 2. 已登录：
    - `_liked == true` → 不响应（幂等，已点赞）
    - `_liking == true` → 忽略（防连点）
-   - 否则：`setState(_liking = true)` → `ReviewsService.likeReview(movieId: review.movie!.id, reviewId: review.id)`
+   - 否则：`setState(_liking = true)` → `ReviewApi(ApiClient.instance).likeReview(movieId: review.movie!.id, reviewId: review.id)`
      - 成功 → `_liked = true`、`_likedCount + 1`
      - 失败 → SnackBar「点赞失败，请重试」，不改本地状态
      - `finally` 复位 `_liking = false`
@@ -129,7 +145,7 @@ Future<void> likeReview({
 ### 5.4 依赖与边界
 
 - 登录态：`context.read<AuthProvider>()`（provider 已在 main.dart 装配）
-- 网络：`ApiClient.instanceOrNull` 构造 `ReviewsService`（与 reviews_screen 现有模式一致）
+- 网络：`ApiClient.instanceOrNull` 构造 `ReviewApi`（core 层，供组件复用）
 - 边界：`review.movie == null` 时点赞行仍渲染，点击提示「无法点赞」（防御性处理）
 
 ### 5.5 无障碍
@@ -144,7 +160,7 @@ Future<void> likeReview({
 | 文件 | 用例 |
 |------|------|
 | `test/core/models/review_model_test.dart` | ① `liked: true` 解析 ② `liked` 缺失默认 false ③ `liked: "1"` 归一化 true |
-| `test/features/reviews/reviews_service_test.dart` | ① likeReview 发送 POST 到正确路径 ② 路径替换正确 |
+| `test/core/network/review_api_test.dart` | ① likeReview 发送 POST 到正确路径 ② 路径替换正确 |
 
 ### 6.2 组件测试（`test/core/widgets/review_tile_test.dart`）
 
@@ -176,10 +192,10 @@ flutter test
 | `lib/core/models/review.g.dart` | build_runner 重新生成 |
 | `lib/core/network/api_data.dart` | `normalizeReviewJson` +`liked` |
 | `lib/core/network/endpoints.dart` | +`reviewLike` 常量 |
-| `lib/features/reviews/services/reviews_service.dart` | +`likeReview()` |
+| `lib/core/network/review_api.dart` | 新建：`ReviewApi.likeReview()` |
 | `lib/core/widgets/review_tile.dart` | 状态化、点击区域划分、点赞逻辑 |
 | `test/core/models/review_model_test.dart` | +liked 解析用例 |
-| `test/features/reviews/reviews_service_test.dart` | +likeReview 用例 |
+| `test/core/network/review_api_test.dart` | 新建：likeReview 用例 |
 | `test/core/widgets/review_tile_test.dart` | 改造 + 新增用例 |
 
 ## 8. 不做的事（YAGNI）
