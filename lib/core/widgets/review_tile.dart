@@ -5,23 +5,52 @@ import 'package:jade/core/widgets/movie_cover_image.dart';
 import 'package:jade/core/widgets/star_rating.dart';
 
 /// 短评卡片：评价内容上方展示影片信息区（数据驱动，仅评论携带影片信息时渲染）。
-class ReviewTile extends StatelessWidget {
+class ReviewTile extends StatefulWidget {
   const ReviewTile({super.key, required this.review});
 
   final Review review;
 
   @override
+  State<ReviewTile> createState() => _ReviewTileState();
+}
+
+class _ReviewTileState extends State<ReviewTile> {
+  late bool _liked;
+  late int _likedCount;
+  bool _liking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _liked = widget.review.liked;
+    _likedCount = widget.review.likedCount;
+  }
+
+  @override
+  void didUpdateWidget(ReviewTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.review != widget.review) {
+      _liked = widget.review.liked;
+      _likedCount = widget.review.likedCount;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
-    final authorName = review.author?.name ?? '';
-    final movie = review.movie;
+    final authorName = widget.review.author?.name ?? '';
+    final movie = widget.review.movie;
 
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: 8,
       children: [
-        if (movie != null) _MovieHeader(movie: movie),
+        if (movie != null)
+          _MovieHeader(
+            movie: movie,
+            onTap: () => context.push('/movie/${movie.id}'),
+          ),
         Row(
           spacing: 8,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -33,10 +62,10 @@ class ReviewTile extends StatelessWidget {
                   color: colorScheme.primary,
                 ),
               ),
-            if (review.watchedCount > 0)
+            if (widget.review.watchedCount > 0)
               Expanded(
                 child: Text(
-                  '看过${review.watchedCount}部影片',
+                  '看过${widget.review.watchedCount}部影片',
                   style: textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -44,19 +73,20 @@ class ReviewTile extends StatelessWidget {
               )
             else
               const Spacer(),
-            if (review.score != null)
+            if (widget.review.score != null)
               StarRating(
-                score: review.score!,
+                score: widget.review.score!,
                 semanticLabel: '$authorName 短评评分',
                 size: 17,
               ),
           ],
         ),
-        if (review.content != null && review.content!.isNotEmpty)
+        if (widget.review.content != null && widget.review.content!.isNotEmpty)
           _ExpandableReviewContent(
-            text: review.content!,
+            text: widget.review.content!,
             style: textTheme.bodyLarge,
           ),
+        // 任务 5 将替换为 _LikeRow（含点赞交互）
         Row(
           children: [
             Icon(
@@ -66,15 +96,15 @@ class ReviewTile extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Text(
-              review.likedCount.toString(),
+              widget.review.likedCount.toString(),
               style: textTheme.bodyMedium?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
             ),
             const Spacer(),
-            if (review.createdAt != null)
+            if (widget.review.createdAt != null)
               Text(
-                review.createdAt!,
+                widget.review.createdAt!,
                 style: textTheme.bodyMedium?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
@@ -84,12 +114,10 @@ class ReviewTile extends StatelessWidget {
       ],
     );
 
-    final tile = Padding(
+    return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       child: content,
     );
-    if (movie == null) return tile;
-    return InkWell(onTap: () => context.push('/movie/${movie.id}'), child: tile);
   }
 }
 
@@ -153,9 +181,10 @@ class _ExpandableReviewContentState extends State<_ExpandableReviewContent> {
 }
 
 class _MovieHeader extends StatelessWidget {
-  const _MovieHeader({required this.movie});
+  const _MovieHeader({required this.movie, required this.onTap});
 
   final ReviewMovie movie;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -169,60 +198,64 @@ class _MovieHeader extends StatelessWidget {
       if (releaseDate.isNotEmpty) releaseDate,
     ].join(' / ');
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (thumbUrl != null && thumbUrl.isNotEmpty)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: MovieCoverImage(
-                  thumbUrl,
-                  variant: MovieImageVariant.thumbnail,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (thumbUrl != null && thumbUrl.isNotEmpty)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: MovieCoverImage(
+                    thumbUrl,
+                    variant: MovieImageVariant.thumbnail,
+                    width: 72,
+                    height: 96,
+                  ),
+                )
+              else
+                Container(
                   width: 72,
                   height: 96,
-                ),
-              )
-            else
-              Container(
-                width: 72,
-                height: 96,
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    movie.title ?? '',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(6),
                   ),
-                  if (meta.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      meta,
-                      style: textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
+                      movie.title ?? '',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
+                    if (meta.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        meta,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-      ],
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+      ),
     );
   }
 }

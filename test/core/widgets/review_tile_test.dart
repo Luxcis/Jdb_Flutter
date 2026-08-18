@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/review.dart';
+import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/widgets/review_tile.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Review _review({ReviewMovie? movie, String content = '评论内容'}) => Review(
   id: '1',
@@ -25,6 +28,24 @@ const _movie = ReviewMovie(
 
 Widget _wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
 
+Widget _wrapWithAuth(Widget child, AuthProvider auth) =>
+    ChangeNotifierProvider<AuthProvider>.value(
+      value: auth,
+      child: MaterialApp(home: Scaffold(body: child)),
+    );
+
+Future<AuthProvider> _loggedOutAuth() async {
+  SharedPreferences.setMockInitialValues({});
+  final prefs = await SharedPreferences.getInstance();
+  return AuthProvider.create(prefs);
+}
+
+Future<AuthProvider> _loggedInAuth() async {
+  final auth = await _loggedOutAuth();
+  await auth.login(token: 't', user: {'id': 1, 'username': 'u'});
+  return auth;
+}
+
 void main() {
   testWidgets('有影片信息时渲染影片信息区', (tester) async {
     await tester.pumpWidget(_wrap(ReviewTile(review: _review(movie: _movie))));
@@ -45,7 +66,7 @@ void main() {
     expect(find.byType(InkWell), findsNothing);
   });
 
-  testWidgets('点击卡片跳转影片详情', (tester) async {
+  testWidgets('点击影片信息区跳转影片详情', (tester) async {
     final router = GoRouter(
       initialLocation: '/reviews',
       routes: [
@@ -65,7 +86,7 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
 
-    await tester.tap(find.byType(InkWell));
+    await tester.tap(find.text('这是一个非常长的影片标题需要省略显示最多两行'));
     await tester.pumpAndSettle();
 
     expect(router.state.uri.path, '/movie/m1');
@@ -108,5 +129,63 @@ void main() {
     expect(collapsedAgain.maxLines, 5);
     expect(collapsedAgain.overflow, TextOverflow.ellipsis);
     expect(find.text('展开'), findsOneWidget);
+  });
+
+  testWidgets('点击正文展开收起，点击影片信息区跳转', (tester) async {
+    final longText = '这是一段非常长的评论内容。' * 30;
+    final router = GoRouter(
+      initialLocation: '/reviews',
+      routes: [
+        GoRoute(
+          path: '/reviews',
+          builder: (_, _) => Scaffold(
+            body: ReviewTile(review: _review(movie: _movie, content: longText)),
+          ),
+        ),
+        GoRoute(
+          path: '/movie/:id',
+          builder: (_, state) =>
+              Scaffold(body: Text('影片 ${state.pathParameters['id']}')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+
+    // 点击正文展开
+    await tester.tap(find.text('展开'));
+    await tester.pump();
+    final expanded = tester.widget<Text>(find.text(longText));
+    expect(expanded.maxLines, isNull);
+
+    // 点击影片标题跳转
+    await tester.tap(find.text('这是一个非常长的影片标题需要省略显示最多两行'));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.path, '/movie/m1');
+  });
+
+  testWidgets('点击作者行不跳转', (tester) async {
+    final router = GoRouter(
+      initialLocation: '/reviews',
+      routes: [
+        GoRoute(
+          path: '/reviews',
+          builder: (_, _) =>
+              Scaffold(body: ReviewTile(review: _review(movie: _movie))),
+        ),
+        GoRoute(
+          path: '/movie/:id',
+          builder: (_, state) =>
+              Scaffold(body: Text('影片 ${state.pathParameters['id']}')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+
+    await tester.tap(find.text('作者A'));
+    await tester.pumpAndSettle();
+
+    expect(router.state.uri.path, '/reviews');
   });
 }
