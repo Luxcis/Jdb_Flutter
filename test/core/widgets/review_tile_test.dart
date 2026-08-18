@@ -1,11 +1,8 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/review.dart';
 import 'package:jade/core/network/api_client.dart';
-import 'package:jade/core/network/domain_manager.dart';
-import 'package:jade/core/network/interceptors/response_interceptor.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/storage/storage_keys.dart';
@@ -68,9 +65,6 @@ Future<FakeAdapter> _setupFakeApi() async {
     StorageKeys.baseUrl: 'https://jdforrepam.com',
   });
   final prefs = await SharedPreferences.getInstance();
-  final dm = await DomainManager.load(prefs);
-  final dio = Dio(BaseOptions(baseUrl: 'https://jdforrepam.com'));
-  dio.interceptors.add(ResponseInterceptor(onAuthError: () {}));
   final api = await ApiClient.create(
     prefs: prefs,
     tokenProvider: _TestTokenProvider(),
@@ -101,6 +95,20 @@ void main() {
     expect(find.text('这是一个非常长的影片标题需要省略显示最多两行'), findsNothing);
     // 影片区不渲染，点赞行常驻为唯一 InkWell
     expect(find.byType(InkWell), findsOneWidget);
+  });
+
+  testWidgets('无影片信息点击点赞提示无法点赞且不发请求', (tester) async {
+    final auth = await _loggedInAuth();
+    final adapter = await _setupFakeApi();
+    await tester.pumpWidget(
+      _wrapWithAuth(ReviewTile(review: _review()), auth),
+    );
+
+    await tester.tap(find.byKey(const Key('review-like-button')));
+    await tester.pump();
+
+    expect(find.text('无法点赞'), findsOneWidget);
+    expect(adapter.requests, isEmpty);
   });
 
   testWidgets('点击影片信息区跳转影片详情', (tester) async {
@@ -271,6 +279,7 @@ void main() {
 
   testWidgets('未登录点击点赞提示登录且不发请求', (tester) async {
     final auth = await _loggedOutAuth();
+    final adapter = await _setupFakeApi();
     await tester.pumpWidget(
       _wrapWithAuth(ReviewTile(review: _review(movie: _movie)), auth),
     );
@@ -280,6 +289,7 @@ void main() {
 
     expect(find.text('请先登录'), findsOneWidget);
     expect(find.text('去登录'), findsOneWidget);
+    expect(adapter.requests, isEmpty);
   });
 
   testWidgets('无 Provider 包裹点击点赞按未登录处理不崩溃', (tester) async {
@@ -319,6 +329,11 @@ void main() {
 
   testWidgets('已点赞评论点击无效果', (tester) async {
     final auth = await _loggedInAuth();
+    final adapter = await _setupFakeApi();
+    adapter.enqueue(
+      '/api/v1/movies/m1/reviews/r1/like',
+      {'success': 1, 'data': null},
+    );
     await tester.pumpWidget(
       _wrapWithAuth(
         ReviewTile(
@@ -330,8 +345,12 @@ void main() {
 
     await tester.tap(find.byKey(const Key('review-like-button')));
     await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('17'), findsOneWidget);
+    expect(find.byKey(const Key('review-liked-icon')), findsOneWidget);
+    expect(find.text('点赞失败，请重试'), findsNothing);
+    expect(adapter.requests, isEmpty);
   });
 
   testWidgets('点赞失败提示且数字不变', (tester) async {
