@@ -311,7 +311,7 @@ void main() {
     expect(find.text('17'), findsOneWidget);
     await tester.tap(find.byKey(const Key('review-like-button')));
     await tester.pump();
-    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('18'), findsOneWidget);
     expect(find.byKey(const Key('review-liked-icon')), findsOneWidget);
@@ -348,7 +348,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('review-like-button')));
     await tester.pump();
-    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('点赞失败，请重试'), findsOneWidget);
     expect(find.text('17'), findsOneWidget);
