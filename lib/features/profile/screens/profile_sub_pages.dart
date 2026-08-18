@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/constants/app_constants.dart';
@@ -20,7 +21,9 @@ import 'package:jade/core/widgets/movie_list_tile.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 import 'package:jade/features/profile/services/app_version_service.dart';
 import 'package:jade/features/profile/services/token_authentication_service.dart';
+import 'package:jade/features/profile/services/update_service.dart';
 import 'package:jade/features/profile/widgets/token_authentication_dialog.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:provider/provider.dart';
 
 class ProfileMovieCollectionPage extends StatefulWidget {
@@ -348,6 +351,12 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
   var _versionTapCount = 0;
   int? _cacheSizeBytes;
   String _appVersion = '…';
+  UpdateChecker? _updateChecker;
+  var _checkingUpdate = false;
+
+  /// 延迟创建更新检查器，确保使用加载完成的版本号。
+  UpdateChecker get _checker => _updateChecker ??=
+      UpdateChecker(currentVersion: _appVersion == '…' ? '0.0.0' : _appVersion);
 
   @override
   void initState() {
@@ -411,10 +420,69 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     try {
       final version = await _appVersionService.loadVersion();
       if (!mounted) return;
-      setState(() => _appVersion = version);
+      setState(() {
+        _appVersion = version;
+        _updateChecker = null;
+      });
     } catch (_) {
       if (!mounted) return;
       setState(() => _appVersion = '未知');
+    }
+  }
+
+  Future<void> _checkForUpdate() async {
+    if (_checkingUpdate) return;
+    setState(() => _checkingUpdate = true);
+    try {
+      final result = await _checker.check();
+      if (!mounted) return;
+      if (!result.hasUpdate) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('已是最新版本')));
+        return;
+      }
+      await _showUpdateDialog(result);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('检查更新失败，请稍后重试')));
+    } finally {
+      if (mounted) setState(() => _checkingUpdate = false);
+    }
+  }
+
+  Future<void> _showUpdateDialog(UpdateCheckResult result) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _UpdateDialog(
+        result: result,
+        install: _downloadAndInstall,
+      ),
+    );
+  }
+
+  /// 下载选中 ABI 的 APK 并调起系统安装器；进度通过 onProgress 上报。
+  Future<void> _downloadAndInstall(
+    UpdateCheckResult result,
+    void Function(int received, int total) onProgress,
+  ) async {
+    final deviceInfo = await DeviceInfoPlugin().androidInfo;
+    final installer = UpdateInstaller();
+    final asset = installer.pickAsset(
+      result.release,
+      deviceInfo.supportedAbis,
+    );
+    final path = await installer.download(asset, onProgress: onProgress);
+    if (!mounted) return;
+    final opened = await OpenFilex.open(path);
+    if (!mounted) return;
+    if (opened.type != ResultType.done) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('安装包已下载，请在通知栏/文件管理器中安装')),
+      );
     }
   }
 
@@ -494,6 +562,16 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
         leading: const Icon(Icons.info_outline),
         title: const Text('当前版本'),
         subtitle: Text(_appVersion),
+        trailing: TextButton(
+          onPressed: _checkingUpdate ? null : _checkForUpdate,
+          child: _checkingUpdate
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('检查更新'),
+        ),
         onTap: _onVersionTap,
       ),
     ];
@@ -672,3 +750,109 @@ String _themeModeLabel(ThemeMode mode) => switch (mode) {
 
 /// 去掉 URL 的协议前缀，仅显示 host。
 String _hostOf(String url) => url.replaceFirst(RegExp(r'^https?://'), '');
+
+/// 更新弹窗：展示新版本号与更新日志，支持下载安装。
+class _UpdateDialog extends StatefulWidget {
+  const _UpdateDialog({required this.result, required this.install});
+
+  final UpdateCheckResult result;
+  final Future<void> Function(
+    UpdateCheckResult result,
+    void Function(int received, int total) onProgress,
+  ) install;
+
+  @override
+  State<_UpdateDialog> createState() => _UpdateDialogState();
+}
+
+class _UpdateDialogState extends State<_UpdateDialog> {
+  bool _downloading = false;
+  double _progress = 0;
+  bool _finished = false;
+  String? _error;
+
+  Future<void> _startDownload() async {
+    setState(() {
+      _downloading = true;
+      _error = null;
+    });
+    try {
+      await widget.install(widget.result, (received, total) {
+        if (total > 0 && mounted) {
+          setState(() => _progress = received / total);
+        }
+      });
+      if (!mounted) return;
+      setState(() => _finished = true);
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _downloading = false;
+          _error = '下载失败，请重试';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final result = widget.result;
+    return AlertDialog(
+      title: Text('发现新版本 ${result.latestVersion}'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: _downloading
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  LinearProgressIndicator(value: _progress),
+                  const SizedBox(height: 12),
+                  Text(
+                    '正在下载更新… ${(_progress * 100).toStringAsFixed(0)}%',
+                  ),
+                ],
+              )
+            : SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '当前版本：',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText(
+                      result.release.body.isEmpty
+                          ? '暂无更新日志'
+                          : result.release.body,
+                    ),
+                  ],
+                ),
+              ),
+      ),
+      actions: [
+        if (!_downloading && !_finished)
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('稍后再说'),
+          ),
+        if (_error != null)
+          Text(
+            '$_error',
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        if (_downloading)
+          const TextButton(
+            onPressed: null,
+            child: Text('下载中…'),
+          )
+        else
+          TextButton(
+            onPressed: _finished ? () => Navigator.pop(context) : _startDownload,
+            child: Text(_finished ? '完成' : '立即更新'),
+          ),
+      ],
+    );
+  }
+}
