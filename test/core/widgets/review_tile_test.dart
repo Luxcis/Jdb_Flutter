@@ -327,6 +327,38 @@ void main() {
     expect(find.byKey(const Key('review-liked-icon')), findsOneWidget);
   });
 
+  testWidgets('点赞中防连点：请求未返回时再点不触发第二次请求', (tester) async {
+    final auth = await _loggedInAuth();
+    final adapter = await _setupFakeApi();
+    adapter.responseDelay = const Duration(seconds: 2);
+    adapter.enqueue(
+      '/api/v1/movies/m1/reviews/r1/like',
+      {'success': 1, 'data': null},
+    );
+
+    await tester.pumpWidget(
+      _wrapWithAuth(
+        ReviewTile(review: _review(movie: _movie)),
+        auth,
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('review-like-button')));
+    await tester.pump();
+    // 请求在途（responseDelay 2s 未到），再次点击应被 _liking 守卫忽略
+    await tester.tap(find.byKey(const Key('review-like-button')));
+    await tester.pump();
+
+    expect(adapter.requests, hasLength(1));
+
+    // 推进请求完成
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump();
+
+    expect(adapter.requests, hasLength(1));
+    expect(find.text('18'), findsOneWidget);
+  });
+
   testWidgets('已点赞评论点击无效果', (tester) async {
     final auth = await _loggedInAuth();
     final adapter = await _setupFakeApi();
