@@ -91,7 +91,8 @@ abstract interface class UserListsDataSource {
 
 ## 依赖
 
-- 新增 `flutter_slidable`（pub.dev 主流左滑组件，^4.0.0）。
+- 新增 `flutter_slidable`（pub.dev 主流左滑组件，^4.0.3，min Dart SDK 3.6，
+  项目 sdk ^3.8.0 满足）。
 
 ## 测试
 
