@@ -113,4 +113,50 @@ void main() {
     expect(controller.items, [2]);
     expect(controller.error, isNull);
   });
+
+  test('连续多次 refresh 都保留旧内容并整体替换', () async {
+    var requestCount = 0;
+    final controller = PaginationController<int>(
+      fetch: (_) async {
+        requestCount++;
+        if (requestCount == 1) return _page([1]);
+        if (requestCount == 2) return _page([2]);
+        return _page([3]);
+      },
+    );
+    addTearDown(controller.dispose);
+    await controller.fetchMore();
+
+    await controller.refresh();
+    expect(controller.items, [2]);
+    expect(controller.isRefreshing, isFalse);
+
+    await controller.refresh();
+    expect(controller.items, [3]);
+    expect(controller.isRefreshing, isFalse);
+  });
+
+  test('refresh 默认保留旧内容，成功后整体替换', () async {
+    var requestCount = 0;
+    final pending = Completer<PagedResult<int>>();
+    final controller = PaginationController<int>(
+      fetch: (_) {
+        requestCount++;
+        if (requestCount == 1) return Future.value(_page([1]));
+        return pending.future;
+      },
+    );
+    addTearDown(controller.dispose);
+    await controller.fetchMore();
+
+    final refresh = controller.refresh();
+    expect(controller.items, [1]);
+    expect(controller.isRefreshing, isTrue);
+
+    pending.complete(_page([2]));
+    await refresh;
+    expect(controller.items, [2]);
+    expect(controller.error, isNull);
+    expect(controller.isRefreshing, isFalse);
+  });
 }

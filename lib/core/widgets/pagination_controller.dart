@@ -12,7 +12,7 @@ class PaginationController<T> extends ChangeNotifier {
   int _generation = 0;
   bool _isLoading = false;
   bool _isRefreshing = false;
-  bool _replaceOnSuccess = false;
+  bool _pendingRefresh = false;
   bool _hasMore = true;
   Object? _error;
 
@@ -28,16 +28,16 @@ class PaginationController<T> extends ChangeNotifier {
     final fetch = _fetch;
     final requestedPage = _page + 1;
     _isLoading = true;
-    _isRefreshing = _replaceOnSuccess && _items.isNotEmpty;
+    _isRefreshing = _pendingRefresh;
     _error = null;
     notifyListeners();
     try {
       final result = await fetch(requestedPage);
       if (generation != _generation) return;
       _page = result.currentPage;
-      if (_replaceOnSuccess) {
+      if (_pendingRefresh) {
+        _pendingRefresh = false;
         _items.clear();
-        _replaceOnSuccess = false;
       }
       _items.addAll(result.items);
       _hasMore = _page < result.totalPages;
@@ -60,7 +60,7 @@ class PaginationController<T> extends ChangeNotifier {
     _fetch = fetch;
     _page = 0;
     if (!preserveItems) _items.clear();
-    _replaceOnSuccess = preserveItems && _items.isNotEmpty;
+    _pendingRefresh = preserveItems && _items.isNotEmpty;
     _hasMore = true;
     _isLoading = false;
     _isRefreshing = false;
@@ -69,7 +69,7 @@ class PaginationController<T> extends ChangeNotifier {
     await fetchMore();
   }
 
-  Future<void> refresh({bool preserveItems = false}) =>
+  Future<void> refresh({bool preserveItems = true}) =>
       reloadWith(_fetch, preserveItems: preserveItems);
 
   void reshuffle() {
