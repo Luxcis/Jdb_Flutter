@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 class FakeAdapter implements HttpClientAdapter {
   final Map<String, _Stub> _stubs = {};
   final Map<String, List<_Stub>> _sequences = {};
+  final Map<String, _ThrowStub> _throwSequences = {};
   final List<RequestOptions> requests = [];
   Duration responseDelay = Duration.zero;
 
@@ -27,6 +28,16 @@ class FakeAdapter implements HttpClientAdapter {
     ];
   }
 
+  /// 同一 path 前 [count] 次请求抛 [error]，之后正常返回 enqueue 响应。
+  /// 用于模拟连接级错误（如 `Connection reset by peer`）。
+  void throwFirst(
+    String path,
+    Object error, {
+    int count = 1,
+  }) {
+    _throwSequences[path] = _ThrowStub(error: error, remaining: count);
+  }
+
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
@@ -36,6 +47,11 @@ class FakeAdapter implements HttpClientAdapter {
     requests.add(options);
     if (responseDelay > Duration.zero) {
       await Future<void>.delayed(responseDelay);
+    }
+    final throwStub = _throwSequences[options.path];
+    if (throwStub != null && throwStub.remaining > 0) {
+      throwStub.remaining--;
+      throw throwStub.error;
     }
     _Stub? stub;
     final seq = _sequences[options.path];
@@ -59,6 +75,7 @@ class FakeAdapter implements HttpClientAdapter {
   void close({bool force = false}) {
     _stubs.clear();
     _sequences.clear();
+    _throwSequences.clear();
     requests.clear();
   }
 }
@@ -67,4 +84,10 @@ class _Stub {
   const _Stub({required this.body, required this.statusCode});
   final Map<String, dynamic> body;
   final int statusCode;
+}
+
+class _ThrowStub {
+  _ThrowStub({required this.error, required this.remaining});
+  final Object error;
+  int remaining;
 }
