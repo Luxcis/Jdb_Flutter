@@ -246,39 +246,52 @@ class _Top250TabState extends State<_Top250Tab>
             _controller.isLoading ||
             (_controller.error != null && _controller.items.isNotEmpty);
         return RefreshIndicator(
-          onRefresh: _controller.refresh,
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (notification) {
-              if (notification is ScrollEndNotification &&
-                  notification.metrics.extentAfter < 200 &&
-                  _controller.error == null) {
-                _controller.fetchMore();
-              }
-              return false;
-            },
-            child: ListView.builder(
-              key: const Key('top250-list'),
-              physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: _controller.items.length + (showFooter ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == _controller.items.length) {
-                  if (_controller.isLoading) {
-                    return const Padding(
-                      key: Key('top250-loading-more'),
-                      padding: EdgeInsets.all(16),
-                      child: Center(child: CircularProgressIndicator()),
-                    );
+          onRefresh: () => _controller.refresh(preserveItems: true),
+          child: Stack(
+            children: [
+              NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  if (notification is ScrollEndNotification &&
+                      notification.metrics.extentAfter < 200 &&
+                      _controller.error == null) {
+                    _controller.fetchMore();
                   }
-                  return _Top250LoadMoreError(onRetry: _controller.fetchMore);
-                }
-                final movie = _controller.items[index];
-                return MovieListTile(
-                  movie: movie,
-                  rank: widget.filter.startRank + index,
-                  onTap: () => context.push('/movie/${movie.id}'),
-                );
-              },
-            ),
+                  return false;
+                },
+                child: ListView.builder(
+                  key: const Key('top250-list'),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: _controller.items.length + (showFooter ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index == _controller.items.length) {
+                      if (_controller.isLoading) {
+                        return const Padding(
+                          key: Key('top250-loading-more'),
+                          padding: EdgeInsets.all(16),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      return _Top250LoadMoreError(
+                        onRetry: _controller.fetchMore,
+                      );
+                    }
+                    final movie = _controller.items[index];
+                    return MovieListTile(
+                      movie: movie,
+                      rank: widget.filter.startRank + index,
+                      onTap: () => context.push('/movie/${movie.id}'),
+                    );
+                  },
+                ),
+              ),
+              if (_controller.isRefreshing)
+                const Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: LinearProgressIndicator(key: Key('top250-refreshing')),
+                ),
+            ],
           ),
         );
       },

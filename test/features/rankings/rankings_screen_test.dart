@@ -696,4 +696,64 @@ void main() {
     expect(fixture.router!.state.uri.path, '/movie/ranked-movie');
     expect(find.byKey(const Key('movie-detail-placeholder')), findsOneWidget);
   });
+
+  testWidgets('Top250 下拉刷新保留列表并显示顶部指示器', (tester) async {
+    final fixture = await _pumpRankings(
+      tester,
+      initialTabIndex: 0,
+      responseDelay: const Duration(milliseconds: 200),
+      top250Responses: [
+        {
+          'success': 1,
+          'data': {
+            'movies': [
+              {
+                'id': 'top-1',
+                'number': 'TOP-1',
+                'title': 'First Movie',
+                'cover_url': 'cover.jpg',
+              },
+            ],
+            'current_page': 1,
+            'total_pages': 1,
+            'total': 1,
+          },
+        },
+        {
+          'success': 1,
+          'data': {
+            'movies': [
+              {
+                'id': 'top-2',
+                'number': 'TOP-2',
+                'title': 'Second Movie',
+                'cover_url': 'cover.jpg',
+              },
+            ],
+            'current_page': 1,
+            'total_pages': 1,
+            'total': 1,
+          },
+        },
+      ],
+    );
+    await _pumpRankingFrame(tester);
+    expect(find.text('First Movie'), findsOneWidget);
+
+    final refresh = tester
+        .widget<RefreshIndicator>(find.byType(RefreshIndicator))
+        .onRefresh();
+    await tester.pump();
+
+    expect(find.text('First Movie'), findsOneWidget);
+    expect(find.byKey(const Key('top250-refreshing')), findsOneWidget);
+
+    fixture.adapter.responseDelay = Duration.zero;
+    await _pumpRankingFrame(tester);
+
+    expect(find.text('First Movie'), findsNothing);
+    expect(find.text('Second Movie'), findsOneWidget);
+    expect(find.byKey(const Key('top250-refreshing')), findsNothing);
+    await refresh;
+  });
 }
