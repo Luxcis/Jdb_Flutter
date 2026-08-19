@@ -118,44 +118,57 @@ class _HotReviewListState extends State<_HotReviewList>
         }
         final showFooter = _controller.isLoading || _controller.error != null;
         return RefreshIndicator(
-          onRefresh: _controller.refresh,
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (notification) {
-              if (notification is ScrollEndNotification &&
-                  notification.metrics.extentAfter < 200 &&
-                  _controller.error == null) {
-                _controller.fetchMore();
-              }
-              return false;
-            },
-            child: ListView.separated(
-              key: Key('hot-reviews-${widget.period.value}'),
-              physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: _controller.items.length + (showFooter ? 1 : 0),
-              separatorBuilder: (_, _) => const Divider(
-                height: 1,
-                indent: 16,
-                endIndent: 16,
-              ),
-              itemBuilder: (context, index) {
-                if (index == _controller.items.length) {
-                  if (_controller.isLoading) {
-                    return const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Center(child: CircularProgressIndicator()),
-                    );
+          onRefresh: () => _controller.refresh(preserveItems: true),
+          child: Stack(
+            children: [
+              NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  if (notification is ScrollEndNotification &&
+                      notification.metrics.extentAfter < 200 &&
+                      _controller.error == null) {
+                    _controller.fetchMore();
                   }
-                  return Center(
-                    child: TextButton.icon(
-                      onPressed: _controller.fetchMore,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('加载失败，点击重试'),
-                    ),
-                  );
-                }
-                return ReviewTile(review: _controller.items[index]);
-              },
-            ),
+                  return false;
+                },
+                child: ListView.separated(
+                  key: Key('hot-reviews-${widget.period.value}'),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: _controller.items.length + (showFooter ? 1 : 0),
+                  separatorBuilder: (_, _) => const Divider(
+                    height: 1,
+                    indent: 16,
+                    endIndent: 16,
+                  ),
+                  itemBuilder: (context, index) {
+                    if (index == _controller.items.length) {
+                      if (_controller.isLoading) {
+                        return const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      return Center(
+                        child: TextButton.icon(
+                          onPressed: _controller.fetchMore,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('加载失败，点击重试'),
+                        ),
+                      );
+                    }
+                    return ReviewTile(review: _controller.items[index]);
+                  },
+                ),
+              ),
+              if (_controller.isRefreshing)
+                const Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: LinearProgressIndicator(
+                    key: Key('reviews-refreshing'),
+                  ),
+                ),
+            ],
           ),
         );
       },

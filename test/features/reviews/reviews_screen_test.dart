@@ -159,4 +159,33 @@ void main() {
 
     expect(find.text('暂无短评'), findsOneWidget);
   });
+
+  testWidgets('下拉刷新保留短评列表并显示顶部指示器，成功后替换', (tester) async {
+    final adapter = await _pumpReviews(tester);
+    adapter.responseDelay = const Duration(milliseconds: 200);
+    adapter.enqueueSequence(
+      Endpoints.reviewsHotly,
+      [_pageResponse(1), _pageResponse(1, start: 1)],
+    );
+    await _pumpUntil(tester, () => find.byType(ReviewTile).evaluate().isNotEmpty);
+    expect(find.text('内容0'), findsOneWidget);
+
+    final refresh = tester
+        .widget<RefreshIndicator>(find.byType(RefreshIndicator))
+        .onRefresh();
+    await tester.pump();
+
+    expect(find.text('内容0'), findsOneWidget);
+    expect(find.byKey(const Key('reviews-refreshing')), findsOneWidget);
+
+    adapter.responseDelay = Duration.zero;
+    await _pumpUntil(
+      tester,
+      () => adapter.requests.length >= 2,
+    );
+
+    expect(find.text('内容0'), findsNothing);
+    expect(find.text('内容1'), findsOneWidget);
+    expect(find.byKey(const Key('reviews-refreshing')), findsNothing);
+  });
 }
