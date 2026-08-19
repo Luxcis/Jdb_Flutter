@@ -96,30 +96,33 @@ void main() {
 
   test('getRecentViewed 缺少 total_pages 时以 48 条为满页阈值', () async {
     final fixture = await _buildFixture();
-    fixture.adapter.enqueue(Endpoints.usersRecentViewed, {
-      'success': 1,
-      'data': {
-        'movies': [
-          for (var index = 0; index < 48; index++)
-            {
-              'id': 'm$index',
-              'number': 'N$index',
-              'title': '影片 $index',
-              'cover_url': '',
-            },
-        ],
-        'current_page': 1,
+    // 同 path 多次响应必须用 enqueueSequence：enqueue 按 path 覆盖。
+    fixture.adapter.enqueueSequence(Endpoints.usersRecentViewed, [
+      {
+        'success': 1,
+        'data': {
+          'movies': [
+            for (var index = 0; index < 48; index++)
+              {
+                'id': 'm$index',
+                'number': 'N$index',
+                'title': '影片 $index',
+                'cover_url': '',
+              },
+          ],
+          'current_page': 1,
+        },
       },
-    });
-    fixture.adapter.enqueue(Endpoints.usersRecentViewed, {
-      'success': 1,
-      'data': {
-        'movies': [
-          {'id': 'm48', 'number': 'N48', 'title': '影片 48', 'cover_url': ''},
-        ],
-        'current_page': 2,
+      {
+        'success': 1,
+        'data': {
+          'movies': [
+            {'id': 'm48', 'number': 'N48', 'title': '影片 48', 'cover_url': ''},
+          ],
+          'current_page': 2,
+        },
       },
-    });
+    ]);
 
     final fullPage = await fixture.service.getRecentViewed();
     final partialPage = await fixture.service.getRecentViewed(page: 2);
@@ -275,10 +278,19 @@ class _FakeRecentViewedSource implements RecentViewedDataSource {
   final bool multiplePages;
   int pageRequests = 0;
   int clearCalls = 0;
+  bool cleared = false;
 
   @override
   Future<PagedResult<MovieSummary>> getRecentViewed({int page = 1}) async {
     pageRequests++;
+    if (cleared) {
+      return PagedResult(
+        items: const [],
+        currentPage: page,
+        totalPages: page,
+        total: 0,
+      );
+    }
     final itemCount = multiplePages && page == 1 ? 48 : 1;
     return PagedResult(
       items: [
@@ -299,6 +311,7 @@ class _FakeRecentViewedSource implements RecentViewedDataSource {
   @override
   Future<void> clearRecentViewed() async {
     clearCalls++;
+    cleared = true;
   }
 }
 
@@ -419,7 +432,9 @@ class _ProfileRecentViewedPageState extends State<ProfileRecentViewedPage> {
         (api == null
             ? const UnavailableRecentViewedDataSource()
             : RecentViewedService(api));
-    _controller = PaginationController(fetch: _fetchPage)..fetchMore();
+    // 首次加载由 didChangeDependencies 触发（登录态就绪后），
+    // 避免与 initState 的 fetch 叠加导致重复请求。
+    _controller = PaginationController(fetch: _fetchPage);
   }
 
   Future<PagedResult<MovieSummary>> _fetchPage(int page) =>
