@@ -9,6 +9,7 @@ class ListModel {
     this.movieCount = 0,
     this.viewedCount = 0,
     this.hasMovie = false,
+    this.createdAt,
   });
 
   final String id;
@@ -17,6 +18,9 @@ class ListModel {
   final int viewedCount;
   final bool hasMovie;
 
+  /// 创建时间（来自 `created_at`），可能为 null。
+  final String? createdAt;
+
   ListModel copyWith({int? movieCount, bool? hasMovie}) {
     return ListModel(
       id: id,
@@ -24,6 +28,7 @@ class ListModel {
       movieCount: movieCount ?? this.movieCount,
       viewedCount: viewedCount,
       hasMovie: hasMovie ?? this.hasMovie,
+      createdAt: createdAt,
     );
   }
 

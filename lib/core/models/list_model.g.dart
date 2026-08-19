@@ -12,4 +12,5 @@ ListModel _$ListModelFromJson(Map<String, dynamic> json) => ListModel(
   movieCount: (json['movie_count'] as num?)?.toInt() ?? 0,
   viewedCount: (json['viewed_count'] as num?)?.toInt() ?? 0,
   hasMovie: json['has_movie'] as bool? ?? false,
+  createdAt: json['created_at'] as String?,
 );
