@@ -30,6 +30,7 @@ class _MyListsPageState extends State<MyListsPage> {
   late final UserListsDataSource _dataSource;
   late final PaginationController<ListModel> _controller;
   var _sortBy = _sortByUpdatedAt;
+  var _busy = false;
 
   @override
   void initState() {
@@ -74,24 +75,29 @@ class _MyListsPageState extends State<MyListsPage> {
       builder: (_) => _RenameListDialog(initialName: list.name),
     );
     if (newName == null || newName.isEmpty || newName == list.name) return;
+    setState(() => _busy = true);
     try {
-      await _dataSource.renameList(id: list.id, name: newName);
-    } catch (error, stackTrace) {
-      developer.log(
-        '重命名清单失败',
-        name: 'my-lists',
-        error: error,
-        stackTrace: stackTrace,
-      );
+      try {
+        await _dataSource.renameList(id: list.id, name: newName);
+      } catch (error, stackTrace) {
+        developer.log(
+          '重命名清单失败',
+          name: 'my-lists',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        if (!mounted) return;
+        _showMessage('重命名失败');
+        return;
+      }
       if (!mounted) return;
-      _showMessage('重命名失败');
-      return;
+      // 服务器为准：重载第一页，同时清掉分页状态与残留错误。
+      // refresh 内部已捕获 GET 错误（存入 _error，由列表重试按钮兜底），
+      // 重命名已成功，不能再误报「重命名失败」。
+      await _controller.refresh();
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-    if (!mounted) return;
-    // 服务器为准：重载第一页，同时清掉分页状态与残留错误。
-    // refresh 内部已捕获 GET 错误（存入 _error，由列表重试按钮兜底），
-    // 重命名已成功，不能再误报「重命名失败」。
-    await _controller.refresh();
   }
 
   Future<void> _deleteList(ListModel list) async {
@@ -113,26 +119,31 @@ class _MyListsPageState extends State<MyListsPage> {
       ),
     );
     if (confirmed != true) return;
+    setState(() => _busy = true);
     try {
-      await _dataSource.deleteList(list.id);
-    } catch (error, stackTrace) {
-      developer.log(
-        '删除清单失败',
-        name: 'my-lists',
-        error: error,
-        stackTrace: stackTrace,
-      );
+      try {
+        await _dataSource.deleteList(list.id);
+      } catch (error, stackTrace) {
+        developer.log(
+          '删除清单失败',
+          name: 'my-lists',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        if (!mounted) return;
+        _showMessage('删除失败');
+        return;
+      }
       if (!mounted) return;
-      _showMessage('删除失败');
-      return;
+      // 服务器为准：重载第一页，同时清掉分页状态与残留错误。
+      // refresh 内部已捕获 GET 错误（存入 _error，由列表重试按钮兜底），
+      // 删除已成功，不能再误报「删除失败」。
+      await _controller.refresh();
+      if (!mounted) return;
+      _showMessage('清单已删除');
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-    if (!mounted) return;
-    // 服务器为准：重载第一页，同时清掉分页状态与残留错误。
-    // refresh 内部已捕获 GET 错误（存入 _error，由列表重试按钮兜底），
-    // 删除已成功，不能再误报「删除失败」。
-    await _controller.refresh();
-    if (!mounted) return;
-    _showMessage('清单已删除');
   }
 
   void _openListMovies(ListModel list) {
@@ -152,50 +163,61 @@ class _MyListsPageState extends State<MyListsPage> {
   @override
   Widget build(BuildContext context) {
     final sortLabel = _sortBy == _sortByUpdatedAt ? '更新时间' : '创建时间';
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('我的清单'),
-        actions: [
-          IconButton(
-            key: const Key('my-lists-sort-button'),
-            tooltip: '排序：$sortLabel',
-            onPressed: _toggleSort,
-            icon: const Icon(Icons.sort),
-          ),
-        ],
-      ),
-      body: PaginatedListView<ListModel>(
-        controller: _controller,
-        emptyMessage: '暂无清单',
-        itemBuilder: (context, list) => Slidable(
-          key: ValueKey('slidable-${list.id}'),
-          endActionPane: ActionPane(
-            motion: const DrawerMotion(),
-            children: [
-              SlidableAction(
-                onPressed: (_) => unawaited(_renameList(list)),
-                backgroundColor: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest,
-                foregroundColor: Theme.of(context).colorScheme.onSurface,
-                icon: Icons.edit_outlined,
-                label: '编辑',
-              ),
-              SlidableAction(
-                onPressed: (_) => unawaited(_deleteList(list)),
-                backgroundColor: Theme.of(context).colorScheme.error,
-                foregroundColor: Theme.of(context).colorScheme.onError,
-                icon: Icons.delete_outline,
-                label: '删除',
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            title: const Text('我的清单'),
+            actions: [
+              IconButton(
+                key: const Key('my-lists-sort-button'),
+                tooltip: '排序：$sortLabel',
+                onPressed: _toggleSort,
+                icon: const Icon(Icons.sort),
               ),
             ],
           ),
-          child: ListSummaryTile(
-            list: list,
-            onTap: () => _openListMovies(list),
+          body: PaginatedListView<ListModel>(
+            controller: _controller,
+            emptyMessage: '暂无清单',
+            itemBuilder: (context, list) => Slidable(
+              key: ValueKey('slidable-${list.id}'),
+              endActionPane: ActionPane(
+                motion: const DrawerMotion(),
+                children: [
+                  SlidableAction(
+                    onPressed: (_) => unawaited(_renameList(list)),
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
+                    foregroundColor: Theme.of(context).colorScheme.onSurface,
+                    icon: Icons.edit_outlined,
+                    label: '编辑',
+                  ),
+                  SlidableAction(
+                    onPressed: (_) => unawaited(_deleteList(list)),
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                    foregroundColor: Theme.of(context).colorScheme.onError,
+                    icon: Icons.delete_outline,
+                    label: '删除',
+                  ),
+                ],
+              ),
+              child: ListSummaryTile(
+                list: list,
+                onTap: () => _openListMovies(list),
+              ),
+            ),
           ),
         ),
-      ),
+        if (_busy)
+          const Positioned.fill(
+            child: ColoredBox(
+              color: Color(0x73000000),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ),
+      ],
     );
   }
 }

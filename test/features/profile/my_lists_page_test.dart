@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -21,6 +22,10 @@ class _FakeUserListsDataSource implements UserListsDataSource {
   var failDelete = false;
   var failPage2 = false;
 
+  /// 置非 null 后，rename/delete 会等待该 Completer 完成才继续（模拟请求中）。
+  Completer<void>? renameGate;
+  Completer<void>? deleteGate;
+
   @override
   Future<PagedResult<ListModel>> getMyLists({
     required String sortBy,
@@ -41,6 +46,8 @@ class _FakeUserListsDataSource implements UserListsDataSource {
 
   @override
   Future<void> renameList({required String id, required String name}) async {
+    final gate = renameGate;
+    if (gate != null) await gate.future;
     if (failRename) throw StateError('rename failed');
     renamed.add((id: id, name: name));
     final index = lists.indexWhere((item) => item.id == id);
@@ -58,6 +65,8 @@ class _FakeUserListsDataSource implements UserListsDataSource {
 
   @override
   Future<void> deleteList(String id) async {
+    final gate = deleteGate;
+    if (gate != null) await gate.future;
     if (failDelete) throw StateError('delete failed');
     deleted.add(id);
     lists.removeWhere((item) => item.id == id);
@@ -234,5 +243,92 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('第二页清单'), findsOneWidget);
     expect(find.byKey(const Key('list-tail-retry')), findsNothing);
+  });
+
+  testWidgets('删除请求进行中显示蒙版且列表不可交互', (tester) async {
+    final source = await _pumpPage(tester);
+    source.deleteGate = Completer<void>();
+
+    await tester.drag(find.text('收藏精选'), const Offset(-200, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.delete_outline));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('确定删除'));
+    await tester.pump();
+
+    // 请求进行中：蒙版 + 转圈可见
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is ColoredBox && w.color == const Color(0x73000000),
+      ),
+      findsOneWidget,
+    );
+    // 蒙版拦截：点击排序按钮无效（蒙版挡住）
+    await tester.tap(
+      find.byKey(const Key('my-lists-sort-button')),
+      warnIfMissed: false,
+    );
+    await tester.pump();
+    expect(source.sortRequests, ['updated_at']);
+
+    // 完成请求 → 蒙版消失
+    source.deleteGate!.complete();
+    await tester.pumpAndSettle();
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(source.deleted, ['l1']);
+  });
+
+  testWidgets('编辑请求进行中显示蒙版', (tester) async {
+    final source = await _pumpPage(tester);
+    source.renameGate = Completer<void>();
+
+    await tester.drag(find.text('收藏精选'), const Offset(-200, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '新片单名');
+    await tester.tap(find.text('保存'));
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    source.renameGate!.complete();
+    await tester.pumpAndSettle();
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(source.renamed, [(id: 'l1', name: '新片单名')]);
+  });
+
+  testWidgets('删除失败时蒙版消失且提示错误', (tester) async {
+    final source = await _pumpPage(tester);
+    source.failDelete = true;
+
+    await tester.drag(find.text('收藏精选'), const Offset(-200, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.delete_outline));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('确定删除'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text('删除失败'), findsOneWidget);
+    expect(find.text('收藏精选'), findsOneWidget);
+  });
+
+  testWidgets('编辑失败时蒙版消失且提示错误', (tester) async {
+    final source = await _pumpPage(tester);
+    source.failRename = true;
+
+    await tester.drag(find.text('收藏精选'), const Offset(-200, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '新片单名');
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text('重命名失败'), findsOneWidget);
+    expect(find.text('收藏精选'), findsOneWidget);
   });
 }
