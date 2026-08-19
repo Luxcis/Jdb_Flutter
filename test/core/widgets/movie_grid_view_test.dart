@@ -255,4 +255,69 @@ void main() {
     expect(find.text('暂无数据'), findsOneWidget);
     expect(find.byType(CustomScrollView), findsNothing);
   });
+
+  testWidgets('下拉刷新保留旧列表并显示顶部指示器，成功后替换', (tester) async {
+    var requestCount = 0;
+    final pendingRefresh = Completer<PagedResult<MovieSummary>>();
+    final firstMovie = MovieSummary(
+      id: 'm1',
+      number: 'ABC-001',
+      title: '第一页影片',
+      coverUrl: '',
+    );
+    final refreshedMovie = MovieSummary(
+      id: 'm2',
+      number: 'ABC-002',
+      title: '刷新后影片',
+      coverUrl: '',
+    );
+    final controller = PaginationController<MovieSummary>(
+      fetch: (_) {
+        requestCount++;
+        if (requestCount == 1) {
+          return Future.value(
+            PagedResult(
+              items: [firstMovie],
+              currentPage: 1,
+              totalPages: 1,
+              total: 1,
+            ),
+          );
+        }
+        return pendingRefresh.future;
+      },
+    );
+    addTearDown(controller.dispose);
+    await controller.fetchMore();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: MovieGridView(controller: controller)),
+      ),
+    );
+    expect(find.text('第一页影片'), findsOneWidget);
+
+    final refresh = tester
+        .widget<RefreshIndicator>(find.byType(RefreshIndicator))
+        .onRefresh();
+    await tester.pump();
+
+    expect(find.text('第一页影片'), findsOneWidget);
+    expect(find.byKey(const Key('movie-grid-refreshing')), findsOneWidget);
+    expect(find.byKey(const Key('movie-grid-initial-loading')), findsNothing);
+
+    pendingRefresh.complete(
+      PagedResult(
+        items: [refreshedMovie],
+        currentPage: 1,
+        totalPages: 1,
+        total: 1,
+      ),
+    );
+    await refresh;
+    await tester.pump();
+
+    expect(find.text('第一页影片'), findsNothing);
+    expect(find.text('刷新后影片'), findsOneWidget);
+    expect(find.byKey(const Key('movie-grid-refreshing')), findsNothing);
+  });
 }

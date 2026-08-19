@@ -44,7 +44,7 @@ class MovieGridView extends StatelessWidget {
             return false;
           },
           child: RefreshIndicator(
-            onRefresh: controller.refresh,
+            onRefresh: () => controller.refresh(preserveItems: true),
             child: Stack(
               children: [
                 CustomScrollView(
