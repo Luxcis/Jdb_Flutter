@@ -69,7 +69,9 @@ lib/
    1. 修改 `pubspec.yaml` 中的 `version:` 字段为确认的版本号，提交并推送到远端。
    2. 基于更新后的代码创建对应版本号的 Git 标签（格式：`vX.Y.Z`，message 为 `Release vX.Y.Z`），并推送到远端。
    3. 在代码托管平台创建对应版本的正式 Release，变更说明严格按以下格式生成：自动梳理两次版本之间的所有提交内容，分类整理为
-      feat、fix 等类型的变更条目，并附上版本间的完整变更日志链接。示例格式：
+      feat、fix 等类型的变更条目，并附上版本间的完整变更日志链接。筛选提交时忽略 test、docs、chore
+      等次要提交，主要聚焦于
+      fix、feat、refactor 等具有实际意义的提交日志。示例格式：
 
    ```md
    ## What's Changed
