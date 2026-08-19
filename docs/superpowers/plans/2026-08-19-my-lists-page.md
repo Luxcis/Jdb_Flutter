@@ -613,30 +613,10 @@ class _MyListsPageState extends State<MyListsPage> {
   }
 
   Future<void> _renameList(ListModel list) async {
-    final controller = TextEditingController(text: list.name);
     final newName = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('编辑清单'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: '清单名称'),
-          onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
-            child: const Text('保存'),
-          ),
-        ],
-      ),
+      builder: (dialogContext) => _RenameListDialog(initialName: list.name),
     );
-    controller.dispose();
     if (newName == null || newName.isEmpty || newName == list.name) return;
     try {
       await _dataSource.renameList(id: list.id, name: newName);
@@ -755,6 +735,55 @@ class _MyListsPageState extends State<MyListsPage> {
       ),
     );
   }
+}
+
+/// 编辑清单名称弹窗：自管理 TextEditingController，避免对话框退出动画期间
+/// 控制器被提前释放。
+class _RenameListDialog extends StatefulWidget {
+  const _RenameListDialog({required this.initialName});
+
+  final String initialName;
+
+  @override
+  State<_RenameListDialog> createState() => _RenameListDialogState();
+}
+
+class _RenameListDialogState extends State<_RenameListDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialName);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    Navigator.pop(context, _controller.text.trim());
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('编辑清单'),
+    content: TextField(
+      controller: _controller,
+      autofocus: true,
+      decoration: const InputDecoration(labelText: '清单名称'),
+      onSubmitted: (_) => _submit(),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('取消'),
+      ),
+      TextButton(onPressed: _submit, child: const Text('保存')),
+    ],
+  );
 }
 ```
 
@@ -888,4 +917,5 @@ flutter test
 在测试（任务 4 步骤 1 / 任务 5 步骤 1）与实现（任务 4 步骤 3 / 任务 5 步骤 3）
 中签名一致。`PaginationController.replaceItems` 在任务 5 步骤 3 调用、步骤 4 定义，
 签名匹配。`ListModel.createdAt` 在任务 3 定义，任务 4/5 使用。删除确认按钮文本为
-「确定删除」，与 SlidableAction 的「删除」label 不同，测试 finder 无歧义。
+「确定删除」，与 SlidableAction 的「删除」label 不同，测试 finder 无歧义。改名弹窗
+为独立 `_RenameListDialog` StatefulWidget，自管理 controller 生命周期。
