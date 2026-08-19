@@ -105,14 +105,18 @@ class MovieDetailService {
     ]).map((json) => ListModel.fromJson(normalizeListModelJson(json))).toList();
   }
 
+  /// 向片单添加或移除影片。
+  ///
+  /// `action` 取值为 `add` 或 `remove`，对应接口的 `name` 字段；客户端
+  /// 调用前已做乐观更新（切换 has_movie、更新 movies_count）。
   Future<void> toggleMovieInList({
     required String listId,
-    required String listName,
     required String movieId,
+    required String action,
   }) async {
     await _api.post(
       '${Endpoints.lists}/$listId/movie_actions',
-      data: FormData.fromMap({'movie_id': movieId, 'name': listName}),
+      data: FormData.fromMap({'movie_id': movieId, 'name': action}),
     );
   }
 

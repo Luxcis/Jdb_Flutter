@@ -2171,6 +2171,10 @@ void main() {
       'data': {},
     });
     adapter.enqueue(Endpoints.lists, {'success': 1, 'data': {}});
+    adapter.enqueue('${Endpoints.lists}/list-2/movie_actions', {
+      'success': 1,
+      'data': {},
+    });
 
     await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
@@ -2193,6 +2197,10 @@ void main() {
     final toggleRequest = adapter.requests.last;
     expect(toggleRequest.path, '${Endpoints.lists}/list-1/movie_actions');
     expect(toggleRequest.method, 'POST');
+    final toggleFormData = toggleRequest.data as FormData;
+    final toggleFields = Map.fromEntries(toggleFormData.fields);
+    expect(toggleFields['movie_id'], 'm1');
+    expect(toggleFields['name'], 'add');
 
     await tester.enterText(
       find.byKey(const Key('movie-list-name-field')),
@@ -2210,6 +2218,24 @@ void main() {
       isTrue,
     );
     expect(find.text('新清单'), findsOneWidget);
+
+    final createdListTile = tester.widget<CheckboxListTile>(
+      find.ancestor(
+        of: find.text('新清单'),
+        matching: find.byType(CheckboxListTile),
+      ),
+    );
+    createdListTile.onChanged!(false);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump();
+
+    final removeRequest = adapter.requests.last;
+    expect(removeRequest.path, '${Endpoints.lists}/list-2/movie_actions');
+    expect(removeRequest.method, 'POST');
+    final removeFormData = removeRequest.data as FormData;
+    final removeFields = Map.fromEntries(removeFormData.fields);
+    expect(removeFields['movie_id'], 'm1');
+    expect(removeFields['name'], 'remove');
   });
 
   testWidgets('磁链失败可独立重试且不重新请求主详情和相关清单', (tester) async {

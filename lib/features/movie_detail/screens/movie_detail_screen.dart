@@ -1014,8 +1014,8 @@ class _SaveToListSheetState extends State<_SaveToListSheet> {
     try {
       await widget.service.toggleMovieInList(
         listId: list.id,
-        listName: list.name,
         movieId: widget.movieId,
+        action: nextHasMovie ? 'add' : 'remove',
       );
     } catch (error) {
       if (!mounted) return;

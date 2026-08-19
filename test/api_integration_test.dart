@@ -597,14 +597,14 @@ void main() {
     });
 
     test(
-      'POST /api/v1/lists/{list_id}/movie_actions 使用 multipart 表单',
+      'POST /api/v1/lists/{list_id}/movie_actions 使用 multipart 表单并传 add/remove 动作',
       () async {
         ok(adapter, '${Endpoints.lists}/list-1/movie_actions', {});
 
         await svc.toggleMovieInList(
           listId: 'list-1',
-          listName: '测试片单',
           movieId: 'm1',
+          action: 'add',
         );
 
         final request = adapter.requests.last;
@@ -613,7 +613,28 @@ void main() {
         final formData = request.data as FormData;
         final fields = Map.fromEntries(formData.fields);
         expect(fields['movie_id'], 'm1');
-        expect(fields['name'], '测试片单');
+        expect(fields['name'], 'add');
+      },
+    );
+
+    test(
+      'POST /api/v1/lists/{list_id}/movie_actions 移除影片时传 remove 动作',
+      () async {
+        ok(adapter, '${Endpoints.lists}/list-2/movie_actions', {});
+
+        await svc.toggleMovieInList(
+          listId: 'list-2',
+          movieId: 'm1',
+          action: 'remove',
+        );
+
+        final request = adapter.requests.last;
+        expect(request.method, 'POST');
+        expect(request.path, '${Endpoints.lists}/list-2/movie_actions');
+        final formData = request.data as FormData;
+        final fields = Map.fromEntries(formData.fields);
+        expect(fields['movie_id'], 'm1');
+        expect(fields['name'], 'remove');
       },
     );
 
