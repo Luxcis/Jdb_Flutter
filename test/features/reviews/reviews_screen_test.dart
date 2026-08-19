@@ -183,6 +183,7 @@ void main() {
       tester,
       () => adapter.requests.length >= 2,
     );
+    await refresh;
 
     expect(find.text('内容0'), findsNothing);
     expect(find.text('内容1'), findsOneWidget);
