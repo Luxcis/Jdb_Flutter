@@ -77,6 +77,14 @@ class PaginationController<T> extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 用 [items] 整体替换当前条目（保留分页状态）。
+  void replaceItems(List<T> items) {
+    _items
+      ..clear()
+      ..addAll(items);
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _generation++;
