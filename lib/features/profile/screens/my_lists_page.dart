@@ -76,9 +76,6 @@ class _MyListsPageState extends State<MyListsPage> {
     if (newName == null || newName.isEmpty || newName == list.name) return;
     try {
       await _dataSource.renameList(id: list.id, name: newName);
-      if (!mounted) return;
-      // 服务器为准：重载第一页，同时清掉分页状态与残留错误。
-      await _controller.refresh();
     } catch (error, stackTrace) {
       developer.log(
         '重命名清单失败',
@@ -88,7 +85,13 @@ class _MyListsPageState extends State<MyListsPage> {
       );
       if (!mounted) return;
       _showMessage('重命名失败');
+      return;
     }
+    if (!mounted) return;
+    // 服务器为准：重载第一页，同时清掉分页状态与残留错误。
+    // refresh 内部已捕获 GET 错误（存入 _error，由列表重试按钮兜底），
+    // 重命名已成功，不能再误报「重命名失败」。
+    await _controller.refresh();
   }
 
   Future<void> _deleteList(ListModel list) async {
@@ -112,11 +115,6 @@ class _MyListsPageState extends State<MyListsPage> {
     if (confirmed != true) return;
     try {
       await _dataSource.deleteList(list.id);
-      if (!mounted) return;
-      // 服务器为准：重载第一页，同时清掉分页状态与残留错误。
-      await _controller.refresh();
-      if (!mounted) return;
-      _showMessage('清单已删除');
     } catch (error, stackTrace) {
       developer.log(
         '删除清单失败',
@@ -126,7 +124,15 @@ class _MyListsPageState extends State<MyListsPage> {
       );
       if (!mounted) return;
       _showMessage('删除失败');
+      return;
     }
+    if (!mounted) return;
+    // 服务器为准：重载第一页，同时清掉分页状态与残留错误。
+    // refresh 内部已捕获 GET 错误（存入 _error，由列表重试按钮兜底），
+    // 删除已成功，不能再误报「删除失败」。
+    await _controller.refresh();
+    if (!mounted) return;
+    _showMessage('清单已删除');
   }
 
   void _openListMovies(ListModel list) {

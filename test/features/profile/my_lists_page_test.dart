@@ -210,13 +210,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('list-tail-retry')), findsOneWidget);
 
-    // 恢复第二页可用，滚动触发 fetchMore 加载第 2 页条目。
-    source.failPage2 = false;
-    await tester.fling(find.byType(ListView), const Offset(0, -3000), 3000);
-    await tester.pumpAndSettle();
-    expect(find.text('第二页清单'), findsOneWidget);
-
-    // 左滑删除第一页条目并确认。
+    // 在 _error 仍残留时直接删除第一页条目：旧代码（replaceItems 保留 error）
+    // 在 refresh 后 retry 按钮依旧显示；新代码 refresh 清空 _error，retry 消失。
     await tester.drag(find.text('第一页清单'), const Offset(-200, 0));
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.delete_outline));
@@ -230,5 +225,14 @@ void main() {
     expect(find.byKey(const Key('list-tail-retry')), findsNothing);
     expect(find.text('第一页清单'), findsNothing);
     expect(find.text('第二页清单'), findsOneWidget);
+
+    // 恢复第二页可用：若 refresh 后仍有残留 error，滚动会再次报错/弹 retry；
+    // 新代码 error 已清空，fetchMore 可正常加载第 2 页（此时已无第 2 页内容，
+    // 服务端仅剩 1 条，hasMore=false，列表稳定无 tail）。
+    source.failPage2 = false;
+    await tester.fling(find.byType(ListView), const Offset(0, -3000), 3000);
+    await tester.pumpAndSettle();
+    expect(find.text('第二页清单'), findsOneWidget);
+    expect(find.byKey(const Key('list-tail-retry')), findsNothing);
   });
 }
