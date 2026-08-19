@@ -136,4 +136,37 @@ void main() {
     expect(source.deleted, ['l1']);
     expect(find.text('收藏精选'), findsNothing);
   });
+
+  testWidgets('编辑改名失败提示重命名失败且列表不变', (tester) async {
+    final source = await _pumpPage(tester);
+    source.failRename = true;
+
+    await tester.drag(find.text('收藏精选'), const Offset(-200, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), '新片单名');
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('重命名失败'), findsOneWidget);
+    expect(find.text('收藏精选'), findsOneWidget);
+    expect(find.text('新片单名'), findsNothing);
+  });
+
+  testWidgets('删除失败提示删除失败且条目保留', (tester) async {
+    final source = await _pumpPage(tester);
+    source.failDelete = true;
+
+    await tester.drag(find.text('收藏精选'), const Offset(-200, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.delete_outline));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('确定删除'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('删除失败'), findsOneWidget);
+    expect(find.text('收藏精选'), findsOneWidget);
+  });
 }
