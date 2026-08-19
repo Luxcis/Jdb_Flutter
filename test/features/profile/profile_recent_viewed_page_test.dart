@@ -94,11 +94,13 @@ void main() {
     final source = await _pumpPage(tester);
 
     await tester.tap(find.byIcon(Icons.delete_outline));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('清空近期浏览？'), findsOneWidget);
 
     await tester.tap(find.text('取消'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(source.clearCalls, 0);
     expect(find.text('近期浏览'), findsOneWidget);
   });
@@ -107,9 +109,12 @@ void main() {
     final source = await _pumpPage(tester);
 
     await tester.tap(find.byIcon(Icons.delete_outline));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.text('清空'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(source.clearCalls, 1);
     // 刷新后空态 + SnackBar
