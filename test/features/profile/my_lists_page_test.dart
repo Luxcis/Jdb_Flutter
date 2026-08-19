@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/models/list_model.dart';
 import 'package:jade/core/models/paged_result.dart';
+import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/features/profile/screens/my_lists_page.dart';
 import 'package:jade/features/profile/services/user_lists_service.dart';
 
@@ -22,6 +23,9 @@ class _FakeUserListsDataSource implements UserListsDataSource {
   var failDelete = false;
   var failPage2 = false;
 
+  /// 置 true 后 getMyLists 直接抛错（模拟变更成功后列表 GET 失败）。
+  var failGet = false;
+
   /// 置非 null 后，rename/delete 会等待该 Completer 完成才继续（模拟请求中）。
   Completer<void>? renameGate;
   Completer<void>? deleteGate;
@@ -32,6 +36,7 @@ class _FakeUserListsDataSource implements UserListsDataSource {
     int page = 1,
   }) async {
     sortRequests.add(sortBy);
+    if (failGet) throw StateError('list GET failed');
     if (failPage2 && page >= 2) throw StateError('page 2 failed');
     final pageSize = lists.isEmpty ? 1 : (lists.length / totalPages).ceil();
     final start = math.min((page - 1) * pageSize, lists.length);
@@ -169,6 +174,25 @@ void main() {
     // 删除成功后刷新重载：服务端（fake 内部）已移除该条，列表不再显示。
     expect(find.text('收藏精选'), findsNothing);
     expect(find.text('待看片单'), findsOneWidget);
+  });
+
+  testWidgets('删除成功但重载列表失败：不显示已删清单并展示错误态', (tester) async {
+    final source = await _pumpPage(tester);
+    // 删除成功后再让列表 GET 失败：若页面沿用旧列表，会继续显示已删的「收藏精选」。
+    source.failGet = true;
+
+    await tester.drag(find.text('收藏精选'), const Offset(-200, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.delete_outline));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('确定删除'));
+    await tester.pumpAndSettle();
+
+    expect(source.deleted, ['l1']);
+    // 变更后重载 = 清空语义：GET 失败时旧列表已被清空，页面展示错误态而非旧数据。
+    expect(find.text('收藏精选'), findsNothing);
+    expect(find.text('待看片单'), findsNothing);
+    expect(find.byType(ErrorRetryWidget), findsOneWidget);
   });
 
   testWidgets('编辑改名失败提示重命名失败且列表不变', (tester) async {

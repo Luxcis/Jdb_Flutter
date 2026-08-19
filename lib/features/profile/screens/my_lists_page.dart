@@ -92,9 +92,9 @@ class _MyListsPageState extends State<MyListsPage> {
       }
       if (!mounted) return;
       // 服务器为准：重载第一页，同时清掉分页状态与残留错误。
-      // refresh 内部已捕获 GET 错误（存入 _error，由列表重试按钮兜底），
+      // reloadWith 保留清空语义：GET 失败时旧列表不残留（错误态兜底），
       // 重命名已成功，不能再误报「重命名失败」。
-      await _controller.refresh();
+      await _controller.reloadWith(_fetchPage);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -136,9 +136,9 @@ class _MyListsPageState extends State<MyListsPage> {
       }
       if (!mounted) return;
       // 服务器为准：重载第一页，同时清掉分页状态与残留错误。
-      // refresh 内部已捕获 GET 错误（存入 _error，由列表重试按钮兜底），
+      // reloadWith 保留清空语义：GET 失败时旧列表不残留（错误态兜底），
       // 删除已成功，不能再误报「删除失败」。
-      await _controller.refresh();
+      await _controller.reloadWith(_fetchPage);
       if (!mounted) return;
       _showMessage('清单已删除');
     } finally {
