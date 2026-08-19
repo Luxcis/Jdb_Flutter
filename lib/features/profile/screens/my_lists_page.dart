@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
@@ -48,8 +49,9 @@ class _MyListsPageState extends State<MyListsPage> {
 
   void _toggleSort() {
     setState(() {
-      _sortBy =
-          _sortBy == _sortByUpdatedAt ? _sortByCreatedAt : _sortByUpdatedAt;
+      _sortBy = _sortBy == _sortByUpdatedAt
+          ? _sortByCreatedAt
+          : _sortByUpdatedAt;
     });
     _controller.reloadWith(_fetchPage);
   }
@@ -69,26 +71,21 @@ class _MyListsPageState extends State<MyListsPage> {
   Future<void> _renameList(ListModel list) async {
     final newName = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => _RenameListDialog(initialName: list.name),
+      builder: (_) => _RenameListDialog(initialName: list.name),
     );
     if (newName == null || newName.isEmpty || newName == list.name) return;
     try {
       await _dataSource.renameList(id: list.id, name: newName);
       if (!mounted) return;
-      final index = _controller.items.indexWhere((item) => item.id == list.id);
-      if (index >= 0) {
-        final items = List<ListModel>.of(_controller.items);
-        items[index] = ListModel(
-          id: list.id,
-          name: newName,
-          movieCount: list.movieCount,
-          viewedCount: list.viewedCount,
-          hasMovie: list.hasMovie,
-          createdAt: list.createdAt,
-        );
-        _controller.replaceItems(items);
-      }
-    } catch (_) {
+      // 服务器为准：重载第一页，同时清掉分页状态与残留错误。
+      await _controller.refresh();
+    } catch (error, stackTrace) {
+      developer.log(
+        '重命名清单失败',
+        name: 'my-lists',
+        error: error,
+        stackTrace: stackTrace,
+      );
       if (!mounted) return;
       _showMessage('重命名失败');
     }
@@ -116,12 +113,17 @@ class _MyListsPageState extends State<MyListsPage> {
     try {
       await _dataSource.deleteList(list.id);
       if (!mounted) return;
-      final items = _controller.items
-          .where((item) => item.id != list.id)
-          .toList();
-      _controller.replaceItems(items);
+      // 服务器为准：重载第一页，同时清掉分页状态与残留错误。
+      await _controller.refresh();
+      if (!mounted) return;
       _showMessage('清单已删除');
-    } catch (_) {
+    } catch (error, stackTrace) {
+      developer.log(
+        '删除清单失败',
+        name: 'my-lists',
+        error: error,
+        stackTrace: stackTrace,
+      );
       if (!mounted) return;
       _showMessage('删除失败');
     }
@@ -143,8 +145,7 @@ class _MyListsPageState extends State<MyListsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final sortLabel =
-        _sortBy == _sortByUpdatedAt ? '更新时间' : '创建时间';
+    final sortLabel = _sortBy == _sortByUpdatedAt ? '更新时间' : '创建时间';
     return Scaffold(
       appBar: AppBar(
         title: const Text('我的清单'),
@@ -167,7 +168,9 @@ class _MyListsPageState extends State<MyListsPage> {
             children: [
               SlidableAction(
                 onPressed: (_) => unawaited(_renameList(list)),
-                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest,
                 foregroundColor: Theme.of(context).colorScheme.onSurface,
                 icon: Icons.edit_outlined,
                 label: '编辑',
