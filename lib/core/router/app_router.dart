@@ -318,7 +318,7 @@ class AppRouter {
       path: AppRoutes.profileRecent,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileRecent,
-        child: const ProfileMovieCollectionPage(title: '近期浏览'),
+        child: const ProfileRecentViewedPage(),
       ),
     ),
     GoRoute(

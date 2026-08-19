@@ -57,4 +57,15 @@ void main() {
     expect(find.text('我想看的'), findsOneWidget);
     expect(find.byIcon(Icons.filter_list), findsNothing);
   });
+
+  testWidgets('近期浏览路由渲染真实近期浏览页', (tester) async {
+    await tester.pumpWidget(
+      await _buildApp(initialLocation: '/profile/recent'),
+    );
+    await tester.pump();
+
+    expect(find.byType(ProfileRecentViewedPage), findsOneWidget);
+    expect(find.text('近期浏览'), findsOneWidget);
+    expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+  });
 }
