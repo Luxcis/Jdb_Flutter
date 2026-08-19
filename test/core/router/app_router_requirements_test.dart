@@ -28,14 +28,6 @@ void main() {
     expect(find.text('演员详情'), findsAtLeastNWidgets(1));
   });
 
-  testWidgets('个人资料路由可渲染', (tester) async {
-    await tester.pumpWidget(await _buildApp(initialLocation: '/profile/info'));
-    await tester.pump();
-
-    expect(find.text('个人资料'), findsOneWidget);
-    expect(find.text('电子邮箱'), findsOneWidget);
-  });
-
   testWidgets('我的收藏路由可渲染', (tester) async {
     await tester.pumpWidget(
       await _buildApp(initialLocation: '/profile/favorites'),

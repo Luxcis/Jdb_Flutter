@@ -24,6 +24,13 @@ void main() {
       200,
       scrollable: find.byType(Scrollable),
     );
+    // 删除"个人资料"cell 后，ensureVisible 的滚动量可能不足以让
+    // 列表尾部完全进入视口，这里补一次显式滚动确保可点击。
+    await tester.drag(
+      find.byType(Scrollable),
+      const Offset(0, -200),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('退出登录'));
     await tester.pumpAndSettle();
 
@@ -49,6 +56,12 @@ void main() {
       200,
       scrollable: find.byType(Scrollable),
     );
+    // 同上：补一次显式滚动确保列表尾部完全进入视口。
+    await tester.drag(
+      find.byType(Scrollable),
+      const Offset(0, -200),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('退出登录'));
     await tester.pumpAndSettle();
 

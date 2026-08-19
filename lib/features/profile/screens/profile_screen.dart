@@ -109,11 +109,6 @@ class ProfilePage extends StatelessWidget {
             icon: Icons.history,
             onTap: () => context.push(AppRoutes.profileRecent),
           ),
-          _Cell(
-            title: '个人资料',
-            icon: Icons.person_outline,
-            onTap: () => context.push(AppRoutes.profileInfo),
-          ),
           const Divider(),
           _Cell(
             title: '设置',

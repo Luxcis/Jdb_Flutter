@@ -322,13 +322,6 @@ class AppRouter {
       ),
     ),
     GoRoute(
-      path: AppRoutes.profileInfo,
-      builder: (c, s) => _AuthGuard(
-        route: AppRoutes.profileInfo,
-        child: const ProfileInfoPage(),
-      ),
-    ),
-    GoRoute(
       path: AppRoutes.profileSettings,
       builder: (c, s) => const ProfileSettingsPage(),
     ),

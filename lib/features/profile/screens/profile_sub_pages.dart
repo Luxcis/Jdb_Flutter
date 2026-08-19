@@ -290,42 +290,6 @@ class ProfileNamedCollectionPage extends StatelessWidget {
   }
 }
 
-class ProfileInfoPage extends StatelessWidget {
-  const ProfileInfoPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const _CellScaffold(
-      title: '个人资料',
-      cells: [
-        _ProfileCell(title: '电子邮箱', subtitle: '未填写', icon: Icons.email),
-        _ProfileCell(
-          title: '短评被举报次数',
-          subtitle: '0次',
-          icon: Icons.report_outlined,
-        ),
-        _ProfileCell(
-          title: '短评被删次数',
-          subtitle: '0次',
-          icon: Icons.delete_outline,
-        ),
-        _ProfileCell(
-          title: '禁言次数',
-          subtitle: '禁言次数超过最大次数后封禁账号',
-          icon: Icons.volume_off_outlined,
-        ),
-        _ProfileCell(
-          title: '待审核/已通过订正数',
-          subtitle: '订正功能来自网页版影片详情',
-          icon: Icons.fact_check_outlined,
-        ),
-        _ProfileCell(title: '修改密码', icon: Icons.lock_outline),
-        _ProfileCell(title: '修改用户名', icon: Icons.badge_outlined),
-      ],
-    );
-  }
-}
-
 class ProfileSettingsPage extends StatefulWidget {
   const ProfileSettingsPage({
     super.key,

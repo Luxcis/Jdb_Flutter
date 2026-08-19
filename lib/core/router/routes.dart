@@ -48,6 +48,5 @@ class AppRoutes {
   static const String profileFavoritesLists = '/profile/favorites/lists';
   static const String profileLists = '/profile/lists';
   static const String profileRecent = '/profile/recent';
-  static const String profileInfo = '/profile/info';
   static const String profileSettings = '/profile/settings';
 }

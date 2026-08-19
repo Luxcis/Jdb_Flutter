@@ -133,18 +133,6 @@ _pumpSettings(
 }
 
 void main() {
-  testWidgets('个人资料页展示资料与账号操作 cell', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: ProfileInfoPage()));
-
-    expect(find.text('电子邮箱'), findsOneWidget);
-    expect(find.text('短评被举报次数'), findsOneWidget);
-    expect(find.text('短评被删次数'), findsOneWidget);
-    expect(find.text('禁言次数'), findsOneWidget);
-    expect(find.text('待审核/已通过订正数'), findsOneWidget);
-    expect(find.text('修改密码'), findsOneWidget);
-    expect(find.text('修改用户名'), findsOneWidget);
-  });
-
   testWidgets('我的收藏页展示六类收藏入口', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: ProfileFavoritesPage()));
 
