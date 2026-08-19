@@ -311,7 +311,7 @@ class AppRouter {
       path: AppRoutes.profileLists,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileLists,
-        child: const ProfileNamedCollectionPage(title: '我的清单'),
+        child: const MyListsPage(),
       ),
     ),
     GoRoute(
