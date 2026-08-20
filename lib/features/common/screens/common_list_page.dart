@@ -1,12 +1,16 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/widgets/favorite_button.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 import 'package:jade/core/widgets/sort_segmented.dart';
 import 'package:jade/core/widgets/sort_select.dart';
 import 'package:jade/features/common/services/tag_movies_service.dart';
+import 'package:jade/features/profile/services/collections_service.dart';
 
 typedef _SortOption = ({String label, String value});
 
@@ -18,6 +22,7 @@ class CommonListPage extends StatefulWidget {
     required this.category,
     required this.id,
     this.dataSource,
+    this.favoritesDataSource,
   });
 
   final String title;
@@ -25,6 +30,7 @@ class CommonListPage extends StatefulWidget {
   final String category;
   final String id;
   final TagMoviesDataSource? dataSource;
+  final FavoritesDataSource? favoritesDataSource;
 
   @override
   State<CommonListPage> createState() => _CommonListPageState();
@@ -55,6 +61,9 @@ class _CommonListPageState extends State<CommonListPage> {
   late final List<_SortOption> _sortOptions;
   late final TagMoviesDataSource _dataSource;
   late final PaginationController<MovieSummary> _ctrl;
+  late final FavoritesDataSource _favorites;
+  bool? _hasCollected;
+  var _favoriteBusy = false;
   var _filter = 'magnet';
   late String _sort;
   var _orderBy = 'desc';
@@ -74,7 +83,14 @@ class _CommonListPageState extends State<CommonListPage> {
           final api? => TagMoviesService(api),
           null => const UnavailableTagMoviesDataSource(),
         };
+    _favorites =
+        widget.favoritesDataSource ??
+        switch (ApiClient.instanceOrNull) {
+          final api? => FavoritesService(api),
+          null => const UnavailableFavoritesDataSource(),
+        };
     _ctrl = PaginationController<MovieSummary>(fetch: _fetchPage)..fetchMore();
+    _loadCollected();
   }
 
   String get _filterApi => switch (_filter) {
@@ -115,6 +131,51 @@ class _CommonListPageState extends State<CommonListPage> {
     _ctrl.reloadWith(_fetchPage);
   }
 
+  Future<void> _loadCollected() async {
+    final supported = const {
+      'm',
+      's',
+      'd',
+      'c',
+      'l',
+      'a',
+    }.contains(widget.category);
+    if (!supported) return;
+    final result = await _favorites.getHasCollected(widget.category, widget.id);
+    if (!mounted) return;
+    setState(() => _hasCollected = result);
+  }
+
+  Future<void> _toggleFavorite() async {
+    final current = _hasCollected;
+    if (current == null || _favoriteBusy) return;
+    setState(() => _favoriteBusy = true);
+    try {
+      try {
+        await _favorites.setCollected(widget.category, widget.id, !current);
+      } catch (error, stackTrace) {
+        developer.log(
+          '收藏操作失败',
+          name: 'common-list',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('操作失败，请重试')));
+        return;
+      }
+      if (!mounted) return;
+      setState(() => _hasCollected = !current);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(current ? '已取消收藏' : '已收藏')),
+      );
+    } finally {
+      if (mounted) setState(() => _favoriteBusy = false);
+    }
+  }
+
   @override
   void dispose() {
     _ctrl.dispose();
@@ -124,7 +185,17 @@ class _CommonListPageState extends State<CommonListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
+      appBar: AppBar(
+        title: Text(widget.title),
+        actions: [
+          if (_hasCollected != null)
+            FavoriteButton(
+              hasCollected: _hasCollected!,
+              busy: _favoriteBusy,
+              onPressed: _toggleFavorite,
+            ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(

@@ -269,42 +269,42 @@ class AppRouter {
       path: AppRoutes.profileFavoritesActors,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileFavoritesActors,
-        child: const ProfileFavoriteActorsPage(),
+        child: const CollectedActorsPage(),
       ),
     ),
     GoRoute(
       path: AppRoutes.profileFavoritesMakers,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileFavoritesMakers,
-        child: const ProfileNamedCollectionPage(title: '收藏的片商'),
+        child: const CollectedEntitiesPage(category: 'm', title: '收藏的片商'),
       ),
     ),
     GoRoute(
       path: AppRoutes.profileFavoritesSeries,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileFavoritesSeries,
-        child: const ProfileNamedCollectionPage(title: '收藏的系列'),
+        child: const CollectedEntitiesPage(category: 's', title: '收藏的系列'),
       ),
     ),
     GoRoute(
       path: AppRoutes.profileFavoritesDirectors,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileFavoritesDirectors,
-        child: const ProfileNamedCollectionPage(title: '收藏的导演'),
+        child: const CollectedEntitiesPage(category: 'd', title: '收藏的导演'),
       ),
     ),
     GoRoute(
       path: AppRoutes.profileFavoritesCodes,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileFavoritesCodes,
-        child: const ProfileNamedCollectionPage(title: '收藏的番号'),
+        child: const CollectedEntitiesPage(category: 'c', title: '收藏的番号'),
       ),
     ),
     GoRoute(
       path: AppRoutes.profileFavoritesLists,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileFavoritesLists,
-        child: const ProfileNamedCollectionPage(title: '收藏的清单'),
+        child: const CollectedListsPage(),
       ),
     ),
     GoRoute(

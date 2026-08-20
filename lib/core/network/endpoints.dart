@@ -80,4 +80,8 @@ class Endpoints {
 
   // ── 文章 ──
   static const String articles = '/api/v1/articles';
+
+  // ── 收藏 ──
+  static const String actorsBatchUncollection =
+      '/api/v1/actors/batch_uncollection';
 }

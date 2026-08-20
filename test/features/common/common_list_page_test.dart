@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:jade/core/models/actor.dart';
+import 'package:jade/core/models/code.dart';
+import 'package:jade/core/models/director.dart';
+import 'package:jade/core/models/list_model.dart';
+import 'package:jade/core/models/maker.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
+import 'package:jade/core/models/series.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/sort_segmented.dart';
 
 import 'package:jade/features/common/screens/common_list_page.dart';
 import 'package:jade/features/common/services/tag_movies_service.dart';
+import 'package:jade/features/profile/services/collections_service.dart';
 
 typedef _Call = ({
   int type,
@@ -250,4 +257,105 @@ void main() {
     expect(source.calls.last.sortBy, 'release');
     expect(source.calls.last.orderBy, 'desc');
   });
+
+  testWidgets('爱心按钮显示收藏状态，点击触发收藏且失败不翻转', (tester) async {
+    final source = _RecordingTagMoviesDataSource();
+    final favorites = _FakeFavoritesDataSource(hasCollected: true);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CommonListPage(
+          title: '片商 - SOD',
+          type: 0,
+          category: 'm',
+          id: 'm1',
+          dataSource: source,
+          favoritesDataSource: favorites,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 已收藏 → 实心爱心
+    expect(find.byIcon(Icons.favorite), findsOneWidget);
+    expect(find.byIcon(Icons.favorite_border), findsNothing);
+    expect(favorites.getHasCollectedCalls, ['m1']);
+
+    // 点击取消收藏成功 → 空心
+    await tester.tap(find.byIcon(Icons.favorite));
+    await tester.pumpAndSettle();
+    expect(favorites.setCollectedCalls, [(category: 'm', id: 'm1', collect: false)]);
+    expect(find.byIcon(Icons.favorite_border), findsOneWidget);
+
+    // 等待成功 SnackBar 消失，避免遮挡后续交互
+    await tester.pumpAndSettle(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+
+    // 失败不翻转状态
+    favorites.failSetCollected = true;
+    await tester.tap(find.byIcon(Icons.favorite_border));
+    await tester.pumpAndSettle();
+    expect(find.text('操作失败，请重试'), findsOneWidget);
+    expect(find.byIcon(Icons.favorite_border), findsOneWidget);
+    expect(find.byIcon(Icons.favorite), findsNothing);
+  });
+}
+
+class _FakeFavoritesDataSource implements FavoritesDataSource {
+  _FakeFavoritesDataSource({required this.hasCollected});
+
+  bool hasCollected;
+  bool failSetCollected = false;
+  final getHasCollectedCalls = <String>[];
+  final setCollectedCalls = <({String category, String id, bool collect})>[];
+
+  @override
+  Future<bool?> getHasCollected(String category, String id) async {
+    getHasCollectedCalls.add(id);
+    return hasCollected;
+  }
+
+  @override
+  Future<void> setCollected(String category, String id, bool collect) async {
+    if (failSetCollected) throw StateError('set failed');
+    setCollectedCalls.add((category: category, id: id, collect: collect));
+    hasCollected = collect;
+  }
+
+  @override
+  Future<PagedResult<ActorSummary>> getCollectedActors({
+    required String type,
+    int page = 1,
+  }) => throw UnimplementedError();
+  @override
+  Future<PagedResult<Maker>> getCollectedMakers({int page = 1}) =>
+      throw UnimplementedError();
+  @override
+  Future<PagedResult<Series>> getCollectedSeries({int page = 1}) =>
+      throw UnimplementedError();
+  @override
+  Future<PagedResult<Director>> getCollectedDirectors({int page = 1}) =>
+      throw UnimplementedError();
+  @override
+  Future<PagedResult<Code>> getCollectedCodes({int page = 1}) =>
+      throw UnimplementedError();
+  @override
+  Future<PagedResult<ListModel>> getCollectedLists({
+    required String sortBy,
+    int page = 1,
+  }) => throw UnimplementedError();
+  @override
+  Future<void> uncollectActor(String id) => throw UnimplementedError();
+  @override
+  Future<void> uncollectMaker(String id) => throw UnimplementedError();
+  @override
+  Future<void> uncollectSeries(String id) => throw UnimplementedError();
+  @override
+  Future<void> uncollectDirector(String id) => throw UnimplementedError();
+  @override
+  Future<void> uncollectCode(String id) => throw UnimplementedError();
+  @override
+  Future<void> uncollectList(String id) => throw UnimplementedError();
+  @override
+  Future<void> batchUncollectActors(List<String> ids) =>
+      throw UnimplementedError();
 }

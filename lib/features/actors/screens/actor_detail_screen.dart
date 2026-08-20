@@ -1,12 +1,16 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/actor_avatar_image.dart';
+import 'package:jade/core/widgets/favorite_button.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/features/actors/services/actor_movie_controller.dart';
 import 'package:jade/features/actors/services/actor_service.dart';
 import 'package:jade/features/actors/widgets/actor_info_sheet.dart';
 import 'package:jade/features/actors/widgets/actor_movie_filter_sheet.dart';
+import 'package:jade/features/profile/services/collections_service.dart';
 
 class ActorDetailPage extends StatefulWidget {
   const ActorDetailPage({super.key, required this.id});
@@ -22,6 +26,44 @@ class _ActorDetailPageState extends State<ActorDetailPage> {
   ActorDetail? _detail;
   bool _isLoading = true;
   String? _error;
+  var _favoriteBusy = false;
+
+  /// 切换收藏状态：未登录或正在请求时忽略。
+  Future<void> _toggleFavorite() async {
+    final detail = _detail;
+    if (detail == null || _favoriteBusy) return;
+    final api = ApiClient.instanceOrNull;
+    if (api == null) return;
+    setState(() => _favoriteBusy = true);
+    try {
+      try {
+        await FavoritesService(api).setCollected('a', widget.id, !detail.hasCollected);
+      } catch (error, stackTrace) {
+        developer.log(
+          '收藏操作失败',
+          name: 'actor-detail',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('操作失败，请重试')));
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        _detail = ActorDetail.fromJson(
+          detail.toJson()..['has_collected'] = !detail.hasCollected,
+        );
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(detail.hasCollected ? '已取消收藏' : '已收藏')),
+      );
+    } finally {
+      if (mounted) setState(() => _favoriteBusy = false);
+    }
+  }
 
   @override
   void initState() {
@@ -119,6 +161,11 @@ class _ActorDetailPageState extends State<ActorDetailPage> {
       appBar: AppBar(
         title: const Text('演员详情'),
         actions: [
+          FavoriteButton(
+            hasCollected: detail.hasCollected,
+            busy: _favoriteBusy,
+            onPressed: _toggleFavorite,
+          ),
           IconButton(
             tooltip: '筛选',
             onPressed: _showFilter,
