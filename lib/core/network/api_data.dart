@@ -195,6 +195,10 @@ Map<String, dynamic> normalizeActorDetailJson(dynamic data) {
     'birthplace': apiString(actor['birthplace']),
     'movie_count': apiInt(actor['movie_count'] ?? actor['videos_count'], 0),
     'type': apiIntOrNull(actor['type']),
+    'has_collected': apiBool(
+      actor['has_collected'] ?? root['has_collected'],
+      false,
+    ),
     'filter_tags': apiList(root, const ['filter_tags'])
         .map(
           (t) => {

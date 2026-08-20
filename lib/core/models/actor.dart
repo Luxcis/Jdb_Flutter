@@ -60,6 +60,7 @@ class ActorDetail extends ActorSummary {
     required super.name,
     required super.avatarUrl,
     super.gender,
+    this.hasCollected = false,
     this.birthday,
     this.age,
     this.height,
@@ -83,6 +84,9 @@ class ActorDetail extends ActorSummary {
   final String? birthplace;
   final int movieCount;
   final int? type;
+
+  /// 当前用户是否已收藏该演员（来自详情接口 `has_collected`）。
+  final bool hasCollected;
   final List<ActorTagItem> filterTags;
   final List<ActorTagItem> tags;
   factory ActorDetail.fromJson(Map<String, dynamic> json) =>
