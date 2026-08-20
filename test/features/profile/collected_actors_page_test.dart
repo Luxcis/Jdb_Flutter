@@ -173,4 +173,18 @@ void main() {
     expect(find.text('批量取关失败'), findsOneWidget);
     expect(find.text('取消收藏(1)'), findsOneWidget);
   });
+
+  testWidgets('无收藏演员时显示空态提示', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final source = _FakeActorsFavoritesDataSource(actors: const []);
+    await tester.pumpWidget(
+      MaterialApp(home: CollectedActorsPage(dataSource: source)),
+    );
+    await settle(tester);
+
+    expect(find.text('暂无收藏的演员'), findsOneWidget);
+  });
 }

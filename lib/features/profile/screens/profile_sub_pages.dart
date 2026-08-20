@@ -206,7 +206,6 @@ class ProfileFavoritesPage extends StatelessWidget {
         ),
         _ProfileCell(
           title: '收藏的清单',
-          subtitle: '0部影片，被查看0次',
           icon: Icons.list_alt,
           route: AppRoutes.profileFavoritesLists,
         ),
@@ -609,12 +608,10 @@ class _ProfileCell extends StatelessWidget {
   const _ProfileCell({
     required this.title,
     required this.icon,
-    this.subtitle,
     this.route,
   });
 
   final String title;
-  final String? subtitle;
   final IconData icon;
   final String? route;
 
@@ -622,7 +619,6 @@ class _ProfileCell extends StatelessWidget {
   Widget build(BuildContext context) => ListTile(
     leading: Icon(icon),
     title: Text(title),
-    subtitle: subtitle == null ? null : Text(subtitle!),
     trailing: const Icon(Icons.chevron_right),
     onTap: route == null ? null : () => context.push(route!),
   );

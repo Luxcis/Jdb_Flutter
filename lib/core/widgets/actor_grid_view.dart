@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/widgets/actor_card.dart';
+import 'package:jade/core/widgets/empty_state.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 
@@ -12,6 +13,7 @@ class ActorGridView extends StatelessWidget {
     this.selectionMode = false,
     this.selectedIds = const {},
     this.onToggleSelect,
+    this.emptyMessage,
   });
 
   final PaginationController<ActorSummary> controller;
@@ -21,6 +23,9 @@ class ActorGridView extends StatelessWidget {
   final bool selectionMode;
   final Set<String> selectedIds;
   final void Function(ActorSummary)? onToggleSelect;
+
+  /// 列表为空时的提示文案；为 null 时不显示空态（保持原空白网格行为）。
+  final String? emptyMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +46,9 @@ class ActorGridView extends StatelessWidget {
               child: CircularProgressIndicator(),
             ),
           );
+        }
+        if (controller.items.isEmpty && emptyMessage != null) {
+          return EmptyState(message: emptyMessage!);
         }
         return LayoutBuilder(
           builder: (context, constraints) {

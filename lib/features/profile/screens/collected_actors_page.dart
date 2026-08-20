@@ -194,6 +194,7 @@ class _CollectedActorsPageState extends State<CollectedActorsPage>
                   selectionMode: _editing,
                   selectedIds: _selectedIds,
                   onToggleSelect: _editing ? _toggleSelect : null,
+                  emptyMessage: '暂无收藏的演员',
                 ),
             ],
           ),
