@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/network/api_client.dart';
@@ -36,7 +38,13 @@ class _ActorDetailPageState extends State<ActorDetailPage> {
     try {
       try {
         await FavoritesService(api).setCollected('a', widget.id, !detail.hasCollected);
-      } catch (_) {
+      } catch (error, stackTrace) {
+        developer.log(
+          '收藏操作失败',
+          name: 'actor-detail',
+          error: error,
+          stackTrace: stackTrace,
+        );
         if (!mounted) return;
         ScaffoldMessenger.of(
           context,

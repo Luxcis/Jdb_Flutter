@@ -159,6 +159,7 @@ class FavoritesService implements FavoritesDataSource {
 
   @override
   Future<void> batchUncollectActors(List<String> ids) async {
+    if (ids.isEmpty) return;
     await _api.delete(
       Endpoints.actorsBatchUncollection,
       data: {'ids': ids.join(',')},

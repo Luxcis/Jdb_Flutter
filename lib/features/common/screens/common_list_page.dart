@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
@@ -151,7 +153,13 @@ class _CommonListPageState extends State<CommonListPage> {
     try {
       try {
         await _favorites.setCollected(widget.category, widget.id, !current);
-      } catch (_) {
+      } catch (error, stackTrace) {
+        developer.log(
+          '收藏操作失败',
+          name: 'common-list',
+          error: error,
+          stackTrace: stackTrace,
+        );
         if (!mounted) return;
         ScaffoldMessenger.of(
           context,
