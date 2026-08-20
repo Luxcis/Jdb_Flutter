@@ -5,10 +5,22 @@ import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 
 class ActorGridView extends StatelessWidget {
-  const ActorGridView({super.key, required this.controller, this.onActorTap});
+  const ActorGridView({
+    super.key,
+    required this.controller,
+    this.onActorTap,
+    this.selectionMode = false,
+    this.selectedIds = const {},
+    this.onToggleSelect,
+  });
 
   final PaginationController<ActorSummary> controller;
   final void Function(ActorSummary)? onActorTap;
+
+  /// When true, tapping an item toggles selection instead of opening details.
+  final bool selectionMode;
+  final Set<String> selectedIds;
+  final void Function(ActorSummary)? onToggleSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -81,9 +93,20 @@ class ActorGridView extends StatelessWidget {
                         if (index < controller.items.length) {
                           return ActorCard(
                             actor: controller.items[index],
-                            onTap: onActorTap != null
+                            onTap: selectionMode
+                                ? (onToggleSelect == null
+                                      ? null
+                                      : () => onToggleSelect!(
+                                          controller.items[index],
+                                        ))
+                                : onActorTap != null
                                 ? () => onActorTap!(controller.items[index])
                                 : null,
+                            selected:
+                                selectionMode &&
+                                selectedIds.contains(
+                                  controller.items[index].id,
+                                ),
                           );
                         }
 
