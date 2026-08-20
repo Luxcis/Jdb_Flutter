@@ -206,6 +206,27 @@ void main() {
     expect(request.data, {'ids': '1,2,3'});
   });
 
+  test('batchUncollectActors 空列表不发请求', () async {
+    final fixture = await buildFavoritesFixture();
+
+    await fixture.service.batchUncollectActors([]);
+
+    expect(fixture.adapter.requests, isEmpty);
+  });
+
+  test('getHasCollected 请求失败返回 null', () async {
+    final fixture = await buildFavoritesFixture();
+    fixture.adapter.throwFirst('/api/v1/lists/l1', DioException(
+      requestOptions: RequestOptions(path: '/api/v1/lists/l1'),
+      error: 'connection reset',
+    ));
+
+    final result = await fixture.service.getHasCollected('l', 'l1');
+
+    expect(result, isNull);
+    expect(fixture.adapter.requests, hasLength(1));
+  });
+
   test('getHasCollected 按 category 解析 has_collected', () async {
     final fixture = await buildFavoritesFixture();
     fixture.adapter.enqueue('/api/v1/lists/l1', {
@@ -242,5 +263,20 @@ void main() {
     expect(request.method, 'POST');
     expect(request.path, '/api/v1/actors/a1/collect_actions');
     expect(request.data, {'name': 'collect'});
+  });
+
+  test('setCollected collect=false 发送 uncollect body', () async {
+    final fixture = await buildFavoritesFixture();
+    fixture.adapter.enqueue('/api/v1/actors/a1/collect_actions', {
+      'success': 1,
+      'data': null,
+    });
+
+    await fixture.service.setCollected('a', 'a1', false);
+
+    final request = fixture.adapter.requests.single;
+    expect(request.method, 'POST');
+    expect(request.path, '/api/v1/actors/a1/collect_actions');
+    expect(request.data, {'name': 'uncollect'});
   });
 }
