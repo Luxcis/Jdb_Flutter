@@ -219,9 +219,11 @@ class _CollectedEntitiesPageState extends State<CollectedEntitiesPage> {
         ),
         if (_busy)
           const Positioned.fill(
-            child: ColoredBox(
-              color: Color(0x73000000),
-              child: Center(child: CircularProgressIndicator()),
+            child: AbsorbPointer(
+              child: ColoredBox(
+                color: Color(0x73000000),
+                child: Center(child: CircularProgressIndicator()),
+              ),
             ),
           ),
       ],
@@ -383,9 +385,11 @@ class _CollectedListsPageState extends State<CollectedListsPage> {
         ),
         if (_busy)
           const Positioned.fill(
-            child: ColoredBox(
-              color: Color(0x73000000),
-              child: Center(child: CircularProgressIndicator()),
+            child: AbsorbPointer(
+              child: ColoredBox(
+                color: Color(0x73000000),
+                child: Center(child: CircularProgressIndicator()),
+              ),
             ),
           ),
       ],

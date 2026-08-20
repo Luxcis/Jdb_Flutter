@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/network/api_client.dart';
@@ -114,18 +116,26 @@ class _CollectedActorsPageState extends State<CollectedActorsPage>
     try {
       try {
         await _dataSource.batchUncollectActors(ids);
-      } catch (_) {
+      } catch (error, stackTrace) {
+        developer.log(
+          '批量取关失败',
+          name: 'collected-actors',
+          error: error,
+          stackTrace: stackTrace,
+        );
         if (!mounted) return;
         _showMessage('批量取关失败');
         return;
       }
       if (!mounted) return;
-      final index = _tabController.index;
-      final controller = _controllers[index];
-      await controller.reloadWith(
-        (page) =>
-            _dataSource.getCollectedActors(type: _tabs[index].type, page: page),
-      );
+      // 服务器为准：批量取关后所有已加载 Tab 统一重载，避免其他 Tab
+      // 残留已取消收藏的演员（仍可被再次选中）。
+      for (final index in _loadedTabs.toList()) {
+        await _controllers[index].reloadWith(
+          (page) =>
+              _dataSource.getCollectedActors(type: _tabs[index].type, page: page),
+        );
+      }
       if (!mounted) return;
       setState(() {
         _editing = false;
@@ -203,9 +213,11 @@ class _CollectedActorsPageState extends State<CollectedActorsPage>
         ),
         if (_busy)
           const Positioned.fill(
-            child: ColoredBox(
-              color: Color(0x73000000),
-              child: Center(child: CircularProgressIndicator()),
+            child: AbsorbPointer(
+              child: ColoredBox(
+                color: Color(0x73000000),
+                child: Center(child: CircularProgressIndicator()),
+              ),
             ),
           ),
       ],
