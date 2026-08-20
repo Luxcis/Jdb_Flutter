@@ -4,7 +4,6 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/constants/app_constants.dart';
-import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/network/api_client.dart';
@@ -14,7 +13,6 @@ import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/providers/theme_provider.dart';
 import 'package:jade/core/router/routes.dart';
-import 'package:jade/core/widgets/actor_grid_view.dart';
 import 'package:jade/core/widgets/filter_drawer.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/movie_list_tile.dart';
@@ -213,79 +211,6 @@ class ProfileFavoritesPage extends StatelessWidget {
           route: AppRoutes.profileFavoritesLists,
         ),
       ],
-    );
-  }
-}
-
-class ProfileFavoriteActorsPage extends StatefulWidget {
-  const ProfileFavoriteActorsPage({super.key});
-
-  @override
-  State<ProfileFavoriteActorsPage> createState() =>
-      _ProfileFavoriteActorsPageState();
-}
-
-class _ProfileFavoriteActorsPageState extends State<ProfileFavoriteActorsPage>
-    with TickerProviderStateMixin {
-  late final TabController _tabController;
-  late final PaginationController<ActorSummary> _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-    _controller = PaginationController<ActorSummary>(
-      fetch: (page) async =>
-          const PagedResult(items: [], currentPage: 1, totalPages: 1, total: 0),
-    )..fetchMore();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    const tabs = ['全部', '有码', '无码', '欧美'];
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('收藏的演员'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: tabs.map((tab) => Tab(text: tab)).toList(),
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: tabs
-            .map((_) => ActorGridView(controller: _controller))
-            .toList(growable: false),
-      ),
-    );
-  }
-}
-
-class ProfileNamedCollectionPage extends StatelessWidget {
-  const ProfileNamedCollectionPage({super.key, required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return _CellScaffold(
-      title: title,
-      cells: List.generate(
-        6,
-        (i) => _ProfileCell(
-          title: '$title ${i + 1}',
-          subtitle: title.contains('清单') || title == '我的清单'
-              ? '0部影片，被查看0次'
-              : null,
-          icon: Icons.chevron_right,
-        ),
-      ),
     );
   }
 }
