@@ -207,7 +207,7 @@ class ProfileFavoritesPage extends StatelessWidget {
           route: AppRoutes.profileFavoritesCodes,
         ),
         _ProfileCell(
-          title: '清单',
+          title: '收藏的清单',
           subtitle: '0部影片，被查看0次',
           icon: Icons.list_alt,
           route: AppRoutes.profileFavoritesLists,

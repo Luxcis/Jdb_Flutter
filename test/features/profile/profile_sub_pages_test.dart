@@ -141,7 +141,7 @@ void main() {
     expect(find.text('收藏的系列'), findsOneWidget);
     expect(find.text('收藏的导演'), findsOneWidget);
     expect(find.text('收藏的番号'), findsOneWidget);
-    expect(find.text('清单'), findsOneWidget);
+    expect(find.text('收藏的清单'), findsOneWidget);
   });
 
   testWidgets('设置页展示原设置项并切换持久化影片图片模糊', (tester) async {
