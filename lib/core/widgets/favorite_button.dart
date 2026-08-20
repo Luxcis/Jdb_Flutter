@@ -20,7 +20,7 @@ class FavoriteButton extends StatelessWidget {
       onPressed: busy ? null : onPressed,
       icon: Icon(
         hasCollected ? Icons.favorite : Icons.favorite_border,
-        color: hasCollected ? Colors.redAccent : null,
+        color: hasCollected ? Colors.redAccent[700] : null,
       ),
     );
   }
