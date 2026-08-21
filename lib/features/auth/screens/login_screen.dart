@@ -120,6 +120,8 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final from = GoRouterState.of(context).uri.queryParameters['from'] ?? '';
     final hasFrom = from.isNotEmpty;
+    final reason = GoRouterState.of(context).uri.queryParameters['reason'];
+    final sessionExpired = reason == 'expired';
 
     return PopScope(
       canPop: true,
@@ -140,6 +142,17 @@ class _LoginPageState extends State<LoginPage> {
                   child: Text(
                     '请登录后继续',
                     style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              if (sessionExpired)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Text(
+                    '登录已过期，请重新登录',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
               TextField(

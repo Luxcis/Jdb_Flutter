@@ -164,6 +164,20 @@ void main() {
     expect(subject.auth.isLogged, isTrue);
     expect(subject.router.state.uri.path, '/home');
   });
+
+  testWidgets('reason=expired 时显示登录过期提示条', (tester) async {
+    final store = _MemoryLoginCredentialStore();
+    await _pumpLogin(tester, credentialStore: store, initialLocation: '/login?reason=expired');
+
+    expect(find.text('登录已过期，请重新登录'), findsOneWidget);
+  });
+
+  testWidgets('无 reason 参数时不显示登录过期提示条', (tester) async {
+    final store = _MemoryLoginCredentialStore();
+    await _pumpLogin(tester, credentialStore: store);
+
+    expect(find.text('登录已过期，请重新登录'), findsNothing);
+  });
 }
 
 Future<({AuthProvider auth, FakeAdapter adapter, GoRouter router})> _pumpLogin(
@@ -171,6 +185,7 @@ Future<({AuthProvider auth, FakeAdapter adapter, GoRouter router})> _pumpLogin(
   required LoginCredentialStore credentialStore,
   Map<String, dynamic>? response,
   bool settle = true,
+  String initialLocation = '/login',
 }) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
@@ -195,7 +210,7 @@ Future<({AuthProvider auth, FakeAdapter adapter, GoRouter router})> _pumpLogin(
   api.setAdapterForTest(adapter);
 
   final router = GoRouter(
-    initialLocation: '/login',
+    initialLocation: initialLocation,
     routes: [
       GoRoute(
         path: '/login',
