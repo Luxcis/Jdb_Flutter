@@ -26,7 +26,7 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   Future<(AuthProvider, _FakeTokenAuthenticationService)>
-      _loggedInService({
+      loggedInService({
     required Future<Map<String, dynamic>> Function(String) onAuthenticate,
   }) async {
     final prefs = await SharedPreferences.getInstance();
@@ -57,7 +57,7 @@ void main() {
   });
 
   test('校验成功时更新用户缓存并返回 success', () async {
-    final (auth, tokenAuthentication) = await _loggedInService(
+    final (auth, tokenAuthentication) = await loggedInService(
       onAuthenticate: (_) async => {
         'id': 1,
         'username': 'fresh-user',
@@ -83,7 +83,7 @@ void main() {
   });
 
   test('鉴权失败时登出并返回 expired', () async {
-    final (auth, tokenAuthentication) = await _loggedInService(
+    final (auth, tokenAuthentication) = await loggedInService(
       onAuthenticate: (_) async =>
           throw const ApiException(action: ApiErrorActions.jwtVerificationError),
     );
@@ -101,7 +101,7 @@ void main() {
   });
 
   test('DioException 嵌套鉴权失败时登出并返回 expired（生产形态）', () async {
-    final (auth, tokenAuthentication) = await _loggedInService(
+    final (auth, tokenAuthentication) = await loggedInService(
       onAuthenticate: (_) async => throw DioException(
         requestOptions: RequestOptions(path: '/api/v1/users'),
         error: const ApiException(action: ApiErrorActions.jwtVerificationError),
@@ -121,7 +121,7 @@ void main() {
   });
 
   test('HTTP 401 时登出并返回 expired', () async {
-    final (auth, tokenAuthentication) = await _loggedInService(
+    final (auth, tokenAuthentication) = await loggedInService(
       onAuthenticate: (_) async => throw DioException(
         requestOptions: RequestOptions(path: '/api/v1/users'),
         response: Response(
@@ -143,7 +143,7 @@ void main() {
   });
 
   test('网络错误时保留会话并返回 failure', () async {
-    final (auth, tokenAuthentication) = await _loggedInService(
+    final (auth, tokenAuthentication) = await loggedInService(
       onAuthenticate: (_) async => throw DioException(
         requestOptions: RequestOptions(path: '/api/v1/users'),
         type: DioExceptionType.connectionTimeout,
@@ -162,7 +162,7 @@ void main() {
   });
 
   test('非鉴权 ApiException 保留会话并返回 failure', () async {
-    final (auth, tokenAuthentication) = await _loggedInService(
+    final (auth, tokenAuthentication) = await loggedInService(
       onAuthenticate: (_) async =>
           throw const ApiException(action: ApiErrorActions.parameterInvalid),
     );
