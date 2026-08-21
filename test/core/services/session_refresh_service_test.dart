@@ -100,6 +100,26 @@ void main() {
     expect(auth.user, isNull);
   });
 
+  test('DioException 嵌套鉴权失败时登出并返回 expired（生产形态）', () async {
+    final (auth, tokenAuthentication) = await _loggedInService(
+      onAuthenticate: (_) async => throw DioException(
+        requestOptions: RequestOptions(path: '/api/v1/users'),
+        error: const ApiException(action: ApiErrorActions.jwtVerificationError),
+      ),
+    );
+    final service = ApiSessionRefreshService(
+      auth: auth,
+      tokenAuthentication: tokenAuthentication,
+    );
+
+    final status = await service.refresh();
+
+    expect(status, SessionRefreshStatus.expired);
+    expect(auth.isLogged, isFalse);
+    expect(auth.token, isNull);
+    expect(auth.user, isNull);
+  });
+
   test('HTTP 401 时登出并返回 expired', () async {
     final (auth, tokenAuthentication) = await _loggedInService(
       onAuthenticate: (_) async => throw DioException(
