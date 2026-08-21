@@ -146,6 +146,56 @@ void main() {
     expect(restored.user, isNull);
     expect(restored.isLogged, isFalse);
   });
+
+  test('updateUser 保留 token、刷新 user 并持久化', () async {
+    final prefs = _ControlledSharedPreferences();
+    final auth = await AuthProvider.create(prefs);
+    final listener = _RecordingListener();
+    auth.addListener(listener.onChanged);
+    await auth.login(
+      token: 'session-token',
+      user: {'id': 1, 'username': 'old-user', 'want_watch_count': 1},
+    );
+    listener.calls = 0;
+
+    await auth.updateUser({
+      'id': 1,
+      'username': 'fresh-user',
+      'want_watch_count': 5,
+      'watched_count': 3,
+    });
+
+    expect(auth.token, 'session-token');
+    expect(auth.user, {
+      'id': 1,
+      'username': 'fresh-user',
+      'want_watch_count': 5,
+      'watched_count': 3,
+    });
+    expect(auth.isLogged, isTrue);
+    expect(listener.calls, 1);
+    final storedSession = prefs.getString(_authSessionKey);
+    expect(jsonDecode(storedSession!), {
+      'token': 'session-token',
+      'user': {
+        'id': 1,
+        'username': 'fresh-user',
+        'want_watch_count': 5,
+        'watched_count': 3,
+      },
+    });
+  });
+
+  test('updateUser 未登录时为空操作', () async {
+    final prefs = _ControlledSharedPreferences();
+    final auth = await AuthProvider.create(prefs);
+
+    await auth.updateUser({'id': 1, 'username': 'ghost-user'});
+
+    expect(auth.token, isNull);
+    expect(auth.user, isNull);
+    expect(prefs.setStringKeys, isEmpty);
+  });
 }
 
 final class _ControlledSharedPreferences implements SharedPreferences {
@@ -212,4 +262,9 @@ final class _SessionWriteException implements Exception {
 
   @override
   String toString() => 'Session write failed: $message';
+}
+
+final class _RecordingListener {
+  var calls = 0;
+  void onChanged() => calls++;
 }

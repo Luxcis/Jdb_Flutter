@@ -100,4 +100,18 @@ class AuthProvider extends ChangeNotifier implements TokenProvider {
     notifyListeners();
     await _removeLegacySession();
   }
+
+  /// 用最新用户信息刷新当前会话（token 不变，写回持久化并通知 UI）。
+  ///
+  /// 未登录时为空操作（不写持久化、不通知）。
+  Future<void> updateUser(Map<String, dynamic> user) async {
+    final currentToken = _token;
+    if (currentToken == null || currentToken.isEmpty) return;
+    await _persistSession(
+      jsonEncode({'token': currentToken, 'user': user}),
+      failureMessage: 'Failed to persist refreshed session',
+    );
+    _user = Map<String, dynamic>.from(user);
+    notifyListeners();
+  }
 }
