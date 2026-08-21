@@ -100,7 +100,7 @@ class _LoginPageState extends State<LoginPage> {
       await context.read<AuthProvider>().login(token: token, user: user);
       if (!mounted) return;
       final from = GoRouterState.of(context).uri.queryParameters['from'] ?? '';
-      context.go(from.isNotEmpty ? from : '/home');
+      context.go(from.isNotEmpty ? Uri.decodeComponent(from) : '/home');
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {

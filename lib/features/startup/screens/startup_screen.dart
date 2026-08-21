@@ -51,7 +51,10 @@ class _StartupPageState extends State<StartupPage> {
     if (!mounted) return;
     if (status == SessionRefreshStatus.expired) {
       context.go(
-        '${AppRoutes.login}?from=${Uri.encodeComponent(AppRoutes.home)}&reason=expired',
+        Uri(
+          path: AppRoutes.login,
+          queryParameters: {'from': AppRoutes.home, 'reason': 'expired'},
+        ).toString(),
       );
       return;
     }

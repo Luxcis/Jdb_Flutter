@@ -186,6 +186,29 @@ void main() {
     });
   });
 
+  test('updateUser 权威会话写入返回 false 时保留旧内存与持久化会话', () async {
+    final oldUser = {'id': 1, 'username': 'old-user', 'want_watch_count': 1};
+    final oldSession = jsonEncode({'token': 'session-token', 'user': oldUser});
+    final prefs = _ControlledSharedPreferences(
+      initialValues: {_authSessionKey: oldSession},
+      failSessionWrite: true,
+    );
+    final auth = await AuthProvider.create(prefs);
+
+    await expectLater(
+      () => auth.updateUser({
+        'id': 1,
+        'username': 'fresh-user',
+        'want_watch_count': 5,
+      }),
+      throwsA(isA<StateError>()),
+    );
+
+    expect(auth.token, 'session-token');
+    expect(auth.user, oldUser);
+    expect(prefs.getString(_authSessionKey), oldSession);
+  });
+
   test('updateUser 未登录时为空操作', () async {
     final prefs = _ControlledSharedPreferences();
     final auth = await AuthProvider.create(prefs);

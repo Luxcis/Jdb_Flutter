@@ -68,9 +68,8 @@ Future<GoRouter> _pumpSubject(
     routes: [
       GoRoute(
         path: '/startup',
-        builder: (context, state) => StartupPage(
-          sessionRefreshService: sessionRefreshService,
-        ),
+        builder: (context, state) =>
+            StartupPage(sessionRefreshService: sessionRefreshService),
       ),
       GoRoute(
         path: '/home',
@@ -197,6 +196,7 @@ void main() {
     expect(refresh.calls, 1);
     expect(router.state.uri.path, '/login');
     expect(router.state.uri.queryParameters['reason'], 'expired');
+    expect(router.state.uri.queryParameters['from'], '/home');
   });
 
   testWidgets('校验网络失败时保留会话并 go 首页', (tester) async {

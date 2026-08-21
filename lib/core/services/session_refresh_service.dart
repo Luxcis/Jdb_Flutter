@@ -47,7 +47,7 @@ final class ApiSessionRefreshService implements SessionRefreshService {
       return SessionRefreshStatus.success;
     } on ApiException catch (error) {
       if (error.isAuthError) {
-        await _auth.logout();
+        await _logoutBestEffort();
         return SessionRefreshStatus.expired;
       }
       return SessionRefreshStatus.failure;
@@ -55,12 +55,20 @@ final class ApiSessionRefreshService implements SessionRefreshService {
       final cause = error.error;
       if (error.response?.statusCode == 401 ||
           (cause is ApiException && cause.isAuthError)) {
-        await _auth.logout();
+        await _logoutBestEffort();
         return SessionRefreshStatus.expired;
       }
       return SessionRefreshStatus.failure;
     } catch (_) {
       return SessionRefreshStatus.failure;
+    }
+  }
+
+  Future<void> _logoutBestEffort() async {
+    try {
+      await _auth.logout();
+    } catch (_) {
+      // 登出持久化失败时尽力而为，仍返回 expired 由 UI 引导重登。
     }
   }
 }
