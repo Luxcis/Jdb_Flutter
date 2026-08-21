@@ -2022,6 +2022,45 @@ void main() {
     expect(relatedDividers.single.endIndent, 16);
   });
 
+  testWidgets('点击相关清单条目经内置跳转打开 common-list 并可返回', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(adapter);
+    final router = _buildMovieDetailRouter();
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.text('相关清单'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(ListSummaryTile), findsNWidgets(2));
+
+    await tester.tap(find.byType(ListSummaryTile).first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(router.state.uri.path, AppRoutes.commonList);
+    expect(router.state.uri.queryParameters, {
+      'title': '清单 - 测试相关清单',
+      'type': '0',
+      'category': 'l',
+      'id': 'list-1',
+    });
+
+    router.pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(router.state.uri.path, '/movie/m1');
+    expect(find.text('测试相关清单'), findsOneWidget);
+  });
+
   testWidgets('点击存入清单打开弹窗并按 has_movie 勾选清单', (tester) async {
     _mockPathProvider(tester);
     tester.view.physicalSize = const Size(390, 844);
