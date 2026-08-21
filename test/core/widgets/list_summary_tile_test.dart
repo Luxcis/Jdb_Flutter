@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/list_model.dart';
+import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/widgets/list_summary_tile.dart';
 
 void main() {
@@ -33,19 +35,44 @@ void main() {
     expect(tapped, isTrue);
   });
 
-  testWidgets('未提供点击回调时保持不可点击', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: ListSummaryTile(
-            list: ListModel(id: 'l1', name: '静态清单'),
+  testWidgets('未提供 onTap 时默认跳转 common-list', (tester) async {
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, __) => const Scaffold(
+            body: ListSummaryTile(
+              list: ListModel(
+                id: 'l1',
+                name: '收藏精选',
+                movieCount: 12,
+                viewedCount: 34,
+              ),
+            ),
           ),
         ),
-      ),
+        GoRoute(
+          path: AppRoutes.commonList,
+          builder: (_, state) => Scaffold(
+            body: Text('common-list ${state.uri.queryParameters}'),
+          ),
+        ),
+      ],
     );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
 
-    final tile = tester.widget<ListTile>(find.byType(ListTile));
-    expect(tile.onTap, isNull);
+    await tester.tap(find.byType(ListSummaryTile));
+    await tester.pumpAndSettle();
+
+    expect(router.state.uri.path, AppRoutes.commonList);
+    expect(router.state.uri.queryParameters, {
+      'title': '清单 - 收藏精选',
+      'type': '0',
+      'category': 'l',
+      'id': 'l1',
+    });
   });
 
   testWidgets('showViewCount 为 false 时副标题不显示被查看次数', (tester) async {
