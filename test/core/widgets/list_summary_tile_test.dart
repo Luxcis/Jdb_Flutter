@@ -41,7 +41,7 @@ void main() {
       routes: [
         GoRoute(
           path: '/',
-          builder: (_, __) => const Scaffold(
+          builder: (_, _) => const Scaffold(
             body: ListSummaryTile(
               list: ListModel(
                 id: 'l1',
