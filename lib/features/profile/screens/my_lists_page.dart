@@ -3,11 +3,9 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/list_model.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/network/api_client.dart';
-import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/widgets/list_summary_tile.dart';
 import 'package:jade/core/widgets/paginated_list_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
@@ -146,20 +144,6 @@ class _MyListsPageState extends State<MyListsPage> {
     }
   }
 
-  void _openListMovies(ListModel list) {
-    context.push(
-      Uri(
-        path: AppRoutes.commonList,
-        queryParameters: {
-          'title': '清单 - ${list.name}',
-          'type': '0',
-          'category': 'l',
-          'id': list.id,
-        },
-      ).toString(),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final sortLabel = _sortBy == _sortByUpdatedAt ? '更新时间' : '创建时间';
@@ -203,10 +187,7 @@ class _MyListsPageState extends State<MyListsPage> {
                   ),
                 ],
               ),
-              child: ListSummaryTile(
-                list: list,
-                onTap: () => _openListMovies(list),
-              ),
+              child: ListSummaryTile(list: list),
             ),
           ),
         ),

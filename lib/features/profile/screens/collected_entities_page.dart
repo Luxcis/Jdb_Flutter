@@ -366,20 +366,7 @@ class _CollectedListsPageState extends State<CollectedListsPage> {
                   ),
                 ],
               ),
-              child: ListSummaryTile(
-                list: list,
-                onTap: () => context.push(
-                  Uri(
-                    path: AppRoutes.commonList,
-                    queryParameters: {
-                      'title': '清单 - ${list.name}',
-                      'type': '0',
-                      'category': 'l',
-                      'id': list.id,
-                    },
-                  ).toString(),
-                ),
-              ),
+              child: ListSummaryTile(list: list),
             ),
           ),
         ),

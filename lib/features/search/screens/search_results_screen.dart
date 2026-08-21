@@ -220,17 +220,6 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                   itemBuilder: (context, item) => ListSummaryTile(
                     list: item,
                     showViewCount: false,
-                    onTap: () => context.push(
-                      Uri(
-                        path: AppRoutes.commonList,
-                        queryParameters: {
-                          'title': '清单 - ${item.name}',
-                          'type': '0',
-                          'category': 'l',
-                          'id': item.id,
-                        },
-                      ).toString(),
-                    ),
                   ),
                 ),
                 _PaginatedEntitySearchTab<Code>(
