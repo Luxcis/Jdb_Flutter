@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/startup_provider.dart';
 import 'package:jade/core/router/routes.dart';
+import 'package:jade/core/services/session_refresh_service.dart';
+import 'package:jade/features/profile/services/token_authentication_service.dart';
 import 'package:provider/provider.dart';
 
 class StartupPage extends StatefulWidget {
-  const StartupPage({super.key});
+  const StartupPage({super.key, this.sessionRefreshService});
+
+  final SessionRefreshService? sessionRefreshService;
 
   @override
   State<StartupPage> createState() => _StartupPageState();
@@ -23,9 +29,33 @@ class _StartupPageState extends State<StartupPage> {
   Future<void> _load({bool retry = false}) async {
     final provider = context.read<StartupProvider>();
     final succeeded = retry ? await provider.retry() : await provider.load();
-    if (succeeded && mounted) {
+    if (!succeeded || !mounted) return;
+    await _refreshSessionThenNavigate();
+  }
+
+  Future<void> _refreshSessionThenNavigate() async {
+    final auth = context.read<AuthProvider>();
+    if (!auth.isLogged) {
       context.go(AppRoutes.home);
+      return;
     }
+    final service =
+        widget.sessionRefreshService ??
+        ApiSessionRefreshService(
+          auth: auth,
+          tokenAuthentication: ApiTokenAuthenticationService(
+            ApiClient.instance,
+          ),
+        );
+    final status = await service.refresh();
+    if (!mounted) return;
+    if (status == SessionRefreshStatus.expired) {
+      context.go(
+        '${AppRoutes.login}?from=${Uri.encodeComponent(AppRoutes.home)}&reason=expired',
+      );
+      return;
+    }
+    context.go(AppRoutes.home);
   }
 
   @override

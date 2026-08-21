@@ -8,7 +8,9 @@ import 'package:jade/core/models/startup.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/domain_manager.dart';
 import 'package:jade/core/network/startup_api_client.dart';
+import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/startup_provider.dart';
+import 'package:jade/core/services/session_refresh_service.dart';
 import 'package:jade/features/startup/screens/startup_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -24,6 +26,19 @@ class _FakeStartupApi implements StartupApi {
     final response = responses[calls];
     calls += 1;
     return response();
+  }
+}
+
+final class _FakeSessionRefreshService implements SessionRefreshService {
+  _FakeSessionRefreshService(this._result);
+
+  final Future<SessionRefreshStatus> Function() _result;
+  int calls = 0;
+
+  @override
+  Future<SessionRefreshStatus> refresh() {
+    calls++;
+    return _result();
   }
 }
 
@@ -44,25 +59,36 @@ Future<StartupProvider> _createProvider(StartupApi startupApi) async {
 
 Future<GoRouter> _pumpSubject(
   WidgetTester tester,
-  StartupProvider provider,
-) async {
+  StartupProvider provider, {
+  AuthProvider? auth,
+  SessionRefreshService? sessionRefreshService,
+}) async {
   final router = GoRouter(
     initialLocation: '/startup',
     routes: [
       GoRoute(
         path: '/startup',
-        builder: (context, state) => const StartupPage(),
+        builder: (context, state) => StartupPage(
+          sessionRefreshService: sessionRefreshService,
+        ),
       ),
       GoRoute(
         path: '/home',
         builder: (context, state) => const Scaffold(body: Text('测试首页')),
       ),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const Scaffold(body: Text('测试登录页')),
+      ),
     ],
   );
   addTearDown(router.dispose);
   await tester.pumpWidget(
-    ChangeNotifierProvider.value(
-      value: provider,
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: provider),
+        if (auth != null) ChangeNotifierProvider.value(value: auth),
+      ],
       child: MaterialApp.router(routerConfig: router),
     ),
   );
@@ -98,7 +124,11 @@ void main() {
       () => const StartupData(backupDomainsData: 'ciphertext'),
     ]);
     final provider = await _createProvider(api);
-    final router = await _pumpSubject(tester, provider);
+    // 注入未登录的 AuthProvider：重试成功后 _refreshSessionThenNavigate
+    // 会 context.read<AuthProvider>()，未登录分支直接 go 首页。
+    final prefs = await SharedPreferences.getInstance();
+    final auth = await AuthProvider.create(prefs);
+    final router = await _pumpSubject(tester, provider, auth: auth);
 
     await tester.pumpAndSettle();
     expect(find.text('启动失败，请检查网络后重试'), findsOneWidget);
@@ -112,5 +142,111 @@ void main() {
     expect(router.state.uri.path, '/home');
     expect(find.text('测试首页'), findsOneWidget);
     expect(router.canPop(), isFalse);
+  });
+
+  testWidgets('已登录且校验成功时 go 首页', (tester) async {
+    final api = _FakeStartupApi([
+      () => const StartupData(backupDomainsData: 'ciphertext'),
+    ]);
+    final provider = await _createProvider(api);
+    final prefs = await SharedPreferences.getInstance();
+    final auth = await AuthProvider.create(prefs);
+    await auth.login(
+      token: 'session-token',
+      user: {'id': 1, 'username': 'cached-user'},
+    );
+    final refresh = _FakeSessionRefreshService(
+      () async => SessionRefreshStatus.success,
+    );
+
+    final router = await _pumpSubject(
+      tester,
+      provider,
+      auth: auth,
+      sessionRefreshService: refresh,
+    );
+    await tester.pumpAndSettle();
+
+    expect(refresh.calls, 1);
+    expect(router.state.uri.path, '/home');
+  });
+
+  testWidgets('校验过期时 go 登录页并带 reason=expired', (tester) async {
+    final api = _FakeStartupApi([
+      () => const StartupData(backupDomainsData: 'ciphertext'),
+    ]);
+    final provider = await _createProvider(api);
+    final prefs = await SharedPreferences.getInstance();
+    final auth = await AuthProvider.create(prefs);
+    await auth.login(
+      token: 'session-token',
+      user: {'id': 1, 'username': 'cached-user'},
+    );
+    final refresh = _FakeSessionRefreshService(
+      () async => SessionRefreshStatus.expired,
+    );
+
+    final router = await _pumpSubject(
+      tester,
+      provider,
+      auth: auth,
+      sessionRefreshService: refresh,
+    );
+    await tester.pumpAndSettle();
+
+    expect(refresh.calls, 1);
+    expect(router.state.uri.path, '/login');
+    expect(router.state.uri.queryParameters['reason'], 'expired');
+  });
+
+  testWidgets('校验网络失败时保留会话并 go 首页', (tester) async {
+    final api = _FakeStartupApi([
+      () => const StartupData(backupDomainsData: 'ciphertext'),
+    ]);
+    final provider = await _createProvider(api);
+    final prefs = await SharedPreferences.getInstance();
+    final auth = await AuthProvider.create(prefs);
+    await auth.login(
+      token: 'session-token',
+      user: {'id': 1, 'username': 'cached-user'},
+    );
+    final refresh = _FakeSessionRefreshService(
+      () async => SessionRefreshStatus.failure,
+    );
+
+    final router = await _pumpSubject(
+      tester,
+      provider,
+      auth: auth,
+      sessionRefreshService: refresh,
+    );
+    await tester.pumpAndSettle();
+
+    expect(refresh.calls, 1);
+    expect(auth.isLogged, isTrue);
+    expect(router.state.uri.path, '/home');
+  });
+
+  testWidgets('未登录时不调用校验直接 go 首页', (tester) async {
+    final api = _FakeStartupApi([
+      () => const StartupData(backupDomainsData: 'ciphertext'),
+    ]);
+    final provider = await _createProvider(api);
+    final prefs = await SharedPreferences.getInstance();
+    final auth = await AuthProvider.create(prefs);
+    final refresh = _FakeSessionRefreshService(
+      () async => SessionRefreshStatus.skipped,
+    );
+
+    final router = await _pumpSubject(
+      tester,
+      provider,
+      auth: auth,
+      sessionRefreshService: refresh,
+    );
+    await tester.pumpAndSettle();
+
+    expect(refresh.calls, 0);
+    expect(router.state.uri.path, '/home');
   });
 }
