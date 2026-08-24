@@ -1460,7 +1460,28 @@ void main() {
 
 - [ ] **步骤 4：在 app_router.dart 注册路由**
 
-在 `AppRoutes` 加 `static const String followTagMovies = '/following/tag/:value';`，在 `AppRouter` 注册指向 `FollowTagMoviesPage`，从 `state.pathParameters['value']` 取参并 `Uri.decodeComponent`。
+a) 创建 `lib/features/following/index.dart`（feature 入口），导出本页：
+
+```dart
+export 'screens/follow_tag_movies_page.dart';
+```
+
+b) 在 `lib/core/router/app_router.dart` 顶部 imports 中加入 `import 'package:jade/features/following/index.dart';`（跟随其它 feature index 的 import 风格）。
+
+c) 在 `AppRoutes` 加 `static const String followTagMovies = '/following/tag/:value';`。
+
+d) 在 `AppRouter` 的 `_routes` 中注册一个 `GoRoute`，指向 `FollowTagMoviesPage`，从 `state.pathParameters['value']` 取参并 `Uri.decodeComponent`：
+
+```dart
+GoRoute(
+  path: AppRoutes.followTagMovies,
+  builder: (c, s) => FollowTagMoviesPage(
+    value: Uri.decodeComponent(s.pathParameters['value']!),
+  ),
+),
+```
+
+（放置位置可贴近 `AppRoutes.profileFollowing` 等 profile 子路由之后；需在返回 `routes` 的列表中。）
 
 - [ ] **步骤 5：运行测试验证通过**
 
@@ -1470,7 +1491,7 @@ void main() {
 - [ ] **步骤 6：Commit**
 
 ```bash
-git add lib/features/following/screens/follow_tag_movies_page.dart lib/core/router/app_router.dart test/features/following/follow_tag_movies_page_test.dart
+git add lib/features/following/screens/follow_tag_movies_page.dart lib/features/following/index.dart lib/core/router/app_router.dart test/features/following/follow_tag_movies_page_test.dart
 git commit -m "feat(following): add followed tag movie list page"
 ```
 
