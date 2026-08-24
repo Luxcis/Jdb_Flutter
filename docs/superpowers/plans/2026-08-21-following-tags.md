@@ -926,7 +926,20 @@ actions: [
 ],
 ```
 
-> 注意：`controller._groupOrder` 是私有。需在 `CategoryTabController` 暴露一个公开 getter（如 `List<CategoryFilterGroupOrder> get groupOrder`），或在按钮处用 `controller.filter.toFilterBy(controller.type, controller.groupOrder)`。**实现时在 `CategoryTabController` 加公开 `groupOrder` getter**。同理判断「已选中标签非空」需一个公开方法，例如 `bool get hasSelectedTags => filter.extraByCategory.values.any((s) => s.isNotEmpty)` 或复用 `filter` 的选中集合。
+> 注意：`controller._groupOrder` 是私有。**本任务必须在 `CategoryTabController`（`lib/features/categories/services/category_tab_controller.dart`）新增两个公开 getter**：
+>
+> ```dart
+> /// 供类别页关注按钮构建 filter_by。
+> List<CategoryFilterGroupOrder> get groupOrder => _groupOrder;
+>
+> /// 是否选中了任一标签（关注按钮启用条件）。
+> bool get hasSelectedTags => _groups
+>     .any((group) => _filter.selectedValues(group.categoryId).isNotEmpty);
+> ```
+>
+> 启用判断 `enabled` 用 `controller.hasSelectedTags`；`value` 用 `controller.filter.toFilterBy(controller.type, controller.groupOrder)`。注意 `hasSelectedTags` 依据 `_groups`（=/api/v2/tags 返回的分组），因此未加载标签时为空，按钮禁用——符合预期。
+>
+> `_selectedTagNames` 只收集**标签分组**（`controller.groups` 中 `filter.selectedValues(group.categoryId)` 命中的 `item.name`），不含 `main/year/month` 等单值筛选，符合"将当前选中的标签名称拼接为 name"。
 
 - [ ] **步骤 3：实现 `_toggleFollowing`**
 
