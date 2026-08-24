@@ -49,4 +49,5 @@ class AppRoutes {
   static const String profileLists = '/profile/lists';
   static const String profileRecent = '/profile/recent';
   static const String profileSettings = '/profile/settings';
+  static const String followTagMovies = '/following/tag/:value';
 }

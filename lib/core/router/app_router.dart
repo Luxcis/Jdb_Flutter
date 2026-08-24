@@ -19,6 +19,7 @@ import 'package:jade/features/startup/index.dart';
 import 'package:jade/features/reviews/index.dart';
 import 'package:jade/features/series/index.dart';
 import 'package:jade/features/common/index.dart';
+import 'package:jade/features/following/index.dart';
 
 class AppRouter {
   const AppRouter._();
@@ -324,6 +325,12 @@ class AppRouter {
     GoRoute(
       path: AppRoutes.profileSettings,
       builder: (c, s) => const ProfileSettingsPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.followTagMovies,
+      builder: (c, s) => FollowTagMoviesPage(
+        value: Uri.decodeComponent(s.pathParameters['value']!),
+      ),
     ),
   ];
 }
