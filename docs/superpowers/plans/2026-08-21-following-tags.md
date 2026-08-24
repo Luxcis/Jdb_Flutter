@@ -763,28 +763,45 @@ git commit -m "feat(following): add FollowingTagsProvider global state"
 
 - [ ] **步骤 1：在 main.dart 注册 Provider**
 
-修改 `lib/main.dart` 的 `_buildEntry`，在 `ChangeNotifierProvider.value(value: authProvider)` 附近新建 store/datasource，并加进 `providers` 列表：
+修改 `lib/main.dart` 的 `_buildEntry`：
+
+a) 在 `final authProvider = await AuthProvider.create(prefs);` 之后（`ApiClient.create` 之前）加：
 
 ```dart
 final followingStore = PrefsFollowingTagsStore(prefs);
-final followingProvider = FollowingTagsProvider(
+late final FollowingTagsProvider followingProvider;
+```
+
+b) 在 `ApiClient.create` 的 `onAuthError` 回调里追加一行（`followingProvider` 是 `late final`，在运行时 auth error 前必已赋值，故可安全引用）：
+
+```dart
+onAuthError: () {
+  unawaited(authProvider.logout());
+  AppRouter.goLoginForAuthError();
+  unawaited(followingProvider.clear());
+},
+```
+
+c) 在 `apiClient` 创建之后、`final startupProvider` 之前加：
+
+```dart
+followingProvider = FollowingTagsProvider(
   store: followingStore,
   dataSource: switch (ApiClient.instanceOrNull) {
     final api? => FollowingTagsService(api),
     null => const UnavailableFollowingTagsDataSource(),
   },
 );
+unawaited(followingProvider.initialize());
 ```
 
-并在 `providers` 列表中加入：
+d) 在 `providers` 列表中加入：
 
 ```dart
 ChangeNotifierProvider.value(value: followingProvider),
 ```
 
-并在返回前 `unawaited(followingProvider.initialize());`（加载缓存）。
-
-> 依赖：需 `import 'package:jade/features/following/services/following_tags_provider.dart';` 与 `following_tags_service.dart`、`following_tags_store.dart`。
+> 依赖：需 `import 'package:jade/features/following/services/following_tags_provider.dart';`、`following_tags_service.dart`、`following_tags_store.dart`；`late`/`unawaited` 需 `import 'dart:async';`（main.dart 已 import，见第 1 行）。
 
 - [ ] **步骤 2：登录时写入 following_tags**
 
@@ -816,16 +833,24 @@ await context.read<FollowingTagsProvider>().syncFromRemote();
 
 > 注意：`syncFromRemote` 内部 catch 了网络错误，不会抛异常打断导航，因此放在 `context.go` 之前安全。
 
-- [ ] **步骤 4：登出时清空**
+- [ ] **步骤 4a：登出时清空（ProfilePage）**
 
-`ProfilePage` 的退出登录按钮在 `profile_sub_pages.dart` 的 `ProfilePage`（实际在 `profile_screen.dart`）。确认退出入口位置后，在退出前调用 `context.read<FollowingTagsProvider>().clear();`。若 `ProfilePage` 直接调 `AuthProvider.logout()`，则在 `logout()` 调用前置一行 `await context.read<FollowingTagsProvider>().clear();`。
+退出登录按钮在 `lib/features/profile/screens/profile_screen.dart` 的 `ProfilePage`（`_build` 里末尾的 `ListTile(title: '退出登录')`，约 117-135 行）。在其 `onTap` 里，`await auth.logout();` **之前**加入：
 
-> 同时，`onAuthError`（token 过期）在 `main.dart` 触发 `authProvider.logout()`，需在登出路径也清空。为集中处理，本设计选择：在登出的 UI 出口清空缓存（`ProfilePage`），并补充 `onAuthError` 场景——实现时若 `onAuthError` 也需清空，可在 `main.dart` 的 `onAuthError` 回调里加 `unawaited(followingProvider.clear());`。
+```dart
+await context.read<FollowingTagsProvider>().clear();
+```
+
+并补 import：`import 'package:jade/features/following/services/following_tags_provider.dart';`。
+
+- [ ] **步骤 4b：onAuthError（token 过期）时清空**
+
+`onAuthError` 在 `lib/main.dart` 第 45-49 行，`followingProvider.clear()` 已在步骤 1b 加入该回调（因 `followingProvider` 为 `late final`，运行时 auth error 时已赋值）。步骤 1b 已覆盖此情况，无需重复代码。
 
 - [ ] **步骤 5：Commit**
 
 ```bash
-git add lib/main.dart lib/features/auth/screens/login_screen.dart lib/features/startup/screens/startup_screen.dart
+git add lib/main.dart lib/features/auth/screens/login_screen.dart lib/features/startup/screens/startup_screen.dart lib/features/profile/screens/profile_screen.dart
 git commit -m "feat(following): wire provider into login/startup/logout"
 ```
 
