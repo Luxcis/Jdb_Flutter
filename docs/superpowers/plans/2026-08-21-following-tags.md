@@ -1255,7 +1255,7 @@ void main() {
 - [ ] **步骤 6：Commit**
 
 ```bash
-git add lib/features/following/screens/following_page.dart lib/features/profile/screens/profile_sub_pages.dart lib/core/router/app_router.dart test/features/following/following_page_test.dart
+git add lib/features/following/screens/following_page.dart lib/features/profile/screens/profile_sub_pages.dart test/features/following/following_page_test.dart
 git commit -m "feat(following): add following page with dismiss to unfollow"
 ```
 
