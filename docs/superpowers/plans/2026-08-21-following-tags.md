@@ -1243,9 +1243,9 @@ void main() {
 
 > 点击跳转若依赖 `context.push` 与路由，widget 测试可能需要路由包装。步骤 4 说明如何处理：若 `push` 在无 `GoRouter` 时抛错，可仅测列表渲染，跳转逻辑留 integration/手动验证。
 
-- [ ] **步骤 4：补充跳转路由**
+- [ ] **步骤 4：跳转路由（由任务 9 注册，此处不重复）**
 
-在 `lib/core/router/app_router.dart` 注册 `/following/tag/:value`，指向 `FollowTagMoviesPage`。由于 `FollowTagMoviesPage` 需从路由参数取 `value`，在页面构造时传入 `value`。
+`/following/tag/:value` 路由由**任务 9**（`FollowTagMoviesPage`，步骤 4）在 `AppRoutes`/`AppRouter` 注册，指向 `FollowTagMoviesPage`，从 `state.pathParameters['value']` 取参并 `Uri.decodeComponent`。本任务**不重复注册**，但 `FollowingPage` 的 `context.push('/following/tag/${Uri.encodeComponent(tag.value)}')` 依赖该路由存在。**执行顺序：先任务 9，后任务 8。**
 
 - [ ] **步骤 5：运行测试验证通过**
 
