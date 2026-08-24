@@ -3,7 +3,6 @@ import 'package:jade/features/following/models/follow_tag.dart';
 import 'package:jade/features/following/services/following_tags_provider.dart';
 import 'package:jade/features/following/services/following_tags_service.dart';
 import 'package:jade/features/following/services/following_tags_store.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class _MemoryStore implements FollowingTagsStore {
   List<FollowTagItem> stored = [];
@@ -17,25 +16,25 @@ class _MemoryStore implements FollowingTagsStore {
 }
 
 class _FakeData implements FollowingTagsDataSource {
-  _FakeData({this.followResult, this.unfollowError, this.remote});
-  FollowTagItem? followResult;
-  Object? unfollowError;
+  _FakeData({this.remote, this.batchPushError});
   List<FollowTagItem>? remote;
+  Object? batchPushError;
   List<String> unfollowed = [];
   int followCalls = 0;
   @override
   Future<FollowTagItem> follow({required String name, required String value}) async {
     followCalls++;
-    return followResult ?? FollowTagItem(id: 'new', name: name, value: value);
+    return FollowTagItem(id: 'new', name: name, value: value);
   }
   @override
   Future<void> unfollow(String id) async {
-    if (unfollowError != null) throw unfollowError!;
     unfollowed.add(id);
   }
   @override
-  Future<List<FollowTagItem>> batchPush(List<FollowTagItem> tags) async =>
-      remote ?? tags;
+  Future<List<FollowTagItem>> batchPush(List<FollowTagItem> tags) async {
+    if (batchPushError != null) throw batchPushError!;
+    return remote ?? tags;
+  }
 }
 
 void main() {
@@ -82,6 +81,18 @@ void main() {
     await provider.initialize();
     await provider.syncFromRemote();
     expect(provider.tags.single.id, '9');
+  });
+
+  test('syncFromRemote 失败保留本地缓存且不抛出', () async {
+    final store = _MemoryStore(const [FollowTagItem(id: '1', name: 'a', value: 'va')]);
+    final provider = FollowingTagsProvider(
+      store: store,
+      dataSource: _FakeData(batchPushError: StateError('boom')),
+    );
+    await provider.initialize();
+    await provider.syncFromRemote();
+    expect(provider.tags.single.id, '1');
+    expect(store.stored.single.id, '1');
   });
 
   test('clear 清空列表与缓存', () async {
