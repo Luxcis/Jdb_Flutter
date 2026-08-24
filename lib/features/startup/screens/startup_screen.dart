@@ -5,6 +5,7 @@ import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/startup_provider.dart';
 import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/services/session_refresh_service.dart';
+import 'package:jade/features/following/services/following_tags_provider.dart';
 import 'package:jade/features/profile/services/token_authentication_service.dart';
 import 'package:provider/provider.dart';
 
@@ -57,6 +58,10 @@ class _StartupPageState extends State<StartupPage> {
         ).toString(),
       );
       return;
+    }
+    if (status == SessionRefreshStatus.success) {
+      await context.read<FollowingTagsProvider>().syncFromRemote();
+      if (!mounted) return;
     }
     context.go(AppRoutes.home);
   }

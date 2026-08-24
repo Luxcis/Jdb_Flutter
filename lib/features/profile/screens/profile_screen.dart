@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/storage/login_credential_store.dart';
+import 'package:jade/features/following/services/following_tags_provider.dart';
 import 'package:provider/provider.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -119,6 +120,7 @@ class ProfilePage extends StatelessWidget {
             title: const Text('退出登录'),
             leading: const Icon(Icons.logout),
             onTap: () async {
+              if (!context.mounted) return;
               final store =
                   credentialStore ?? SecureLoginCredentialStore.createDefault();
               try {
@@ -126,6 +128,8 @@ class ProfilePage extends StatelessWidget {
               } catch (_) {
                 // 缓存清理失败不应阻止用户退出当前会话。
               }
+              if (!context.mounted) return;
+              await context.read<FollowingTagsProvider>().clear();
               await auth.logout();
               if (context.mounted) context.go('/home');
             },

@@ -7,6 +7,8 @@ import 'package:jade/core/network/api_exception.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/storage/login_credential_store.dart';
+import 'package:jade/features/following/models/follow_tag.dart';
+import 'package:jade/features/following/services/following_tags_provider.dart';
 import 'package:provider/provider.dart';
 
 class LoginPage extends StatefulWidget {
@@ -98,6 +100,14 @@ class _LoginPageState extends State<LoginPage> {
       }
       if (!mounted) return;
       await context.read<AuthProvider>().login(token: token, user: user);
+      if (!mounted) return;
+      final following = data['following_tags'];
+      if (following is List) {
+        final tags = following
+            .map((e) => FollowTagItem.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList(growable: false);
+        await context.read<FollowingTagsProvider>().syncFromLogin(tags);
+      }
       if (!mounted) return;
       final from = GoRouterState.of(context).uri.queryParameters['from'] ?? '';
       context.go(from.isNotEmpty ? Uri.decodeComponent(from) : '/home');

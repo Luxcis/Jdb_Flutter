@@ -13,6 +13,9 @@ import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/providers/startup_provider.dart';
 import 'package:jade/core/providers/theme_provider.dart';
 import 'package:jade/core/router/app_router.dart';
+import 'package:jade/features/following/services/following_tags_provider.dart';
+import 'package:jade/features/following/services/following_tags_service.dart';
+import 'package:jade/features/following/services/following_tags_store.dart';
 import 'package:jade/features/search/services/search_history_store.dart';
 
 export 'package:jade/app.dart' show MyApp;
@@ -39,14 +42,25 @@ Future<Widget> _buildEntry({
   final themeProvider = await ThemeProvider.create();
   final authProvider = await AuthProvider.create(prefs);
   final settingsProvider = await SettingsProvider.create(prefs);
+  final followingStore = PrefsFollowingTagsStore(prefs);
+  late final FollowingTagsProvider followingProvider;
   final apiClient = await ApiClient.create(
     prefs: prefs,
     tokenProvider: authProvider,
     onAuthError: () {
       unawaited(authProvider.logout());
       AppRouter.goLoginForAuthError();
+      unawaited(followingProvider.clear());
     },
   );
+  followingProvider = FollowingTagsProvider(
+    store: followingStore,
+    dataSource: switch (ApiClient.instanceOrNull) {
+      final api? => FollowingTagsService(api),
+      null => const UnavailableFollowingTagsDataSource(),
+    },
+  );
+  unawaited(followingProvider.initialize());
   final startupProvider = StartupProvider.create(
     startupApi: startupApi ?? StartupApiClient.create(),
     apiClient: apiClient,
@@ -61,6 +75,7 @@ Future<Widget> _buildEntry({
       ChangeNotifierProvider.value(value: settingsProvider),
       ChangeNotifierProvider.value(value: startupProvider),
       ChangeNotifierProvider.value(value: apiClient.domainManager),
+      ChangeNotifierProvider.value(value: followingProvider),
       ChangeNotifierProvider(create: (_) => SearchHistoryStore(prefs)),
     ],
     child: const MyApp(),
