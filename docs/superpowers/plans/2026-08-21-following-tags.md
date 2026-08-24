@@ -371,8 +371,10 @@ class FollowingTagsService implements FollowingTagsDataSource {
       Endpoints.followingTags,
       data: {'name': name, 'value': value},
     );
-    final data = apiMap(apiMap(response.data)['data']);
-    return FollowTagItem.fromJson(data);
+    // ResponseInterceptor 已在成功时把 response.data 解包为 data 层
+    // （{success, data} -> data），因此直接解析，不要再嵌 ['data']。
+    final item = FollowTagItem.fromJson(apiMap(response.data));
+    return item;
   }
 
   @override
@@ -414,11 +416,11 @@ class UnavailableFollowingTagsDataSource implements FollowingTagsDataSource {
 }
 ```
 
-> 说明：`apiList(root, keys)` 会在 `root` 中查 `following_tags`。`batchPush` 响应结构是 `{success, data: {following_tags: [...]}}`，故用 `apiList(apiMap(response.data), ['following_tags'])`，其中 `apiMap(response.data)` 取到 `data` 层。若 `apiList` 是作用于 `data` 层之上，需确认其 keys 查找路径——见步骤 2 修正依赖 `api_data` 的行为。
+> 说明：`ResponseInterceptor` 在 `success==1` 时把 `response.data` 解包为 `data` 层，所以 `batchPush` 的 `response.data` 已是 `{following_tags: [...]}`。`apiList(apiMap(response.data), ['following_tags'])` 正确按 `data.following_tags` 取数组。参考既有 `TagMoviesService`/`FavoritesService` 均直接对 `response.data` 用 `apiList`/`apiPageResult`。
 
-- [ ] **步骤 2：确认 `api_list` 走查**
+- [ ] **步骤 2：确认 `api_list` 走查（已确认）**
 
-`apiList(dynamic value, List<String> keys)` 定义在 `api_data.dart:9`。它会沿 `keys` 在嵌套对象中取值。调用 `apiList(apiMap(response.data), ['following_tags'])` 意味着从 `data` 对象中取 `following_tags`。若实际响应 `data` 层含 `following_tags`，此调用正确。若 `batch_push` 的 `data` 直接用 `data.following_tags`，上述成立。**实现时以响应结构为准，优先用单测锁定。**
+`ResponseInterceptor.onResponse` 在 `success==1` 时执行 `response.data = _decodeHtmlEntities(data['data'])`，即把 `response.data` 置为接口的 `data` 层。因此 `follow`/`batchPush` 都直接解析 `response.data`，**不再嵌套 `['data']`**。此点已由既有 `TagMoviesService`（`apiPageResult(response.data, keys: ['movies','items'])`）证实。
 
 - [ ] **步骤 3：编写服务单测**
 
