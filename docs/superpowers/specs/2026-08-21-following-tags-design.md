@@ -138,7 +138,7 @@ lib/features/following/
 ### 6.2 我的-我的关注页（改造）
 
 - 去掉现有 3 个占位 Tab（全部关注/演员/标签）与筛选按钮。
-- 改为单一列表：标题「我的关注」，无 AppBar actions（或仅保留可选的刷新）。
+- 改为单一列表：标题「我的关注」，无 AppBar actions 按钮。列表数据由 `FollowingTagsProvider` 提供，页面自身可通过下拉/进入时刷新显示（进入页面时重读 provider 缓存的当前值）。
 - 每项：`Dismissible` 包裹 `ListTile`，标题 `tag.name`，副标题 `tag.value`；滑动背景删除图标（`Icons.delete`）。
 - 空态：居中提示「暂无关注标签」。
 
