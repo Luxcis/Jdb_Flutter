@@ -47,6 +47,13 @@ class CategoryTabController extends ChangeNotifier {
       )
       .toList(growable: false);
 
+  /// 供类别页关注按钮构建 filter_by。
+  List<CategoryFilterGroupOrder> get groupOrder => _groupOrder;
+
+  /// 是否选中了任一标签（关注按钮启用条件）。
+  bool get hasSelectedTags => _groups
+      .any((group) => _filter.selectedValues(group.categoryId).isNotEmpty);
+
   Future<void> initialize() {
     if (_disposed) return Future.value();
     final initialization = _initializationFuture;

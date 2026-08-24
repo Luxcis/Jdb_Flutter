@@ -1,12 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/search_entry.dart';
 import 'package:jade/features/categories/services/category_service.dart';
 import 'package:jade/features/categories/services/category_tab_controller.dart';
 import 'package:jade/features/categories/widgets/category_filter_sheet.dart';
+import 'package:jade/features/following/services/following_tags_provider.dart';
+import 'package:jade/features/following/widgets/following_tags_button.dart';
 
 class CategoriesPage extends StatefulWidget {
   const CategoriesPage({super.key, this.dataSource});
@@ -25,6 +28,7 @@ class _CategoriesPageState extends State<CategoriesPage>
   late final List<CategoryTabController> _controllers;
   late final CategoryDataSource _source;
   var _selectedIndex = 0;
+  List<CategoryTabController> _observed = const [];
 
   @override
   void initState() {
@@ -41,11 +45,36 @@ class _CategoriesPageState extends State<CategoriesPage>
     ];
     _tabController = TabController(length: tabs.length, vsync: this)
       ..addListener(_handleTabChanged);
+    _ensureControllerObserver();
   }
 
   void _handleTabChanged() {
     if (_selectedIndex == _tabController.index || !mounted) return;
     setState(() => _selectedIndex = _tabController.index);
+    _ensureControllerObserver();
+  }
+
+  /// 为当前选中 tab 的 controller 注册一个后帧监听，使 AppBar 的
+  /// 关注按钮能随 filter/sort 变化而重建。
+  void _ensureControllerObserver() {
+    final target = _controllers[_selectedIndex];
+    if (_observed.contains(target)) return;
+    _observed = [..._observed, target];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_observed.contains(target)) return;
+      target.addListener(_onControllerChanged);
+    });
+  }
+
+  void _onControllerChanged() {
+    if (!mounted) return;
+    // 通知可能恰逢 build：懒加载 tab 首次 initialize() 会同步调用
+    // retryTags() -> _notify()，此时监听刚经 addPostFrameCallback 挂上、
+    // 但目标 controller 恰在下一帧 build 期间被初始化，直接 setState 会抛
+    // setState() during build。统一延迟到帧末重建，避免该崩溃。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   void _showFilter() {
@@ -65,10 +94,61 @@ class _CategoriesPageState extends State<CategoriesPage>
   void dispose() {
     _tabController.removeListener(_handleTabChanged);
     _tabController.dispose();
+    for (final controller in _observed) {
+      controller.removeListener(_onControllerChanged);
+    }
+    _observed = const [];
     for (final controller in _controllers) {
       controller.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _toggleFollowing(
+    CategoryTabController controller,
+    String value,
+  ) async {
+    final provider = context.read<FollowingTagsProvider>();
+    if (provider.isFollowing(value)) {
+      final tag = provider.tags.firstWhere((t) => t.value == value);
+      try {
+        await provider.unfollow(tag.id);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已取消关注')),
+        );
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('操作失败，请重试')),
+        );
+      }
+    } else {
+      final name = _selectedTagNames(controller);
+      try {
+        await provider.follow(name: name, value: value);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已关注')),
+        );
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('操作失败，请重试')),
+        );
+      }
+    }
+  }
+
+  String _selectedTagNames(CategoryTabController controller) {
+    final names = <String>[];
+    for (final group in controller.groups) {
+      final selected = controller.filter.selectedValues(group.categoryId);
+      for (final item in group.tags) {
+        if (selected.contains(item.id)) names.add(item.name);
+      }
+    }
+    return names.join(',');
   }
 
   @override
@@ -77,6 +157,19 @@ class _CategoriesPageState extends State<CategoriesPage>
       appBar: AppBar(
         title: const Text('类别'),
         actions: [
+          Builder(builder: (context) {
+            final controller = _controllers[_selectedIndex];
+            final followed = context.watch<FollowingTagsProvider>();
+            final value = controller.filter.toFilterBy(
+              controller.type,
+              controller.groupOrder,
+            );
+            return FollowingTagsButton(
+              following: followed.isFollowing(value),
+              enabled: controller.hasSelectedTags,
+              onPressed: () => _toggleFollowing(controller, value),
+            );
+          }),
           IconButton(
             key: const Key('categories-filter-button'),
             tooltip: '筛选',

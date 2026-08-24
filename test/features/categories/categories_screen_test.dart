@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/router/routes.dart';
@@ -14,6 +15,25 @@ import 'package:jade/features/categories/screens/categories_screen.dart';
 import 'package:jade/features/categories/services/category_service.dart';
 import 'package:jade/features/categories/services/category_tab_controller.dart';
 import 'package:jade/features/categories/widgets/category_filter_sheet.dart';
+import 'package:jade/features/following/models/follow_tag.dart';
+import 'package:jade/features/following/services/following_tags_provider.dart';
+import 'package:jade/features/following/services/following_tags_service.dart';
+import 'package:jade/features/following/services/following_tags_store.dart';
+
+final class _MemoryFollowingStore implements FollowingTagsStore {
+  List<FollowTagItem> stored = [];
+  @override
+  Future<void> clear() async => stored = [];
+  @override
+  Future<List<FollowTagItem>> load() async => stored;
+  @override
+  Future<void> save(List<FollowTagItem> tags) async => stored = List.of(tags);
+}
+
+FollowingTagsProvider _followingProvider() => FollowingTagsProvider(
+  store: _MemoryFollowingStore(),
+  dataSource: const UnavailableFollowingTagsDataSource(),
+);
 
 class _MovieFilterRequest {
   const _MovieFilterRequest({
@@ -173,7 +193,12 @@ Future<_FakeSource> _pumpCategories(WidgetTester tester) async {
   addTearDown(tester.view.resetDevicePixelRatio);
   final source = _FakeSource();
   await tester.pumpWidget(
-    MaterialApp(home: CategoriesPage(dataSource: source)),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: _followingProvider()),
+      ],
+      child: MaterialApp(home: CategoriesPage(dataSource: source)),
+    ),
   );
   await tester.pump();
   await tester.pump();
@@ -204,7 +229,14 @@ void main() {
     );
     addTearDown(router.dispose);
 
-    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: _followingProvider()),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
     await tester.pump();
     await tester.pump();
 
@@ -240,7 +272,14 @@ void main() {
     );
     addTearDown(router.dispose);
 
-    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: _followingProvider()),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
     await tester.pump();
     await tester.pump();
 
@@ -325,7 +364,12 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     final source = _FakeSource(hasMultiplePages: true);
     await tester.pumpWidget(
-      MaterialApp(home: CategoriesPage(dataSource: source)),
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: _followingProvider()),
+        ],
+        child: MaterialApp(home: CategoriesPage(dataSource: source)),
+      ),
     );
     await tester.pump();
     await tester.pump();
