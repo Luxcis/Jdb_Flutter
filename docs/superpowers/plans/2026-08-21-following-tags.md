@@ -1507,13 +1507,256 @@ git commit -m "feat(following): add followed tag movie list page"
 
 - [ ] **步骤 1：登录写入 following_tags 测试**
 
-在 `test/features/auth/login_screen_following_tags_test.dart` 中，注入 fake `ApiClient`（用 `FakeAdapter` 桩住 `/api/v1/sessions` 返回含 `following_tags` 的响应），pump `LoginPage`，登录后断言 `FollowingTagsProvider.tags` 为空或已写入。参考现有 `login_screen_test.dart` 的桩方式。
+创建 `test/features/auth/login_screen_following_tags_test.dart`。**关键前提**：任务 6 已让 `login_screen._login()` 成功登录后调用 `context.read<FollowingTagsProvider>().syncFromLogin(tags)`，因此测试树的 `MultiProvider` 必须注入 `FollowingTagsProvider`，否则该 `context.read` 抛 `ProviderNotFoundException`。登录响应须含 `following_tags`（`ResponseInterceptor` 会把 `{success, data}` 解包为 `data`，故 `data['following_tags']` 是数组）。参考现有 `test/features/auth/login_screen_test.dart` 的 `_FakeLoginDeviceParametersProvider`、`_MemoryLoginCredentialStore`、`_submitCredentials`、`_pumpLogin` 桩写法。
 
-> 若现有登录测试已有一套 mock，可复用其 fixture，仅新增断言点（`provider.isFollowing('0:a:g1Q')`）。
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:jade/core/device/login_device_info_service.dart';
+import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/network/endpoints.dart';
+import 'package:jade/core/network/testing/fake_adapter.dart';
+import 'package:jade/core/providers/auth_provider.dart';
+import 'package:jade/core/storage/login_credential_store.dart';
+import 'package:jade/features/auth/screens/login_screen.dart';
+import 'package:jade/features/following/models/follow_tag.dart';
+import 'package:jade/features/following/services/following_tags_provider.dart';
+import 'package:jade/features/following/services/following_tags_service.dart';
+import 'package:jade/features/following/services/following_tags_store.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class _NoOpSource implements FollowingTagsDataSource {
+  @override
+  Future<FollowTagItem> follow({required String name, required String value}) async =>
+      FollowTagItem(id: 'n', name: name, value: value);
+  @override
+  Future<void> unfollow(String id) async {}
+  @override
+  Future<List<FollowTagItem>> batchPush(List<FollowTagItem> tags) async => tags;
+}
+
+class _MemoryStore1 implements FollowingTagsStore {
+  @override
+  Future<void> clear() async {}
+  @override
+  Future<List<FollowTagItem>> load() async => const [];
+  @override
+  Future<void> save(List<FollowTagItem> tags) async {}
+}
+
+/// 登录成功后解析 following_tags 并写入 FollowingTagsProvider。
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('登录响应含 following_tags 时写入 provider 缓存', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final auth = await AuthProvider.create(prefs);
+    final provider = FollowingTagsProvider(
+      store: _MemoryStore1(),
+      dataSource: _NoOpSource(),
+    );
+    await provider.initialize();
+
+    final api = await ApiClient.create(
+      prefs: prefs,
+      tokenProvider: auth,
+      onAuthError: () {},
+    );
+    final adapter = FakeAdapter();
+    adapter.enqueue(Endpoints.sessions, {
+      'success': 1,
+      'data': {
+        'token': 'jwt-token',
+        'user': {'id': 1, 'username': 'test'},
+        'following_tags': [
+          {'id': 13384922, 'name': '有碼,森螢', 'value': '0:a:g1Q', 'priority': 6.0},
+        ],
+      },
+    });
+    api.setAdapterForTest(adapter);
+
+    final router = GoRouter(
+      initialLocation: '/login',
+      routes: [
+        GoRoute(
+          path: '/login',
+          builder: (c, s) => LoginPage(
+            deviceParametersProvider: _FakeDeviceParametersProvider(),
+            credentialStore: _MemoryCredentialStore(),
+          ),
+        ),
+        GoRoute(path: '/home', builder: (c, s) => const SizedBox()),
+      ],
+    );
+    addTearDown(router.dispose);
+    addTearDown(provider.dispose);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: auth),
+          ChangeNotifierProvider.value(value: provider),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), 'user@example.invalid');
+    await tester.enterText(fields.at(1), 'password');
+    await tester.tap(find.widgetWithText(ElevatedButton, '登录'));
+    await tester.pumpAndSettle();
+
+    expect(provider.tags, hasLength(1));
+    expect(provider.tags.single.id, '13384922');
+    expect(provider.tags.single.name, '有碼,森螢');
+    expect(provider.tags.single.value, '0:a:g1Q');
+    expect(provider.isFollowing('0:a:g1Q'), isTrue);
+    expect(router.state.uri.path, '/home');
+  });
+}
+
+final class _FakeDeviceParametersProvider implements LoginDeviceParametersProvider {
+  @override
+  Future<LoginDeviceParameters> load() async => const LoginDeviceParameters(
+    deviceUuid: 'device-uuid',
+    deviceName: 'Google',
+    deviceModel: 'Pixel 9/tokay',
+    systemVersion: '15',
+  );
+}
+
+final class _MemoryCredentialStore implements LoginCredentialStore {
+  _MemoryCredentialStore({this.credentials = const SavedLoginCredentials()});
+  SavedLoginCredentials credentials;
+  var saveCalls = 0;
+  @override
+  Future<SavedLoginCredentials> read() async => credentials;
+  @override
+  Future<void> save({required String username, required String password}) async {
+    saveCalls++;
+    credentials = SavedLoginCredentials(username: username, password: password);
+  }
+  @override
+  Future<void> clearPassword() async {}
+}
+```
+
+> 说明：`_MemoryCredentialStore`/`_FakeDeviceParametersProvider` 需按 `LoginCredentialStore`/`LoginDeviceParametersProvider` 接口补全（`read`/`save`/`clearPassword`；`load`）。`LoginPage` 的 `_restoreCredentials` 会调 `read`，故 `read` 需返回 `SavedLoginCredentials`。
 
 - [ ] **步骤 2：启动同步测试**
 
-在 `test/features/startup/startup_following_sync_test.dart` 中，桩住 startup 与 `batch_push`，断言 `startup_screen` 加载后 `FollowingTagsProvider.tags` 被远程覆盖。
+创建 `test/features/startup/startup_following_sync_test.dart`。**关键**：任务 6 已让 `startup_screen._refreshSessionThenNavigate()` 在 `status == success` 且已登录时调用 `context.read<FollowingTagsProvider>().syncFromRemote()`，所以测试树的 `MultiProvider` 必须注入 `FollowingTagsProvider`。测试桩住 `batchPush`（用返回远程 tags 的 dataSource），注入一个 `SessionRefreshService` 返回 `success`，断言启动后 provider.tags 被远程覆盖。参考现有 `test/features/startup/startup_screen_test.dart` 的 `_FakeStartupApi`、`_FakeSessionRefreshService`、`_pumpSubject` 桩写法。
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:jade/core/models/startup.dart';
+import 'package:jade/core/network/api_client.dart';
+import 'package:jade/core/network/domain_manager.dart';
+import 'package:jade/core/network/startup_api_client.dart';
+import 'package:jade/core/providers/auth_provider.dart';
+import 'package:jade/core/providers/startup_provider.dart';
+import 'package:jade/core/services/session_refresh_service.dart';
+import 'package:jade/features/startup/screens/startup_screen.dart';
+import 'package:jade/features/following/models/follow_tag.dart';
+import 'package:jade/features/following/services/following_tags_provider.dart';
+import 'package:jade/features/following/services/following_tags_service.dart';
+import 'package:jade/features/following/services/following_tags_store.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class _FakeStartupApi2 implements StartupApi {
+  @override
+  Future<StartupData> fetchStartup() async =>
+      const StartupData(backupDomainsData: 'ciphertext');
+}
+
+final class _SuccessRefresh implements SessionRefreshService {
+  @override
+  Future<SessionRefreshStatus> refresh() async => SessionRefreshStatus.success;
+}
+
+class _PushRemoteSource implements FollowingTagsDataSource {
+  @override
+  Future<FollowTagItem> follow({required String name, required String value}) async =>
+      FollowTagItem(id: 'n', name: name, value: value);
+  @override
+  Future<void> unfollow(String id) async {}
+  @override
+  Future<List<FollowTagItem>> batchPush(List<FollowTagItem> tags) async =>
+      const [FollowTagItem(id: '99', name: '远程', value: 'remote-1')];
+}
+
+class _MemoryStore2 implements FollowingTagsStore {
+  @override
+  Future<void> clear() async {}
+  @override
+  Future<List<FollowTagItem>> load() async => const [];
+  @override
+  Future<void> save(List<FollowTagItem> tags) async {}
+}
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets('启动校验成功后 batch_push 用远程标签覆盖本地缓存', (tester) async {
+    final prefs = await SharedPreferences.getInstance();
+    final domainManager = await DomainManager.load(prefs);
+    final apiClient = ApiClient.forTest(
+      dio: Dio(BaseOptions(baseUrl: domainManager.currentUrl)),
+      domainManager: domainManager,
+    );
+    final startupProvider = StartupProvider.create(
+      startupApi: _FakeStartupApi2(),
+      apiClient: apiClient,
+      domainManager: domainManager,
+      decoder: (_) => const BackupDomains(apiDomains: ['https://backup.example']),
+    );
+    final auth = await AuthProvider.create(prefs);
+    await auth.login(token: 't', user: {'id': 1, 'username': 'u'});
+    final provider = FollowingTagsProvider(
+      store: _MemoryStore2(),
+      dataSource: _PushRemoteSource(),
+    );
+    await provider.initialize();
+
+    final router = GoRouter(
+      initialLocation: '/startup',
+      routes: [
+        GoRoute(path: '/startup', builder: (c, s) => const StartupPage()),
+        GoRoute(path: '/home', builder: (c, s) => const Scaffold(body: Text('首页'))),
+      ],
+    );
+    addTearDown(router.dispose);
+    addTearDown(provider.dispose);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: startupProvider),
+          ChangeNotifierProvider.value(value: auth),
+          ChangeNotifierProvider.value(value: provider),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(provider.tags.single.id, '99');
+    expect(provider.tags.single.value, 'remote-1');
+    expect(router.state.uri.path, '/home');
+  });
+}
+```
+
+> 说明：`StartupPage` 无独立 `sessionRefreshService` 参数时内部会 `ApiSessionRefreshService`（需真实网络）。为注入 `_SuccessRefresh`，此测试用 `StartupPage(sessionRefreshService: _SuccessRefresh())` 形式（参考现有 startup_screen_test 的 `_pumpSubject` 传 `sessionRefreshService`），确保不走真实网络。`StartupProvider` 的 `load()` 内部会 `domainManager.applyStartup` 并 `swapBaseUrl`；测试用 `StartupData(backupDomainsData: 'ciphertext')` + `decoder` 返回备用域即可。
 
 - [ ] **步骤 3：运行测试验证通过**
 
