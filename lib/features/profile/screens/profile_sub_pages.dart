@@ -15,8 +15,8 @@ import 'package:jade/core/providers/theme_provider.dart';
 import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/widgets/filter_drawer.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
-import 'package:jade/core/widgets/movie_list_tile.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
+import 'package:jade/features/following/screens/following_page.dart';
 import 'package:jade/features/profile/services/app_version_service.dart';
 import 'package:jade/features/profile/services/token_authentication_service.dart';
 import 'package:jade/features/profile/services/update_service.dart';
@@ -108,67 +108,11 @@ class _ProfileMovieCollectionPageState extends State<ProfileMovieCollectionPage>
   }
 }
 
-class ProfileFollowingPage extends StatefulWidget {
+class ProfileFollowingPage extends StatelessWidget {
   const ProfileFollowingPage({super.key});
 
   @override
-  State<ProfileFollowingPage> createState() => _ProfileFollowingPageState();
-}
-
-class _ProfileFollowingPageState extends State<ProfileFollowingPage>
-    with TickerProviderStateMixin {
-  late final TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final tabs = ['全部关注', '演员', '标签'];
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('我的关注'),
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.filter_list),
-            tooltip: '筛选',
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: tabs.map((tab) => Tab(text: tab)).toList(),
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: tabs
-            .map(
-              (_) => ListView.builder(
-                itemCount: 0,
-                itemBuilder: (_, i) => MovieListTile(
-                  movie: MovieSummary(
-                    id: '$i',
-                    number: '-',
-                    title: '-',
-                    coverUrl: '',
-                  ),
-                ),
-              ),
-            )
-            .toList(growable: false),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const FollowingPage();
 }
 
 class ProfileFavoritesPage extends StatelessWidget {
