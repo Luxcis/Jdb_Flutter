@@ -900,31 +900,57 @@ class FollowingTagsButton extends StatelessWidget {
 
 - [ ] **步骤 2：在类别页插入按钮**
 
-修改 `lib/features/categories/screens/categories_screen.dart` 的 `build`，在 `actions` 的「筛选」`IconButton` **之前**插入 `FollowingTagsButton`，状态跟随当前选中 Tab 的 `_controllers[_selectedIndex]`：
+修改 `lib/features/categories/screens/categories_screen.dart` 的 `build`，在 `actions` 的「筛选」`IconButton` **之前**插入 `FollowingTagsButton`。
+
+**⚠️ 关键：不能用 `ListenableBuilder(listenable: _controllers[_selectedIndex])`。** 因为 `CategoryTabController.initialize()`（由 body 中 `_CategoryTabState.initState` 同步调用）会在**同一帧 build 期间**调用 `_notify()`；若 AppBar 用 `ListenableBuilder` 订阅该 controller，首次构建 body 时该 controller 初始化会同步触发 `notifyListeners()`，导致 `setState() during build` 崩溃（真实 App 也会崩，且每次切换 Tab 因懒初始化而复现）。`retryTags()` 必须保留同步 `_notify()`（`category_tab_controller_test` 断言 `retryTags()` 后立即 `notifications == 1`），controller 内部不能改。`initialize()` 也不能改成 eager（screen 测试断言仅加载当前 `tagTypes`）。
+
+**正确做法：用页面级的后帧监听器（post-frame listener）**，避免 build 期间被 controller 通知。在 `_CategoriesPageState` 实现：
+
+```dart
+List<CategoryTabController> _observed = const [];
+
+/// 为当前选中 tab 的 controller 注册一个后帧监听，使 AppBar 的
+/// 关注按钮能随 filter/sort 变化而重建。
+void _ensureControllerObserver() {
+  final target = _controllers[_selectedIndex];
+  if (_observed.contains(target)) return;
+  _observed = [..._observed, target];
+  // 延迟到首帧之后监听，避免 controller 在 build 期间同步 _notify() 触发
+  // setState() during build。后续 filter 变化（用户交互）都发生在首帧后，安全。
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!mounted || !_observed.contains(target)) return;
+    target.addListener(_onControllerChanged);
+  });
+}
+
+void _onControllerChanged() {
+  if (mounted) setState(() {});
+}
+```
+
+在 `initState` 末尾调用 `_ensureControllerObserver()`；在 `_handleTabChanged` 里（更新 `_selectedIndex` 后）调用 `_ensureControllerObserver()`；在 `dispose` 里对 `_observed` 的每个 controller `removeListener(_onControllerChanged)` 并清空 `_observed`。在 `build` 的 `actions` 首项插入：
 
 ```dart
 actions: [
-  ListenableBuilder(
-    listenable: _controllers[_selectedIndex],
-    builder: (context, _) {
-      final controller = _controllers[_selectedIndex];
-      final followed = context.watch<FollowingTagsProvider>();
-      final value = controller.filter.toFilterBy(
-        controller.type,
-        controller._groupOrder, // 需为公开，或改用公开 API
-      );
-      final enabled = /* 已选中标签非空 */;
-      return FollowingTagsButton(
-        following: followed.isFollowing(value),
-        enabled: enabled,
-        onPressed: () => _toggleFollowing(controller, value),
-      );
-    },
-  ),
+  Builder(builder: (context) {
+    final controller = _controllers[_selectedIndex];
+    final followed = context.watch<FollowingTagsProvider>();
+    final value = controller.filter.toFilterBy(
+      controller.type,
+      controller.groupOrder,
+    );
+    return FollowingTagsButton(
+      following: followed.isFollowing(value),
+      enabled: controller.hasSelectedTags,
+      onPressed: () => _toggleFollowing(controller, value),
+    );
+  }),
   IconButton(key: const Key('categories-filter-button'), ...),
   const SearchIconButton(),
 ],
 ```
+
+> 说明：`context.watch<FollowingTagsProvider>()` 会在关注状态变化时触发重建（这类变化来自用户点击，发生在首帧之后，安全）；controller 的 filter/sort 变化由 `_onControllerChanged`（后帧监听）触发重建。两者共同保证按钮的 `following`/`enabled` 是最新的。观察者只在首帧后才 `addListener`，因此不会在 build 期间被 controller 同步通知。
 
 > 注意：`controller._groupOrder` 是私有。**本任务必须在 `CategoryTabController`（`lib/features/categories/services/category_tab_controller.dart`）新增两个公开 getter**：
 >
@@ -992,6 +1018,8 @@ String _selectedTagNames(CategoryTabController controller) {
 ```
 
 > `name` 用已选中标签名称拼接；`value` 用 `toFilterBy(type, groupOrder)`。符合需求「将当前选中的标签名称使用,拼接为 name，构建的 filter_by 作为 value」。
+
+> **观察者接线（步骤 2 配套）：** `_ensureControllerObserver()` 在 `initState` 末尾调用一次，并在 `_handleTabChanged`（Tab 切换后）调用。`dispose` 里对 `_observed` 的每个 controller `removeListener(_onControllerChanged)` 并清空。监听器在首帧后（`addPostFrameCallback`）才 `addListener`，故不会在 build 期间被 controller 同步通知；filter/sort 变化（用户交互，均在首帧后）通过 `_onControllerChanged` → `setState` 安全触发重建。务必确保不出现 `setState() during build` 且 dispose 干净。
 
 - [ ] **步骤 4：编写按钮 widget 测试**
 
