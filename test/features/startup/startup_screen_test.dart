@@ -11,6 +11,10 @@ import 'package:jade/core/network/startup_api_client.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/startup_provider.dart';
 import 'package:jade/core/services/session_refresh_service.dart';
+import 'package:jade/features/following/models/follow_tag.dart';
+import 'package:jade/features/following/services/following_tags_provider.dart';
+import 'package:jade/features/following/services/following_tags_service.dart';
+import 'package:jade/features/following/services/following_tags_store.dart';
 import 'package:jade/features/startup/screens/startup_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -87,11 +91,27 @@ Future<GoRouter> _pumpSubject(
       providers: [
         ChangeNotifierProvider.value(value: provider),
         if (auth != null) ChangeNotifierProvider.value(value: auth),
+        ChangeNotifierProvider.value(
+          value: FollowingTagsProvider(
+            store: _MemoryFollowingStore(),
+            dataSource: const UnavailableFollowingTagsDataSource(),
+          ),
+        ),
       ],
       child: MaterialApp.router(routerConfig: router),
     ),
   );
   return router;
+}
+
+final class _MemoryFollowingStore implements FollowingTagsStore {
+  List<FollowTagItem> stored = [];
+  @override
+  Future<void> clear() async => stored = [];
+  @override
+  Future<List<FollowTagItem>> load() async => stored;
+  @override
+  Future<void> save(List<FollowTagItem> tags) async => stored = List.of(tags);
 }
 
 void main() {

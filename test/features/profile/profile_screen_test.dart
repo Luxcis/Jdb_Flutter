@@ -3,6 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/storage/login_credential_store.dart';
+import 'package:jade/features/following/models/follow_tag.dart';
+import 'package:jade/features/following/services/following_tags_provider.dart';
+import 'package:jade/features/following/services/following_tags_service.dart';
+import 'package:jade/features/following/services/following_tags_store.dart';
 import 'package:jade/features/profile/screens/profile_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -97,14 +101,32 @@ Future<({AuthProvider auth, GoRouter router})> _pumpProfile(
   addTearDown(router.dispose);
 
   await tester.pumpWidget(
-    ChangeNotifierProvider<AuthProvider>.value(
-      value: auth,
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AuthProvider>.value(value: auth),
+        ChangeNotifierProvider.value(
+          value: FollowingTagsProvider(
+            store: _MemoryFollowingStore(),
+            dataSource: const UnavailableFollowingTagsDataSource(),
+          ),
+        ),
+      ],
       child: MaterialApp.router(routerConfig: router),
     ),
   );
   await tester.pumpAndSettle();
 
   return (auth: auth, router: router);
+}
+
+final class _MemoryFollowingStore implements FollowingTagsStore {
+  List<FollowTagItem> stored = [];
+  @override
+  Future<void> clear() async => stored = [];
+  @override
+  Future<List<FollowTagItem>> load() async => stored;
+  @override
+  Future<void> save(List<FollowTagItem> tags) async => stored = List.of(tags);
 }
 
 final class _MemoryLoginCredentialStore implements LoginCredentialStore {
