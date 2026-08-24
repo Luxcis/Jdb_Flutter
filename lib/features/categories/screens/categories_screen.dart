@@ -28,6 +28,7 @@ class _CategoriesPageState extends State<CategoriesPage>
   late final List<CategoryTabController> _controllers;
   late final CategoryDataSource _source;
   var _selectedIndex = 0;
+  var _followingBusy = false;
   List<CategoryTabController> _observed = const [];
 
   @override
@@ -108,35 +109,41 @@ class _CategoriesPageState extends State<CategoriesPage>
     CategoryTabController controller,
     String value,
   ) async {
-    final provider = context.read<FollowingTagsProvider>();
-    if (provider.isFollowing(value)) {
-      final tag = provider.tags.firstWhere((t) => t.value == value);
-      try {
-        await provider.unfollow(tag.id);
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已取消关注')),
-        );
-      } catch (_) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('操作失败，请重试')),
-        );
+    if (_followingBusy) return;
+    setState(() => _followingBusy = true);
+    try {
+      final provider = context.read<FollowingTagsProvider>();
+      if (provider.isFollowing(value)) {
+        final tag = provider.tags.firstWhere((t) => t.value == value);
+        try {
+          await provider.unfollow(tag.id);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('已取消关注')),
+          );
+        } catch (_) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('操作失败，请重试')),
+          );
+        }
+      } else {
+        final name = _selectedTagNames(controller);
+        try {
+          await provider.follow(name: name, value: value);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('已关注')),
+          );
+        } catch (_) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('操作失败，请重试')),
+          );
+        }
       }
-    } else {
-      final name = _selectedTagNames(controller);
-      try {
-        await provider.follow(name: name, value: value);
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已关注')),
-        );
-      } catch (_) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('操作失败，请重试')),
-        );
-      }
+    } finally {
+      if (mounted) setState(() => _followingBusy = false);
     }
   }
 
@@ -167,6 +174,7 @@ class _CategoriesPageState extends State<CategoriesPage>
             return FollowingTagsButton(
               following: followed.isFollowing(value),
               enabled: controller.hasSelectedTags,
+              busy: _followingBusy,
               onPressed: () => _toggleFollowing(controller, value),
             );
           }),

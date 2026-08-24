@@ -51,6 +51,8 @@ class _StartupPageState extends State<StartupPage> {
     final status = await service.refresh();
     if (!mounted) return;
     if (status == SessionRefreshStatus.expired) {
+      await context.read<FollowingTagsProvider>().clear();
+      if (!mounted) return;
       context.go(
         Uri(
           path: AppRoutes.login,

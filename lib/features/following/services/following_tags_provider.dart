@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter/foundation.dart';
 import 'package:jade/features/following/models/follow_tag.dart';
 import 'package:jade/features/following/services/following_tags_service.dart';
@@ -68,7 +70,7 @@ class FollowingTagsProvider extends ChangeNotifier {
       notifyListeners();
     } catch (error) {
       // 网络错误保留本地缓存，不抛出以免打断启动。
-      debugPrint('FollowingTags sync failed: $error');
+      developer.log('FollowingTags sync failed: $error', name: 'following.tags');
     }
   }
 

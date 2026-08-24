@@ -66,6 +66,7 @@ Future<GoRouter> _pumpSubject(
   StartupProvider provider, {
   AuthProvider? auth,
   SessionRefreshService? sessionRefreshService,
+  FollowingTagsProvider? followingTagsProvider,
 }) async {
   final router = GoRouter(
     initialLocation: '/startup',
@@ -92,10 +93,11 @@ Future<GoRouter> _pumpSubject(
         ChangeNotifierProvider.value(value: provider),
         if (auth != null) ChangeNotifierProvider.value(value: auth),
         ChangeNotifierProvider.value(
-          value: FollowingTagsProvider(
-            store: _MemoryFollowingStore(),
-            dataSource: const UnavailableFollowingTagsDataSource(),
-          ),
+          value: followingTagsProvider ??
+              FollowingTagsProvider(
+                store: _MemoryFollowingStore(),
+                dataSource: const UnavailableFollowingTagsDataSource(),
+              ),
         ),
       ],
       child: MaterialApp.router(routerConfig: router),
@@ -106,8 +108,12 @@ Future<GoRouter> _pumpSubject(
 
 final class _MemoryFollowingStore implements FollowingTagsStore {
   List<FollowTagItem> stored = [];
+  int clearCalls = 0;
   @override
-  Future<void> clear() async => stored = [];
+  Future<void> clear() async {
+    clearCalls++;
+    stored = [];
+  }
   @override
   Future<List<FollowTagItem>> load() async => stored;
   @override
@@ -217,6 +223,47 @@ void main() {
     expect(router.state.uri.path, '/login');
     expect(router.state.uri.queryParameters['reason'], 'expired');
     expect(router.state.uri.queryParameters['from'], '/home');
+  });
+
+  testWidgets('校验过期时清空 FollowingTags 本地缓存', (tester) async {
+    final api = _FakeStartupApi([
+      () => const StartupData(backupDomainsData: 'ciphertext'),
+    ]);
+    final provider = await _createProvider(api);
+    final prefs = await SharedPreferences.getInstance();
+    final auth = await AuthProvider.create(prefs);
+    await auth.login(
+      token: 'session-token',
+      user: {'id': 1, 'username': 'cached-user'},
+    );
+    final refresh = _FakeSessionRefreshService(
+      () async => SessionRefreshStatus.expired,
+    );
+
+    final followingStore = _MemoryFollowingStore();
+    final followingProvider = FollowingTagsProvider(
+      store: followingStore,
+      dataSource: const UnavailableFollowingTagsDataSource(),
+    );
+    await followingProvider.initialize();
+    await followingProvider.syncFromLogin(const [
+      FollowTagItem(id: '1', name: '有碼,森螢', value: '0:a:g1Q'),
+    ]);
+    expect(followingProvider.tags, hasLength(1));
+
+    final router = await _pumpSubject(
+      tester,
+      provider,
+      auth: auth,
+      sessionRefreshService: refresh,
+      followingTagsProvider: followingProvider,
+    );
+    await tester.pumpAndSettle();
+
+    // 过期时清空关注标签缓存，保持与 onAuthError 清空一致。
+    expect(router.state.uri.path, '/login');
+    expect(followingProvider.tags, isEmpty);
+    expect(followingStore.clearCalls, greaterThanOrEqualTo(1));
   });
 
   testWidgets('校验网络失败时保留会话并 go 首页', (tester) async {

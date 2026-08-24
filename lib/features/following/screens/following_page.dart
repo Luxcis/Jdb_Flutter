@@ -13,19 +13,21 @@ class FollowingPage extends StatefulWidget {
 }
 
 class _FollowingPageState extends State<FollowingPage> {
-  Future<void> _unfollow(FollowTagItem tag) async {
+  Future<bool> _confirmUnfollow(FollowTagItem tag) async {
     final provider = context.read<FollowingTagsProvider>();
     try {
       await provider.unfollow(tag.id);
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('已取消关注')),
       );
+      return true;
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('操作失败，请重试')),
       );
+      return false;
     }
   }
 
@@ -50,7 +52,7 @@ class _FollowingPageState extends State<FollowingPage> {
                     padding: const EdgeInsets.only(right: 20),
                     child: const Icon(Icons.delete, color: Colors.white),
                   ),
-                  onDismissed: (_) => _unfollow(tag),
+                  confirmDismiss: (_) => _confirmUnfollow(tag),
                   child: ListTile(
                     title: Text(tag.name),
                     subtitle: Text(tag.value),

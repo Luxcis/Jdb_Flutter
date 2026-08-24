@@ -19,7 +19,7 @@ class FollowingTagsButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      tooltip: following ? '取消关注' : '关注',
+      tooltip: !enabled ? '请先选择标签' : (following ? '取消关注' : '关注'),
       onPressed: busy || !enabled ? null : onPressed,
       icon: Icon(following ? Icons.visibility_off : Icons.visibility),
     );

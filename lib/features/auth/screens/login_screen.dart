@@ -101,12 +101,17 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
       await context.read<AuthProvider>().login(token: token, user: user);
       if (!mounted) return;
-      final following = data['following_tags'];
-      if (following is List) {
-        final tags = following
-            .map((e) => FollowTagItem.fromJson(Map<String, dynamic>.from(e as Map)))
-            .toList(growable: false);
-        await context.read<FollowingTagsProvider>().syncFromLogin(tags);
+      try {
+        final following = data['following_tags'];
+        if (following is List) {
+          final tags = following
+              .map((e) =>
+                  FollowTagItem.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList(growable: false);
+          await context.read<FollowingTagsProvider>().syncFromLogin(tags);
+        }
+      } catch (_) {
+        // following_tags 解析失败视为空列表，不影响已成功的登录。
       }
       if (!mounted) return;
       final from = GoRouterState.of(context).uri.queryParameters['from'] ?? '';

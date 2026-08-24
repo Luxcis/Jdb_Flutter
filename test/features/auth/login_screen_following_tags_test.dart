@@ -117,6 +117,74 @@ void main() {
     expect(provider.isFollowing('0:a:g1Q'), isTrue);
     expect(router.state.uri.path, '/home');
   });
+
+  testWidgets('登录响应 following_tags 含非 Map 元素时登录仍成功且按空列表处理', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final auth = await AuthProvider.create(prefs);
+    final provider = FollowingTagsProvider(
+      store: _MemoryStore1(),
+      dataSource: _NoOpSource(),
+    );
+    await provider.initialize();
+
+    final api = await ApiClient.create(
+      prefs: prefs,
+      tokenProvider: auth,
+      onAuthError: () {},
+    );
+    final adapter = FakeAdapter();
+    adapter.enqueue(Endpoints.sessions, {
+      'success': 1,
+      'data': {
+        'token': 'jwt-token',
+        'user': {'id': 1, 'username': 'test'},
+        'following_tags': [
+          {'id': 1},
+          'not-a-map',
+        ],
+      },
+    });
+    api.setAdapterForTest(adapter);
+
+    final router = GoRouter(
+      initialLocation: '/login',
+      routes: [
+        GoRoute(
+          path: '/login',
+          builder: (context, state) => LoginPage(
+            deviceParametersProvider: _FakeDeviceParametersProvider(),
+            credentialStore: _MemoryCredentialStore(),
+          ),
+        ),
+        GoRoute(path: '/home', builder: (context, state) => const SizedBox()),
+      ],
+    );
+    addTearDown(router.dispose);
+    addTearDown(provider.dispose);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: auth),
+          ChangeNotifierProvider.value(value: provider),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), 'user@example.invalid');
+    await tester.enterText(fields.at(1), 'password');
+    await tester.tap(find.widgetWithText(ElevatedButton, '登录'));
+    await tester.pumpAndSettle();
+
+    // 解析失败不破坏已成功的登录：仍登录成功、保持空列表并跳转到首页。
+    expect(auth.isLogged, isTrue);
+    expect(provider.tags, isEmpty);
+    expect(router.state.uri.path, '/home');
+  });
 }
 
 final class _FakeDeviceParametersProvider
