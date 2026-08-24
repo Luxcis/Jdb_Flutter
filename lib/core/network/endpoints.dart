@@ -78,6 +78,11 @@ class Endpoints {
   // ⚠️ 服务端Bug: 该接口返回 HTTP 500
   static const String tagsV2 = '/api/v2/tags';
 
+  // ── 关注标签 (需 BearerAuth) ──
+  static const String followingTags = '/api/v1/following_tags';
+  static const String followingTagsBatchPush =
+      '/api/v1/following_tags/batch_push';
+
   // ── 文章 ──
   static const String articles = '/api/v1/articles';
 

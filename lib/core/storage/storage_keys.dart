@@ -13,6 +13,7 @@ class StorageKeys {
   static const String magnetSearchHistory = 'key_magnet_search_history';
   static const String line = 'key_line';
   static const String deviceUuid = 'key_device_uuid';
+  static const String followingTags = 'key_following_tags';
 }
 
 class StorageService {
