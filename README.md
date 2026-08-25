@@ -1,73 +1,97 @@
-# Flutter Android 模板
+# Jade
 
-## 简介
+**Jade** 是 JavDB 的第三方 Flutter 客户端，目标是实现官方客户端除付费、在线观影、广告之外的全部功能。项目包名为 `jade`，当前版本 `0.11.2`。
 
-这是一个用于构建 Android Flutter 应用程序的模板，其中包含了基础的动态主题、主题设置、语言设置和 GitHub Actions 构建脚本。
+## 特性
 
-## 如何使用
+- **5 个主导航 Tab**：首页、排行榜、类别、演员、我的
+- **影片浏览与管理**：详情页（磁链、短评、相关清单）、想看/看过、收藏、关注、清单、近期浏览
+- **榜单与分类**：Top250、看热播、有码、无码、欧美、FC2、动漫
+- **搜索**：影片、演员、系列、片商、导演、清单、番号，以及磁链搜索
+- **演员/导演/片商/系列**：列表、详情、收藏
+- **文章与短评**：AV 资讯（HTML 渲染）、热门短评
+- **动态域名**：启动解密备用域名，支持线路自动轮转与手动选择
+- **预览播放**：影片预告片/剧照预览
+- **Material 3 主题**：跟随系统亮/暗模式，支持动态取色
+- **GitHub 代理**：检查更新与下载 APK 时可通过自定义代理加速
 
-### 初始化
+## 技术栈
 
-使用此模板仓库，更改名称并克隆。
+- **框架**：Flutter / Dart
+- **UI**：Material 3
+- **状态管理**：`provider`（`ChangeNotifier` / `ValueNotifier`）
+- **路由**：`go_router`（`StatefulShellRoute` 保活 5 Tab）
+- **网络**：`dio`
+- **序列化**：`json_annotation` + `json_serializable`（`build_runner` 生成）
+- **存储**：`shared_preferences`、`flutter_secure_storage`
+- **播放**：`media_kit` / `media_kit_video`
 
-### 更改项目名称和包名
+## 本地开发
 
-在 Flutter 中更改项目名称需要手动修改多个文件。按照以下步骤更改项目名称：
+### 环境要求
 
-1. 更新 `pubspec.yaml`:
-   将 `name` 属性更改为您的新项目名称。
+- Flutter SDK 3.44+
+- Dart 3.8+
+- JDK 18+（Android 构建）
+- Android SDK（目标平台）
 
-```yaml
-name: your_new_project_name
+### 安装依赖
+
+```bash
+flutter pub get
 ```
 
-2. 更新 `android/app/src/main/res/values/strings.xml`:
+### 运行
 
-将 `app_name` 字符串更改为您的新项目名称。
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">您的新应用名称</string>
-</resources>
+```bash
+flutter run
 ```
 
-3. 更新包名
+### 静态分析
 
-更改 `android/app/src/main/kotlin/com/example/template/MainActivity.kt` 中使用的包名及其路径。
-更改 `android\app\build.gradle.kts` 文件中使用的 `namespace` 和 `applicationId`。
-
-4. 更新 `.dart` 中的导入
-
-将导入从：
-
-```dart
-import 'package:flutter_android_template/**.dart';
+```bash
+flutter analyze
 ```
 
-更改为：
+### 测试
 
-```dart
-import 'package:your_new_project_name/**.dart';
+```bash
+flutter test
 ```
 
-### GitHub Actions 的应用签名
+项目包含约 850 个单元/组件/集成测试用例。
 
-获取您的 `.jks` 文件，创建其 base64 字符串：
+### 代码生成
 
-```shell
-# Unix
-base64 -w 0 <您的密钥库名称>.jks
-# Windows
-[System.Convert]::ToBase64String([System.IO.File]::ReadAllBytes("<您的密钥库名称>.jks"))
+修改数据模型后执行：
+
+```bash
+dart run build_runner build --delete-conflicting-outputs
 ```
 
-在您的 GitHub 仓库的 `Secrets and Variables -- Actions` 中，添加 secrets：
-- SIGNING_KEYSTORE: 上面创建的 base64 代码
-- SIGNING_KEYSTORE_PASSWORD: 密钥库密码
-- SIGNING_KEY_ALIAS: `.jks` 文件的别名
-- SIGNING_KEY_PASSWORD: 别名的密码
+## 项目结构
 
-## 用例
+遵循 **Feature-First** 分层，公共能力放在 `lib/core/`，业务模块按 `lib/features/<feature_name>/` 组织。详情见 [STRUCTURE.md](./STRUCTURE.md)。
 
-- [MotionEaseTune](https://github.com/BHznJNs/MotionEaseTune), 一个简单的应用程序，可以通过 100Hz 的声音防止您晕车。
+```
+lib/
+├── main.dart        # 应用启动
+├── app.dart         # MyApp
+├── core/            # 公共层：网络、路由、存储、组件、主题
+└── features/        # 业务模块（17 个）
+```
+
+## 文档
+
+- [项目结构说明](STRUCTURE.md)
+- [产品需求规范](docs/main/jdb-product-spec.md)
+- [API 接口文档](docs/main/api/api-reference.md)
+- [API 逆向工程文档](docs/main/README.md)
+
+## 发布流程
+
+版本发布仅由用户主动触发。智能体不主动判断或建议版本发布。发布时将 `pubspec.yaml` 的 `version:` 提升到目标版本号，创建对应 `vX.Y.Z` 标签，并在代码托管平台生成 Release，触发 GitHub Actions 自动打包 APK。
+
+## 许可证
+
+本项目使用 [GPL-3.0](./LICENSE.txt) 许可证。
