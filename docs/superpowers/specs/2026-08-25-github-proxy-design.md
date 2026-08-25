@@ -54,7 +54,14 @@ static const String githubProxy = 'key_github_proxy';
 /// 代理前缀非空时拼接到完整 URL 前，否则原样返回。
 String buildGitHubUrl(String proxy, String fullUrl) =>
     proxy.isEmpty ? fullUrl : '$proxy$fullUrl';
+
+/// 规范化代理前缀：空串保留；非空且不以 / 结尾时自动补齐 /。
+/// 保证 buildGitHubUrl 始终可按 proxy + fullUrl 直接拼接。
+String normalizeGithubProxy(String proxy) =>
+    proxy.isEmpty || proxy.endsWith('/') ? proxy : '$proxy/';
 ```
+
+> `normalizeGithubProxy` 在设置页选择/保存代理时调用一次，内置选项本身已以 `/` 结尾，仅自定义地址需要补齐。
 
 ## 5. 更新服务接入代理
 
@@ -105,9 +112,9 @@ String buildGitHubUrl(String proxy, String fullUrl) =>
 
 | 场景 | 处理 |
 |------|------|
-| 自定义地址为空 | 不保存（AlertDialog 内提示或直接取消，具体交互按实现计划的 UI 细节） |
+| 自定义地址为空 | 不保存（AlertDialog 内提示「请输入代理地址」） |
 | 代理不可用 / 请求失败 | 复用现有「检查更新失败，请稍后重试」snackbar，不在代理设置层新增错误处理（YAGNI） |
-| 代理以 `/` 结尾与否 | 拼接支持两种：`</proxy>https://...`。构造时统一按 `proxy + fullUrl`，用户输入的代理需以 `/` 结尾；若用户未以 `/` 结尾，预览/保存时提示或自动补齐（见实现计划） |
+| 自定义代理未以 `/` 结尾 | **保存时自动补齐 `/`**：`setGithubProxy` 内统一 `normalizeGithubProxy`，若非空且不以 `/` 结尾则追加 `/`。这样 `buildGitHubUrl` 始终可按 `proxy + fullUrl` 直接拼接，无需针对内置/自定义分叉 |
 
 ## 8. 测试
 
@@ -120,8 +127,9 @@ String buildGitHubUrl(String proxy, String fullUrl) =>
 ### 8.2 `test/features/profile/update_service_test.dart`（追加）
 
 1. `buildGitHubUrl`：空代理原样返回；非空代理 prepend。
-2. `UpdateChecker` 注入 proxy → `MockClient` 断言请求 URL 已拼接代理前缀（代理为空时仍为原 URL）。
-3. `UpdateInstaller.download` 注入 proxy → `MockClient` 断言请求 `downloadUrl` 已拼接代理前缀。
+2. `normalizeGithubProxy`：空串/已以 `/` 结尾保持不变；未以 `/` 结尾自动补齐 `/`。
+3. `UpdateChecker` 注入 proxy → `MockClient` 断言请求 URL 已拼接代理前缀（代理为空时仍为原 URL）。
+4. `UpdateInstaller.download` 注入 proxy → `MockClient` 断言请求 `downloadUrl` 已拼接代理前缀。
 
 ## 9. 改动文件清单
 
