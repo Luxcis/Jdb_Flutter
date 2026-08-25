@@ -7,6 +7,8 @@ import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 import 'package:jade/core/widgets/sort_segmented.dart';
+import 'package:jade/features/following/services/following_tags_provider.dart';
+import 'package:provider/provider.dart';
 
 class FollowTagMoviesPage extends StatefulWidget {
   const FollowTagMoviesPage({super.key, required this.value});
@@ -79,10 +81,21 @@ class _FollowTagMoviesPageState extends State<FollowTagMoviesPage> {
     super.dispose();
   }
 
+  /// 导航栏标题：优先使用关注标签名称，缺失时回退到占位文案。
+  String get _title {
+    final provider = context.watch<FollowingTagsProvider>();
+    for (final tag in provider.tags) {
+      if (tag.value == widget.value) {
+        return tag.name.isEmpty ? '标签影片' : tag.name;
+      }
+    }
+    return '标签影片';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('标签影片')),
+      appBar: AppBar(title: Text(_title)),
       body: Column(
         children: [
           Padding(
