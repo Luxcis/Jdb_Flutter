@@ -17,10 +17,11 @@
 | 文件 | 职责 |
 |------|------|
 | `lib/core/storage/storage_keys.dart` | **修改**：新增 `githubProxy` 常量 |
-| `lib/core/providers/settings_provider.dart` | **修改**：新增 `githubProxy` 字段/getter/读写 |
-| `lib/features/profile/services/update_service.dart` | **修改**：新增 `buildGitHubUrl`、`normalizeGithubProxy`；`UpdateChecker`/`UpdateInstaller` 增加 `proxy` 构造参数并拼接 |
+| `lib/core/providers/settings_provider.dart` | **修改**：新增 `githubProxy` 字段/getter/读写（`setGithubProxy` 内统一 `normalizeGithubProxy`） |
+| `lib/core/utils/github_proxy.dart` | **新建**：`buildGitHubUrl`、`normalizeGithubProxy` 纯函数（核心层，避免 core→feature 反向依赖） |
+| `lib/features/profile/services/update_service.dart` | **修改**：`UpdateChecker`/`UpdateInstaller` 增加 `proxy` 构造参数并拼接（import 核心层函数） |
 | `lib/features/profile/screens/profile_sub_pages.dart` | **修改**：`ProfileSettingsPage` 插入 `GitHub 代理` ListTile + `_openGithubProxyPicker`（BottomSheet + 自定义 AlertDialog）；更新流程注入 `SettingsProvider.githubProxy` |
-| `test/core/providers/settings_provider_test.dart` | **修改**：追加 `githubProxy` 相关用例 |
+| `test/core/providers/settings_provider_test.dart` | **修改**：追加 `githubProxy` 相关用例（含数据边界规范化/trim） |
 | `test/features/profile/update_service_test.dart` | **修改**：追加 `normalizeGithubProxy`/`buildGitHubUrl`/proxy 拼接用例 |
 | `test/features/profile/profile_sub_pages_test.dart` | **修改**：追加 `GitHub 代理` 单元格与弹窗选择用例 |
 
@@ -110,8 +111,9 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   Future<void> setGithubProxy(String value) async {
-    _githubProxy = value;
-    await _prefs.setString(StorageKeys.githubProxy, value);
+    final normalized = normalizeGithubProxy(value.trim());
+    _githubProxy = normalized;
+    await _prefs.setString(StorageKeys.githubProxy, normalized);
     notifyListeners();
   }
 }

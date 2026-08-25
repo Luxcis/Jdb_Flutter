@@ -29,7 +29,7 @@ class SettingsProvider extends ChangeNotifier {
   /// 保存 GitHub 代理前缀；在数据边界统一规范化，保证
   /// 「非空代理一定以 / 结尾」，使 buildGitHubUrl 可按 proxy + fullUrl 拼接。
   Future<void> setGithubProxy(String value) async {
-    final normalized = value.trim().isEmpty ? '' : normalizeGithubProxy(value);
+    final normalized = normalizeGithubProxy(value.trim());
     _githubProxy = normalized;
     await _prefs.setString(StorageKeys.githubProxy, normalized);
     notifyListeners();

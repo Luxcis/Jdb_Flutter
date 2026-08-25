@@ -78,4 +78,16 @@ void main() {
       'https://mirror.example.com/proxy/',
     );
   });
+
+  test('GitHub 代理首尾空格会被 trim，空串与纯空格均存为空（不使用代理）', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final provider = await SettingsProvider.create(prefs);
+
+    await provider.setGithubProxy('  https://hub.luxcis.top/ ');
+    expect(provider.githubProxy, 'https://hub.luxcis.top/');
+
+    await provider.setGithubProxy('   ');
+    expect(provider.githubProxy, '');
+    expect(prefs.getString(StorageKeys.githubProxy), '');
+  });
 }
