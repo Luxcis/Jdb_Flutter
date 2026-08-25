@@ -148,7 +148,8 @@ class _CategoriesPageState extends State<CategoriesPage>
   }
 
   String _selectedTagNames(CategoryTabController controller) {
-    final names = <String>[];
+    // 把当前 Tab 名称（有码/无码/欧美/FC2/动漫）放在最前面，如「有码,含字幕」。
+    final names = <String>[tabs[controller.type]];
     for (final group in controller.groups) {
       final selected = controller.filter.selectedValues(group.categoryId);
       for (final item in group.tags) {

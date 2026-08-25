@@ -35,6 +35,28 @@ FollowingTagsProvider _followingProvider() => FollowingTagsProvider(
   dataSource: const UnavailableFollowingTagsDataSource(),
 );
 
+/// 记录 follow 调用的假数据源，用于断言关注时拼接的 name/value。
+final class _RecordingFollowingSource implements FollowingTagsDataSource {
+  String? lastName;
+  String? lastValue;
+
+  @override
+  Future<FollowTagItem> follow({
+    required String name,
+    required String value,
+  }) async {
+    lastName = name;
+    lastValue = value;
+    return FollowTagItem(id: 'new', name: name, value: value);
+  }
+
+  @override
+  Future<void> unfollow(String id) async {}
+
+  @override
+  Future<List<FollowTagItem>> batchPush(List<FollowTagItem> tags) async => tags;
+}
+
 class _MovieFilterRequest {
   const _MovieFilterRequest({
     required this.type,
@@ -209,6 +231,30 @@ Future<void> _pumpPageTransition(WidgetTester tester) async {
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 500));
   await tester.pump();
+}
+
+/// 用可记录 follow 调用的数据源 pump 类别页，返回分类源与记录源。
+Future<({_FakeSource category, _RecordingFollowingSource following})>
+_pumpCategoriesWithSource(
+  WidgetTester tester, {
+  required _RecordingFollowingSource dataSource,
+}) async {
+  final category = _FakeSource();
+  final following = FollowingTagsProvider(
+    store: _MemoryFollowingStore(),
+    dataSource: dataSource,
+  );
+  await following.initialize();
+  addTearDown(following.dispose);
+  await tester.pumpWidget(
+    MultiProvider(
+      providers: [ChangeNotifierProvider.value(value: following)],
+      child: MaterialApp(home: CategoriesPage(dataSource: category)),
+    ),
+  );
+  await tester.pump();
+  await tester.pump();
+  return (category: category, following: dataSource);
 }
 
 void main() {
@@ -670,6 +716,32 @@ void main() {
     await tester.pump();
 
     expect(find.byKey(const Key('category-order-toggle')), findsOneWidget);
+  });
+
+  testWidgets('关注时 name 以当前 Tab 名称开头并拼接已选标签名', (tester) async {
+    final subject = await _pumpCategoriesWithSource(
+      tester,
+      dataSource: _RecordingFollowingSource(),
+    );
+    final recording = subject.following;
+
+    // 打开筛选，选中「题材:剧情」，关注按钮启用。
+    await tester.tap(find.byKey(const Key('categories-filter-button')));
+    await _pumpPageTransition(tester);
+    await tester.tap(find.byKey(const Key('category-filter-subject-23')));
+    await tester.pump();
+    // 关闭底部筛选面板，回到 AppBar 才能点到关注按钮。
+    await tester.tapAt(const Offset(8, 8));
+    await _pumpPageTransition(tester);
+
+    // 点击关注按钮（未关注时显示 visibility 图标）。
+    await tester.tap(find.byIcon(Icons.visibility));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(recording.lastName, '有码,有磁链,剧情');
+    // value 为 filter_by：type=0(tab有码), t, main='m', 标签 23，其余空。
+    expect(recording.lastValue, '0:t:m:23:::');
   });
 
   testWidgets('窄屏大字体下动态长列表可滚动且不溢出', (tester) async {
