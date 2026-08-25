@@ -639,4 +639,81 @@ void main() {
     service.completer.complete({'id': 1, 'username': 'token-user'});
     await tester.pumpAndSettle();
   });
+
+  testWidgets('GitHub 代理：默认不使用代理，点击弹出弹窗选择后保存', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final settings = await SettingsProvider.create(prefs);
+    final theme = await ThemeProvider.create();
+    final dm = await DomainManager.load(prefs);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: settings),
+          ChangeNotifierProvider.value(value: theme),
+          ChangeNotifierProvider.value(value: dm),
+        ],
+        child: MaterialApp(
+          home: ProfileSettingsPage(cacheService: _FakeCacheService()),
+        ),
+      ),
+    );
+
+    expect(find.text('GitHub 代理'), findsOneWidget);
+    expect(find.text('不使用代理'), findsOneWidget);
+
+    await tester.tap(find.text('GitHub 代理'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('https://hub.luxcis.top/'), findsOneWidget);
+    expect(find.text('https://gh-proxy.com/'), findsOneWidget);
+    expect(find.text('自定义…'), findsOneWidget);
+
+    await tester.tap(find.text('https://hub.luxcis.top/'));
+    await tester.pumpAndSettle();
+
+    expect(settings.githubProxy, 'https://hub.luxcis.top/');
+    expect(prefs.getString(StorageKeys.githubProxy), 'https://hub.luxcis.top/');
+    // subtitle 更新为 host
+    expect(find.text('hub.luxcis.top'), findsOneWidget);
+  });
+
+  testWidgets('GitHub 代理：自定义地址弹窗输入并规范化保存', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final settings = await SettingsProvider.create(prefs);
+    final theme = await ThemeProvider.create();
+    final dm = await DomainManager.load(prefs);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: settings),
+          ChangeNotifierProvider.value(value: theme),
+          ChangeNotifierProvider.value(value: dm),
+        ],
+        child: MaterialApp(
+          home: ProfileSettingsPage(cacheService: _FakeCacheService()),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('GitHub 代理'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('自定义…'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byType(TextField),
+      'https://mirror.example.com/proxy',
+    );
+    await tester.tap(find.text('确定'));
+    await tester.pumpAndSettle();
+
+    // 自动补齐 / 结尾
+    expect(settings.githubProxy, 'https://mirror.example.com/proxy/');
+    expect(
+      prefs.getString(StorageKeys.githubProxy),
+      'https://mirror.example.com/proxy/',
+    );
+  });
 }
