@@ -1262,6 +1262,7 @@ class _ScreenshotSection extends StatelessWidget {
     final hasPreview = previewCoverUrl != null;
     return _Section(
       title: '预告片 / 剧照',
+      titleTrailing: urls.isEmpty ? null : '共 ${urls.length} 张',
       height: 164,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1374,11 +1375,13 @@ class _Section extends StatelessWidget {
     required this.title,
     required this.height,
     required this.child,
+    this.titleTrailing,
   });
 
   final String title;
   final double height;
   final Widget child;
+  final String? titleTrailing;
 
   @override
   Widget build(BuildContext context) {
@@ -1390,11 +1393,26 @@ class _Section extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                if (titleTrailing != null) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    titleTrailing!,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           SizedBox(height: height, child: child),
