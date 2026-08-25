@@ -1,27 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/code.dart';
 import 'package:jade/core/models/director.dart';
 import 'package:jade/core/models/list_model.dart';
 import 'package:jade/core/models/maker.dart';
-import 'package:jade/core/models/movie.dart';
-import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/models/series.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/router/routes.dart';
-import 'package:jade/core/widgets/actor_grid_view.dart';
 import 'package:jade/core/widgets/entity_list_tile.dart';
 import 'package:jade/core/widgets/list_summary_tile.dart';
-import 'package:jade/core/widgets/movie_grid_view.dart';
-import 'package:jade/core/widgets/paginated_list_view.dart';
-import 'package:jade/core/widgets/pagination_controller.dart';
-import 'package:jade/features/search/models/search_movie_filter.dart';
 import 'package:jade/features/search/services/search_entity_service.dart';
 import 'package:jade/features/search/services/search_history_store.dart';
 import 'package:jade/features/search/services/search_movie_service.dart';
-import 'package:jade/features/search/services/search_page_session.dart';
-import 'package:jade/features/search/widgets/search_movie_filter_bar.dart';
+import 'package:jade/features/search/widgets/search_result_tabs.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -133,15 +124,15 @@ class _SearchResultsPageState extends State<SearchResultsPage>
             child: TabBarView(
               controller: _tab,
               children: [
-                _MovieSearchTab(
+                MovieSearchTab(
                   query: widget.query,
                   dataSource: movieDataSource,
                 ),
-                _ActorSearchTab(
+                ActorSearchTab(
                   query: widget.query,
                   dataSource: _entityDataSource,
                 ),
-                _PaginatedEntitySearchTab<Series>(
+                PaginatedEntitySearchTab<Series>(
                   fetchPage: (page) => _entityDataSource.getSeries(
                     query: widget.query,
                     page: page,
@@ -164,7 +155,7 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                     ),
                   ),
                 ),
-                _PaginatedEntitySearchTab<Maker>(
+                PaginatedEntitySearchTab<Maker>(
                   fetchPage: (page) => _entityDataSource.getMakers(
                     query: widget.query,
                     page: page,
@@ -187,7 +178,7 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                     ),
                   ),
                 ),
-                _PaginatedEntitySearchTab<Director>(
+                PaginatedEntitySearchTab<Director>(
                   fetchPage: (page) => _entityDataSource.getDirectors(
                     query: widget.query,
                     page: page,
@@ -210,7 +201,7 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                     ),
                   ),
                 ),
-                _PaginatedEntitySearchTab<ListModel>(
+                PaginatedEntitySearchTab<ListModel>(
                   fetchPage: (page) => _entityDataSource.getLists(
                     query: widget.query,
                     page: page,
@@ -222,7 +213,7 @@ class _SearchResultsPageState extends State<SearchResultsPage>
                     showViewCount: false,
                   ),
                 ),
-                _PaginatedEntitySearchTab<Code>(
+                PaginatedEntitySearchTab<Code>(
                   fetchPage: (page) => _entityDataSource.getCodes(
                     query: widget.query,
                     page: page,
@@ -250,157 +241,6 @@ class _SearchResultsPageState extends State<SearchResultsPage>
           ),
         ],
       ),
-    );
-  }
-}
-
-typedef _EntityItemBuilder<T> = Widget Function(BuildContext context, T item);
-
-class _PaginatedEntitySearchTab<T> extends StatefulWidget {
-  const _PaginatedEntitySearchTab({
-    required this.fetchPage,
-    required this.idOf,
-    required this.itemBuilder,
-    required this.emptyMessage,
-  });
-
-  final Future<PagedResult<T>> Function(int page) fetchPage;
-  final String Function(T item) idOf;
-  final _EntityItemBuilder<T> itemBuilder;
-  final String emptyMessage;
-
-  @override
-  State<_PaginatedEntitySearchTab<T>> createState() =>
-      _PaginatedEntitySearchTabState<T>();
-}
-
-class _PaginatedEntitySearchTabState<T>
-    extends State<_PaginatedEntitySearchTab<T>>
-    with AutomaticKeepAliveClientMixin {
-  late final PaginationController<T> _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    final session = SearchPageSession<T>(
-      fetchPage: widget.fetchPage,
-      idOf: widget.idOf,
-    );
-    _controller = PaginationController<T>(fetch: session.fetch)..fetchMore();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return PaginatedListView<T>(
-      controller: _controller,
-      itemBuilder: widget.itemBuilder,
-      emptyMessage: widget.emptyMessage,
-    );
-  }
-}
-
-class _MovieSearchTab extends StatefulWidget {
-  const _MovieSearchTab({required this.query, required this.dataSource});
-
-  final String query;
-  final SearchMovieDataSource dataSource;
-
-  @override
-  State<_MovieSearchTab> createState() => _MovieSearchTabState();
-}
-
-class _MovieSearchTabState extends State<_MovieSearchTab> {
-  late final PaginationController<MovieSummary> _controller;
-  SearchMovieFilter _filter = const SearchMovieFilter();
-
-  Future<PagedResult<MovieSummary>> _fetchPage(int page) => widget.dataSource
-      .getMovies(query: widget.query, filter: _filter, page: page);
-
-  Future<void> _changeFilter(SearchMovieFilter value) async {
-    if (value.type == _filter.type &&
-        value.availability == _filter.availability &&
-        value.sort == _filter.sort) {
-      return;
-    }
-    setState(() => _filter = value);
-    await _controller.reloadWith(_fetchPage);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = PaginationController<MovieSummary>(fetch: _fetchPage);
-    _controller.fetchMore();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SearchMovieFilterBar(value: _filter, onChanged: _changeFilter),
-        Expanded(child: MovieGridView(controller: _controller)),
-      ],
-    );
-  }
-}
-
-class _ActorSearchTab extends StatefulWidget {
-  const _ActorSearchTab({required this.query, required this.dataSource});
-
-  final String query;
-  final SearchEntityDataSource dataSource;
-
-  @override
-  State<_ActorSearchTab> createState() => _ActorSearchTabState();
-}
-
-class _ActorSearchTabState extends State<_ActorSearchTab>
-    with AutomaticKeepAliveClientMixin {
-  late final PaginationController<ActorSummary> _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    final session = SearchPageSession<ActorSummary>(
-      fetchPage: (page) =>
-          widget.dataSource.getActors(query: widget.query, page: page),
-      idOf: (item) => item.id,
-    );
-    _controller = PaginationController<ActorSummary>(fetch: session.fetch)
-      ..fetchMore();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return ActorGridView(
-      controller: _controller,
-      onActorTap: (actor) => context.push('/actor/${actor.id}'),
     );
   }
 }
