@@ -183,12 +183,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
   var _versionTapCount = 0;
   int? _cacheSizeBytes;
   String _appVersion = '…';
-  UpdateChecker? _updateChecker;
   var _checkingUpdate = false;
-
-  /// 延迟创建更新检查器，确保使用加载完成的版本号。
-  UpdateChecker get _checker => _updateChecker ??=
-      UpdateChecker(currentVersion: _appVersion == '…' ? '0.0.0' : _appVersion);
 
   @override
   void initState() {
@@ -254,7 +249,6 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       if (!mounted) return;
       setState(() {
         _appVersion = version;
-        _updateChecker = null;
       });
     } catch (_) {
       if (!mounted) return;
@@ -266,7 +260,12 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     if (_checkingUpdate) return;
     setState(() => _checkingUpdate = true);
     try {
-      final result = await _checker.check();
+      final proxy = context.read<SettingsProvider>().githubProxy;
+      final checker = UpdateChecker(
+        currentVersion: _appVersion == '…' ? '0.0.0' : _appVersion,
+        proxy: proxy,
+      );
+      final result = await checker.check();
       if (!mounted) return;
       if (!result.hasUpdate) {
         ScaffoldMessenger.of(
@@ -301,8 +300,9 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     UpdateCheckResult result,
     void Function(int received, int total) onProgress,
   ) async {
+    final proxy = context.read<SettingsProvider>().githubProxy;
     final deviceInfo = await DeviceInfoPlugin().androidInfo;
-    final installer = UpdateInstaller();
+    final installer = UpdateInstaller(proxy: proxy);
     final asset = installer.pickAsset(
       result.release,
       deviceInfo.supportedAbis,
