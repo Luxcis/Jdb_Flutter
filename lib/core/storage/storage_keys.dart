@@ -14,6 +14,7 @@ class StorageKeys {
   static const String line = 'key_line';
   static const String deviceUuid = 'key_device_uuid';
   static const String followingTags = 'key_following_tags';
+  static const String githubProxy = 'key_github_proxy';
 }
 
 class StorageService {

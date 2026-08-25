@@ -35,4 +35,34 @@ void main() {
     expect(prefs.getBool(StorageKeys.blurMovieImages), isFalse);
     expect(notifications, 1);
   });
+
+  test('GitHub 代理默认关闭（空串）', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final provider = await SettingsProvider.create(prefs);
+
+    expect(provider.githubProxy, '');
+  });
+
+  test('恢复已保存的 GitHub 代理', () async {
+    SharedPreferences.setMockInitialValues({
+      StorageKeys.githubProxy: 'https://hub.luxcis.top/',
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final provider = await SettingsProvider.create(prefs);
+
+    expect(provider.githubProxy, 'https://hub.luxcis.top/');
+  });
+
+  test('切换 GitHub 代理后持久化并通知监听者', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final provider = await SettingsProvider.create(prefs);
+    var notifications = 0;
+    provider.addListener(() => notifications++);
+
+    await provider.setGithubProxy('https://gh-proxy.com/');
+
+    expect(provider.githubProxy, 'https://gh-proxy.com/');
+    expect(prefs.getString(StorageKeys.githubProxy), 'https://gh-proxy.com/');
+    expect(notifications, 1);
+  });
 }
