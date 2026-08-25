@@ -716,4 +716,39 @@ void main() {
       'https://mirror.example.com/proxy/',
     );
   });
+
+  testWidgets('GitHub 代理：自定义地址为空时提示并保持弹窗', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final settings = await SettingsProvider.create(prefs);
+    final theme = await ThemeProvider.create();
+    final dm = await DomainManager.load(prefs);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: settings),
+          ChangeNotifierProvider.value(value: theme),
+          ChangeNotifierProvider.value(value: dm),
+        ],
+        child: MaterialApp(
+          home: ProfileSettingsPage(cacheService: _FakeCacheService()),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('GitHub 代理'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('自定义…'));
+    await tester.pumpAndSettle();
+
+    // 不输入直接点确定：应提示且保持弹窗
+    await tester.tap(find.text('确定'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('请输入代理地址'), findsOneWidget);
+    expect(find.text('自定义 GitHub 代理'), findsOneWidget);
+    // 未保存
+    expect(settings.githubProxy, '');
+    expect(prefs.getString(StorageKeys.githubProxy), isNull);
+  });
 }

@@ -642,6 +642,7 @@ class _CustomProxyDialog extends StatefulWidget {
 
 class _CustomProxyDialogState extends State<_CustomProxyDialog> {
   late final TextEditingController _controller;
+  String? _errorText;
 
   @override
   void initState() {
@@ -655,6 +656,15 @@ class _CustomProxyDialogState extends State<_CustomProxyDialog> {
     super.dispose();
   }
 
+  void _submit() {
+    final value = _controller.text.trim();
+    if (value.isEmpty) {
+      setState(() => _errorText = '请输入代理地址');
+      return;
+    }
+    Navigator.pop(context, value);
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -663,8 +673,12 @@ class _CustomProxyDialogState extends State<_CustomProxyDialog> {
         controller: _controller,
         autofocus: true,
         keyboardType: TextInputType.url,
-        decoration: const InputDecoration(
+        onChanged: (_) {
+          if (_errorText != null) setState(() => _errorText = null);
+        },
+        decoration: InputDecoration(
           hintText: 'https://example.com/mirror/',
+          errorText: _errorText,
         ),
       ),
       actions: [
@@ -673,7 +687,7 @@ class _CustomProxyDialogState extends State<_CustomProxyDialog> {
           child: const Text('取消'),
         ),
         TextButton(
-          onPressed: () => Navigator.pop(context, _controller.text),
+          onPressed: _submit,
           child: const Text('确定'),
         ),
       ],
