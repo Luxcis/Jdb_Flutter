@@ -71,6 +71,40 @@ void main() {
     });
   });
 
+  group('buildGitHubUrl', () {
+    test('空代理原样返回', () {
+      expect(
+        buildGitHubUrl('', 'https://api.github.com/a'),
+        'https://api.github.com/a',
+      );
+    });
+
+    test('非空代理前缀拼接', () {
+      expect(
+        buildGitHubUrl('https://hub.luxcis.top/', 'https://api.github.com/a'),
+        'https://hub.luxcis.top/https://api.github.com/a',
+      );
+    });
+  });
+
+  group('normalizeGithubProxy', () {
+    test('空串保持不变', () {
+      expect(normalizeGithubProxy(''), '');
+    });
+    test('已以 / 结尾保持不变', () {
+      expect(
+        normalizeGithubProxy('https://hub.luxcis.top/'),
+        'https://hub.luxcis.top/',
+      );
+    });
+    test('未以 / 结尾自动补齐', () {
+      expect(
+        normalizeGithubProxy('https://hub.luxcis.top'),
+        'https://hub.luxcis.top/',
+      );
+    });
+  });
+
   group('UpdateChecker', () {
     test('远端版本更高时 hasUpdate=true', () async {
       final checker = UpdateChecker(
@@ -116,6 +150,26 @@ void main() {
 
       final result = await checker.check();
 
+      expect(result.hasUpdate, isFalse);
+    });
+
+    test('配置代理时请求 URL 拼接代理前缀', () async {
+      final checker = UpdateChecker(
+        currentVersion: '0.9.2',
+        proxy: 'https://hub.luxcis.top/',
+        client: MockClient((request) async {
+          expect(
+            request.url.toString(),
+            'https://hub.luxcis.top/https://api.github.com/repos/Luxcis/Jdb_Flutter/releases/latest',
+          );
+          return http.Response('{}', 200,
+              headers: {'content-type': 'application/json'});
+        }),
+      );
+
+      final result = await checker.check();
+
+      // 空 release JSON -> tagName '' -> Version.parse 失败 -> hasUpdate=false
       expect(result.hasUpdate, isFalse);
     });
   });
@@ -185,6 +239,31 @@ void main() {
 
       expect(await File(path).length(), 1024);
       expect(progress.last, 1024);
+    });
+
+    test('配置代理时下载 URL 拼接代理前缀', () async {
+      final installer = UpdateInstaller(
+        proxy: 'https://hub.luxcis.top/',
+        downloadDir: Directory.systemTemp.createTempSync('update_test'),
+        client: MockClient((request) async {
+          expect(
+            request.url.toString(),
+            'https://hub.luxcis.top/https://github.com/Luxcis/Jdb_Flutter/releases/download/v0.10.0/app-arm64-v8a-release.apk',
+          );
+          return http.Response.bytes(List<int>.filled(64, 1), 200,
+              headers: {'content-length': '64'});
+        }),
+      );
+      final asset = const GitHubReleaseAsset(
+        name: 'app-arm64-v8a-release.apk',
+        size: 64,
+        downloadUrl:
+            'https://github.com/Luxcis/Jdb_Flutter/releases/download/v0.10.0/app-arm64-v8a-release.apk',
+      );
+
+      final path = await installer.download(asset);
+
+      expect(await File(path).length(), 64);
     });
   });
 }

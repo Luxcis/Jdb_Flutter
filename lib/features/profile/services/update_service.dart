@@ -5,6 +5,14 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:pub_semver/pub_semver.dart';
 
+/// 代理前缀非空时拼接到完整 URL 前，否则原样返回。
+String buildGitHubUrl(String proxy, String fullUrl) =>
+    proxy.isEmpty ? fullUrl : '$proxy$fullUrl';
+
+/// 规范化代理前缀：空串保留；非空且不以 / 结尾时自动补齐 /。
+String normalizeGithubProxy(String proxy) =>
+    proxy.isEmpty || proxy.endsWith('/') ? proxy : '$proxy/';
+
 /// GitHub release 资产（APK）。
 class GitHubReleaseAsset {
   const GitHubReleaseAsset({
@@ -67,18 +75,22 @@ class UpdateCheckResult {
 class UpdateChecker {
   UpdateChecker({
     required this.currentVersion,
+    this.proxy = '',
     http.Client? client,
   }) : _client = client ?? http.Client();
 
   final String currentVersion;
+  final String proxy;
   final http.Client _client;
 
   static const _apiUrl =
       'https://api.github.com/repos/Luxcis/Jdb_Flutter/releases/latest';
 
+  Uri _releaseUrl() => Uri.parse(buildGitHubUrl(proxy, _apiUrl));
+
   /// 请求 latest release 并判断是否有新版本。
   Future<UpdateCheckResult> check() async {
-    final response = await _client.get(Uri.parse(_apiUrl));
+    final response = await _client.get(_releaseUrl());
     if (response.statusCode != 200) {
       throw Exception('GitHub release 请求失败：HTTP ${response.statusCode}');
     }
@@ -106,10 +118,14 @@ class UpdateChecker {
 
 /// 下载 APK 并调起系统安装器。
 class UpdateInstaller {
-  UpdateInstaller({http.Client? client, Directory? downloadDir})
-    : _client = client ?? http.Client(),
-      _downloadDir = downloadDir;
+  UpdateInstaller({
+    this.proxy = '',
+    http.Client? client,
+    Directory? downloadDir,
+  })  : _client = client ?? http.Client(),
+        _downloadDir = downloadDir;
 
+  final String proxy;
   final http.Client _client;
   final Directory? _downloadDir;
 
@@ -135,7 +151,10 @@ class UpdateInstaller {
     final targetDir = Directory('${dir.path}/update');
     await targetDir.create(recursive: true);
 
-    final request = http.Request('GET', Uri.parse(asset.downloadUrl));
+    final request = http.Request(
+      'GET',
+      Uri.parse(buildGitHubUrl(proxy, asset.downloadUrl)),
+    );
     final streamed = await _client.send(request);
     if (streamed.statusCode != 200) {
       throw Exception('APK 下载失败：HTTP ${streamed.statusCode}');
