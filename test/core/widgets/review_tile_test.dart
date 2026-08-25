@@ -382,7 +382,7 @@ void main() {
 
     expect(find.text('17'), findsOneWidget);
     expect(find.byKey(const Key('review-liked-icon')), findsOneWidget);
-    expect(find.text('点赞失败，请重试'), findsNothing);
+    expect(find.text('你已经点过赞了'), findsNothing);
     expect(adapter.requests, isEmpty);
   });
 
@@ -402,7 +402,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
 
-    expect(find.text('点赞失败，请重试'), findsOneWidget);
+    expect(find.text('你已经点过赞了'), findsOneWidget);
     expect(find.text('17'), findsOneWidget);
   });
 }

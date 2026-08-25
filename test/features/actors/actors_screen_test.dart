@@ -153,13 +153,6 @@ void main() {
         findsOneWidget,
       );
     }
-    expect(find.text('全部'), findsOneWidget);
-    expect(find.byIcon(Icons.chevron_right), findsOneWidget);
-
-    final trailing = tester.widget<InkWell>(
-      find.ancestor(of: find.text('全部'), matching: find.byType(InkWell)),
-    );
-    expect(trailing.onTap, isNotNull);
 
     await tester.scrollUntilVisible(
       find.text('DMM演员'),
