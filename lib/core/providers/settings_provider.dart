@@ -2,6 +2,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jade/core/storage/storage_keys.dart';
+import 'package:jade/core/utils/github_proxy.dart';
 
 class SettingsProvider extends ChangeNotifier {
   SettingsProvider._(this._prefs);
@@ -25,9 +26,12 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 保存 GitHub 代理前缀；在数据边界统一规范化，保证
+  /// 「非空代理一定以 / 结尾」，使 buildGitHubUrl 可按 proxy + fullUrl 拼接。
   Future<void> setGithubProxy(String value) async {
-    _githubProxy = value;
-    await _prefs.setString(StorageKeys.githubProxy, value);
+    final normalized = value.trim().isEmpty ? '' : normalizeGithubProxy(value);
+    _githubProxy = normalized;
+    await _prefs.setString(StorageKeys.githubProxy, normalized);
     notifyListeners();
   }
 }

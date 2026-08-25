@@ -13,6 +13,7 @@ import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/providers/theme_provider.dart';
 import 'package:jade/core/router/routes.dart';
+import 'package:jade/core/utils/github_proxy.dart';
 import 'package:jade/core/widgets/filter_drawer.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';

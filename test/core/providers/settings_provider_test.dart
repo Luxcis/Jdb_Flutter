@@ -65,4 +65,17 @@ void main() {
     expect(prefs.getString(StorageKeys.githubProxy), 'https://gh-proxy.com/');
     expect(notifications, 1);
   });
+
+  test('切换 GitHub 代理时在数据边界统一规范化（未以 / 结尾则补齐）', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final provider = await SettingsProvider.create(prefs);
+
+    await provider.setGithubProxy('https://mirror.example.com/proxy');
+
+    expect(provider.githubProxy, 'https://mirror.example.com/proxy/');
+    expect(
+      prefs.getString(StorageKeys.githubProxy),
+      'https://mirror.example.com/proxy/',
+    );
+  });
 }

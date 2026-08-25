@@ -42,13 +42,15 @@ static const String githubProxy = 'key_github_proxy';
 - 字段：`String _githubProxy`，默认 `''`（空串 = 不使用代理）。
 - getter：`String get githubProxy => _githubProxy;`
 - `create()` 读取：`p._githubProxy = prefs.getString(StorageKeys.githubProxy) ?? '';`
-- `Future<void> setGithubProxy(String value)`：赋值 → `_prefs.setString(StorageKeys.githubProxy, value)` → `notifyListeners()`。
+- `Future<void> setGithubProxy(String value)`：`normalizeGithubProxy` 规范化（见 §4）→ 赋值 → `_prefs.setString(StorageKeys.githubProxy, normalized)` → `notifyListeners()`。
 
 取值约定：空串 = 不使用代理；非空 = 完整代理前缀（以 `/` 结尾，如 `https://hub.luxcis.top/`）。
 
-## 4. URL 拼接（服务层）
+> 规范化在 `setGithubProxy` 数据边界统一执行（见 §7 决策「自定义代理未以 `/` 结尾时保存自动补齐」），UI 调用点无需再各自 normalize。
 
-在 `lib/features/profile/services/update_service.dart` 新增纯函数：
+## 4. URL 拼接（核心工具）
+
+在 `lib/core/utils/github_proxy.dart`（核心层，`SettingsProvider` 与服务层均可复用）定义纯函数：
 
 ```dart
 /// 代理前缀非空时拼接到完整 URL 前，否则原样返回。
@@ -61,7 +63,9 @@ String normalizeGithubProxy(String proxy) =>
     proxy.isEmpty || proxy.endsWith('/') ? proxy : '$proxy/';
 ```
 
-> `normalizeGithubProxy` 在设置页选择/保存代理时调用一次，内置选项本身已以 `/` 结尾，仅自定义地址需要补齐。
+> 两个函数放在核心层（而非 feature 层），因为 `SettingsProvider`（core 层）需要在 `setGithubProxy` 数据边界统一调用 `normalizeGithubProxy`（见 §7），同时 `UpdateChecker`/`UpdateInstaller`（feature 层）也复用同一套拼接规则。`update_service.dart` 不再直接定义这两个函数，改为 import 本文件。
+
+> `normalizeGithubProxy` 在 `setGithubProxy` 内统一调用（§7 决策），内置选项本身已以 `/` 结尾，仅自定义地址需要补齐。UI 层的调用点不再各自 normalize。
 
 ## 5. 更新服务接入代理
 
@@ -134,8 +138,9 @@ String normalizeGithubProxy(String proxy) =>
 ## 9. 改动文件清单
 
 - `lib/core/storage/storage_keys.dart`：新增 `githubProxy` 常量。
-- `lib/core/providers/settings_provider.dart`：新增 `githubProxy` 字段/getter/读写。
-- `lib/features/profile/services/update_service.dart`：新增 `buildGitHubUrl`；`UpdateChecker`/`UpdateInstaller` 增加 `proxy` 参数并拼接。
+- `lib/core/providers/settings_provider.dart`：新增 `githubProxy` 字段/getter/读写（`setGithubProxy` 内统一规范化）。
+- `lib/core/utils/github_proxy.dart`：新增 `buildGitHubUrl` / `normalizeGithubProxy` 纯函数（核心层）。
+- `lib/features/profile/services/update_service.dart`：`UpdateChecker`/`UpdateInstaller` 增加 `proxy` 参数并拼接（改 import 核心层函数）。
 - `lib/features/profile/screens/profile_sub_pages.dart`：「当前版本」上方插入 `GitHub 代理` ListTile + `_openGithubProxyPicker`（BottomSheet + 自定义 AlertDialog）；更新流程注入 `SettingsProvider.githubProxy`。
-- `test/core/providers/settings_provider_test.dart`：追加代理相关用例。
+- `test/core/providers/settings_provider_test.dart`：追加代理相关用例（含 `setGithubProxy` 规范化）。
 - `test/features/profile/update_service_test.dart`：追加代理拼接相关用例。

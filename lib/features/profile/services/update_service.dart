@@ -2,16 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:jade/core/utils/github_proxy.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pub_semver/pub_semver.dart';
-
-/// 代理前缀非空时拼接到完整 URL 前，否则原样返回。
-String buildGitHubUrl(String proxy, String fullUrl) =>
-    proxy.isEmpty ? fullUrl : '$proxy$fullUrl';
-
-/// 规范化代理前缀：空串保留；非空且不以 / 结尾时自动补齐 /。
-String normalizeGithubProxy(String proxy) =>
-    proxy.isEmpty || proxy.endsWith('/') ? proxy : '$proxy/';
 
 /// GitHub release 资产（APK）。
 class GitHubReleaseAsset {

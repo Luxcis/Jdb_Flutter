@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:jade/core/utils/github_proxy.dart';
 import 'package:jade/features/profile/services/update_service.dart';
 
 /// 构造一个 fake http.Client，返回固定 release JSON。
