@@ -394,7 +394,7 @@ void main() {
     expect(visibleGridPosition().pixels, closeTo(censoredFemaleOffset, 0.1));
   });
 
-  testWidgets('月排名全部不跳转且点击演员进入详情', (tester) async {
+  testWidgets('月排名无全部按钮且点击演员进入详情', (tester) async {
     final fixture = await createActorService();
     fixture.adapter.enqueue(Endpoints.actorsRecommend, {
       'success': 1,
@@ -426,9 +426,7 @@ void main() {
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await pumpAsyncUi(tester);
 
-    await tester.tap(find.text('全部'));
-    await tester.pump();
-    expect(router.state.uri.path, '/actors');
+    expect(find.text('全部'), findsNothing);
 
     await tester.tap(find.text('可点击演员'));
     await tester.pump();

@@ -170,7 +170,7 @@ class _RecommendTabState extends State<_RecommendTab> {
       slivers: [
         const SectionHeader(title: '新人', bold: true).sliver,
         _actorSliverGrid(data.newActors),
-        SectionHeader(title: '月排名', trailing: '全部', onTrailing: () {}).sliver,
+        const SectionHeader(title: '月排名').sliver,
         _actorSliverGrid(data.monthlyActors),
         const SectionHeader(title: 'Fanza(DMM)推荐', bold: true).sliver,
         _actorSliverGrid(data.recommendActors),
