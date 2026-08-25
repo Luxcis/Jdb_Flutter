@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:go_router/go_router.dart';
-import 'package:jade/core/widgets/entity_list_tile.dart';
 import 'package:jade/features/following/models/follow_tag.dart';
 import 'package:jade/features/following/services/following_tags_provider.dart';
 import 'package:provider/provider.dart';
 
 /// 我的关注页：展示已关注标签列表，左滑取消关注，点击跳转标签影片列表。
-/// 样式与交互对齐「我的收藏」页（flutter_slidable + 确认对话框）。
+/// 行样式对齐「我的」子页的菜单 cell（Divider 分隔 + 标题 + chevron），
+/// 左滑删除沿用与「我的收藏」页一致的交互。
 class FollowingPage extends StatefulWidget {
   const FollowingPage({super.key});
 
@@ -60,8 +60,9 @@ class _FollowingPageState extends State<FollowingPage> {
       appBar: AppBar(title: const Text('我的关注')),
       body: tags.isEmpty
           ? const Center(child: Text('暂无关注标签'))
-          : ListView.builder(
+          : ListView.separated(
               itemCount: tags.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final tag = tags[index];
                 return Slidable(
@@ -78,9 +79,18 @@ class _FollowingPageState extends State<FollowingPage> {
                       ),
                     ],
                   ),
-                  child: EntityListTile(
-                    name: tag.name,
-                    subtitle: tag.value,
+                  child: ListTile(
+                    title: Text(
+                      tag.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      tag.value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push(
                       '/following/tag/${Uri.encodeComponent(tag.value)}',
                     ),

@@ -4,15 +4,13 @@ class EntityListTile extends StatelessWidget {
   const EntityListTile({
     super.key,
     required this.name,
-    this.count,
+    required this.count,
     required this.onTap,
     this.subtitle,
   });
 
   final String name;
-
-  /// 数量；为 null 时不显示 `(count)`（如关注标签无数量字段）。
-  final int? count;
+  final int count;
   final VoidCallback onTap;
   final String? subtitle;
 
@@ -38,12 +36,10 @@ class EntityListTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  if (count case final count?) ...[
-                    Text(
-                      '($count)',
-                      style: TextStyle(color: colors.onSurfaceVariant),
-                    ),
-                  ],
+                  Text(
+                    '($count)',
+                    style: TextStyle(color: colors.onSurfaceVariant),
+                  ),
                 ],
               ),
               if (subtitle case final subtitle?) ...[
