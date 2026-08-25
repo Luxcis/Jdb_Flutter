@@ -35,6 +35,11 @@ Future<FollowingTagsProvider> _pumpPage(
   FollowingTagsDataSource? dataSource,
   List<FollowTagItem> tags = const [],
 }) async {
+  // 与「我的收藏」页测试一致：固定视口尺寸，确保 Slidable 左滑触发。
+  tester.view.physicalSize = const Size(390, 844);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
   final provider = FollowingTagsProvider(
     store: _MemoryStore(),
     dataSource: dataSource ?? _FakeData(),
@@ -48,6 +53,20 @@ Future<FollowingTagsProvider> _pumpPage(
     child: const MaterialApp(home: FollowingPage()),
   ));
   return provider;
+}
+
+/// 左滑露出「取消关注」按钮，点击后在确认框中选择确定/取消。
+Future<void> _swipeAndConfirm(
+  WidgetTester tester, {
+  required String name,
+  required bool confirm,
+}) async {
+  await tester.drag(find.text(name), const Offset(-200, 0));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('取消关注'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(confirm ? '确定' : '取消'));
+  await tester.pumpAndSettle();
 }
 
 void main() {
@@ -64,23 +83,21 @@ void main() {
     expect(find.text('0:a:g1Q'), findsOneWidget);
   });
 
-  testWidgets('左滑取消关注成功：Dismissible 确认后该项被移除', (tester) async {
+  testWidgets('左滑取消关注成功：确认后该项被移除', (tester) async {
     final provider = await _pumpPage(tester, tags: const [
       FollowTagItem(id: '1', name: '有碼,森螢', value: '0:a:g1Q'),
     ]);
     expect(find.text('有碼,森螢'), findsOneWidget);
+    // 标签项无数量字段，不显示 (count)。
+    expect(find.textContaining('(0)'), findsNothing);
 
-    await tester.drag(
-      find.text('有碼,森螢'),
-      const Offset(-500, 0),
-    );
-    await tester.pumpAndSettle();
+    await _swipeAndConfirm(tester, name: '有碼,森螢', confirm: true);
 
     expect(provider.tags, isEmpty);
     expect(find.text('有碼,森螢'), findsNothing);
   });
 
-  testWidgets('左滑取消关注失败：确认返回 false 该项弹回且保留在数据源', (tester) async {
+  testWidgets('左滑取消关注失败：确认后项保留且无运行时断言', (tester) async {
     final provider = await _pumpPage(
       tester,
       dataSource: _FakeData(unfollowError: StateError('boom')),
@@ -90,15 +107,22 @@ void main() {
     );
     expect(find.text('有碼,森螢'), findsOneWidget);
 
-    await tester.drag(
-      find.text('有碼,森螢'),
-      const Offset(-500, 0),
-    );
-    await tester.pumpAndSettle();
+    await _swipeAndConfirm(tester, name: '有碼,森螢', confirm: true);
 
-    // 网络失败：项弹回（仍保留在列表），且没有触发运行时断言。
+    // 网络失败：项保留在列表，且无运行时断言。
     expect(provider.tags, hasLength(1));
     expect(find.text('有碼,森螢'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('取消关注：确认框点取消后项保留', (tester) async {
+    final provider = await _pumpPage(tester, tags: const [
+      FollowTagItem(id: '1', name: '有碼,森螢', value: '0:a:g1Q'),
+    ]);
+
+    await _swipeAndConfirm(tester, name: '有碼,森螢', confirm: false);
+
+    expect(provider.tags, hasLength(1));
+    expect(find.text('有碼,森螢'), findsOneWidget);
   });
 }

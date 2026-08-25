@@ -1,10 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:go_router/go_router.dart';
+import 'package:jade/core/widgets/entity_list_tile.dart';
 import 'package:jade/features/following/models/follow_tag.dart';
 import 'package:jade/features/following/services/following_tags_provider.dart';
 import 'package:provider/provider.dart';
 
 /// 我的关注页：展示已关注标签列表，左滑取消关注，点击跳转标签影片列表。
+/// 样式与交互对齐「我的收藏」页（flutter_slidable + 确认对话框）。
 class FollowingPage extends StatefulWidget {
   const FollowingPage({super.key});
 
@@ -13,21 +18,37 @@ class FollowingPage extends StatefulWidget {
 }
 
 class _FollowingPageState extends State<FollowingPage> {
-  Future<bool> _confirmUnfollow(FollowTagItem tag) async {
+  Future<void> _unfollow(FollowTagItem tag) async {
     final provider = context.read<FollowingTagsProvider>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('取消关注标签？'),
+        content: Text('确定取消关注「${tag.name}」吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     try {
       await provider.unfollow(tag.id);
-      if (!mounted) return false;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已取消关注')),
-      );
-      return true;
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已取消关注')));
     } catch (_) {
-      if (!mounted) return false;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('操作失败，请重试')),
-      );
-      return false;
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('操作失败，请重试')));
     }
   }
 
@@ -43,19 +64,23 @@ class _FollowingPageState extends State<FollowingPage> {
               itemCount: tags.length,
               itemBuilder: (context, index) {
                 final tag = tags[index];
-                return Dismissible(
-                  key: ValueKey(tag.id),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    color: Theme.of(context).colorScheme.errorContainer,
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 20),
-                    child: const Icon(Icons.delete, color: Colors.white),
+                return Slidable(
+                  key: ValueKey('slidable-${tag.id}'),
+                  endActionPane: ActionPane(
+                    motion: const DrawerMotion(),
+                    children: [
+                      SlidableAction(
+                        onPressed: (_) => unawaited(_unfollow(tag)),
+                        backgroundColor: Theme.of(context).colorScheme.error,
+                        foregroundColor: Theme.of(context).colorScheme.onError,
+                        icon: Icons.delete_outline,
+                        label: '取消关注',
+                      ),
+                    ],
                   ),
-                  confirmDismiss: (_) => _confirmUnfollow(tag),
-                  child: ListTile(
-                    title: Text(tag.name),
-                    subtitle: Text(tag.value),
+                  child: EntityListTile(
+                    name: tag.name,
+                    subtitle: tag.value,
                     onTap: () => context.push(
                       '/following/tag/${Uri.encodeComponent(tag.value)}',
                     ),
