@@ -43,24 +43,28 @@ class ActorService {
     return ActorRecommend.fromJson(apiMap(response.data));
   }
 
+  /// 获取演员月榜（非分页）。
+  ///
+  /// 对应 `GET /api/v1/rankings/actors`。实测/反编译确认仅接受整数
+  /// `type`（0=有码, 1=无码, 2=欧美），无 `period`/`page`/`limit` 参数。
+  /// 返回单页 `PagedResult` 以便复用现有网格控件，但不会触发分页加载。
   Future<PagedResult<ActorSummary>> getRankingActors({
-    required String type,
-    String period = 'month',
-    int page = 1,
-    int limit = 20,
+    required int type,
   }) async {
     final resp = await _api.get(
       Endpoints.rankingsActors,
-      queryParameters: {'type': type, 'period': period},
+      queryParameters: {'type': type},
     );
-    final m = resp.data as Map<String, dynamic>;
+    final data = apiMap(resp.data);
+    final items = apiList(data, const ['actors'])
+        .map(normalizeActorSummaryJson)
+        .map(ActorSummary.fromJson)
+        .toList(growable: false);
     return PagedResult(
-      items: apiList(m, const ['actors', 'items'])
-          .map((j) => ActorSummary.fromJson(normalizeActorSummaryJson(j)))
-          .toList(),
-      currentPage: apiInt(m['current_page'], 1),
-      totalPages: apiInt(m['total_pages'], 1),
-      total: apiInt(m['total'], 0),
+      items: items,
+      currentPage: 1,
+      totalPages: 1,
+      total: items.length,
     );
   }
 
@@ -108,7 +112,8 @@ class ActorService {
       keys: const ['movies', 'items'],
       page: page,
       pageSize: limit,
-      fromJson: (json) => MovieSummary.fromJson(normalizeMovieSummaryJson(json)),
+      fromJson: (json) =>
+          MovieSummary.fromJson(normalizeMovieSummaryJson(json)),
     );
   }
 }

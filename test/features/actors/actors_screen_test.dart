@@ -478,4 +478,150 @@ void main() {
     expect(find.text('很长很长的推荐演员名称'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('有码女顶部显示全部/月榜切换，筛选按钮同一行且默认可用', (tester) async {
+    final fixture = await createActorService();
+    enqueueEmptyRecommend(fixture.adapter);
+    enqueueEmptyActorPage(fixture.adapter);
+
+    await tester.pumpWidget(
+      MaterialApp(home: ActorsPage(service: fixture.service)),
+    );
+    await switchTab(tester, '有码(女)');
+
+    final segmented = find.byKey(const Key('actor-range-filter'));
+    expect(segmented, findsOneWidget);
+    expect(find.text('全部'), findsOneWidget);
+    expect(find.text('月榜'), findsOneWidget);
+
+    // SortSegmented 与筛选按钮在同一行。
+    final segmentedRect = tester.getRect(segmented);
+    final filterRect = tester.getRect(find.byTooltip('筛选演员'));
+    expect(segmentedRect.bottom, closeTo(filterRect.bottom, 40));
+    expect(segmentedRect.left, lessThan(filterRect.left));
+
+    // 默认「全部」时筛选按钮可用。
+    final filterButton = tester.widget<IconButton>(
+      find.ancestor(
+        of: find.byTooltip('筛选演员'),
+        matching: find.byType(IconButton),
+      ),
+    );
+    expect(filterButton.onPressed, isNotNull);
+  });
+
+  testWidgets('有码女切到月榜请求 rankings/actors 且筛选按钮禁用', (tester) async {
+    final fixture = await createActorService();
+    enqueueEmptyRecommend(fixture.adapter);
+    enqueueEmptyActorPage(fixture.adapter);
+    fixture.adapter.enqueue(Endpoints.rankingsActors, {
+      'success': 1,
+      'data': {
+        'actors': [
+          {'id': 'r1', 'name': '月榜演员', 'avatar_url': ''},
+        ],
+      },
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(home: ActorsPage(service: fixture.service)),
+    );
+    await switchTab(tester, '有码(女)');
+
+    await tester.tap(find.text('月榜'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    await pumpAsyncUi(tester);
+
+    final rankingRequest = fixture.adapter.requests
+        .where((request) => request.path == Endpoints.rankingsActors)
+        .toList();
+    expect(rankingRequest, hasLength(1));
+    expect(rankingRequest.last.uri.queryParameters['type'], '0');
+    expect(
+      rankingRequest.last.uri.queryParameters.containsKey('page'),
+      isFalse,
+    );
+    expect(
+      rankingRequest.last.uri.queryParameters.containsKey('period'),
+      isFalse,
+    );
+    expect(
+      rankingRequest.last.uri.queryParameters.containsKey('limit'),
+      isFalse,
+    );
+
+    expect(find.text('月榜演员'), findsOneWidget);
+
+    // 月榜下筛选按钮禁用。
+    final filterButton = tester.widget<IconButton>(
+      find.ancestor(
+        of: find.byTooltip('筛选演员'),
+        matching: find.byType(IconButton),
+      ),
+    );
+    expect(filterButton.onPressed, isNull);
+  });
+
+  testWidgets('有码女从月榜切回全部恢复分页请求且筛选按钮可用', (tester) async {
+    final fixture = await createActorService();
+    enqueueEmptyRecommend(fixture.adapter);
+    enqueueEmptyActorPage(fixture.adapter);
+    fixture.adapter.enqueue(Endpoints.rankingsActors, {
+      'success': 1,
+      'data': {'actors': <Map<String, dynamic>>[]},
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(home: ActorsPage(service: fixture.service)),
+    );
+    await switchTab(tester, '有码(女)');
+
+    await tester.tap(find.text('月榜'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    await pumpAsyncUi(tester);
+
+    await tester.tap(find.text('全部'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    await pumpAsyncUi(tester);
+
+    final actorRequests = fixture.adapter.requests
+        .where((request) => request.path == Endpoints.actors)
+        .toList();
+    expect(actorRequests, hasLength(2));
+
+    final filterButton = tester.widget<IconButton>(
+      find.ancestor(
+        of: find.byTooltip('筛选演员'),
+        matching: find.byType(IconButton),
+      ),
+    );
+    expect(filterButton.onPressed, isNotNull);
+  });
+
+  testWidgets('无码/欧美女显示月榜切换，男 Tab 不显示', (tester) async {
+    final fixture = await createActorService();
+    enqueueEmptyRecommend(fixture.adapter);
+    enqueueEmptyActorPage(fixture.adapter);
+
+    await tester.pumpWidget(
+      MaterialApp(home: ActorsPage(service: fixture.service)),
+    );
+
+    for (final tab in ['无码', '欧美(女)']) {
+      await switchTab(tester, tab);
+      expect(find.byKey(const Key('actor-range-filter')), findsOneWidget);
+      expect(find.text('月榜'), findsOneWidget);
+      // 无码/欧美女没有筛选按钮。
+      expect(find.byTooltip('筛选演员'), findsNothing);
+    }
+
+    for (final tab in ['有码(男)', '欧美(男)']) {
+      await switchTab(tester, tab);
+      expect(find.byKey(const Key('actor-range-filter')), findsNothing);
+      expect(find.text('月榜'), findsNothing);
+    }
+  });
 }

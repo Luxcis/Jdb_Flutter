@@ -362,6 +362,30 @@ void main() {
       expect(result.recommendActors.single.id, 'd1');
     });
 
+    test('GET /api/v1/rankings/actors → 仅传整数 type，无分页参数', () async {
+      ok(adapter, Endpoints.rankingsActors, {
+        'actors': [
+          {'id': 'r1', 'name': '月榜演员', 'avatar_url': ''},
+        ],
+      });
+
+      final result = await svc.getRankingActors(type: 0);
+
+      final request = adapter.requests.last;
+      expect(request.path, Endpoints.rankingsActors);
+      final query = request.uri.queryParameters;
+      expect(query, containsPair('type', '0'));
+      expect(query.containsKey('period'), isFalse);
+      expect(query.containsKey('page'), isFalse);
+      expect(query.containsKey('limit'), isFalse);
+
+      expect(result.items.single.id, 'r1');
+      expect(result.items.single.name, '月榜演员');
+      expect(result.currentPage, 1);
+      expect(result.totalPages, 1);
+      expect(result.total, 1);
+    });
+
     test('GET /api/v1/actors/{id} → 演员详情', () async {
       ok(adapter, '${Endpoints.actors}/a1', {
         'actor': {

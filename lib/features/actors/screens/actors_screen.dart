@@ -10,6 +10,7 @@ import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 import 'package:jade/core/widgets/section_header.dart';
 import 'package:jade/core/widgets/search_entry.dart';
+import 'package:jade/core/widgets/sort_segmented.dart';
 import 'package:jade/features/actors/models/actor_filter.dart';
 import 'package:jade/features/actors/models/actor_recommend.dart';
 import 'package:jade/features/actors/services/actor_service.dart';
@@ -224,10 +225,18 @@ class _ActorListTab extends StatefulWidget {
   State<_ActorListTab> createState() => _ActorListTabState();
 }
 
+enum _ActorRange { all, monthly }
+
 class _ActorListTabState extends State<_ActorListTab>
     with AutomaticKeepAliveClientMixin {
+  static const _rangeOptions = [
+    (label: '全部', value: _ActorRange.all),
+    (label: '月榜', value: _ActorRange.monthly),
+  ];
+
   late final PaginationController<ActorSummary> _controller;
   ActorFilter _filter = const ActorFilter();
+  _ActorRange _range = _ActorRange.all;
 
   @override
   bool get wantKeepAlive => true;
@@ -243,6 +252,9 @@ class _ActorListTabState extends State<_ActorListTab>
     final service = widget.service;
     if (service == null) {
       return Future.error(StateError('演员服务尚未就绪'));
+    }
+    if (_range == _ActorRange.monthly) {
+      return service.getRankingActors(type: int.parse(widget.category.type));
     }
     return service.getActors(
       category: widget.category,
@@ -263,6 +275,12 @@ class _ActorListTabState extends State<_ActorListTab>
     await _controller.reloadWith(_fetchPage, preserveItems: true);
   }
 
+  void _changeRange(_ActorRange value) {
+    if (value == _range) return;
+    setState(() => _range = value);
+    _controller.reloadWith(_fetchPage);
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -276,18 +294,41 @@ class _ActorListTabState extends State<_ActorListTab>
       controller: _controller,
       onActorTap: (actor) => context.push('/actor/${actor.id}'),
     );
-    if (!widget.category.supportsFilter) return grid;
+    if (!widget.category.supportsRanking && !widget.category.supportsFilter) {
+      return grid;
+    }
 
-    return Column(
-      children: [
-        Align(
-          alignment: Alignment.centerRight,
-          child: IconButton(
-            onPressed: _openFilter,
+    final rangeSelector = SortSegmented<_ActorRange>(
+      key: const Key('actor-range-filter'),
+      compact: true,
+      expanded: true,
+      options: _rangeOptions,
+      value: _range,
+      onChanged: _changeRange,
+    );
+
+    final Widget header;
+    if (widget.category.supportsRanking && widget.category.supportsFilter) {
+      // 有码女：筛选按钮与切换器同一行，筛选仅在「全部」时可用。
+      header = Row(
+        children: [
+          Expanded(child: rangeSelector),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: _range == _ActorRange.all ? _openFilter : null,
             icon: const Icon(Icons.filter_list),
             tooltip: '筛选演员',
           ),
-        ),
+        ],
+      );
+    } else {
+      header = rangeSelector;
+    }
+
+    return Column(
+      children: [
+        Padding(padding: const EdgeInsets.fromLTRB(8, 8, 8, 0), child: header),
+        const SizedBox(height: 4),
         Expanded(child: grid),
       ],
     );

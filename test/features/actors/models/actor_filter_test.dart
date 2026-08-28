@@ -21,6 +21,14 @@ void main() {
     );
   });
 
+  test('有码女/无码/欧美女支持月榜，男类不支持', () {
+    expect(ActorListCategory.censoredFemale.supportsRanking, isTrue);
+    expect(ActorListCategory.uncensored.supportsRanking, isTrue);
+    expect(ActorListCategory.westernFemale.supportsRanking, isTrue);
+    expect(ActorListCategory.censoredMale.supportsRanking, isFalse);
+    expect(ActorListCategory.westernMale.supportsRanking, isFalse);
+  });
+
   test('默认范围不编码为请求参数', () {
     expect(const ActorFilter().toQueryParameters(), isEmpty);
   });

@@ -1,19 +1,26 @@
 enum ActorListCategory {
-  censoredFemale(type: '0', gender: '0', supportsFilter: true),
+  censoredFemale(
+    type: '0',
+    gender: '0',
+    supportsFilter: true,
+    supportsRanking: true,
+  ),
   censoredMale(type: '0', gender: '1'),
-  uncensored(type: '1', gender: 'all'),
-  westernFemale(type: '2', gender: '0'),
+  uncensored(type: '1', gender: 'all', supportsRanking: true),
+  westernFemale(type: '2', gender: '0', supportsRanking: true),
   westernMale(type: '2', gender: '1');
 
   const ActorListCategory({
     required this.type,
     required this.gender,
     this.supportsFilter = false,
+    this.supportsRanking = false,
   });
 
   final String type;
   final String gender;
   final bool supportsFilter;
+  final bool supportsRanking;
 }
 
 class ActorRange {
