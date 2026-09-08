@@ -1,0 +1,277 @@
+schema: comet.native.v4
+name: fix-favorite-actor-button
+language: zh-CN
+phase: archive
+status: done
+state_version: 13
+brief: brief.md
+shape_confirmation_hash: 6a5cd1c05e9251eeb965cfa468c9ea2685ef9456e71f0a05df888fae488bb624
+spec_changes:
+  - capability: collect-actions
+    operation: create
+    source: specs/collect-actions/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/fix-favorite-actor-button
+  target_branch: master
+  finish: merge
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 1
+  attempt: 3
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: 'A1: 在演员详情页，对一个未收藏的演员点击 AppBar 心形按钮，收藏请求成功后心形立即变为实心（红色），并出现"已收藏"提示。'
+    result: passed
+    reason:
+      text: widget 测试『点击空心收藏按钮后请求成功并切换为实心』通过：tap tooltip '收藏'后断言 Icons.favorite
+        出现、favorite_border 消失、find.text('已收藏')，并断言 POST 请求 data 为 FormData 且
+        fields 为 {'name':'collect'}；页面逻辑 actor_detail_screen.dart:55-62 请求成功后才翻转
+        has_collected 并弹'已收藏' SnackBar，与'服务器为准不乐观更新'的规格一致。
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: 'A2: 在演员详情页，对一个已收藏的演员点击 AppBar 心形按钮，请求成功后心形立即变回空心，并出现"已取消收藏"提示。'
+    result: passed
+    reason:
+      text: widget 测试『点击实心收藏按钮后取消收藏并切换为空心』通过：断言变回
+        favorite_border、find.text('已取消收藏')、请求 fields 为 {'name':'uncollect'}；页面
+        actor_detail_screen.dart:60-62 依据翻转前状态显示'已取消收藏'。
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "A3: 收藏/取消收藏演员的请求按实测 API 契约以 multipart 表单编码发送（`POST
+      /api/v1/actors/{id}/collect_actions`，表单字段 `name` 取值
+      `collect`/`uncollect`），不再发送 JSON 请求体。"
+    result: passed
+    reason:
+      text: "_postCollect 统一改为 FormData.fromMap({'name':
+        name})（collections_service.dart:160-165），FormData 即 multipart 表单编码；服务层与
+        widget 测试均以 isA<FormData>() + fields 断言替换原 JSON 断言；实测契约文档
+        authenticated.md:415-425 确认 actors collect_actions 要求 multipart form
+        field name（live verified values collect/uncollect）；与既有 FormData 先例
+        movie_detail_service.dart:116-121 toggleMovieInList 同构。"
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A4: 进入已收藏演员的详情页（详情接口返回 `has_collected: true`），心形初始即为实心状态。"
+    result: passed
+    reason:
+      text: widget 测试『已收藏演员进入详情页心形初始为实心』通过：详情响应 has_collected:true 时
+        find.byIcon(Icons.favorite) 且无 favorite_border；解析链
+        normalizeActorDetailJson（api_data.dart:203-206，actor 内层优先、root 兜底）→
+        actor.g.dart:39 → actor_detail_screen.dart:164-168 传入 FavoriteButton。
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "A5: 同一共享方法 `setCollected` 支持的其他类别（片商 m/系列 s/导演 d/番号 c/清单 l）的
+      collect_actions 请求编码方式与 A3 一致。"
+    result: passed
+    reason:
+      text: 全部类别共用唯一 _postCollect 入口（collections_service.dart:134-155 各
+        uncollectXxx、198-202 setCollected 均经 160-165）；服务层测试
+        'uncollectMaker/Series/Director/Code/List 发送对应 POST' 对 m/s/d/c/l
+        五条路径逐一断言 FormData fields {'name':'uncollect'}；契约文档
+        439-449/451-461/427-437/723-733/493-503 确认五类端点 multipart name 契约相同。
+      truncated: false
+  - id: A6
+    source: specs/collect-actions/spec.md
+    text: 点击未收藏演员的心形后变为已收藏 Given 演员详情页当前演员未收藏（心形为空心），且设备已登录 When 点击 AppBar
+      心形按钮且收藏请求成功返回 Then 心形变为实心红色，页面出现"已收藏"提示，再次进入详情页仍显示已收藏
+    result: passed
+    reason:
+      text: A1 场景版：widget 测试验证点击→实心红色（favorite_button.dart:22-23
+        Colors.redAccent）→'已收藏'提示→请求
+        name=collect；'再次进入仍显示已收藏'由初始状态渲染测试（has_collected:true→实心）与正确编码的 collect
+        请求共同覆盖，服务端持久化无法在单测中直接验证但链路完整。
+      truncated: false
+  - id: A7
+    source: specs/collect-actions/spec.md
+    text: 点击已收藏演员的心形后取消收藏 Given 演员详情页当前演员已收藏（心形为实心红色），且设备已登录 When 点击 AppBar
+      心形按钮且取消收藏请求成功返回 Then 心形变回空心，页面出现"已取消收藏"提示
+    result: passed
+    reason:
+      text: A2 场景版：widget 测试验证实心→点击→空心→'已取消收藏'提示→请求 name=uncollect，全部通过。
+      truncated: false
+  - id: A8
+    source: specs/collect-actions/spec.md
+    text: collect_actions 请求使用 multipart 表单编码 Given 用户对任一类别实体触发收藏或取消收藏 When 客户端发送
+      `POST {entity}/{id}/collect_actions` Then 请求体为 multipart 表单且仅含字段
+      `name`，取值为 `collect` 或 `uncollect`，不发送 JSON 请求体
+    result: passed
+    reason:
+      text: "场景版 multipart 断言：服务层测试覆盖 a/m/s/d/c/l 全部六类端点的 FormData fields {'name':
+        collect/uncollect}，widget 测试再从真实页面路径断言一次；全仓 grep 确认测试中无残留
+        collect_actions JSON 请求体断言；batchUncollectActors（DELETE
+        batch_uncollection，collections_service.dart:168-174）按非目标保持 JSON 未触碰。"
+      truncated: false
+  - id: A9
+    source: specs/collect-actions/spec.md
+    text: 请求失败时收藏状态不切换 Given 演员详情页当前演员未收藏且 collect_actions 请求失败 When 点击 AppBar 心形按钮
+      Then 心形保持空心不变，页面出现"操作失败，请重试"提示
+    result: passed
+    reason:
+      text: widget 测试『收藏请求失败时状态不切换并提示』通过：FakeAdapter.throwFirst 抛 DioException 后断言心形仍为
+        favorite_border、无 favorite、find.text('操作失败，请重试')；页面 catch 分支
+        actor_detail_screen.dart:41-53 在翻转状态前 return 并弹失败提示，成功分支 55-59 不会执行。
+      truncated: false
+  - id: A10
+    source: specs/collect-actions/spec.md
+    text: "已收藏演员进入详情页显示实心 Given 当前用户已收藏某演员且演员详情接口返回 `has_collected: true` When
+      进入该演员的详情页 Then AppBar 心形按钮初始即为实心红色"
+    result: passed
+    reason:
+      text: A4 场景版：同一初始状态 widget 测试通过（详情接口返回 has_collected:true 时 AppBar 心形初始即
+        Icons.favorite 实心红色）。
+      truncated: false
+builder_handoff:
+  candidate_id: eade86e9-bcef-4231-897a-b2777d7a3a83
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:a6936d32-5e0e-413d-910d-febc0739962c
+  iteration: 1
+  summary:
+    text: "本轮修复演员详情页心形收藏按钮点击后状态不切换：根因是 _postCollect 以 JSON 请求体发送 {'name': ...}，而实测
+      API 契约（docs/main/api/assist/authenticated.md collect_actions 各节）要求
+      multipart 表单字段 name（collect/uncollect），服务器以 ParameterInvalid: name 拒绝 JSON
+      导致请求失败、状态不翻转。修复为 _postCollect 统一改用 FormData.fromMap({'name':
+      name})（lib/features/profile/services/collections_service.dart），覆盖演员 a 与片商
+      m/系列 s/导演 d/番号 c/清单 l 全部类别的 setCollected 与 uncollectXxx
+      调用；batchUncollectActors（DELETE batch_uncollection）与 movie_actions
+      等其他端点未触碰。测试：更新 collections_service_test 4 处断言为 FormData 字段断言；新增
+      test/features/actors/actor_detail_screen_test.dart
+      覆盖初始实心（A4/A10）、点击收藏成功切换并提示（A1/A6）、取消收藏切换并提示（A2/A7）、请求失败状态不变更（A9/A4
+      失败分支），并断言 collect_actions 请求为 multipart 表单（A3/A8，A5
+      由服务层参数化用例覆盖其他类别）。开发期检查：flutter analyze 无问题；flutter test --no-pub 全量 866
+      项全部通过。提交 07d8fb7。"
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+  checks:
+    - name:
+        text: flutter analyze
+        truncated: false
+      result: passed
+      note:
+        text: No issues found
+        truncated: false
+    - name:
+        text: flutter test (全量)
+        truncated: false
+      result: passed
+      note:
+        text: 866 tests passed（含新增 actor_detail_screen_test 4 项与更新后的
+          collections_service_test）
+        truncated: false
+  checks_truncated: false
+  known_limits: []
+  known_limits_truncated: false
+  review:
+    status: passed
+    summary:
+      text: 独立只读复核确认：FormData 修复与实测契约及仓库既有 movie_actions FormData 先例同构；影响面仅
+        collect_actions（batchUncollectActors、getHasCollected、movie_actions
+        未变，_postCollect 无外部调用方）；测试断言真实校验 multipart 字段；新 widget 测试有界 pump 避开
+        CachedImage spinner 的 pumpAndSettle 超时风险；无残留 JSON collect_actions
+        断言。未发现需修正的必要问题。
+      truncated: false
+    reviewer_execution_ref: agent_2bb70d2f-cafd-48d5-999e-c746244a8aa1
+  submitted_at: 2026-09-08T08:26:58.146Z
+blockers: []
+verification:
+  candidate_id: eade86e9-bcef-4231-897a-b2777d7a3a83
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:64c8bed0-396a-49f4-ad68-fec7cba31644
+  iteration: 1
+  attempt: 3
+  assurance: skill-coordinated
+  verdict: pass
+  checks: []
+  summary:
+    text: "独立复核确认通过：根因修复真实且最小——collections_service.dart:160-165 将 _postCollect 从
+      JSON {'name': name} 改为 FormData.fromMap({'name': name}），六类实体的
+      uncollectXxx（134-155）与 setCollected（198-202）全部经由该单点，影响面恰为
+      collect_actions；与实测契约（authenticated.md:415-461、493-503、723-733）及仓库既有
+      movie_actions FormData 先例（movie_detail_service.dart:116-121）一致。新增 4 项演员详情页
+      widget 测试与更新后的服务层 FormData 断言真实校验 multipart 字段并覆盖 A1-A10
+      全部场景（含失败不翻转与初始实心）；屏幕端交互逻辑（服务器为准、busy 禁用、未登录守卫）与规格相符且未被改动。本人实跑复核：flutter
+      analyze --no-pub 无问题；flutter test --no-pub 两目标文件 19 项全通过。工作区 HEAD 即
+      07d8fb7，diff 与验收文档一一对应。"
+    truncated: false
+  risks:
+    - text: A6 的'再次进入详情页仍显示已收藏'依赖服务端持久化，单测只能间接验证（请求编码正确 + has_collected
+        初始渲染正确），真机端到端行为建议在后续人工验收中抽查一次
+      truncated: false
+    - text: Builder 登记的全量 866 项测试通过结果未由本验收者完整重跑，仅实跑了 analyze 与两份目标测试文件（19 项）；其余测试面依赖
+        Runtime 复用登记
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-08T08:48:29.433Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native Verifier response kind is
+        invalid"
+      truncated: false
+    completed_at: 2026-09-08T08:34:20.328Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 2
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native Verifier response fields are
+        invalid"
+      truncated: false
+    completed_at: 2026-09-08T08:40:32.721Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 3
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: "独立复核确认通过：根因修复真实且最小——collections_service.dart:160-165 将 _postCollect 从
+        JSON {'name': name} 改为 FormData.fromMap({'name': name}），六类实体的
+        uncollectXxx（134-155）与 setCollected（198-202）全部经由该单点，影响面恰为
+        collect_actions；与实测契约（authenticated.md:415-461、493-503、723-733）及仓库既有
+        movie_actions FormData 先例（movie_detail_service.dart:116-121）一致。新增 4
+        项演员详情页 widget 测试与更新后的服务层 FormData 断言真实校验 multipart 字段并覆盖 A1-A10
+        全部场景（含失败不翻转与初始实心）；屏幕端交互逻辑（服务器为准、busy 禁用、未登录守卫）与规格相符且未被改动。本人实跑复核：flutter
+        analyze --no-pub 无问题；flutter test --no-pub 两目标文件 19 项全通过。工作区 HEAD 即
+        07d8fb7，diff 与验收文档一一对应。"
+      truncated: false
+    completed_at: 2026-09-08T08:48:29.433Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-09-08T07:18:34.301Z
