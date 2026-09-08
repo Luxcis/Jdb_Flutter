@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart'
+    show RenderParagraph;
+import 'package:flutter/services.dart' show SystemChannels;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/review.dart';
@@ -73,6 +76,70 @@ Future<FakeAdapter> _setupFakeApi() async {
   final adapter = FakeAdapter();
   api.setAdapterForTest(adapter);
   return adapter;
+}
+
+String? _clipboardText;
+
+void _mockClipboard(WidgetTester tester) {
+  tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+    SystemChannels.platform,
+    (call) async {
+      if (call.method == 'Clipboard.setData') {
+        _clipboardText = call.arguments['text'] as String?;
+      }
+      return null;
+    },
+  );
+  addTearDown(() {
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      null,
+    );
+    _clipboardText = null;
+  });
+}
+
+/// 期望的折叠态可见前缀：追加省略号后仍能在 maxLines 行内排版的最长前缀。
+/// 与生产实现算法一致、独立计算，用于校验“全选复制”不包含省略号后的隐藏文本。
+String _expectedVisiblePrefix(
+  String text,
+  TextStyle? style,
+  int maxLines,
+  double maxWidth,
+  TextScaler textScaler,
+) {
+  bool fits(int count) {
+    final painter = TextPainter(
+      text: TextSpan(text: '${text.substring(0, count)}…', style: style),
+      maxLines: maxLines,
+      textDirection: TextDirection.ltr,
+      textScaler: textScaler,
+    )..layout(maxWidth: maxWidth);
+    final ok = !painter.didExceedMaxLines;
+    painter.dispose();
+    return ok;
+  }
+
+  var low = 0;
+  var high = text.length;
+  while (low < high) {
+    final mid = (low + high + 1) ~/ 2;
+    if (fits(mid)) {
+      low = mid;
+    } else {
+      high = mid - 1;
+    }
+  }
+  return text.substring(0, low);
+}
+
+/// 渲染侧独立 oracle：折叠态 RenderParagraph 的省略号截断点。
+/// 用渲染对象自身的映射结果计算可见前缀，与生产/期望的二分探测互相校验。
+String _renderedVisiblePrefix(RenderParagraph paragraph, String text) {
+  final position = paragraph.getPositionForOffset(
+    Offset(paragraph.size.width - 1, paragraph.size.height - 1),
+  );
+  return text.substring(0, position.offset);
 }
 
 void main() {
@@ -404,5 +471,181 @@ void main() {
 
     expect(find.text('你已经点过赞了'), findsOneWidget);
     expect(find.text('17'), findsOneWidget);
+  });
+
+  testWidgets('长按短评正文进入选择态并展示复制全选菜单', (tester) async {
+    await tester.pumpWidget(_wrap(ReviewTile(review: _review())));
+
+    await tester.longPress(find.text('评论内容'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('复制'), findsOneWidget);
+    expect(find.text('全选'), findsOneWidget);
+  });
+
+  testWidgets('长按选中文本点击复制后剪贴板为所选文本且菜单关闭', (tester) async {
+    _mockClipboard(tester);
+    await tester.pumpWidget(_wrap(ReviewTile(review: _review())));
+
+    await tester.longPress(find.text('评论内容'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('复制'));
+    await tester.pumpAndSettle();
+
+    // 中文按字分词，长按仅选中长按处的单个汉字。
+    expect(_clipboardText, isNotNull);
+    expect('评论内容'.contains(_clipboardText!), isTrue);
+    expect(find.text('复制'), findsNothing);
+  });
+
+  testWidgets('长按拉丁单词复制完整单词', (tester) async {
+    _mockClipboard(tester);
+    await tester.pumpWidget(_wrap(ReviewTile(review: _review(content: 'flutter'))));
+
+    await tester.longPress(find.text('flutter'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('复制'));
+    await tester.pumpAndSettle();
+
+    expect(_clipboardText, 'flutter');
+  });
+
+  testWidgets('折叠态全选复制全部可见文本', (tester) async {
+    _mockClipboard(tester);
+    final longText = '这是一段非常长的评论内容。' * 30;
+    await tester.pumpWidget(
+      _wrap(ReviewTile(review: _review(content: longText))),
+    );
+
+    await tester.longPress(find.text(longText));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('全选'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('复制'));
+    await tester.pumpAndSettle();
+
+    final box = tester.renderObject<RenderBox>(find.text(longText));
+    final style = Theme.of(
+      tester.element(find.text(longText)),
+    ).textTheme.bodyLarge;
+    final expected = _expectedVisiblePrefix(
+      longText,
+      style,
+      5,
+      box.constraints.maxWidth,
+      TextScaler.noScaling,
+    );
+    expect(_clipboardText, expected);
+    expect(_clipboardText!.length, lessThan(longText.length));
+    // 渲染侧独立 oracle 交叉校验：与生产二分探测互证。
+    final paragraph = tester.renderObject<RenderParagraph>(
+      find.descendant(of: find.text(longText), matching: find.byType(RichText)),
+    );
+    expect(_clipboardText, _renderedVisiblePrefix(paragraph, longText));
+  });
+
+  testWidgets('折叠态长按复制所选可见文本', (tester) async {
+    _mockClipboard(tester);
+    final longText = List.generate(120, (i) => '词$i').join(' ');
+    await tester.pumpWidget(
+      _wrap(ReviewTile(review: _review(content: longText))),
+    );
+
+    await tester.longPress(find.text(longText));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('复制'));
+    await tester.pumpAndSettle();
+
+    final box = tester.renderObject<RenderBox>(find.text(longText));
+    final style = Theme.of(
+      tester.element(find.text(longText)),
+    ).textTheme.bodyLarge;
+    final visiblePrefix = _expectedVisiblePrefix(
+      longText,
+      style,
+      5,
+      box.constraints.maxWidth,
+      TextScaler.noScaling,
+    );
+    expect(_clipboardText, isNotNull);
+    expect(_clipboardText, isNot(longText));
+    expect(visiblePrefix.contains(_clipboardText!), isTrue);
+  });
+
+  testWidgets('展开态全选复制全部文本', (tester) async {
+    _mockClipboard(tester);
+    final longText = '这是一段非常长的评论内容。' * 30;
+    await tester.pumpWidget(
+      _wrap(ReviewTile(review: _review(content: longText))),
+    );
+
+    await tester.tap(find.text('展开'));
+    await tester.pump();
+    await tester.longPress(find.text(longText));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('全选'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('复制'));
+    await tester.pumpAndSettle();
+
+    expect(_clipboardText, longText);
+  });
+
+  testWidgets('系统字体缩放下折叠态全选复制全部可见文本', (tester) async {
+    _mockClipboard(tester);
+    final longText = '这是一段非常长的评论内容。' * 30;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              textScaler: const TextScaler.linear(1.3),
+            ),
+            child: Scaffold(
+              body: ReviewTile(review: _review(content: longText)),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.longPress(find.text(longText));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('全选'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('复制'));
+    await tester.pumpAndSettle();
+
+    final box = tester.renderObject<RenderBox>(find.text(longText));
+    final style = Theme.of(
+      tester.element(find.text(longText)),
+    ).textTheme.bodyLarge;
+    final expected = _expectedVisiblePrefix(
+      longText,
+      style,
+      5,
+      box.constraints.maxWidth,
+      TextScaler.linear(1.3),
+    );
+    expect(_clipboardText, expected);
+    expect(_clipboardText!.length, lessThan(longText.length));
+  });
+
+  testWidgets('选中文字后点击正文仅清除选择不触发展开收起', (tester) async {
+    final longText = '这是一段非常长的评论内容。' * 30;
+    await tester.pumpWidget(
+      _wrap(ReviewTile(review: _review(content: longText))),
+    );
+
+    final center = tester.getCenter(find.text(longText));
+    await tester.longPressAt(center.translate(0, -30));
+    await tester.pumpAndSettle();
+    expect(find.text('复制'), findsOneWidget);
+
+    await tester.tapAt(center.translate(0, 30));
+    await tester.pumpAndSettle();
+
+    expect(find.text('复制'), findsNothing);
+    expect(find.text('展开'), findsOneWidget);
   });
 }
