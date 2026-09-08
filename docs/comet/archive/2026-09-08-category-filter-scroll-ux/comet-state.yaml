@@ -1,0 +1,299 @@
+schema: comet.native.v4
+name: category-filter-scroll-ux
+language: zh-CN
+phase: archive
+status: done
+state_version: 8
+brief: brief.md
+shape_confirmation_hash: ccb187b12d6991c430030cff706b7033804da91518a09a96139e5d2704738c4b
+spec_changes:
+  - capability: category-filter
+    operation: create
+    source: specs/category-filter/spec.md
+workspace:
+  isolation: current
+  change_branch: master
+  target_branch: master
+  finish: null
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: 类别页影片网格已向下滚动到非零偏移后，打开筛选面板点选任一标签触发自动刷新，当前 Tab 影片网格滚动偏移回到 0。"
+    result: passed
+    reason:
+      text: 新增用例「切换筛选标签触发刷新后网格自动回到顶部」（test/features/categories/categories_screen_test.dart）：网格拖至
+        offset>0，开面板点 category-filter-subject-23，断言 pixels==0 且请求
+        '0:t:m:23:::'。链路：toggleFilter→reloadWith 自增
+        reloadEpoch（pagination_controller.dart:64）→MovieGridView._syncReloadEpoch
+        帧末 jumpTo(0)，含 mounted/hasClients/offset!=0 三重守卫。Verifier 独立复跑 flutter
+        test test/features/categories --no-pub 44 项全过。
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A2: 类别页影片网格已向下滚动到非零偏移后，在筛选面板切换排序方式或发布日期升降序，当前 Tab 影片网格滚动偏移回到 0。"
+    result: passed
+    reason:
+      text: "新增用例「切换发布日期升降序触发刷新后网格自动回到顶部」点 category-order-toggle，断言 orderBy=='asc' 且网格
+        pixels==0。排序方式路径（changeSort）与升降序/标签调用完全相同的 movies.reloadWith(_fetchPage,
+        preserveItems: true)（category_tab_controller.dart:119-133），仅经
+        reloadEpoch 生效，机制等价；既有用例「排序菜单和发布日期升降序可即时触达」已验证 changeSort 触发 reload
+        请求（movieRequests.last.sort==CategorySort.score），满足『或』语义。"
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "A3: 筛选触发的滚动置顶只作用于当前 Tab 的网格：Tab 0 网格滚动到非零偏移、Tab 1 网格滚动到另一非零偏移后，在 Tab 0
+      变更筛选条件触发刷新，Tab 0 网格偏移回到 0，切到 Tab 1 后其网格偏移保持不变（“切换 Tab
+      网格滚动位置独立保留”的既有行为不回归）。"
+    result: passed
+    reason:
+      text: 新增用例「筛选置顶只作用于当前 Tab 且不破坏切 Tab 滚动保留」完整覆盖：Tab0 offset X>0、Tab1 offset Y>0，切回
+        Tab0 偏移保持，Tab0 筛选置顶后==0，再切 Tab1 偏移仍为 Y。每个 Tab 的 MovieGridView 独立
+        State（AutomaticKeepAliveClientMixin 保活）持有独立 _seenReloadEpoch 与
+        controller，仅监听本 Tab controller。回归保护用例「Tab 0 的第二页和滚动位置在切换 Tab 后独立保留」继续通过。
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A4: 筛选面板内筛选列表已向下滚动到非零偏移后收起面板，再次展开时筛选列表滚动偏移恢复到收起前的值。"
+    result: passed
+    reason:
+      text: "新增用例「筛选面板收起再展开恢复筛选列表滚动位置」：列表拖至 offset>0 并等惯性结束，tapAt(8,8) 收起并断言列表消失，重开后断言
+        restored closeTo(offset,0.1)。实现为 _showFilter 每次
+        ScrollController(initialScrollOffset: _filterScrollOffsets[type] ?? 0) 加
+        listener 持续记录（categories_screen.dart:84-111）。"
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "A5: 各 Tab 的筛选面板滚动位置相互独立：Tab 0 筛选列表滚动到偏移 X 后收起，切到 Tab 1 展开筛选并将列表滚动到偏移 Y
+      后收起，再切回 Tab 0 展开，筛选列表恢复偏移 X。"
+    result: passed
+    reason:
+      text: 新增用例「不同 Tab 的筛选面板滚动位置相互独立」：Tab0 滚到 X、Tab1 滚到 Y(>X)，交叉重开各自精确恢复
+        closeTo(X/Y,0.1)。偏移 Map 以 controller.type 为键独立存储；测试使用真实
+        CategoriesPage+真实 showModalBottomSheet 结构，已实证两 Tab 无相互覆盖。
+      truncated: false
+  - id: A6
+    source: specs/category-filter/spec.md
+    text: 切换标签触发刷新后网格回到顶部 Given 类别页当前 Tab 影片网格已向下滚动到非零偏移 When 打开筛选面板并点选任一标签触发自动刷新
+      Then 当前 Tab 影片网格滚动偏移回到 0
+    result: passed
+    reason:
+      text: 与 A1 同一场景（spec
+        Scenario「切换标签触发刷新后网格回到顶部」），由同一新增用例覆盖并通过；置顶在触发刷新的帧末执行、不等待网络结果，符合规格时序要求。
+      truncated: false
+  - id: A7
+    source: specs/category-filter/spec.md
+    text: 切换排序或升降序触发刷新后网格回到顶部 Given 类别页当前 Tab 影片网格已向下滚动到非零偏移 When
+      在筛选面板切换排序方式或发布日期升降序 Then 当前 Tab 影片网格滚动偏移回到 0
+    result: passed
+    reason:
+      text: 与 A2 同一场景（spec Scenario「切换排序或升降序触发刷新后网格回到顶部」）：升降序有专门用例，排序方式路径经 changeSort
+        共用同一 reloadWith→reloadEpoch 机制，既有「排序菜单可即时触达」用例佐证 reload 确实触发。
+      truncated: false
+  - id: A8
+    source: specs/category-filter/spec.md
+    text: 其他 Tab 网格滚动位置不受筛选置顶影响 Given Tab 0 网格滚动到非零偏移，Tab 1 网格滚动到另一非零偏移 When 在 Tab 0
+      变更筛选条件触发刷新 Then Tab 0 网格偏移回到 0，切到 Tab 1 后其网格偏移保持不变
+    result: passed
+    reason:
+      text: 与 A3 同一场景（spec Scenario「其他 Tab 网格滚动位置不受筛选置顶影响」）：用例在 Tab0 筛选置顶后显式断言 Tab1 偏移
+        closeTo(Y,0.1) 保持不变。
+      truncated: false
+  - id: A9
+    source: specs/category-filter/spec.md
+    text: 筛选面板收起再展开恢复滚动位置 Given 筛选面板筛选列表已向下滚动到非零偏移 When 收起面板后再次展开 Then
+      筛选列表滚动偏移恢复到收起前的值
+    result: passed
+    reason:
+      text: 与 A4 同一场景（spec Scenario「筛选面板收起再展开恢复滚动位置」），同一用例覆盖：收起（barrier
+        点击路由弹出）后重开恢复到收起前偏移；控制器在 whenComplete+postFrame 后 dispose，生命周期由页面管理。
+      truncated: false
+  - id: A10
+    source: specs/category-filter/spec.md
+    text: 各 Tab 筛选面板滚动位置相互独立 Given Tab 0 筛选列表滚动到偏移 X 后收起 When 切到 Tab 1 展开筛选并将列表滚动到偏移
+      Y 后收起，再切回 Tab 0 展开 Then Tab 0 筛选列表恢复偏移 X
+    result: passed
+    reason:
+      text: 与 A5 同一场景（spec Scenario「各 Tab 筛选面板滚动位置相互独立」），同一用例覆盖并通过。
+      truncated: false
+builder_handoff:
+  candidate_id: 2a7bbf56-243e-48e8-b39d-8f168d6b9655
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:091f15a8-630d-426c-b1af-a4a26aa62128
+  iteration: 1
+  summary:
+    text: 实现类别页筛选优化两项行为：(1) PaginationController 新增 reloadEpoch（reloadWith
+      自增、fetchMore 不自增）；MovieGridView 改为 StatefulWidget 并新增可选
+      scrollToTopOnReload（默认关闭），检测到 reloadEpoch 变化时在帧末 jumpTo(0)，带
+      mounted/hasClients/offset!=0 三重守卫；类别页网格开启该参数，其余 11 处复用方不受影响。(2)
+      CategoryFilterSheet/_FilterBody 新增可选 listScrollController 传给筛选列表
+      ListView；类别页 _showFilter 每次打开按 Tab 新建
+      ScrollController(initialScrollOffset=上次偏移)，listener 持续记录偏移到
+      _filterScrollOffsets，面板关闭后 whenComplete+postFrame dispose。新增 5 个 widget
+      测试覆盖 A1-A5/A6-A10 对应场景；既有'切换 Tab
+      滚动位置独立保留'回归测试继续通过。复核提出的两处注释措辞不准确已修正（下拉刷新也会自增 epoch，仅靠顶部触发+offset
+      守卫保证无可见影响）。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+  checks:
+    - name:
+        text: flutter analyze --no-pub
+        truncated: false
+      result: passed
+      note:
+        text: 无问题（含注释修正后复跑）
+        truncated: false
+    - name:
+        text: flutter test test/features/categories --no-pub
+        truncated: false
+      result: passed
+      note:
+        text: 44 项通过，含 5 个新增用例与既有回归用例（注释修正后复跑）
+        truncated: false
+    - name:
+        text: flutter test --no-pub
+        truncated: false
+      result: passed
+      note:
+        text: 全量 862 项通过（注释修正前执行；注释仅措辞修正，行为不变）
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: 下拉刷新同样自增 reloadEpoch，但它只能在顶部触发，配合 offset!=0 守卫无用户可见影响；未来若有页面在非顶部状态程序化
+        refresh 且启用该参数会被误判跳顶（已在注释说明）
+      truncated: false
+    - text: 筛选面板恢复偏移超出内容范围时依赖 Flutter 对 maxScrollExtent 的内部纠偏；同一页面生命周期内标签内容不变，实际不触发
+      truncated: false
+    - text: 测试环境用固定 pump 600ms×2 替代 pumpAndSettle（封面占位 CircularProgressIndicator
+        在测试环境持续动画），已在测试注释说明
+      truncated: false
+  known_limits_truncated: false
+  review:
+    status: passed
+    summary:
+      text: 独立只读复核（未参与实现的新复核执行）确认：面板 ScrollController 生命周期安全（无 double-dispose、无附着时
+        dispose、无泄漏）；jumpTo 仅在帧末且三重守卫，初始加载不会误判（首帧 seen==null 吞掉 epoch 0→1）；其余 11
+        处 MovieGridView 使用方行为不变；reloadEpoch 纯增量无副作用；新增测试真实命中 jumpTo 而非重建假阳性。3
+        个低/信息级备注：2 条注释措辞已修正，其余信息级接受不改，无阻塞项。
+      truncated: false
+    reviewer_execution_ref: review-subagent-agent_4902c5da-00e8-42d6-ba5c-bb012be8bf92
+  submitted_at: 2026-09-08T06:49:16.936Z
+blockers: []
+verification:
+  candidate_id: 2a7bbf56-243e-48e8-b39d-8f168d6b9655
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:6a3025c6-e4a8-4212-a1c6-f416efda01f7
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: flutter-analyze
+      name:
+        text: 静态分析
+        truncated: false
+      argv_display:
+        - text: analyze
+          truncated: false
+        - text: --no-pub
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 4756
+    - id: categories-tests
+      name:
+        text: 类别功能测试
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: test/features/categories
+          truncated: false
+        - text: --no-pub
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 5040
+    - id: full-tests
+      name:
+        text: 全量测试
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: --no-pub
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 29257
+  summary:
+    text: 10/10 验收项全部通过：reloadEpoch+opt-in 帧末置顶与按 Tab 记忆的面板滚动偏移实现正确，5 个新增 widget
+      测试真实覆盖 A1-A10，独立复跑 analyze（无问题）与 categories 测试（44 项）均通过，其他 11 处
+      MovieGridView 复用方行为未变。
+    truncated: false
+  risks:
+    - text: 排序方式（sort 菜单）触发置顶无专门 widget 断言，仅靠与升降序/标签完全相同的 reloadWith→reloadEpoch
+        机制等价性覆盖（低风险）
+      truncated: false
+    - text: refresh()（下拉刷新、错误重试）复用 reloadWith 也会自增 reloadEpoch；因 RefreshIndicator
+        仅在顶部可触发且 jumpTo 有 offset!=0 守卫，可见行为不变，但属隐式耦合——未来若在非顶部位置调用 refresh
+        将出现意外置顶
+      truncated: false
+    - text: MovieGridView 由 Stateless 改 Stateful 并内置 ScrollController：已核实
+        ScrollPosition 默认 keepScrollOffset=true 与改动前一致、WidgetsApp 无根
+        PageStorage，其他 11 处复用方滚动机制无行为变化，全部既有测试通过（此项已排除，仅记录）
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-08T07:04:14.522Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 10/10 验收项全部通过：reloadEpoch+opt-in 帧末置顶与按 Tab 记忆的面板滚动偏移实现正确，5 个新增 widget
+        测试真实覆盖 A1-A10，独立复跑 analyze（无问题）与 categories 测试（44 项）均通过，其他 11 处
+        MovieGridView 复用方行为未变。
+      truncated: false
+    completed_at: 2026-09-08T07:04:14.522Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-09-08T05:58:00.025Z
