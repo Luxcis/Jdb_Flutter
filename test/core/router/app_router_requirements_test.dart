@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/router/app_router.dart';
+import 'package:jade/core/router/routes.dart';
 import 'package:jade/features/profile/index.dart';
+import 'package:jade/features/search/models/magnet_search_sort.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -60,4 +62,59 @@ void main() {
     expect(find.text('近期浏览'), findsOneWidget);
     expect(find.byIcon(Icons.delete_outline), findsOneWidget);
   });
+
+  testWidgets('搜索结果页修改关键词提交后重建为影片 Tab 的新结果页', (tester) async {
+    await tester.pumpWidget(
+      await _buildApp(
+        initialLocation: '${AppRoutes.searchResults}?q=旧关键词',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('番号'));
+    await tester.pumpAndSettle();
+    expect(find.text('暂无番号'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), '新关键词');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TabBar>(find.byType(TabBar)).controller!.index, 0);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      '新关键词',
+    );
+  });
+
+  testWidgets('磁链结果页修改关键词提交后重建并重置排序', (tester) async {
+    await tester.pumpWidget(
+      await _buildApp(
+        initialLocation:
+            '${AppRoutes.magnetSearchResults}?q=旧关键词&from_recent=true',
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('未找到相关磁链'), findsOneWidget);
+
+    await tester.tap(find.text('时间'));
+    await tester.pumpAndSettle();
+    expect(_magnetSortSelection(tester), MagnetSearchSort.created);
+
+    await tester.enterText(find.byType(TextField), '新关键词');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+
+    expect(_magnetSortSelection(tester), MagnetSearchSort.relevance);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      '新关键词',
+    );
+  });
 }
+
+MagnetSearchSort _magnetSortSelection(WidgetTester tester) => tester
+    .widget<SegmentedButton<MagnetSearchSort>>(
+      find.byType(SegmentedButton<MagnetSearchSort>),
+    )
+    .selected
+    .single;

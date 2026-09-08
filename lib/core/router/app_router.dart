@@ -166,8 +166,10 @@ class AppRouter {
             final query = state.uri.queryParameters['q']?.trim() ?? '';
             return query.isEmpty ? AppRoutes.search : null;
           },
+          // 页面键需包含 query：pageKey 仅由路径决定，修改关键词后
+          // replace 到同路径不同 q 不会重建页面、不会重新搜索。
           builder: (context, state) => SearchResultsPage(
-            key: state.pageKey,
+            key: ValueKey(state.uri),
             query: state.uri.queryParameters['q']!.trim(),
           ),
         ),
@@ -195,7 +197,7 @@ class AppRouter {
             return query.isEmpty ? AppRoutes.magnetSearch : null;
           },
           builder: (context, state) => MagnetSearchResultsPage(
-            key: state.pageKey,
+            key: ValueKey(state.uri),
             query: state.uri.queryParameters['q']!.trim(),
             fromRecent:
                 state.uri.queryParameters['from_recent']?.toLowerCase() ==

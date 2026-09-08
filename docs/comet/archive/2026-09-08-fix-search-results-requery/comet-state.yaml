@@ -1,0 +1,232 @@
+schema: comet.native.v4
+name: fix-search-results-requery
+language: zh-CN
+phase: archive
+status: done
+state_version: 14
+brief: brief.md
+shape_confirmation_hash: 3bc454cbb4c3f268181adaf8c33e4793e1ebdf40bb5c01a72186cbb82afb00e0
+spec_changes:
+  - capability: search-results
+    operation: create
+    source: specs/search-results/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/fix-search-results-requery
+  target_branch: master
+  finish: merge
+loop:
+  stage: done
+  goal_cycle: 2
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: 'A1: 在 `/search/results?q=旧词` 页面顶部搜索框修改为"新词"并提交键盘搜索键后，影片 Tab
+      按新词重新加载数据（fake 数据源收到 query="新词" 的请求），页面展示新词的结果。'
+    result: passed
+    reason:
+      text: 镜像路由测试断言 fake 数据源收到 query=新关键词 page=1
+        且展示新结果（search_results_requery_test.dart:111-141）；真实路由判别测试经
+        AppRouter.buildForTest 验证重建回影片
+        Tab，回退旧键必失败（app_router_requirements_test.dart:66-87）
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A2: 提交新关键词后，结果页 AppBar 搜索框中的文本为新关键词。"
+    result: passed
+    reason:
+      text: 影片页与磁链页测试均断言 AppBar TextField 文本为新关键词（重建后 initState 以 widget.query 初始化）
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: 'A3: 在磁链搜索结果页顶部搜索框修改关键词并提交后，磁链列表按新关键词重新加载数据（fake 数据源收到 query="新词"
+      的请求），AppBar 搜索框文本为新关键词。'
+    result: passed
+    reason:
+      text: 磁链重搜用例断言 calls.last=(query:新关键词, fromRecent:false,
+        page:1)、旧结果消失、搜索框更新（magnet_search_results_screen_test.dart:272-334）；真实路由测试以排序重置回
+        relevance 为判别信号（app_router_requirements_test.dart:89-112）
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A4: 在结果页提交仅含空白字符的关键词时，不发生导航、不重新搜索，停留在当前结果页。"
+    result: passed
+    reason:
+      text: 提交空白关键词后 calls 仍 1 次、无导航（search_results_requery_test.dart:155-165）；屏幕侧
+        _search trim 早退（search_results_screen.dart:68-69）
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "A5: 从搜索结果页进入影片详情后返回，结果页仍保留原关键词的结果与页面状态（页面未被意外重建）。"
+    result: passed
+    reason:
+      text: 进详情返回后旧结果保留、未提交输入草稿保留（区分重建/保留的判别信号）、无新请求（search_results_requery_test.dart:167-192）；URI
+        不变则 ValueKey(state.uri) 不变
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: "A6: 在结果页提交新关键词后按系统返回，回到搜索首页（replace 语义不额外增加返回栈深度）。"
+    result: passed
+    reason:
+      text: replace 重搜后 pop 落在 /search
+        首页（search_results_requery_test.dart:194-225）；push 语义会落在旧结果页，断言具判别力
+      truncated: false
+builder_handoff:
+  candidate_id: 3c71614c-5f06-422f-9da8-d34caed1267d
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:ae42cd6a-ec03-49eb-b744-2f8fae663072
+  iteration: 1
+  summary:
+    text: 将 /search/results 与 /search/magnet/results 两个结果路由的页面 widget 键由
+      state.pageKey（仅含路径）改为 ValueKey(state.uri)（含 query）。根因：go_router 14.8.1 中
+      context.replace 保留原页面键（parser.dart replace 分支），关键词结果页重搜时页面 State 被保留，各 Tab
+      的 PaginationController（initState 捕获旧 query 闭包）不重新请求；磁链结果页因使用
+      pushReplacement（每次唯一页面键）修复前已具备重搜能力，其键值改动为一致性防护。覆盖验收：A1（影片 Tab
+      以新词重新请求并展示新结果，镜像路由测试断言 fake 数据源收到 query=新词）、A2（搜索框文本为新词）、A3（磁链页重搜断言 +
+      真实路由测试以排序重置为判别信号）、A4（空白关键词不导航不重搜）、A5（进详情返回后页面状态保留，以未提交输入草稿为判别信号）、A6（重搜后返回到搜索首页，replace
+      不加深栈）。另在 app_router_requirements_test 补充真实路由判别测试（影片 Tab 重置 +
+      磁链排序重置）。开发期检查：flutter analyze 无问题；flutter test 全量 865 个通过；判别力验证通过（stash
+      修复后真实路由影片/磁链测试均失败，恢复后通过）。已知限制：磁链页提交相同关键词会重建并重新请求（pushReplacement
+      既有语义，未改变）；artifacts 的 D3/D4 已按实际机制修订。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+  checks:
+    - name:
+        text: flutter analyze
+        truncated: false
+      result: passed
+      note:
+        text: No issues found
+        truncated: false
+    - name:
+        text: flutter test（全量）
+        truncated: false
+      result: passed
+      note:
+        text: 865 tests passed
+        truncated: false
+    - name:
+        text: 判别力验证（stash 修复后判别测试失败）
+        truncated: false
+      result: passed
+      note:
+        text: 真实路由影片/磁链判别测试在无修复时均失败
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: 磁链结果页提交相同关键词会重建并重新请求（pushReplacement 既有语义，本 change 未改变）
+      truncated: false
+    - text: 磁链结果页修复前已具备重搜能力，本 change 的磁链键值改动为一致性防护并新增回归测试
+      truncated: false
+  known_limits_truncated: false
+  review:
+    status: passed
+    summary:
+      text: 只读复核（Explore subagent）结论 pass：修复机制核实无误、Uri 相等性无漏重建方向、全仓库构造点无遗漏、控制器 dispose
+        生命周期安全；采纳 3 条测试强化（真实路由磁链判别测试、磁链镜像路由补 redirect、A5 用改用输入草稿判别）后复测通过。
+      truncated: false
+    reviewer_execution_ref: explore-readonly-agent-6fd2d363-db61-44a8-a00e-a03f10439f80
+  submitted_at: 2026-09-08T08:10:58.824Z
+blockers: []
+verification:
+  candidate_id: 3c71614c-5f06-422f-9da8-d34caed1267d
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:6ce5f6bb-844a-429d-a10d-e36744f40f99
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: flutter-analyze
+      name:
+        text: flutter analyze 静态分析
+        truncated: false
+      argv_display:
+        - text: analyze
+          truncated: false
+        - text: --no-pub
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 3760
+    - id: flutter-test-full
+      name:
+        text: 全量测试（含搜索与路由判别测试）
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: --no-pub
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 27267
+  summary:
+    text: 独立核对 go_router 14.8.1 源码确认根因（replace 保留页面键）与修复机制（页面键含完整 URI）一致；8
+      个新增/扩展测试从真实路由与镜像路由两层覆盖 A1-A6；Runtime 回执 analyze 无问题、865 测试全过；约束（lock
+      不动、分页逻辑不变、空词重定向与 replace 语义保留）全部满足。验收通过。
+    truncated: false
+  risks:
+    - text: 镜像测试的判别力依赖真实路由 requirements 测试；若镜像路由与生产路由键规则漂移，镜像测试存在假阳性可能
+      truncated: false
+    - text: 磁链页空白提交的 guard 与影片页模式相同但无专门用例
+      truncated: false
+    - text: A5/A6 以 router.pop() 模拟系统返回，未测物理返回手势（go_router 语义等价，风险极低）
+      truncated: false
+    - text: 磁链页提交相同关键词会重建并重新请求（pushReplacement 既有语义，D4 已规格化）
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-08T08:27:48.185Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native Shape artifacts changed
+      truncated: false
+    completed_at: 2026-09-08T07:56:30.861Z
+  - goal_cycle: 2
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 独立核对 go_router 14.8.1 源码确认根因（replace 保留页面键）与修复机制（页面键含完整 URI）一致；8
+        个新增/扩展测试从真实路由与镜像路由两层覆盖 A1-A6；Runtime 回执 analyze 无问题、865 测试全过；约束（lock
+        不动、分页逻辑不变、空词重定向与 replace 语义保留）全部满足。验收通过。
+      truncated: false
+    completed_at: 2026-09-08T08:27:48.185Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-09-08T06:59:25.641Z
