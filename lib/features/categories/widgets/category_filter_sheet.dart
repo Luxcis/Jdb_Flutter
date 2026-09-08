@@ -3,9 +3,16 @@ import 'package:jade/features/categories/models/category_filter.dart';
 import 'package:jade/features/categories/services/category_tab_controller.dart';
 
 class CategoryFilterSheet extends StatelessWidget {
-  const CategoryFilterSheet({super.key, required this.controller});
+  const CategoryFilterSheet({
+    super.key,
+    required this.controller,
+    this.listScrollController,
+  });
 
   final CategoryTabController controller;
+
+  /// 筛选列表的滚动控制器；由打开方持有，可在收起再展开时恢复位置。
+  final ScrollController? listScrollController;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +50,12 @@ class CategoryFilterSheet extends StatelessWidget {
               ],
             ),
           ),
-          Expanded(child: _FilterBody(controller: controller)),
+          Expanded(
+            child: _FilterBody(
+              controller: controller,
+              scrollController: listScrollController,
+            ),
+          ),
         ],
       ),
     );
@@ -51,9 +63,10 @@ class CategoryFilterSheet extends StatelessWidget {
 }
 
 class _FilterBody extends StatelessWidget {
-  const _FilterBody({required this.controller});
+  const _FilterBody({required this.controller, this.scrollController});
 
   final CategoryTabController controller;
+  final ScrollController? scrollController;
 
   @override
   Widget build(BuildContext context) {
@@ -77,6 +90,7 @@ class _FilterBody extends StatelessWidget {
     }
     return ListView.separated(
       key: const Key('category-filter-list'),
+      controller: scrollController,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
       itemCount: controller.groups.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),

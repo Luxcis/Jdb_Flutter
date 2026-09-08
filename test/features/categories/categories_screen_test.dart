@@ -191,6 +191,22 @@ const _groups = <CategoryTagGroup>[
   ),
 ];
 
+/// 题材分组带大量标签，使筛选列表内容超过面板视口、可以滚动。
+final _scrollableTagGroups = <CategoryTagGroup>[
+  _groups[0],
+  CategoryTagGroup(
+    category: '题材',
+    categoryId: 'subject',
+    tags: [
+      for (var index = 0; index < 100; index++)
+        CategoryTagItem(id: 'tag$index', name: '标签$index', videosCount: 1),
+    ],
+  ),
+  _groups[2],
+  _groups[3],
+  _groups[4],
+];
+
 Widget _sheet(CategoryTabController controller) => MaterialApp(
   home: Scaffold(body: CategoryFilterSheet(controller: controller)),
 );
@@ -770,5 +786,220 @@ void main() {
     );
     expect(monthChip, findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('切换筛选标签触发刷新后网格自动回到顶部', (tester) async {
+    final source = _FakeSource(hasMultiplePages: true);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: _followingProvider()),
+        ],
+        child: MaterialApp(home: CategoriesPage(dataSource: source)),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final grid = find.byKey(const Key('category-tab-grid-0'));
+    final scrollable = tester.state<ScrollableState>(
+      find.descendant(of: grid, matching: find.byType(Scrollable)),
+    );
+    await tester.drag(grid, const Offset(0, -300));
+    await tester.pump();
+    await tester.pump();
+    expect(scrollable.position.pixels, greaterThan(0));
+
+    await tester.tap(find.byKey(const Key('categories-filter-button')));
+    await _pumpPageTransition(tester);
+    await tester.tap(find.byKey(const Key('category-filter-subject-23')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(scrollable.position.pixels, 0);
+    expect(source.movieFilters.last, '0:t:m:23:::');
+  });
+
+  testWidgets('切换发布日期升降序触发刷新后网格自动回到顶部', (tester) async {
+    final source = _FakeSource(hasMultiplePages: true);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: _followingProvider()),
+        ],
+        child: MaterialApp(home: CategoriesPage(dataSource: source)),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final grid = find.byKey(const Key('category-tab-grid-0'));
+    final scrollable = tester.state<ScrollableState>(
+      find.descendant(of: grid, matching: find.byType(Scrollable)),
+    );
+    await tester.drag(grid, const Offset(0, -300));
+    await tester.pump();
+    await tester.pump();
+    expect(scrollable.position.pixels, greaterThan(0));
+
+    await tester.tap(find.byKey(const Key('categories-filter-button')));
+    await _pumpPageTransition(tester);
+    await tester.tap(find.byKey(const Key('category-order-toggle')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(scrollable.position.pixels, 0);
+    expect(source.movieRequests.last.orderBy, 'asc');
+  });
+
+  testWidgets('筛选置顶只作用于当前 Tab 且不破坏切 Tab 滚动保留', (tester) async {
+    final source = _FakeSource(hasMultiplePages: true);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: _followingProvider()),
+        ],
+        child: MaterialApp(home: CategoriesPage(dataSource: source)),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final tab0Grid = find.byKey(const Key('category-tab-grid-0'));
+    final tab0Scrollable = tester.state<ScrollableState>(
+      find.descendant(of: tab0Grid, matching: find.byType(Scrollable)),
+    );
+    await tester.drag(tab0Grid, const Offset(0, -300));
+    await tester.pump();
+    await tester.pump();
+    final tab0Offset = tab0Scrollable.position.pixels;
+    expect(tab0Offset, greaterThan(0));
+
+    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+    tabBar.controller!.animateTo(1);
+    await _pumpPageTransition(tester);
+    final tab1Grid = find.byKey(const Key('category-tab-grid-1'));
+    final tab1Scrollable = tester.state<ScrollableState>(
+      find.descendant(of: tab1Grid, matching: find.byType(Scrollable)),
+    );
+    await tester.drag(tab1Grid, const Offset(0, -200));
+    await tester.pump();
+    await tester.pump();
+    final tab1Offset = tab1Scrollable.position.pixels;
+    expect(tab1Offset, greaterThan(0));
+
+    tabBar.controller!.animateTo(0);
+    await _pumpPageTransition(tester);
+    expect(tab0Scrollable.position.pixels, closeTo(tab0Offset, 0.1));
+
+    await tester.tap(find.byKey(const Key('categories-filter-button')));
+    await _pumpPageTransition(tester);
+    await tester.tap(find.byKey(const Key('category-filter-subject-23')));
+    await tester.pump();
+    await tester.pump();
+    expect(tab0Scrollable.position.pixels, 0);
+
+    tabBar.controller!.animateTo(1);
+    await _pumpPageTransition(tester);
+    expect(tab1Scrollable.position.pixels, closeTo(tab1Offset, 0.1));
+  });
+
+  testWidgets('筛选面板收起再展开恢复筛选列表滚动位置', (tester) async {
+    final source = _FakeSource()..tagsResult = _scrollableTagGroups;
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: _followingProvider()),
+        ],
+        child: MaterialApp(home: CategoriesPage(dataSource: source)),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('categories-filter-button')));
+    await _pumpPageTransition(tester);
+    final list = find.byKey(const Key('category-filter-list'));
+    await tester.drag(list, const Offset(0, -250));
+    // 网格封面占位指示器在测试环境持续动画，不能用 pumpAndSettle，
+    // 用固定时长等待列表惯性滚动结束再读取最终偏移。
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 600));
+    final offset = tester
+        .state<ScrollableState>(
+          find.descendant(of: list, matching: find.byType(Scrollable)),
+        )
+        .position
+        .pixels;
+    expect(offset, greaterThan(0));
+
+    await tester.tapAt(const Offset(8, 8));
+    await _pumpPageTransition(tester);
+    expect(find.byKey(const Key('category-filter-list')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('categories-filter-button')));
+    await _pumpPageTransition(tester);
+    final restored = tester
+        .state<ScrollableState>(
+          find.descendant(
+            of: find.byKey(const Key('category-filter-list')),
+            matching: find.byType(Scrollable),
+          ),
+        )
+        .position
+        .pixels;
+    expect(restored, closeTo(offset, 0.1));
+  });
+
+  testWidgets('不同 Tab 的筛选面板滚动位置相互独立', (tester) async {
+    final source = _FakeSource()..tagsResult = _scrollableTagGroups;
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: _followingProvider()),
+        ],
+        child: MaterialApp(home: CategoriesPage(dataSource: source)),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    Future<double> openAndScroll(int distance) async {
+      await tester.tap(find.byKey(const Key('categories-filter-button')));
+      await _pumpPageTransition(tester);
+      final list = find.byKey(const Key('category-filter-list'));
+      final scrollable = tester.state<ScrollableState>(
+        find.descendant(of: list, matching: find.byType(Scrollable)),
+      );
+      if (distance > 0) {
+        await tester.drag(list, Offset(0, -distance.toDouble()));
+        // 同上：用固定时长等待惯性滚动结束，不用 pumpAndSettle。
+        await tester.pump(const Duration(milliseconds: 600));
+        await tester.pump(const Duration(milliseconds: 600));
+      }
+      final offset = scrollable.position.pixels;
+      await tester.tapAt(const Offset(8, 8));
+      await _pumpPageTransition(tester);
+      return offset;
+    }
+
+    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+    final tab0Offset = await openAndScroll(250);
+    expect(tab0Offset, greaterThan(0));
+
+    tabBar.controller!.animateTo(1);
+    await _pumpPageTransition(tester);
+    final tab1Restored = await openAndScroll(0);
+    expect(tab1Restored, 0);
+    final tab1Offset = await openAndScroll(450);
+    expect(tab1Offset, greaterThan(tab0Offset));
+
+    tabBar.controller!.animateTo(0);
+    await _pumpPageTransition(tester);
+    expect(await openAndScroll(0), closeTo(tab0Offset, 0.1));
+
+    tabBar.controller!.animateTo(1);
+    await _pumpPageTransition(tester);
+    expect(await openAndScroll(0), closeTo(tab1Offset, 0.1));
   });
 }

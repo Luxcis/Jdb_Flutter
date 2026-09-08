@@ -31,6 +31,9 @@ class _CategoriesPageState extends State<CategoriesPage>
   var _followingBusy = false;
   List<CategoryTabController> _observed = const [];
 
+  /// 各 Tab 筛选列表最近一次滚动位置，收起再展开时恢复。
+  final Map<int, double> _filterScrollOffsets = {};
+
   @override
   void initState() {
     super.initState();
@@ -79,16 +82,32 @@ class _CategoriesPageState extends State<CategoriesPage>
   }
 
   void _showFilter() {
+    final controller = _controllers[_selectedIndex];
     final height = MediaQuery.sizeOf(context).height * 2 / 3;
+    final listController = ScrollController(
+      initialScrollOffset: _filterScrollOffsets[controller.type] ?? 0,
+    );
+    listController.addListener(() {
+      if (listController.hasClients) {
+        _filterScrollOffsets[controller.type] = listController.offset;
+      }
+    });
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: true,
       constraints: BoxConstraints.tightFor(height: height),
-      builder: (_) =>
-          CategoryFilterSheet(controller: _controllers[_selectedIndex]),
-    );
+      builder: (_) => CategoryFilterSheet(
+        controller: controller,
+        listScrollController: listController,
+      ),
+    ).whenComplete(() {
+      // 面板路由移除后再释放，确保列表已脱离控制器。
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        listController.dispose();
+      });
+    });
   }
 
   @override
@@ -233,6 +252,7 @@ class _CategoryTabState extends State<_CategoryTab>
     return MovieGridView(
       key: Key('category-tab-grid-${widget.controller.type}'),
       controller: widget.controller.movies,
+      scrollToTopOnReload: true,
     );
   }
 }

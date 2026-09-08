@@ -10,6 +10,7 @@ class PaginationController<T> extends ChangeNotifier {
   final List<T> _items = [];
   int _page = 0;
   int _generation = 0;
+  int _reloadEpoch = 0;
   bool _isLoading = false;
   bool _isRefreshing = false;
   bool _pendingRefresh = false;
@@ -21,6 +22,9 @@ class PaginationController<T> extends ChangeNotifier {
   bool get isRefreshing => _isRefreshing;
   bool get hasMore => _hasMore;
   Object? get error => _error;
+
+  /// 每次 reloadWith 自增；追加加载（fetchMore）不会自增。
+  int get reloadEpoch => _reloadEpoch;
 
   Future<void> fetchMore() async {
     if (_isLoading || !_hasMore) return;
@@ -57,6 +61,7 @@ class PaginationController<T> extends ChangeNotifier {
     bool preserveItems = false,
   }) async {
     _generation++;
+    _reloadEpoch++;
     _fetch = fetch;
     _page = 0;
     if (!preserveItems) _items.clear();
