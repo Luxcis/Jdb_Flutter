@@ -269,4 +269,68 @@ void main() {
     });
     expect(store.load().first, '新关键词');
   });
+
+  testWidgets('修改关键词提交后按新关键词重新加载磁链', (tester) async {
+    final store = await _historyStore();
+    final dataSource = _RecordingDataSource(
+      (call) async => _page([
+        _magnet('hash-${call.query}', '${call.query}磁链'),
+      ]),
+    );
+    final router = GoRouter(
+      initialLocation:
+          '${AppRoutes.magnetSearchResults}?q=旧关键词&from_recent=true',
+      routes: [
+        GoRoute(
+          path: AppRoutes.magnetSearch,
+          builder: (_, _) => const Scaffold(body: Text('磁链首页')),
+          routes: [
+            GoRoute(
+              path: 'results',
+              redirect: (context, state) {
+                final query = state.uri.queryParameters['q']?.trim() ?? '';
+                return query.isEmpty ? AppRoutes.magnetSearch : null;
+              },
+              // 与 app_router.dart 保持一致：页面键包含完整 URI。
+              builder: (_, state) => MagnetSearchResultsPage(
+                key: ValueKey(state.uri),
+                query: state.uri.queryParameters['q']!,
+                fromRecent: state.uri.queryParameters['from_recent'] == 'true',
+                dataSource: dataSource,
+                historyStore: store,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpAndSettle();
+
+    expect(find.text('旧关键词磁链'), findsOneWidget);
+    expect(dataSource.calls.single, (
+      query: '旧关键词',
+      sort: MagnetSearchSort.relevance,
+      fromRecent: true,
+      page: 1,
+    ));
+
+    await tester.enterText(find.byType(TextField), '新关键词');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+
+    expect(find.text('新关键词磁链'), findsOneWidget);
+    expect(find.text('旧关键词磁链'), findsNothing);
+    expect(dataSource.calls.last, (
+      query: '新关键词',
+      sort: MagnetSearchSort.relevance,
+      fromRecent: false,
+      page: 1,
+    ));
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      '新关键词',
+    );
+  });
 }
