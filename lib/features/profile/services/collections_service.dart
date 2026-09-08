@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/code.dart';
 import 'package:jade/core/models/director.dart';
@@ -153,8 +154,14 @@ class FavoritesService implements FavoritesDataSource {
   Future<void> uncollectList(String id) =>
       _postCollect(Endpoints.lists, id, 'uncollect');
 
+  /// collect_actions 系列端点按实测契约（docs/main/api/assist/authenticated.md）
+  /// 以 multipart 表单字段 `name` 解析动作，JSON 请求体会被
+  /// `ParameterInvalid: name` 拒绝，必须用 FormData 发送。
   Future<void> _postCollect(String entityPath, String id, String name) async {
-    await _api.post('$entityPath/$id/collect_actions', data: {'name': name});
+    await _api.post(
+      '$entityPath/$id/collect_actions',
+      data: FormData.fromMap({'name': name}),
+    );
   }
 
   @override
