@@ -53,9 +53,7 @@ class _ActorDetailPageState extends State<ActorDetailPage> {
       }
       if (!mounted) return;
       setState(() {
-        _detail = ActorDetail.fromJson(
-          detail.toJson()..['has_collected'] = !detail.hasCollected,
-        );
+        _detail = detail.copyWith(hasCollected: !detail.hasCollected);
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(detail.hasCollected ? '已取消收藏' : '已收藏')),

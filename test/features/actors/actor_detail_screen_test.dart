@@ -36,8 +36,14 @@ void main() {
       'data': {
         'actor': {'id': 'a1', 'name': '三上悠亜', 'avatar': '', 'type': 0},
         'has_collected': hasCollected,
-        'filter_tags': <Map<String, dynamic>>[],
-        'tags': <Map<String, dynamic>>[],
+        'filter_tags': [
+          {'id': 'f1', 'name': '名称筛选', 'videos_count': 2},
+        ],
+        // 非空 tags 复现线上崩溃路径：收藏成功后的本地状态更新曾用
+        // fromJson(toJson()) 往返，ActorTagItem 对象列表会触发类型转换异常。
+        'tags': [
+          {'id': 't1', 'name': '标签', 'videos_count': 3},
+        ],
       },
     });
   }

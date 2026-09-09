@@ -93,4 +93,28 @@ class ActorDetail extends ActorSummary {
       _$ActorDetailFromJson(json);
   @override
   Map<String, dynamic> toJson() => _$ActorDetailToJson(this);
+
+  /// 不要用 `fromJson(toJson())` 复制实例：生成的 toJson 对 `filter_tags`/
+  /// `tags` 直接输出 `ActorTagItem` 对象而非 Map，往返会触发类型转换异常。
+  ActorDetail copyWith({bool? hasCollected}) {
+    return ActorDetail(
+      id: id,
+      name: name,
+      avatarUrl: avatarUrl,
+      gender: gender,
+      hasCollected: hasCollected ?? this.hasCollected,
+      birthday: birthday,
+      age: age,
+      height: height,
+      cup: cup,
+      bust: bust,
+      waist: waist,
+      hip: hip,
+      birthplace: birthplace,
+      movieCount: movieCount,
+      type: type,
+      filterTags: filterTags,
+      tags: tags,
+    );
+  }
 }
