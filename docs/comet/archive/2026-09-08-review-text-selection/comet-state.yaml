@@ -1,0 +1,318 @@
+schema: comet.native.v4
+name: review-text-selection
+language: zh-CN
+phase: archive
+status: done
+state_version: 9
+brief: brief.md
+shape_confirmation_hash: 66fffd3c1b51bb61b55141a13110a036e3877f4fe1ec44e71f1c6fee7e15d8f8
+spec_changes:
+  - capability: review-text-selection
+    operation: create
+    source: specs/review-text-selection/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/review-text-selection
+  target_branch: master
+  finish: merge
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: 'A1: 影片详情页短评列表中长按评论正文，正文进入选择态（出现选择手柄）并展示含"复制"的操作菜单；点击"复制"后剪贴板内容与所选文本一致。'
+    result: passed
+    reason:
+      text: MovieReviewList 直接渲染共享
+        ReviewTile（movie_detail_lists.dart:128，无中间手势包裹）；组件测试验证长按出现含「复制/全选」的中文菜单，点击复制经
+        Clipboard.setData mock 写入剪贴板（拉丁词精确等于 'flutter'，中文单字属于正文），菜单关闭
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: 'A2: "看短评"页长按评论正文，同样进入选择态并可通过菜单复制所选文本。'
+    result: passed
+    reason:
+      text: ReviewsPage 使用同一共享 ReviewTile（reviews_screen.dart:158），选择行为由同一
+        _SelectableReviewText 实现，测试证据与 A1 相同
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "A3: 超过 5 行折叠显示（省略号截断）的评论正文，长按其可见部分可进入选择态并复制所选可见文本。"
+    result: passed
+    reason:
+      text: "'折叠态长按复制所选可见文本'：长按 120 词折叠正文后复制，断言剪贴板非空、不等于全文、且被独立二分探测计算的可见前缀包含"
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A4: 未选中文字时点击正文仍触发展开/收起（折叠点击展开、展开点击收起）；已选中文字时点击正文仅清除选择并关闭菜单，展开/收起状态不变。"
+    result: passed
+    reason:
+      text: 既有用例 '点击评论正文展开收起'（未改动、走新 Listener 路径）验证无选中时点击展开/再点收起；新用例
+        '选中文字后点击正文仅清除选择不触发展开收起' 验证菜单消失且 '展开' 仍在（状态未变）；实现上 onPointerUp 在
+        _hasSelection 时跳过 onTap，点击清除由 SelectionArea 完成
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "A5: 不超过 5 行的短评正文长按可选择并复制；点赞、展开/收起按钮、影片信息跳转等既有交互保持不变。"
+    result: passed
+    reason:
+      text: 短正文（'评论内容'、'flutter' 均不超过 5 行）长按选择复制均有用例；测试文件 diff 为纯新增（243 行，0
+        删改），点赞、展开按钮、影片区跳转、作者行等既有用例原样保留且全量 870 项通过
+      truncated: false
+  - id: A6
+    source: specs/review-text-selection/spec.md
+    text: 长按评论正文进入选择态并展示操作菜单 Given 评论卡片展示非空评论正文 When 长按评论正文 Then
+      正文进入选择态（出现选择手柄）并展示含"复制"的操作菜单
+    result: passed
+    reason:
+      text: "'长按短评正文进入选择态并展示复制全选菜单'：longPress 后断言 '复制' 与 '全选'
+        各出现一次；后续复制用例证实存在真实选区（手柄为框架自绘，未单独断言，见 risks）"
+      truncated: false
+  - id: A7
+    source: specs/review-text-selection/spec.md
+    text: 复制所选评论文本 Given 已通过长按选中部分评论文本并展示操作菜单 When 点击菜单中的"复制" Then
+      系统剪贴板内容与所选文本一致，菜单关闭
+    result: passed
+    reason:
+      text: "'长按选中文本点击复制后剪贴板为所选文本且菜单关闭'：mock 捕获 Clipboard.setData，断言剪贴板非空且属于所选正文，菜单项
+        '复制' findsNothing；拉丁词用例给出精确等值证据"
+      truncated: false
+  - id: A8
+    source: specs/review-text-selection/spec.md
+    text: 折叠态正文可长按选择并复制 Given 评论正文超过 5 行处于折叠显示（省略号截断） When 长按正文可见部分并点击"复制" Then
+      进入选择态且剪贴板内容与所选可见文本一致
+    result: passed
+    reason:
+      text: "'折叠态长按复制所选可见文本'：折叠态长按+复制，剪贴板为可见前缀的子串且非全文，进入选择态由菜单出现佐证"
+      truncated: false
+  - id: A9
+    source: specs/review-text-selection/spec.md
+    text: 短评正文长按选择并复制 Given 评论正文不超过 5 行（无展开/收起控制） When 长按正文并点击"复制" Then 剪贴板内容与所选文本一致
+    result: passed
+    reason:
+      text: 不超过 5 行的正文（'评论内容'、'flutter'）长按复制剪贴板与所选一致（拉丁词精确等于），无展开/收起控制由 '短评论不显示展开收起按钮'
+        佐证
+      truncated: false
+  - id: A10
+    source: specs/review-text-selection/spec.md
+    text: 未选择时点击正文仍展开收起 Given 评论正文超过 5 行处于折叠显示且当前无选中文字 When 点击正文，待展开后再次点击正文 Then
+      第一次点击后正文展开，第二次点击后正文收起
+    result: passed
+    reason:
+      text: 既有用例 '点击评论正文展开收起' 用 tapAt 在正文上先展开（maxLines 5→null）再收起（null→5），经新点击判定路径全量通过
+      truncated: false
+  - id: A11
+    source: specs/review-text-selection/spec.md
+    text: 选中时点击正文仅清除选择 Given 评论正文已有选中文字并展示操作菜单 When 点击正文 Then 选择被清除、菜单关闭，展开/收起状态不变化
+    result: passed
+    reason:
+      text: "'选中文字后点击正文仅清除选择不触发展开收起'：长按出现菜单后点击正文另一处，断言 '复制' 消失（选择清除、菜单关闭）且 '展开'
+        仍存在（未触发展开）"
+      truncated: false
+  - id: A12
+    source: specs/review-text-selection/spec.md
+    text: 全选复制全部可见文本 Given 评论正文超过 5 行处于折叠显示 When 长按正文进入选择态后点击"全选"并点击"复制" Then
+      剪贴板内容与折叠态正文全部可见文本一致
+    result: passed
+    reason:
+      text: "'折叠态全选复制全部可见文本'：生产端字素级二分探测、测试端独立二分计算、渲染侧
+        RenderParagraph.getPositionForOffset 三个互相独立的 oracle 得出同一可见前缀，另有
+        TextScaler.linear(1.3) 变体用例验证 textScaler 一致"
+      truncated: false
+  - id: A13
+    source: specs/review-text-selection/spec.md
+    text: 两处评论列表行为一致 Given 影片详情页短评列表与"看短评"页均使用评论卡片展示评论 When 在任一页面对评论正文长按 Then
+      均进入选择态并可复制所选文本
+    result: passed
+    reason:
+      text: 两页均在 itemBuilder 直接返回共享 ReviewTile（无包裹手势、无其他
+        SelectionArea），长按选择/复制行为由同一组件类按构造保证一致
+      truncated: false
+  - id: A14
+    source: specs/review-text-selection/spec.md
+    text: 既有交互不受影响 Given 评论卡片展示影片信息区、点赞行与展开/收起按钮 When 点击影片信息区、点击点赞、点击展开/收起按钮 Then
+      各既有行为保持不变
+    result: passed
+    reason:
+      text: 影片信息区渲染与跳转、作者行不跳转、点赞全流程（无影片/未登录/无
+        Provider/成功/防连点/已赞/失败）、展开收起按钮等既有用例零改动且全量通过
+      truncated: false
+builder_handoff:
+  candidate_id: 9d8f5d83-7546-46eb-8e7b-6cdaf8bb32a9
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:052c9514-d3ec-413f-8f69-8f42c97b6484
+  iteration: 1
+  summary:
+    text: 实现评论卡片正文文本选择：_ExpandableReviewContent 正文改由 _SelectableReviewText
+      渲染（SelectionArea + contextMenuBuilder 中文「复制/全选」菜单 + Listener
+      保留未选中时的点击展开/收起）。折叠态复制通过
+      _visiblePrefixOf（字素级二分探测与渲染省略号截断点一致的前缀）截去隐藏文本，保证折叠态全选复制仅得可见文本；测量与渲染统一使用
+      MediaQuery.textScalerOf。覆盖 brief A1-A5 与 Spec 全部 9 个
+      Scenario：长按进入选择态并展示菜单（A6）、复制后剪贴板为所选文本且菜单关闭（A7）、折叠态长按复制可见文本（A8）、短正文复制（A9）、未选中点击仍展开收起（A10）、选中点击仅清除（A11）、折叠态全选复制可见文本（A12）、两页一致（共享
+      ReviewTile，A13）、点赞/按钮/跳转既有交互不变（A14）。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+  checks:
+    - name:
+        text: flutter analyze --no-pub
+        truncated: false
+      result: passed
+      note:
+        text: No issues found
+        truncated: false
+    - name:
+        text: flutter test --no-pub
+        truncated: false
+      result: passed
+      note:
+        text: 870 项全部通过，其中 review_tile_test 新增 8 个选择相关用例（24 项组件用例全过）
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: 折叠态下选区起点在可见文本中部且延伸进隐藏文本时（罕见路径，onSelectionChanged 仅提供 plainText
+        无源偏移），复制退化为完整可见前缀
+      truncated: false
+    - text: 双击正文表现为一次展开/收起翻转加选中一个词（框架双击选词与点击判定并存），规格未约定双击行为
+      truncated: false
+    - text: 选择手柄出现无显式测试断言（手柄为框架自绘 overlay，以工具栏出现与复制结果断言）；长按后拖动滚动依赖框架手势仲裁未单列用例
+      truncated: false
+  known_limits_truncated: false
+  review:
+    status: passed
+    summary:
+      text: 只读复核 subagent 逐项核对 SDK 源码与 diff：确认 SelectionArea
+        选择/复制/点击清除的框架行为、手势流与既有用例兼容性；发现 1 处必须修复（TextPainter 缺
+        textScaler，系统字体缩放下前缀偏长），已修复并补缩放用例；采纳建议：渲染侧
+        RenderParagraph.getPositionForOffset 独立 oracle 交叉校验（与生产探测一致）、按下事件主键判定与
+        computeHitSlop 精确 slop、既有 TextPainter dispose 与文本变更时重置选区状态。修正后 flutter
+        analyze 零问题、全量测试通过。
+      truncated: false
+    reviewer_execution_ref: read-only-review:explore-agent:agent_1200e090-308a-4d4e-b8e1-9f13ca25f902
+  submitted_at: 2026-09-08T09:59:40.630Z
+blockers: []
+verification:
+  candidate_id: 9d8f5d83-7546-46eb-8e7b-6cdaf8bb32a9
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:46b37467-c26e-40aa-8478-9d3bc90299c1
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: analyze
+      name:
+        text: flutter analyze --no-pub
+        truncated: false
+      argv_display:
+        - text: analyze
+          truncated: false
+        - text: --no-pub
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 2190
+    - id: test-review-tile
+      name:
+        text: review_tile 组件测试
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: test/core/widgets/review_tile_test.dart
+          truncated: false
+        - text: --no-pub
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 2637
+    - id: test-full
+      name:
+        text: 全量测试
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: --no-pub
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 27054
+  summary:
+    text: 独立复核 brief、spec、b5ca0ad diff（纯新增 445 行，HEAD 即候选提交，工作区干净）、24
+      项组件用例与两处使用方：实现以 SelectionArea+中文复制/全选菜单+Listener
+      点击判定真实满足全部场景语义；折叠态隐藏文本截断有生产二分探测、测试独立计算与渲染侧 getPositionForOffset 三重独立
+      oracle 交叉验证，textScaler 一致性有用例；剪贴板 mock 提供可观察复制证据；既有交互用例零删改且 Runtime 报告
+      analyze 零问题、全量 870 项通过。Builder 交接摘要与实现一致，无矛盾。判定：全部 14 项通过，整体 pass。
+    truncated: false
+  risks:
+    - text: 折叠态下若选区起点在可见文本中部且延伸进隐藏文本、总长度不超过可见前缀长度时，_copySelection
+        的按长度截断不会生效，可能复制到省略号后的隐藏字符（Builder 已在 known_limits 声明，验收场景未覆盖该拖拽路径）
+      truncated: false
+    - text: _visiblePrefix 缓存键仅含 text+maxWidth 不含
+        textScaler，会话中系统字体缩放变化而宽度不变时可能返回与重新渲染截断点不一致的过期前缀
+      truncated: false
+    - text: 选择手柄出现无显式断言（由 SelectionArea 默认行为与菜单/复制结果间接佐证）；双击正文表现为一次展开/收起翻转加选词，规格未约定
+      truncated: false
+    - text: 复制所得"全部可见文本"不含末尾可见的省略号 '…'（生产与两个 oracle 口径一致，省略号视为截断符而非正文内容）
+      truncated: false
+    - text: A13 为构造性验证（共享组件+直接使用），未在真实页面级别编写长按 widget 测试
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-08T10:09:08.250Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 独立复核 brief、spec、b5ca0ad diff（纯新增 445 行，HEAD 即候选提交，工作区干净）、24
+        项组件用例与两处使用方：实现以 SelectionArea+中文复制/全选菜单+Listener
+        点击判定真实满足全部场景语义；折叠态隐藏文本截断有生产二分探测、测试独立计算与渲染侧 getPositionForOffset 三重独立
+        oracle 交叉验证，textScaler 一致性有用例；剪贴板 mock 提供可观察复制证据；既有交互用例零删改且 Runtime 报告
+        analyze 零问题、全量 870 项通过。Builder 交接摘要与实现一致，无矛盾。判定：全部 14 项通过，整体 pass。
+      truncated: false
+    completed_at: 2026-09-08T10:09:08.250Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-09-08T08:29:59.357Z
