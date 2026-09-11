@@ -6,6 +6,7 @@ import 'package:jade/core/constants/app_constants.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/image_decryptor.dart';
 import 'package:jade/core/providers/settings_provider.dart';
+import 'package:jade/core/widgets/image_size_listener.dart';
 import 'package:provider/provider.dart';
 
 class CachedImage extends StatelessWidget {
@@ -18,6 +19,7 @@ class CachedImage extends StatelessWidget {
     this.fit = BoxFit.cover,
     this.fallbackAsset,
     this.semanticLabel,
+    this.onImageSize,
   });
 
   final String url;
@@ -27,6 +29,9 @@ class CachedImage extends StatelessWidget {
   final BoxFit fit;
   final String? fallbackAsset;
   final String? semanticLabel;
+
+  /// 图片真实尺寸解码后回调；加载失败或未提供时不回调。
+  final ValueChanged<Size>? onImageSize;
 
   String get _fullUrl {
     if (url.startsWith('http')) return url;
@@ -39,7 +44,7 @@ class CachedImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final blur = context.watch<SettingsProvider?>()?.blurMovieImages ?? true;
-    final image = CachedNetworkImage(
+    Widget image = CachedNetworkImage(
       imageUrl: _fullUrl,
       cacheManager: JdbImageCacheManager.instance,
       fit: fit,
@@ -70,11 +75,22 @@ class CachedImage extends StatelessWidget {
           : Image.asset(fallbackAsset!, width: width, height: height, fit: fit),
     );
     final label = semanticLabel;
-    if (label == null) return image;
-    return Semantics(
-      image: true,
-      label: label,
-      excludeSemantics: true,
+    if (label != null) {
+      image = Semantics(
+        image: true,
+        label: label,
+        excludeSemantics: true,
+        child: image,
+      );
+    }
+    final onSize = onImageSize;
+    if (onSize == null) return image;
+    return ImageSizeListener(
+      imageProvider: CachedNetworkImageProvider(
+        _fullUrl,
+        cacheManager: JdbImageCacheManager.instance,
+      ),
+      onImageSize: onSize,
       child: image,
     );
   }

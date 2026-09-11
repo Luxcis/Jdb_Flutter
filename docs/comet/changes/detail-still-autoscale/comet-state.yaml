@@ -1,0 +1,281 @@
+schema: comet.native.v4
+name: detail-still-autoscale
+language: zh-CN
+phase: archive
+status: active
+state_version: 7
+brief: brief.md
+shape_confirmation_hash: ac9dfc5975c07710991ea3a41a6e9c9a893c58c6726b7c76f20954f7c1b4101b
+spec_changes:
+  - capability: movie-detail-stills
+    operation: create
+    source: specs/movie-detail-stills/spec.md
+workspace:
+  isolation: current
+  change_branch: master
+  target_branch: master
+  finish: null
+loop:
+  stage: archive-ready
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: archive
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: 剧照缩略图加载完成后按图片实际宽高比缩放显示完整图片，不被裁剪，也没有空隙填充。"
+    result: passed
+    reason:
+      text: movie_still_thumbnail.dart 用
+        AspectRatio(实际比例)+CachedImage(cover)，盒子比例=图片比例即完整显示不裁不空；测试断言 240x160 解码后
+        aspect 变 1.5
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A2: 同一排中不同比例的剧照缩略图高度一致，宽度各自按比例自适应，横向滚动正常且无溢出。"
+    result: passed
+    reason:
+      text: 高度由横向 ListView（区域高度 164，movie_section.dart 未改）统一约束，宽度按各自 AspectRatio
+        自适应；屏幕测试滚动该区且全量 894 用例无溢出异常
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "A3: 剧照图片未加载时缩略图按默认 16:9 占位显示，加载完成后切换为实际比例。"
+    result: passed
+    reason:
+      text: _aspect 初始为 kStillThumbnailPlaceholderAspect=16/9，onImageSize
+        后切换；测试覆盖加载前占位与解码后自适应两个阶段
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A4: 竖图与超宽图的缩略图被限制在合理比例范围（宽高比下限 1.0、上限 21/9），布局不溢出。"
+    result: passed
+    reason:
+      text: clampStillThumbnailAspect 限 [1.0, 21/9]；Dart 单测与 widget 测试分别验证竖图
+        90x200→1.0、超宽 700x200→21/9
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "A5: 预告片封面缩略图显示方式不变；点击剧照缩略图仍打开大图查看器并定位到对应图片。"
+    result: passed
+    reason:
+      text: 预告片格子未改动（16:9+MovieCoverImage+movie-detail-preview）；测试验证预告片居首含播放语义，点击
+        screenshot-1 打开图库并显示 2 / 2
+      truncated: false
+  - id: A6
+    source: specs/movie-detail-stills/spec.md
+    text: 剧照缩略图按实际比例完整显示 Given 影片详情页「预告片 / 剧照」区存在剧照 When 某剧照图片加载完成 Then
+      该缩略图按图片实际宽高比缩放显示完整图片，不被裁剪，也没有空隙填充
+    result: passed
+    reason:
+      text: 与 A1 同源：MovieStillThumbnail
+        按图片流真实尺寸（ImageSizeListener→onImageSize）更新比例，缓存同步命中走 postFrameCallback 防
+        build 中 setState
+      truncated: false
+  - id: A7
+    source: specs/movie-detail-stills/spec.md
+    text: 缩略图高度统一且横向滚动正常 Given 同一排中存在多张不同宽高比的剧照且已加载完成 When 浏览「预告片 / 剧照」横向列表 Then
+      所有剧照缩略图高度一致、宽度各自按实际比例自适应，横向滚动正常且无溢出
+    result: passed
+    reason:
+      text: 实现上高度统一、宽度各异；movie_detail_screen_test
+        滚动验证该区（findsNWidgets(2)、scrollUntilVisible），日志显示 894 用例全过
+      truncated: false
+  - id: A8
+    source: specs/movie-detail-stills/spec.md
+    text: 未加载时按默认比例占位 Given 剧照图片尚未加载完成 When 查看「预告片 / 剧照」区 Then 该剧照缩略图按默认 16:9
+      占位显示，加载完成后切换为实际宽高比
+    result: passed
+    reason:
+      text: 占位 16:9 与加载后切换均有专门测试（image_size_listener_test 验证真实解码回调，thumbnail_test
+        验证占位与切换）
+      truncated: false
+  - id: A9
+    source: specs/movie-detail-stills/spec.md
+    text: 极端比例受保护 Given 某剧照为竖图或超宽图 When 该图片加载完成 Then 缩略图宽高比被限制在 [1.0, 21/9] 范围内，布局不溢出
+    result: passed
+    reason:
+      text: clamp 常量与函数有纯 Dart 测试，widget 测试验证竖图/超宽图分别钳到 1.0 与 21/9
+      truncated: false
+  - id: A10
+    source: specs/movie-detail-stills/spec.md
+    text: 交互与语义保持不变 Given 剧照缩略图已按新方式自适应显示 When 点击任一剧照缩略图或使用无障碍服务聚焦 Then
+      仍打开大图查看器并定位对应图片，语义标签与 Key 与修改前一致
+    result: passed
+    reason:
+      text: Semantics(button,查看剧照 N，共 M
+        张)、Key(movie-detail-screenshot-N)、onTap→ImageGalleryViewer(initialIndex)
+        均逐字保留；点击定位由从第二张剧照打开图库测试验证
+      truncated: false
+builder_handoff:
+  candidate_id: 0064fbd5-4905-4bda-bbbd-bd24be6c46c1
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:82935010-4ad9-4c57-bf19-a9ecc996c668
+  iteration: 1
+  summary:
+    text: 剧照缩略图按图片实际宽高比自适应：新增 ImageSizeListener（监听 ImageProvider 解码尺寸，同步命中帧末回调防
+      build 中 setState）与
+      MovieStillThumbnail（高度由横向列表约束、宽度=高度×clamp(比例,1.0,21/9)，加载前 16:9
+      占位）；CachedImage 增加可选 onImageSize 回调并条件包裹 listener（onImageSize 为 null
+      的既有调用方零行为变化）；MovieScreenshotSection 剧照格子替换为 MovieStillThumbnail，保留
+      Semantics/Key/大图查看交互，预告片封面与 movie_list_tile 未触碰。覆盖验收
+      A1-A10：组件测试覆盖异步解码回调、同步命中、provider 变化重订阅、同尺寸去重、16:9 占位、自适应、双端
+      clamp、点击回调；详情页回归断言更新为 MovieStillThumbnail。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+  checks:
+    - name:
+        text: flutter analyze --no-pub
+        truncated: false
+      result: passed
+      note:
+        text: No issues found
+        truncated: false
+    - name:
+        text: flutter test --no-pub (全量)
+        truncated: false
+      result: passed
+      note:
+        text: 894 个测试全部通过
+        truncated: false
+    - name:
+        text: 只读代码复核（独立 subagent）
+        truncated: false
+      result: passed
+      note:
+        text: 3 条低严重度观察项，无阻塞问题
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: MovieStillThumbnail 未实现 didUpdateWidget 重置 _aspect：ListView 元素复用且 url
+        变更时新图解码前短暂沿用旧比例，随后由新尺寸回调纠正；当前唯一使用场景（详情页 urls 稳定）不触发。
+      truncated: false
+    - text: ImageSizeListener onError 静默（与「加载失败不回调」约定一致），失败时无日志。
+      truncated: false
+  known_limits_truncated: false
+  review:
+    status: passed
+    summary:
+      text: 独立只读复核通过：监听器生命周期与同步回调安全处理完备，clamp [1.0,21/9] 与 16:9 占位符合需求，CachedImage
+        对既有调用方零行为影响，analyze 无问题，相关 4 个测试文件 63 用例全部通过；3 条低严重度观察项已记录为已知限制。
+      truncated: false
+    reviewer_execution_ref: agent_9c677f02-bfd0-4fb8-babe-ad3f40f780e3
+  submitted_at: 2026-09-11T07:34:57.830Z
+blockers: []
+verification:
+  candidate_id: 0064fbd5-4905-4bda-bbbd-bd24be6c46c1
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:22173524-cf73-47a1-8de7-bc7628da1c5c
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: check-analyze
+      name:
+        text: flutter analyze 静态检查
+        truncated: false
+      argv_display:
+        - text: analyze
+          truncated: false
+        - text: --no-pub
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 3734
+    - id: check-test-affected
+      name:
+        text: 受影响组件与详情页测试
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: --no-pub
+          truncated: false
+        - text: test/core/widgets/image_size_listener_test.dart
+          truncated: false
+        - text: test/core/widgets/movie_still_thumbnail_test.dart
+          truncated: false
+        - text: test/core/widgets/cached_image_test.dart
+          truncated: false
+        - text: test/features/movie_detail/movie_detail_screen_test.dart
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 7349
+    - id: check-test-full
+      name:
+        text: 全量测试回归
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: --no-pub
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 31541
+  summary:
+    text: 实现与 spec/brief 决策一致（宽度自适应+16:9 占位+[1.0,21/9] 钳制+交互语义保留），非目标文件未动，analyze
+      与受影响/全量测试日志均通过，验收通过。
+    truncated: false
+  risks:
+    - text: MovieStillThumbnail 未实现 didUpdateWidget 重置 _aspect：同一 State 复用且 url
+        变化时会短暂沿用旧比例（当前 ListView 按 index+稳定 Key 构建不触发，Builder 已披露）
+      truncated: false
+    - text: ImageSizeListener 对加载失败静默（onError 为空），失败时保持 16:9 占位并显示
+        broken_image，行为可接受但无显式测试
+      truncated: false
+    - text: 被 clamp 的极端比例图在钳后盒子上以 cover 中心裁剪，这是 D2 既定决策，完整显示仅对比例在 [1.0, 21/9] 内的图片成立
+      truncated: false
+    - text: 查看剧照 N 共 M 张 Semantics label 无测试直接断言，依赖 diff 逐字保留的代码证据
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-11T07:56:31.042Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 实现与 spec/brief 决策一致（宽度自适应+16:9 占位+[1.0,21/9] 钳制+交互语义保留），非目标文件未动，analyze
+        与受影响/全量测试日志均通过，验收通过。
+      truncated: false
+    completed_at: 2026-09-11T07:56:31.042Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: false
+created_at: 2026-09-11T06:13:12.786Z

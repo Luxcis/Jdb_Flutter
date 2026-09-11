@@ -8,7 +8,7 @@ import 'package:jade/core/widgets/actor_card.dart';
 import 'package:jade/core/widgets/image_gallery_viewer.dart';
 import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/movie_cover_image.dart';
-import 'package:jade/core/widgets/movie_screenshot_image.dart';
+import 'package:jade/core/widgets/movie_still_thumbnail.dart';
 import 'package:jade/core/widgets/tag_chip.dart';
 import 'package:jade/features/movie_detail/widgets/movie_section.dart';
 
@@ -190,22 +190,15 @@ class MovieScreenshotSection extends StatelessWidget {
           return Semantics(
             button: true,
             label: '查看剧照 ${screenshotIndex + 1}，共 ${urls.length} 张',
-            child: AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Material(
-                clipBehavior: Clip.antiAlias,
-                borderRadius: BorderRadius.circular(8),
-                child: InkWell(
-                  key: Key('movie-detail-screenshot-$screenshotIndex'),
-                  onTap: () => showDialog<void>(
-                    context: context,
-                    useSafeArea: false,
-                    builder: (_) => ImageGalleryViewer(
-                      urls: urls,
-                      initialIndex: screenshotIndex,
-                    ),
-                  ),
-                  child: MovieScreenshotImage(urls[screenshotIndex]),
+            child: MovieStillThumbnail(
+              key: Key('movie-detail-screenshot-$screenshotIndex'),
+              urls[screenshotIndex],
+              onTap: () => showDialog<void>(
+                context: context,
+                useSafeArea: false,
+                builder: (_) => ImageGalleryViewer(
+                  urls: urls,
+                  initialIndex: screenshotIndex,
                 ),
               ),
             ),

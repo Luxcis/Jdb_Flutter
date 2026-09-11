@@ -14,7 +14,7 @@ import 'package:jade/core/widgets/actor_card.dart';
 import 'package:jade/core/widgets/list_summary_tile.dart';
 import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/movie_cover_image.dart';
-import 'package:jade/core/widgets/movie_screenshot_image.dart';
+import 'package:jade/core/widgets/movie_still_thumbnail.dart';
 import 'package:jade/core/widgets/star_rating.dart';
 import 'package:jade/core/widgets/tag_chip.dart';
 import 'package:jade/features/common/screens/common_list_page.dart';
@@ -1401,7 +1401,7 @@ void main() {
 
     expect(find.text('预告片 / 剧照'), findsOneWidget);
     expect(preview, findsOneWidget);
-    expect(find.byType(MovieScreenshotImage), findsNothing);
+    expect(find.byType(MovieStillThumbnail), findsNothing);
   });
 
   testWidgets('没有预告片时保持普通剧照列表', (tester) async {
@@ -1876,7 +1876,7 @@ void main() {
     );
     expect(find.text('预告片 / 剧照'), findsOneWidget);
     expect(find.text('全部 2 ›'), findsNothing);
-    expect(find.byType(MovieScreenshotImage), findsNWidgets(2));
+    expect(find.byType(MovieStillThumbnail), findsNWidgets(2));
 
     await tester.scrollUntilVisible(
       find.text('ACT-001'),
