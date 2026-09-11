@@ -1,0 +1,281 @@
+schema: comet.native.v4
+name: fix-home-top-block-theme
+language: zh-CN
+phase: archive
+status: done
+state_version: 8
+brief: brief.md
+shape_confirmation_hash: 194ee7136d4d0322dcfe0615917e7f62ee6d3032aac3728f6d1a5965268ae129
+spec_changes:
+  - capability: home-tofu-scroll
+    operation: create
+    source: specs/home-tofu-scroll/spec.md
+workspace:
+  isolation: current
+  change_branch: master
+  target_branch: master
+  finish: null
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: 应用内切换外观模式为深色后，不重启应用，首页顶部豆腐块卡片背景与边框立即变为深色配色（浅色 surface 不再保留）。"
+    result: passed
+    reason:
+      text: 真实链路回归测试 test/features/home/tofu_theme_test.dart 覆盖：mainForTest
+        启动进入首页→初始断言浅色 surface→setThemeMode(dark) 后断言 Card.color ==
+        AppTheme.dark().colorScheme.surface。实现上
+        lib/features/home/widgets/tofu_scroll.dart:71-73 在 build() 顶部解析
+        Theme.of(context) 建立依赖注册，:90 卡片 color 取 colorScheme.surface。Verifier
+        独立复跑通过。
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A2: 应用内切换外观模式为浅色后，不重启应用，豆腐块卡片立即恢复浅色配色（深色 surface 不再保留）。"
+    result: passed
+    reason:
+      text: 同回归测试深→浅段覆盖：setThemeMode(light) 后断言 Card.color 恢复
+        AppTheme.light().colorScheme.surface，深色 surface 不残留。独立复跑通过。
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: 'A3: 外观模式为"跟随系统"（ThemeMode.system）时，系统深浅色切换后，豆腐块配色实时跟随系统变化。'
+    result: passed
+    reason:
+      text: 同回归测试 system 段覆盖：ThemeMode.system 下 platformBrightnessTestValue
+        亮→暗→恢复亮，两次断言豆腐块实时跟随，走真实 ThemeProvider→MaterialApp 链路。独立复跑通过。
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A4: 主题切换后，豆腐块的图标、文字仍清晰可读，卡片点击路由行为与现状一致（看热播 → /rankings?tab=hot，其余为 push
+      跳转）。"
+    result: passed
+    reason:
+      text: diff 逐行核对：onTap 路由分支（看热播 go 其余 push）、Icon（item.color 固定彩色 size
+        24）、Text（textTheme.bodySmall，仅解析位置移至 build
+        顶部、值不变）、尺寸/间距/圆角/elevation/阴影均未改动；既有 tofu_scroll_test 路由与尺寸断言在 50
+        用例全套件中通过。
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "A5: 现有 `test/features/home/` 全部用例与 `flutter analyze` 保持通过（回归保护）。"
+    result: passed
+    reason:
+      text: Verifier 独立复跑 flutter test test/features/home/ --no-pub 50 用例全过（与 Runtime
+        日志一致）；flutter analyze --no-pub 无问题；git status 确认改动仅
+        tofu_scroll.dart、新增测试与 change 产物，pubspec.lock 未触碰。
+      truncated: false
+  - id: A6
+    source: specs/home-tofu-scroll/spec.md
+    text: 浅色切换深色实时生效 Given 应用处于浅色模式且首页已展示豆腐块 When 通过设置页将外观模式切换为深色（不重启应用） Then
+      豆腐块卡片背景立即变为深色主题的 surface 色、边框变为深色主题的 outlineVariant 色，不保留任何浅色 surface 残留
+    result: passed
+    reason:
+      text: spec 场景『浅色切换深色实时生效』由 A1 测试段覆盖；边框 outlineVariant 与 surface 取自同一 build()
+        顶部解析的同一 colorScheme（同一依赖注册），结构性同源保证同步切换。风险：边框色未直接断言（见 risks）。
+      truncated: false
+  - id: A7
+    source: specs/home-tofu-scroll/spec.md
+    text: 深色切换浅色实时恢复 Given 应用处于深色模式且首页已展示豆腐块 When 通过设置页将外观模式切换为浅色（不重启应用） Then
+      豆腐块卡片背景立即恢复为浅色主题的 surface 色
+    result: passed
+    reason:
+      text: spec 场景『深色切换浅色实时恢复』由 A2 测试段逐字覆盖，真实链路、不重启应用。独立复跑通过。
+      truncated: false
+  - id: A8
+    source: specs/home-tofu-scroll/spec.md
+    text: 跟随系统模式下实时跟随 Given 外观模式为"跟随系统"（ThemeMode.system）且首页已展示豆腐块 When 系统在浅色与深色之间切换
+      Then 豆腐块卡片配色实时跟随系统亮度变化
+    result: passed
+    reason:
+      text: spec 场景『跟随系统模式下实时跟随』由 A3 测试段覆盖（system 模式下系统亮度暗→亮两向实时跟随）。独立复跑通过。
+      truncated: false
+  - id: A9
+    source: specs/home-tofu-scroll/spec.md
+    text: 主题切换不破坏交互与内容 Given 豆腐块已随主题完成实时切换 When 用户点击任一入口卡片 Then 跳转行为与既有路由表一致（看热播为 go
+      替换、其余为 push），图标与文字正常显示
+    result: passed
+    reason:
+      text: spec 场景『主题切换不破坏交互与内容』：onTap 路由分支与 items 常量路由表在 diff 中零改动，图标/文字渲染结构未变，既有
+        tofu_scroll_test 三个路由用例与 home 全套件复跑通过。
+      truncated: false
+builder_handoff:
+  candidate_id: 4813cbeb-1e75-4390-88f0-2340ab5135db
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:1b7ee6a4-f654-48f9-a5c4-efce8e1c6d9e
+  iteration: 1
+  summary:
+    text: 修复 TofuScroll 主题失聪：根因为组件仅在懒加载 itemBuilder 闭包内调用 Theme.of(context)，自身
+      build() 不建立主题 Inherited 依赖，元素 deactivate→reactivate 后依赖注册被清空且不再恢复。修复：在
+      build() 顶部解析 Theme.of(context)（colorScheme/textTheme.bodySmall）并传入
+      itemBuilder 闭包，模式与同页 HomeSearchBar 一致；视觉与交互语义经逐行 diff
+      核对与旧实现等价，仅新增主题响应性。新增真实链路回归测试
+      test/features/home/tofu_theme_test.dart（mainForTest 启动→首页→切换
+      themeMode/系统亮度，断言豆腐块 Card.color 实时跟随），修复前该链路可稳定复现失聪、修复后通过；覆盖
+      A1/A6、A2/A7、A3/A8。A4/A9 由既有 tofu_scroll_test 路由断言与复核逐行 diff 保证，A5 由 home
+      全套件与 analyze 保证。开发期检查：flutter test test/features/home/ --no-pub 50
+      用例全过；flutter analyze --no-pub 无问题。已知限制：回归测试合并在单次 mainForTest
+      内以规避多次启动的测试时钟污染（文件注释已说明）；测试宿主无 dynamic color、平台默认亮色，预期色基于
+      AppTheme.light()/dark()。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+  checks:
+    - name:
+        text: flutter test test/features/home/ --no-pub
+        truncated: false
+      result: passed
+      note:
+        text: 50 个用例全部通过（含既有 tofu_scroll_test、home_screen_test 与新增 tofu_theme_test）
+        truncated: false
+    - name:
+        text: flutter test test/features/home/tofu_theme_test.dart --no-pub
+        truncated: false
+      result: passed
+      note:
+        text: 新增真实链路回归测试，连续多次运行稳定通过
+        truncated: false
+    - name:
+        text: flutter analyze --no-pub
+        truncated: false
+      result: passed
+      note:
+        text: No issues found
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: 回归测试依赖 widget 测试宿主无 dynamic color 且平台默认亮色，预期色取
+        AppTheme.light()/dark().colorScheme.surface；若测试环境变化需同步调整
+      truncated: false
+    - text: 多个 mainForTest 启动流程在同一测试进程中会触发测试时钟污染（AnimationController elapsedInSeconds
+        断言），因此多场景合并在单次启动内完成
+      truncated: false
+  known_limits_truncated: false
+  review:
+    status: passed
+    summary:
+      text: 独立只读复核通过：改动范围仅 tofu_scroll.dart、新增回归测试与 change 产物，pubspec.lock
+        未触碰；新实现逐行核对与旧实现视觉/交互等价，行为差异仅主题响应性；回归测试链路与断言覆盖达标；home 套件 50 用例与 analyze
+        复跑通过。
+      truncated: false
+    reviewer_execution_ref: agent_cf9393bb-f529-4752-9a82-6c6d80a3f23f
+  submitted_at: 2026-09-11T03:07:02.249Z
+blockers: []
+verification:
+  candidate_id: 4813cbeb-1e75-4390-88f0-2340ab5135db
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:d8d049a9-24ca-4950-88b3-5d50d96ee4b3
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: home-tests
+      name:
+        text: home 全套件测试
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: test/features/home/
+          truncated: false
+        - text: --no-pub
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 4695
+    - id: tofu-theme-regression
+      name:
+        text: 豆腐块主题实时切换回归测试
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: test/features/home/tofu_theme_test.dart
+          truncated: false
+        - text: --no-pub
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 2854
+    - id: static-analysis
+      name:
+        text: 静态分析
+        truncated: false
+      argv_display:
+        - text: analyze
+          truncated: false
+        - text: --no-pub
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 2575
+  summary:
+    text: 全部 9 项验收通过。修复与 brief/spec 严格一致：tofu_scroll.dart 仅在 build() 顶部新增
+      Theme.of(context) 解析（colorScheme/textTheme.bodySmall
+      传入闭包），未触碰路由、图标、尺寸、点击行为，与旧实现逐行等价、仅增加主题响应性；与 HomeSearchBar
+      既有模式一致。新增真实链路回归测试覆盖浅→深、深→浅、system 模式亮→暗→恢复亮；Verifier 独立复跑该测试、home 全套件 50
+      用例与 flutter analyze 全部通过，Runtime 正式日志一致。Builder 交接摘要经核证属实。
+    truncated: false
+  risks:
+    - text: A6 的 outlineVariant 边框色未在回归测试中直接断言，通过性依赖结构性事实：边框与 surface 取自同一 build()
+        顶部解析的 colorScheme
+      truncated: false
+    - text: 回归测试预期色取 AppTheme.light()/dark() 静态值，若日后引入 dynamic color 或改主题构造需同步调整测试
+      truncated: false
+    - text: A1/A2/A3 场景合并在单次 mainForTest 内以规避多次启动的测试时钟污染，早段失败会中断后段
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-11T03:14:52.575Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 全部 9 项验收通过。修复与 brief/spec 严格一致：tofu_scroll.dart 仅在 build() 顶部新增
+        Theme.of(context) 解析（colorScheme/textTheme.bodySmall
+        传入闭包），未触碰路由、图标、尺寸、点击行为，与旧实现逐行等价、仅增加主题响应性；与 HomeSearchBar
+        既有模式一致。新增真实链路回归测试覆盖浅→深、深→浅、system 模式亮→暗→恢复亮；Verifier 独立复跑该测试、home 全套件 50
+        用例与 flutter analyze 全部通过，Runtime 正式日志一致。Builder 交接摘要经核证属实。
+      truncated: false
+    completed_at: 2026-09-11T03:14:52.575Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-09-11T01:29:21.196Z
