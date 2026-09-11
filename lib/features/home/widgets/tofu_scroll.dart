@@ -65,6 +65,12 @@ class TofuScroll extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 主题必须在自身 build 中解析（依赖随之注册）。若只放在下方 itemBuilder
+    // 闭包内，元素被框架复用（deactivate→activate）后依赖不会重建，
+    // 豆腐块将不再实时跟随深浅色切换。
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textStyle = theme.textTheme.bodySmall;
     return SizedBox(
       height: 88,
       child: ListView.separated(
@@ -81,12 +87,10 @@ class TofuScroll extends StatelessWidget {
               margin: EdgeInsets.zero,
               elevation: 2,
               shadowColor: Colors.black.withValues(alpha: 0.16),
-              color: Theme.of(context).colorScheme.surface,
+              color: colorScheme.surface,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
-                side: BorderSide(
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                ),
+                side: BorderSide(color: colorScheme.outlineVariant),
               ),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
@@ -102,10 +106,7 @@ class TofuScroll extends StatelessWidget {
                   spacing: 4,
                   children: [
                     Icon(item.icon, size: 24, color: item.color),
-                    Text(
-                      item.label,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+                    Text(item.label, style: textStyle),
                   ],
                 ),
               ),
