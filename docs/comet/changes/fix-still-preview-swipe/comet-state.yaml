@@ -1,0 +1,97 @@
+schema: comet.native.v4
+name: fix-still-preview-swipe
+language: zh-CN
+phase: build
+status: active
+state_version: 3
+brief: brief.md
+shape_confirmation_hash: fdfbc00a07d89f4ba14e2a5549e116dc5366c116e8d775636b7e22a8a2c63ee6
+spec_changes:
+  - capability: movie-detail-stills
+    operation: modify
+    source: specs/movie-detail-stills/spec.md
+workspace:
+  isolation: current
+  change_branch: master
+  target_branch: master
+  finish: null
+loop:
+  stage: building
+  goal_cycle: 1
+  iteration: 1
+  attempt: 0
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: submit-builder-candidate
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: 剧照图片都已加载并展示后，将长剧照列表向左滑动远离起点，再向右滑动可正常回滑，不出现闪回（跳回列表开头）或滚动被抵消。"
+    result: pending
+    reason: null
+  - id: A2
+    source: brief.md
+    text: "A2: 缩略图滚出可见区域后再滚回，立即以与之前加载完成时相同的宽高比显示，不再经历「16:9 占位 → 实际比例」的二次宽度变化。"
+    result: pending
+    reason: null
+  - id: A3
+    source: brief.md
+    text: "A3: 保留原有行为：加载前 16:9 占位、加载完成后按实际宽高比完整显示、竖图/超宽图 clamp [1.0, 21/9]、点击与语义不变。"
+    result: pending
+    reason: null
+  - id: A4
+    source: brief.md
+    text: "A4: 同一 URL 的宽高比记忆在整段会话内有效，同一张剧照在两次滚回时宽度一致。"
+    result: pending
+    reason: null
+  - id: A5
+    source: specs/movie-detail-stills/spec.md
+    text: 长剧照列表向左滑动后可正常向右回滑 Given 剧照列表有多张图片且均已加载展示 When 将列表向左滑动远离起点，再向右滑动返回 Then
+      回滑全程平稳无跳变，不闪回列表开头，滚动不被抵消
+    result: pending
+    reason: null
+  - id: A6
+    source: specs/movie-detail-stills/spec.md
+    text: 滑出可见区域再滚回无二次宽度变化 Given 某缩略图已按图片实际宽高比显示后被滑出可见区域 When 该缩略图重新滚入可见区域 Then
+      其第一帧即以滑出前相同的宽高比构建，不再出现 16:9 占位到实际比例的二次变化
+    result: pending
+    reason: null
+  - id: A7
+    source: specs/movie-detail-stills/spec.md
+    text: 同一 URL 宽度跨挂载一致 Given 同一张剧照（同一 URL）在会话内多次因滚动被销毁重建 When 观察每次重建后的缩略图宽度 Then
+      全部一致，与该 URL 解码出的实际宽高比记忆值相同
+    result: pending
+    reason: null
+  - id: A8
+    source: specs/movie-detail-stills/spec.md
+    text: 自适应显示行为保持不变 Given 剧照图片尚未加载或刚加载完成 When 查看对应缩略图 Then 未加载时为 16:9
+      占位；加载完成后按实际宽高比完整显示，竖图/超宽图 clamp 在 [1.0, 21/9]
+    result: pending
+    reason: null
+  - id: A9
+    source: specs/movie-detail-stills/spec.md
+    text: 点击与语义保持不变 Given 缩略图已按宽高比记忆机制显示 When 点击任一剧照缩略图或使用无障碍服务聚焦 Then
+      打开大图查看器并定位对应图片；语义标签与 Key 与修改前一致
+    result: pending
+    reason: null
+builder_handoff: null
+blockers: []
+verification: null
+history: []
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pending
+verification_report: null
+archived: false
+created_at: 2026-09-13T07:09:28.754Z

@@ -26,12 +26,35 @@ class MovieStillThumbnail extends StatefulWidget {
   State<MovieStillThumbnail> createState() => _MovieStillThumbnailState();
 }
 
+/// 缩略图 URL → 已解码宽高比记忆。
+///
+/// 横向懒构建列表会销毁滑出缓存范围的缩略图；重新挂载时若无此记忆会先按
+/// 16:9 占位再被异步解码回调改宽，造成回滑时列表项宽度二次变化、滚动被
+/// 反复修正（闪回）。同一 URL 的图片比例恒定，按 URL 只增不改地共享。
+final _stillThumbnailAspectMemo = <String, double>{};
+
+/// 取该 URL 已记住的宽高比；从未解码过时为 null。
+double? rememberedStillThumbnailAspect(String url) =>
+    _stillThumbnailAspectMemo[url];
+
+@visibleForTesting
+void resetStillThumbnailAspectMemo() => _stillThumbnailAspectMemo.clear();
+
 class _MovieStillThumbnailState extends State<MovieStillThumbnail> {
   double _aspect = kStillThumbnailPlaceholderAspect;
+
+  @override
+  void initState() {
+    super.initState();
+    _aspect =
+        rememberedStillThumbnailAspect(widget.url) ??
+        kStillThumbnailPlaceholderAspect;
+  }
 
   void _handleImageSize(Size size) {
     if (!mounted || size.height <= 0) return;
     final aspect = clampStillThumbnailAspect(size.width / size.height);
+    _stillThumbnailAspectMemo[widget.url] = aspect;
     if ((aspect - _aspect).abs() < 0.0001) return;
     setState(() => _aspect = aspect);
   }
