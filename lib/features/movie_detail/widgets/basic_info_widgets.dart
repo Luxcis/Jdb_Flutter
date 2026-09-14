@@ -3,9 +3,9 @@ import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/list_model.dart';
 import 'package:jade/core/models/magnet.dart';
 import 'package:jade/core/models/movie.dart';
-import 'package:jade/core/models/review.dart';
 import 'package:jade/core/widgets/movie_cover_image.dart';
 import 'package:jade/features/movie_detail/models/movie_review_sort.dart';
+import 'package:jade/features/movie_detail/services/detail_section_state.dart';
 import 'package:jade/features/movie_detail/widgets/basic_info_sections.dart';
 import 'package:jade/features/movie_detail/widgets/movie_detail_lists.dart';
 import 'package:jade/features/movie_detail/widgets/movie_info_card.dart';
@@ -31,6 +31,7 @@ class MovieDetailHero extends StatelessWidget {
               variant: MovieImageVariant.cover,
               semanticLabel: detail.title,
               fit: BoxFit.cover,
+              allowBlur: true,
             ),
           ),
         );
@@ -40,24 +41,21 @@ class MovieDetailHero extends StatelessWidget {
 }
 
 /// 影片详情页底部四 Tab 容器：基本信息 / 磁链下载 / 短评 / 相关清单。
+///
+/// 三个数据区块各挂自己的 [ListenableBuilder]：任一区块状态变化只重建该
+/// Tab 的子树，不触发整页与其他区块重建；「基本信息」Tab 由不可变的
+/// [ReviewStatusState] 驱动，仅在短评状态变化时重建。
 class MovieDetailTabs extends StatelessWidget {
   const MovieDetailTabs({
     super.key,
     required this.detail,
-    required this.magnets,
-    required this.magnetsError,
-    required this.magnetsLoading,
+    required this.magnetsState,
+    required this.reviewsState,
+    required this.relatedListsState,
     required this.onRetryMagnets,
-    required this.reviews,
-    required this.reviewsLoading,
-    required this.reviewSort,
-    required this.onReviewSortChanged,
-    required this.relatedLists,
-    required this.relatedListsError,
-    required this.relatedListsLoading,
     required this.onRetryRelatedLists,
-    required this.review,
-    required this.reviewMutationLoading,
+    required this.reviewStatus,
+    required this.onReviewSortChanged,
     required this.onWantWatch,
     required this.onWatched,
     required this.onDeleteReview,
@@ -67,20 +65,13 @@ class MovieDetailTabs extends StatelessWidget {
   });
 
   final MovieDetail detail;
-  final List<Magnet> magnets;
-  final Object? magnetsError;
-  final bool magnetsLoading;
+  final DetailSectionState<Magnet> magnetsState;
+  final ReviewSectionState reviewsState;
+  final DetailSectionState<ListModel> relatedListsState;
   final VoidCallback onRetryMagnets;
-  final List<Review> reviews;
-  final bool reviewsLoading;
-  final MovieReviewSort reviewSort;
-  final ValueChanged<MovieReviewSort> onReviewSortChanged;
-  final List<ListModel> relatedLists;
-  final Object? relatedListsError;
-  final bool relatedListsLoading;
   final VoidCallback onRetryRelatedLists;
-  final Review? review;
-  final bool reviewMutationLoading;
+  final ReviewStatusState reviewStatus;
+  final ValueChanged<MovieReviewSort> onReviewSortChanged;
   final VoidCallback onWantWatch;
   final VoidCallback onWatched;
   final VoidCallback onDeleteReview;
@@ -113,34 +104,45 @@ class MovieDetailTabs extends StatelessWidget {
       ],
       body: TabBarView(
         children: [
-          MovieDetailBasicInfoTab(
-            detail: detail,
-            review: review,
-            reviewMutationLoading: reviewMutationLoading,
-            onWantWatch: onWantWatch,
-            onWatched: onWatched,
-            onDeleteReview: onDeleteReview,
-            onSaveToList: onSaveToList,
-            onPreviewTap: onPreviewTap,
-            onActorTap: onActorTap,
+          ListenableBuilder(
+            listenable: reviewStatus,
+            builder: (_, _) => MovieDetailBasicInfoTab(
+              detail: detail,
+              reviewStatus: reviewStatus,
+              onWantWatch: onWantWatch,
+              onWatched: onWatched,
+              onDeleteReview: onDeleteReview,
+              onSaveToList: onSaveToList,
+              onPreviewTap: onPreviewTap,
+              onActorTap: onActorTap,
+            ),
           ),
-          MovieMagnetList(
-            magnets: magnets,
-            error: magnetsError,
-            loading: magnetsLoading,
-            onRetry: onRetryMagnets,
+          ListenableBuilder(
+            listenable: magnetsState,
+            builder: (_, _) => MovieMagnetList(
+              magnets: magnetsState.items,
+              error: magnetsState.error,
+              loading: magnetsState.loading,
+              onRetry: onRetryMagnets,
+            ),
           ),
-          MovieReviewList(
-            reviews: reviews,
-            loading: reviewsLoading,
-            sort: reviewSort,
-            onSortChanged: onReviewSortChanged,
+          ListenableBuilder(
+            listenable: reviewsState,
+            builder: (_, _) => MovieReviewList(
+              reviews: reviewsState.items,
+              loading: reviewsState.loading,
+              sort: reviewsState.sort,
+              onSortChanged: onReviewSortChanged,
+            ),
           ),
-          MovieRelatedListList(
-            lists: relatedLists,
-            error: relatedListsError,
-            loading: relatedListsLoading,
-            onRetry: onRetryRelatedLists,
+          ListenableBuilder(
+            listenable: relatedListsState,
+            builder: (_, _) => MovieRelatedListList(
+              lists: relatedListsState.items,
+              error: relatedListsState.error,
+              loading: relatedListsState.loading,
+              onRetry: onRetryRelatedLists,
+            ),
           ),
         ],
       ),
@@ -194,8 +196,7 @@ class MovieDetailBasicInfoTab extends StatelessWidget {
   const MovieDetailBasicInfoTab({
     super.key,
     required this.detail,
-    required this.review,
-    required this.reviewMutationLoading,
+    required this.reviewStatus,
     required this.onWantWatch,
     required this.onWatched,
     required this.onDeleteReview,
@@ -205,8 +206,7 @@ class MovieDetailBasicInfoTab extends StatelessWidget {
   });
 
   final MovieDetail detail;
-  final Review? review;
-  final bool reviewMutationLoading;
+  final ReviewStatusState reviewStatus;
   final VoidCallback onWantWatch;
   final VoidCallback onWatched;
   final VoidCallback onDeleteReview;
@@ -224,8 +224,8 @@ class MovieDetailBasicInfoTab extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: MovieInfoCard(
             detail: detail,
-            review: review,
-            reviewMutationLoading: reviewMutationLoading,
+            review: reviewStatus.review,
+            reviewMutationLoading: reviewStatus.mutationLoading,
             onWantWatch: onWantWatch,
             onWatched: onWatched,
             onDeleteReview: onDeleteReview,

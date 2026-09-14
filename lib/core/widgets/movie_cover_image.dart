@@ -12,6 +12,9 @@ class MovieCoverImage extends StatelessWidget {
     this.width,
     this.height,
     this.fit = BoxFit.cover,
+    this.memCacheWidth,
+    this.memCacheHeight,
+    this.allowBlur = false,
   });
 
   final String url;
@@ -20,6 +23,9 @@ class MovieCoverImage extends StatelessWidget {
   final double? width;
   final double? height;
   final BoxFit fit;
+  final int? memCacheWidth;
+  final int? memCacheHeight;
+  final bool allowBlur;
 
   String get fallbackAsset => switch (variant) {
     MovieImageVariant.thumbnail => 'assets/images/noimage_147x200.jpg',
@@ -35,6 +41,9 @@ class MovieCoverImage extends StatelessWidget {
       fit: fit,
       fallbackAsset: fallbackAsset,
       semanticLabel: semanticLabel,
+      memCacheWidth: memCacheWidth,
+      memCacheHeight: memCacheHeight,
+      allowBlur: allowBlur,
     );
   }
 }

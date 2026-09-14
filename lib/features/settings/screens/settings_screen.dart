@@ -3,14 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:jade/core/providers/theme_provider.dart';
 import 'package:jade/features/settings/widgets/setting_item.dart';
 
-class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({super.key});
 
   @override
-  State createState() => _SettingsPageState();
+  State createState() => _SettingsScreenState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);

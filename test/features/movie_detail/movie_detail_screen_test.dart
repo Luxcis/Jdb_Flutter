@@ -17,7 +17,7 @@ import 'package:jade/core/widgets/movie_cover_image.dart';
 import 'package:jade/core/widgets/movie_still_thumbnail.dart';
 import 'package:jade/core/widgets/star_rating.dart';
 import 'package:jade/core/widgets/tag_chip.dart';
-import 'package:jade/features/common/screens/common_list_page.dart';
+import 'package:jade/features/common/screens/common_list_screen.dart';
 import 'package:jade/features/common/services/tag_movies_service.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/screens/movie_detail_screen.dart';
@@ -341,13 +341,13 @@ GoRouter _buildMovieDetailRouter({ValueChanged<Object?>? onPreviewExtra}) {
       ),
       GoRoute(
         path: AppRoutes.movieDetail,
-        builder: (_, state) => MovieDetailPage(id: state.pathParameters['id']!),
+        builder: (_, state) => MovieDetailScreen(id: state.pathParameters['id']!),
       ),
       GoRoute(
         path: AppRoutes.commonList,
         builder: (_, state) {
           final query = state.uri.queryParameters;
-          return CommonListPage(
+          return CommonListScreen(
             title: query['title'] ?? '',
             type: int.tryParse(query['type'] ?? '') ?? 0,
             category: query['category'] ?? '',
@@ -392,7 +392,7 @@ void main() {
       },
     ]);
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byKey(const Key('movie-want-watch-button')));
@@ -452,7 +452,7 @@ void main() {
       },
     ]);
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byKey(const Key('movie-watched-button')));
@@ -538,7 +538,7 @@ void main() {
       },
     ]);
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byKey(const Key('movie-watched-button')));
@@ -620,7 +620,7 @@ void main() {
       'data': <String, dynamic>{},
     });
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byKey(const Key('movie-want-watch-button')));
@@ -688,7 +688,7 @@ void main() {
       'data': <String, dynamic>{},
     });
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -734,7 +734,7 @@ void main() {
       'data': <String, dynamic>{},
     });
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byKey(const Key('movie-delete-want-watch-button')));
@@ -780,7 +780,7 @@ void main() {
       },
     ]);
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
     adapter.responseDelay = const Duration(milliseconds: 200);
@@ -833,7 +833,7 @@ void main() {
       codes: [200, 500],
     );
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byKey(const Key('movie-want-watch-button')));
@@ -872,7 +872,7 @@ void main() {
       codes: [200, 401],
     );
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byKey(const Key('movie-want-watch-button')));
@@ -907,7 +907,7 @@ void main() {
       codes: [200, 401],
     );
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byKey(const Key('movie-want-watch-button')));
@@ -951,7 +951,7 @@ void main() {
       },
     ]);
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byKey(const Key('movie-want-watch-button')));
@@ -998,7 +998,7 @@ void main() {
       },
     ]);
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byKey(const Key('movie-want-watch-button')));
@@ -1037,7 +1037,7 @@ void main() {
       codes: [200, 401],
     );
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byKey(const Key('movie-watched-button')));
@@ -1093,7 +1093,7 @@ void main() {
       },
     ]);
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byKey(const Key('movie-want-watch-button')));
@@ -1133,7 +1133,7 @@ void main() {
       'message': 'delete failed',
     }, statusCode: 500);
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byKey(const Key('movie-delete-want-watch-button')));
@@ -1174,7 +1174,7 @@ void main() {
       'message': 'unauthorized',
     }, statusCode: 401);
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byKey(const Key('movie-delete-watched-button')));
@@ -1219,7 +1219,7 @@ void main() {
       'data': <String, dynamic>{},
     });
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byKey(const Key('movie-delete-watched-button')));
@@ -1257,7 +1257,7 @@ void main() {
       'data': <String, dynamic>{},
     });
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byKey(const Key('movie-delete-want-watch-button')));
@@ -1287,7 +1287,7 @@ void main() {
     );
   });
 
-  testWidgets('MovieDetailPage 主详情成功时附属接口失败不影响渲染', (tester) async {
+  testWidgets('MovieDetailScreen 主详情成功时附属接口失败不影响渲染', (tester) async {
     final adapter = await _setupApiClient();
     adapter.enqueue('/api/v4/movies/m1', {
       'success': 1,
@@ -1305,7 +1305,7 @@ void main() {
       },
     });
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -1337,7 +1337,7 @@ void main() {
       previewVideoUrl: 'https://media.example.com/preview.m3u8',
     );
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -1378,7 +1378,7 @@ void main() {
       previewImages: const [],
     );
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -1408,7 +1408,7 @@ void main() {
     final adapter = await _setupApiClient();
     _enqueueCompleteMovieDetail(adapter);
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -1566,7 +1566,7 @@ void main() {
         'category': target.category,
         'id': target.id,
       });
-      final page = tester.widget<CommonListPage>(find.byType(CommonListPage));
+      final page = tester.widget<CommonListScreen>(find.byType(CommonListScreen));
       expect(page.title, target.title);
       expect(page.type, 1);
       expect(page.category, target.category);
@@ -1611,7 +1611,7 @@ void main() {
       'category': 't',
       'id': 'tag-1',
     });
-    final page = tester.widget<CommonListPage>(find.byType(CommonListPage));
+    final page = tester.widget<CommonListScreen>(find.byType(CommonListScreen));
     expect(page.title, '类别 - 剧情&爱情#1');
     expect(page.type, 1);
     expect(page.category, 't');
@@ -1743,7 +1743,7 @@ void main() {
           ).copyWith(textScaler: const TextScaler.linear(2)),
           child: child!,
         ),
-        home: const MovieDetailPage(id: 'm1'),
+        home: const MovieDetailScreen(id: 'm1'),
       ),
     );
     await tester.pump(const Duration(milliseconds: 200));
@@ -1762,7 +1762,7 @@ void main() {
     final adapter = await _setupApiClient();
     _enqueueCompleteMovieDetail(adapter);
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -2092,7 +2092,7 @@ void main() {
       },
     });
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -2153,7 +2153,7 @@ void main() {
       'action': 'JWTVerificationError',
       'message': '請登錄帳號',
     }, statusCode: 401);
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -2215,7 +2215,7 @@ void main() {
       'data': {},
     });
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byKey(const Key('movie-save-to-list-button')));
@@ -2300,7 +2300,7 @@ void main() {
       'data': {'lists': <Map<String, dynamic>>[]},
     });
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 200));
     await tester.tap(find.text('磁链下载'));
     await tester.pump();
@@ -2358,7 +2358,7 @@ void main() {
       codes: [500, 200],
     );
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 200));
     await tester.tap(find.text('相关清单'));
     await tester.pump();
@@ -2396,7 +2396,7 @@ void main() {
       previewVideoUrl: 'https://media.example.com/preview.m3u8',
     );
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -2480,7 +2480,7 @@ void main() {
       ],
     );
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -2556,7 +2556,7 @@ void main() {
       ],
     );
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -2592,7 +2592,7 @@ void main() {
       ],
     );
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -2621,7 +2621,7 @@ void main() {
     final adapter = await _setupApiClient();
     _enqueueCompleteMovieDetail(adapter);
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailPage(id: 'm1')));
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 

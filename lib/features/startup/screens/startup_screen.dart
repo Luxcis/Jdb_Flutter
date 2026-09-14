@@ -5,20 +5,20 @@ import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/startup_provider.dart';
 import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/services/session_refresh_service.dart';
-import 'package:jade/features/following/services/following_tags_provider.dart';
-import 'package:jade/features/profile/services/token_authentication_service.dart';
+import 'package:jade/core/providers/following_tags_provider.dart';
+import 'package:jade/core/services/token_authentication_service.dart';
 import 'package:provider/provider.dart';
 
-class StartupPage extends StatefulWidget {
-  const StartupPage({super.key, this.sessionRefreshService});
+class StartupScreen extends StatefulWidget {
+  const StartupScreen({super.key, this.sessionRefreshService});
 
   final SessionRefreshService? sessionRefreshService;
 
   @override
-  State<StartupPage> createState() => _StartupPageState();
+  State<StartupScreen> createState() => _StartupScreenState();
 }
 
-class _StartupPageState extends State<StartupPage> {
+class _StartupScreenState extends State<StartupScreen> {
   @override
   void initState() {
     super.initState();

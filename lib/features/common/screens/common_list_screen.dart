@@ -1,21 +1,20 @@
-import 'dart:developer' as developer;
-
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/favorite_button.dart';
+import 'package:jade/core/widgets/busy_page_mixin.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 import 'package:jade/core/widgets/sort_segmented.dart';
 import 'package:jade/core/widgets/sort_select.dart';
 import 'package:jade/features/common/services/tag_movies_service.dart';
-import 'package:jade/features/profile/services/collections_service.dart';
+import 'package:jade/core/services/collections_service.dart';
 
 typedef _SortOption = ({String label, String value});
 
-class CommonListPage extends StatefulWidget {
-  const CommonListPage({
+class CommonListScreen extends StatefulWidget {
+  const CommonListScreen({
     super.key,
     required this.title,
     required this.type,
@@ -33,10 +32,10 @@ class CommonListPage extends StatefulWidget {
   final FavoritesDataSource? favoritesDataSource;
 
   @override
-  State<CommonListPage> createState() => _CommonListPageState();
+  State<CommonListScreen> createState() => _CommonListScreenState();
 }
 
-class _CommonListPageState extends State<CommonListPage> {
+class _CommonListScreenState extends State<CommonListScreen> with BusyPageState {
   static const _filterOptions = [
     (label: '全部', value: 'all'),
     (label: '可播放', value: 'playable'),
@@ -63,7 +62,6 @@ class _CommonListPageState extends State<CommonListPage> {
   late final PaginationController<MovieSummary> _ctrl;
   late final FavoritesDataSource _favorites;
   bool? _hasCollected;
-  var _favoriteBusy = false;
   var _filter = 'magnet';
   late String _sort;
   var _orderBy = 'desc';
@@ -148,32 +146,16 @@ class _CommonListPageState extends State<CommonListPage> {
 
   Future<void> _toggleFavorite() async {
     final current = _hasCollected;
-    if (current == null || _favoriteBusy) return;
-    setState(() => _favoriteBusy = true);
-    try {
-      try {
-        await _favorites.setCollected(widget.category, widget.id, !current);
-      } catch (error, stackTrace) {
-        developer.log(
-          '收藏操作失败',
-          name: 'common-list',
-          error: error,
-          stackTrace: stackTrace,
-        );
-        if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('操作失败，请重试')));
-        return;
-      }
-      if (!mounted) return;
-      setState(() => _hasCollected = !current);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(current ? '已取消收藏' : '已收藏')),
-      );
-    } finally {
-      if (mounted) setState(() => _favoriteBusy = false);
-    }
+    if (current == null) return;
+    await runBusyOperation(
+      logName: 'common-list',
+      failureMessage: '操作失败，请重试',
+      operation: () => _favorites.setCollected(widget.category, widget.id, !current),
+      onSuccess: () {
+        setState(() => _hasCollected = !current);
+        showPageMessage(current ? '已取消收藏' : '已收藏');
+      },
+    );
   }
 
   @override
@@ -189,10 +171,13 @@ class _CommonListPageState extends State<CommonListPage> {
         title: Text(widget.title),
         actions: [
           if (_hasCollected != null)
-            FavoriteButton(
-              hasCollected: _hasCollected!,
-              busy: _favoriteBusy,
-              onPressed: _toggleFavorite,
+            ValueListenableBuilder<bool>(
+              valueListenable: busyListenable,
+              builder: (_, value, _) => FavoriteButton(
+                hasCollected: _hasCollected!,
+                busy: value,
+                onPressed: _toggleFavorite,
+              ),
             ),
         ],
       ),

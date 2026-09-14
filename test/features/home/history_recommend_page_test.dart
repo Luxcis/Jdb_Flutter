@@ -5,8 +5,8 @@ import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/router/routes.dart';
 import 'package:jade/features/home/models/recommend_period.dart';
-import 'package:jade/features/home/screens/history_recommend_detail_page.dart';
-import 'package:jade/features/home/screens/history_recommend_page.dart';
+import 'package:jade/features/home/screens/history_recommend_detail_screen.dart';
+import 'package:jade/features/home/screens/history_recommend_screen.dart';
 import 'package:jade/features/home/services/history_recommend_service.dart';
 
 String _day(String iso) {
@@ -19,7 +19,7 @@ void main() {
   testWidgets('往期推荐列表展示期号、日期与影片数量', (tester) async {
     final source = _RecordingRecommendPeriodDataSource();
     await tester.pumpWidget(
-      MaterialApp(home: HistoryRecommendPage(dataSource: source)),
+      MaterialApp(home: HistoryRecommendScreen(dataSource: source)),
     );
     await tester.pumpAndSettle();
 
@@ -39,7 +39,7 @@ void main() {
   testWidgets('滚动到底部自动加载下一页', (tester) async {
     final source = _RecordingRecommendPeriodDataSource(totalPages: 2);
     await tester.pumpWidget(
-      MaterialApp(home: HistoryRecommendPage(dataSource: source)),
+      MaterialApp(home: HistoryRecommendScreen(dataSource: source)),
     );
     await tester.pumpAndSettle();
     expect(source.periodsCalls, [1]);
@@ -57,11 +57,11 @@ void main() {
       routes: [
         GoRoute(
           path: '/',
-          builder: (_, _) => HistoryRecommendPage(dataSource: source),
+          builder: (_, _) => HistoryRecommendScreen(dataSource: source),
         ),
         GoRoute(
           path: AppRoutes.historyRecommendDetail,
-          builder: (c, s) => HistoryRecommendDetailPage(
+          builder: (c, s) => HistoryRecommendDetailScreen(
             period: s.pathParameters['period']!,
             dataSource: source,
           ),

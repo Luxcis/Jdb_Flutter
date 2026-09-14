@@ -65,7 +65,7 @@ GoRouter _router({
               final query = state.uri.queryParameters['q']?.trim() ?? '';
               return query.isEmpty ? AppRoutes.search : null;
             },
-            builder: (context, state) => SearchResultsPage(
+            builder: (context, state) => SearchResultsScreen(
               key: ValueKey(state.uri),
               query: state.uri.queryParameters['q']!.trim(),
               movieDataSource: movieSource,

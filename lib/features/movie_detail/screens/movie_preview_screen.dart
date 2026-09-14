@@ -12,8 +12,8 @@ import 'package:jade/features/movie_detail/widgets/movie_preview_header_overlay.
 
 typedef PreferredOrientationsSetter = MoviePreviewPreferredOrientationsSetter;
 
-class MoviePreviewPage extends StatefulWidget {
-  const MoviePreviewPage({
+class MoviePreviewScreen extends StatefulWidget {
+  const MoviePreviewScreen({
     super.key,
     required this.args,
     this.playbackFactory,
@@ -34,10 +34,10 @@ class MoviePreviewPage extends StatefulWidget {
   final MoviePreviewSystemUiCoordinator? systemUiCoordinator;
 
   @override
-  State<MoviePreviewPage> createState() => _MoviePreviewPageState();
+  State<MoviePreviewScreen> createState() => _MoviePreviewScreenState();
 }
 
-class _MoviePreviewPageState extends State<MoviePreviewPage> {
+class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
   static const _cleanupStepTimeout = Duration(milliseconds: 1500);
 
   late final MoviePreviewOrientationCoordinator _orientationCoordinator;
@@ -204,7 +204,9 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
     unawaited(() async {
       try {
         await _togglePlayback(command);
-      } catch (_) {}
+      } catch (error, stackTrace) {
+      _logIgnored('ignored-operation', error, stackTrace);
+    }
     }());
   }
 
@@ -225,7 +227,8 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
     _orientationLease = lease;
     try {
       await lease.locked;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logIgnored('orientation-lock', error, stackTrace);
       if (_isCurrentGeneration(generation) &&
           identical(_orientationLease, lease)) {
         _orientationLease = null;
@@ -273,7 +276,8 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
         _isLoading = false;
         _hasError = false;
       });
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logIgnored('session-init', error, stackTrace);
       if (session != null && !_isCurrentSession(generation, session)) {
         _detachAndCleanup(session);
         return;
@@ -337,7 +341,9 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
     if (lease == null) return;
     try {
       await lease.release();
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      _logIgnored('ignored-operation', error, stackTrace);
+    }
   }
 
   void _acquireWakelock() {
@@ -360,13 +366,17 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
   Future<void> _ignoreSystemUiOperation(Future<void> operation) async {
     try {
       await operation;
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      _logIgnored('ignored-operation', error, stackTrace);
+    }
   }
 
   Future<void> _ignoreWakelockOperation(Future<void> operation) async {
     try {
       await operation;
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      _logIgnored('ignored-operation', error, stackTrace);
+    }
   }
 
   Future<void> _cleanupSession(_PlaybackSession? session) {
@@ -382,7 +392,9 @@ class _MoviePreviewPageState extends State<MoviePreviewPage> {
   Future<void> _ignoreBoundedCleanup(Future<void> Function() command) async {
     try {
       await command().timeout(_cleanupStepTimeout);
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      _logIgnored('ignored-operation', error, stackTrace);
+    }
   }
 }
 
@@ -402,4 +414,9 @@ class _PlaybackCommand {
 
 class _PlaybackCommandInvalidated implements Exception {
   const _PlaybackCommandInvalidated();
+}
+
+void _logIgnored(String stage, Object error, StackTrace stackTrace) {
+  // 清理/副作用路径故意忽略失败，但保留日志痕迹便于排查。
+  debugPrint('movie_preview $stage failed: $error\n$stackTrace');
 }

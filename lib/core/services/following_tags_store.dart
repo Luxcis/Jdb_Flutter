@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jade/core/storage/storage_keys.dart';
-import 'package:jade/features/following/models/follow_tag.dart';
+import 'package:jade/core/models/follow_tag.dart';
 
 /// 关注标签本地缓存抽象，便于测试注入。
 abstract interface class FollowingTagsStore {

@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/router/app_router.dart';
 import 'package:jade/core/router/routes.dart';
+import 'package:jade/core/storage/testing/in_memory_secure_store.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -12,7 +13,7 @@ void main() {
 
   Future<AuthProvider> createAuth(bool logged) async {
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
     if (logged) {
       await auth.login(token: 'tok', user: {'id': 1});
     }

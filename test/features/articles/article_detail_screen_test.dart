@@ -7,6 +7,7 @@ import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/widgets/cached_image.dart';
 import 'package:jade/features/articles/screens/article_detail_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jade/core/storage/testing/in_memory_secure_store.dart';
 
 Future<FakeAdapter> _pumpDetail(
   WidgetTester tester, {
@@ -21,7 +22,7 @@ Future<FakeAdapter> _pumpDetail(
     'key_api_domains': ['https://jdforrepam.com'],
   });
   final prefs = await SharedPreferences.getInstance();
-  final auth = await AuthProvider.create(prefs);
+  final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
   final api = await ApiClient.create(
     prefs: prefs,
     tokenProvider: auth,
@@ -45,7 +46,7 @@ Future<FakeAdapter> _pumpDetail(
     },
   });
 
-  await tester.pumpWidget(const MaterialApp(home: ArticleDetailPage(id: '1')));
+  await tester.pumpWidget(const MaterialApp(home: ArticleDetailScreen(id: '1')));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 350));
   await tester.pump();
@@ -111,7 +112,7 @@ void main() {
       'key_api_domains': ['https://jdforrepam.com'],
     });
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
     final api = await ApiClient.create(
       prefs: prefs,
       tokenProvider: auth,
@@ -131,7 +132,7 @@ void main() {
       },
     ]);
 
-    await tester.pumpWidget(const MaterialApp(home: ArticleDetailPage(id: '1')));
+    await tester.pumpWidget(const MaterialApp(home: ArticleDetailScreen(id: '1')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();

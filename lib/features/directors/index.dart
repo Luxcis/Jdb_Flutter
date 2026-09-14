@@ -1,1 +1,1 @@
-export 'screens/directors_page.dart';
+export 'screens/directors_screen.dart';

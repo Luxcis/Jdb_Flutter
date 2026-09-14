@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/router/app_router.dart';
 import 'package:jade/core/router/routes.dart';
-import 'package:jade/features/common/screens/common_list_page.dart';
+import 'package:jade/features/common/screens/common_list_screen.dart';
 
 class _FakeAuth extends ChangeNotifier implements TokenProvider {
   final String _token = 'tok';
@@ -99,7 +99,7 @@ void main() {
     expect(find.text('全部'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 10)));
 
-  testWidgets('/common-list 路由带参数渲染 CommonListPage', (tester) async {
+  testWidgets('/common-list 路由带参数渲染 CommonListScreen', (tester) async {
     final router = AppRouter.buildForTest(
       initialLocation: Uri(
         path: AppRoutes.commonList,
@@ -120,7 +120,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final page = tester.widget<CommonListPage>(find.byType(CommonListPage));
+    final page = tester.widget<CommonListScreen>(find.byType(CommonListScreen));
     expect(page.title, '导演 - K太郎');
     expect(page.type, 0);
     expect(page.category, 'd');
@@ -143,7 +143,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final page = tester.widget<CommonListPage>(find.byType(CommonListPage));
+    final page = tester.widget<CommonListScreen>(find.byType(CommonListScreen));
     expect(page.title, '测试&系列#1');
     expect(page.type, 0);
     expect(page.category, '');

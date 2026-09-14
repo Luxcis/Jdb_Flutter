@@ -38,6 +38,8 @@ class MovieListTile extends StatelessWidget {
                       movie.coverUrl,
                       variant: MovieImageVariant.thumbnail,
                       semanticLabel: movie.title,
+                      memCacheWidth: 180,
+                      memCacheHeight: 220,
                     ),
                   ),
                 ),
@@ -79,7 +81,11 @@ class MovieListTile extends StatelessWidget {
                               child: SizedBox(
                                 width: 84,
                                 height: 56,
-                                child: MovieScreenshotImage(screenshots![i]),
+                                child: MovieScreenshotImage(
+                                  screenshots![i],
+                                  memCacheWidth: 170,
+                                  memCacheHeight: 114,
+                                ),
                               ),
                             ),
                           ),

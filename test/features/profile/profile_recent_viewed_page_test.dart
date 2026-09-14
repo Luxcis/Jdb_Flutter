@@ -5,10 +5,11 @@ import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
-import 'package:jade/features/profile/screens/profile_recent_viewed_page.dart';
+import 'package:jade/features/profile/screens/profile_recent_viewed_screen.dart';
 import 'package:jade/features/profile/services/recent_viewed_service.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jade/core/storage/testing/in_memory_secure_store.dart';
 
 class _FakeRecentViewedSource implements RecentViewedDataSource {
   _FakeRecentViewedSource({this.multiplePages = false});
@@ -63,14 +64,14 @@ Future<_FakeRecentViewedSource> _pumpPage(
   addTearDown(tester.view.resetDevicePixelRatio);
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
-  final auth = await AuthProvider.create(prefs);
+  final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
   await auth.login(token: 'token', user: {'id': 1, 'username': 'tester'});
   final source = _FakeRecentViewedSource(multiplePages: multiplePages);
   await tester.pumpWidget(
     ChangeNotifierProvider<AuthProvider>.value(
       value: auth,
       child: MaterialApp(
-        home: ProfileRecentViewedPage(dataSource: source),
+        home: ProfileRecentViewedScreen(dataSource: source),
       ),
     ),
   );

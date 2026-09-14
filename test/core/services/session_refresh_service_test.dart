@@ -3,8 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/network/api_exception.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/services/session_refresh_service.dart';
-import 'package:jade/features/profile/services/token_authentication_service.dart';
+import 'package:jade/core/services/token_authentication_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jade/core/storage/testing/in_memory_secure_store.dart';
 
 final class _FakeTokenAuthenticationService
     implements TokenAuthenticationService {
@@ -30,7 +31,7 @@ void main() {
     required Future<Map<String, dynamic>> Function(String) onAuthenticate,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
     await auth.login(
       token: 'session-token',
       user: {'id': 1, 'username': 'cached-user'},
@@ -41,7 +42,7 @@ void main() {
 
   test('未登录时返回 skipped 且不调用接口', () async {
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
     final tokenAuthentication = _FakeTokenAuthenticationService(
       (_) => throw StateError('不应调用'),
     );

@@ -10,18 +10,18 @@ import 'package:jade/features/actors/services/actor_movie_controller.dart';
 import 'package:jade/features/actors/services/actor_service.dart';
 import 'package:jade/features/actors/widgets/actor_info_sheet.dart';
 import 'package:jade/features/actors/widgets/actor_movie_filter_sheet.dart';
-import 'package:jade/features/profile/services/collections_service.dart';
+import 'package:jade/core/services/collections_service.dart';
 
-class ActorDetailPage extends StatefulWidget {
-  const ActorDetailPage({super.key, required this.id});
+class ActorDetailScreen extends StatefulWidget {
+  const ActorDetailScreen({super.key, required this.id});
 
   final String id;
 
   @override
-  State<ActorDetailPage> createState() => _ActorDetailPageState();
+  State<ActorDetailScreen> createState() => _ActorDetailScreenState();
 }
 
-class _ActorDetailPageState extends State<ActorDetailPage> {
+class _ActorDetailScreenState extends State<ActorDetailScreen> {
   ActorMovieController? _controller;
   ActorDetail? _detail;
   bool _isLoading = true;

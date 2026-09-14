@@ -30,7 +30,7 @@ lib/
     │   ├── widgets/          # 模块内私有组件
     │   ├── models/           # 数据模型
     │   ├── services/         # 业务逻辑、API 调用
-    │   └── index.dart        # 对外入口，仅 export 路由需要的 Page 和公开模型
+    │   └── index.dart        # 对外入口，仅 export 路由需要的 Screen 和公开模型
     └── ...
 ```
 
@@ -42,9 +42,9 @@ lib/
 | `device/` | 设备信息 | `login_device_info_service.dart`（登录设备参数） |
 | `models/` | 跨 feature 共享模型 | 影片、演员、导演、片商、系列、番号、磁链、评论、标签、排行榜、分页、启动数据等（`*.g.dart` 为 `build_runner` 生成） |
 | `network/` | 网络层 | `api_client.dart`（Dio 单例）、拦截器（签名/Auth/域名切换/响应/日志）、`domain_manager.dart`（域名轮转状态机）、`signature.dart`（签名算法）、`endpoints.dart`（路径常量）、`api_exception.dart`（统一异常）、`review_api.dart`、`startup_api_client.dart`、`backup_domains_decryptor.dart`、`image_decryptor.dart`、`cache_service.dart`、`testing/fake_adapter.dart` |
-| `providers/` | 全局状态 | `ThemeProvider`、`AuthProvider`、`SettingsProvider`、`StartupProvider` |
+| `providers/` | 全局状态 | `ThemeProvider`、`AuthProvider`、`SettingsProvider`、`StartupProvider`、`FollowingTagsProvider` |
 | `router/` | 路由 | `app_router.dart`（GoRouter 配置）、`routes.dart`（路径常量） |
-| `services/` | 公共服务 | `session_refresh_service.dart`（会话刷新） |
+| `services/` | 公共服务 | `session_refresh_service.dart`（会话刷新）、`token_authentication_service.dart`（Token 认证）、`collections_service.dart`（收藏）、`following_tags_service.dart` / `following_tags_store.dart`（关注标签数据源/缓存） |
 | `storage/` | 本地存储 | `storage_keys.dart`（SP 键常量）、`login_credential_store.dart` |
 | `theme/` | 主题 | `app_theme.dart`（Material 3、`ColorScheme.fromSeed`） |
 | `utils/` | 工具函数 | `github_proxy.dart`（GitHub 代理拼接）、`time_format.dart` |
@@ -56,8 +56,8 @@ lib/
 
 | Feature | 职责 | 主要子目录 |
 |---------|------|-----------|
-| `home` | 首页：豆腐块入口、佳片推荐轮播、最新上架、近期磁链更新 | `models/` `providers/` `screens/` `services/` `widgets/` |
-| `rankings` | 排行榜：Top250、看热播、有码、无码、欧美、FC2 | `screens/` `services/` |
+| `home` | 首页：豆腐块入口、佳片推荐轮播、最新上架、近期磁链更新 | `models/` `screens/` `services/` `widgets/` |
+| `rankings` | 排行榜：Top250、看热播、有码、无码、欧美、FC2 | `models/` `screens/` `services/` `widgets/` |
 | `categories` | 类别：有码、无码、欧美、FC2、动漫，含排序与筛选 | `models/` `screens/` `services/` `widgets/` |
 | `actors` | 演员列表：推荐、有码/无码/欧美分类、筛选、演员详情 | `models/` `screens/` `services/` `widgets/` |
 | `actor_detail` | 演员详情（归入 `actors` feature 的 `screens/`） | — |
@@ -70,7 +70,7 @@ lib/
 | `makers` | 片商列表 | `screens/` `services/` |
 | `directors` | 导演列表 | `screens/` `services/` |
 | `profile` | 我的：用户信息、想看/看过、关注、收藏、清单、近期浏览、设置、更新、Token 认证 | `screens/` `services/` `widgets/` |
-| `following` | 关注标签：关注影片流、关注页 | `models/` `screens/` `services/` `widgets/` |
+| `following` | 关注标签影片流、关注页（全局关注标签状态上提 `core/`） | `screens/` `services/` `widgets/` |
 | `auth` | 登录、注册 | `screens/` |
 | `settings` | 设置：外观、线路、默认筛选标签、清除缓存 | `screens/` `widgets/` |
 | `startup` | 启动页：域名引导、会话刷新、关注同步 | `screens/` |
@@ -94,7 +94,7 @@ lib/features/<feature_name>/
 
 - 目录名统一使用小写 `snake_case`，例如 `movie_detail`、`search`。
 - 文件名统一使用小写 `snake_case`，例如 `movie_detail_screen.dart`、`actor_service.dart`。
-- 类名使用 `PascalCase`，业务页面以 `Page` 或 `Screen` 结尾，例如 `HomePage`、`MovieDetailPage`。
+- 类名使用 `PascalCase`，业务页面统一以 `Screen` 结尾，例如 `HomeScreen`、`MovieDetailScreen`。
 
 ### 结构规则
 

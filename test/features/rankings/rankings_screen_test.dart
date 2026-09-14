@@ -11,6 +11,7 @@ import 'package:jade/core/widgets/rating_badge.dart';
 import 'package:jade/features/rankings/screens/rankings_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jade/core/storage/testing/in_memory_secure_store.dart';
 
 class _RankingFixture {
   const _RankingFixture(this.adapter, this.auth, {this.router});
@@ -53,7 +54,7 @@ Future<_RankingFixture> _pumpRankings(
     'key_api_domains': ['https://jdforrepam.com'],
   });
   final prefs = await SharedPreferences.getInstance();
-  final auth = await AuthProvider.create(prefs);
+  final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
   if (loggedIn) {
     await auth.login(token: 'token', user: {'id': 1});
   }
@@ -114,7 +115,7 @@ Future<_RankingFixture> _pumpRankings(
           routes: [
             GoRoute(
               path: '/rankings',
-              builder: (_, _) => RankingsPage(initialTabIndex: initialTabIndex),
+              builder: (_, _) => RankingsScreen(initialTabIndex: initialTabIndex),
             ),
             GoRoute(
               path: '/movie/:id',
@@ -141,7 +142,7 @@ Future<_RankingFixture> _pumpRankings(
       ? MaterialApp(
           home: MediaQuery(
             data: mediaQueryData,
-            child: RankingsPage(initialTabIndex: initialTabIndex),
+            child: RankingsScreen(initialTabIndex: initialTabIndex),
           ),
         )
       : MaterialApp.router(

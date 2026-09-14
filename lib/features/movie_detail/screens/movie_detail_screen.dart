@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/list_model.dart';
 import 'package:jade/core/models/magnet.dart';
 import 'package:jade/core/models/movie.dart';
-import 'package:jade/core/models/review.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/api_exception.dart';
 import 'package:jade/core/router/routes.dart';
@@ -14,38 +13,32 @@ import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/models/movie_review_sort.dart';
 import 'package:jade/features/movie_detail/models/movie_review_status.dart';
+import 'package:jade/features/movie_detail/services/detail_section_state.dart';
 import 'package:jade/features/movie_detail/services/movie_detail_service.dart';
 import 'package:jade/features/movie_detail/widgets/basic_info_widgets.dart';
 import 'package:jade/features/movie_detail/widgets/save_to_list_sheet.dart';
 import 'package:jade/features/movie_detail/widgets/watched_review_sheet.dart';
 
-class MovieDetailPage extends StatefulWidget {
-  const MovieDetailPage({super.key, required this.id});
+class MovieDetailScreen extends StatefulWidget {
+  const MovieDetailScreen({super.key, required this.id});
 
   final String id;
 
   @override
-  State<MovieDetailPage> createState() => _MovieDetailPageState();
+  State<MovieDetailScreen> createState() => _MovieDetailScreenState();
 }
 
-class _MovieDetailPageState extends State<MovieDetailPage> {
+class _MovieDetailScreenState extends State<MovieDetailScreen> {
   MovieDetailService? _service;
   MovieDetail? _detail;
-  List<Magnet> _magnets = [];
-  Object? _magnetsError;
-  bool _magnetsLoading = true;
-  List<Review> _reviews = [];
-  MovieReviewSort _reviewSort = MovieReviewSort.hotly;
-  bool _reviewsLoading = false;
-  List<ListModel> _relatedLists = [];
-  Object? _relatedListsError;
-  bool _relatedListsLoading = true;
+  final ReviewStatusState _reviewStatus = ReviewStatusState();
+  DetailSectionState<Magnet>? _magnetsState;
+  ReviewSectionState? _reviewsState;
+  DetailSectionState<ListModel>? _relatedListsState;
   bool _loading = true;
   bool _saveToListOpening = false;
-  Review? _currentReview;
-  bool _reviewMutationLoading = false;
-  int _reviewMutationGeneration = 0;
   String? _error;
+  int _reviewMutationGeneration = 0;
 
   @override
   void initState() {
@@ -53,22 +46,24 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     _load();
   }
 
+  void _recreateSections() {
+    _magnetsState?.dispose();
+    _reviewsState?.dispose();
+    _relatedListsState?.dispose();
+    _magnetsState = DetailSectionState();
+    _reviewsState = ReviewSectionState();
+    _relatedListsState = DetailSectionState();
+  }
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
       _error = null;
-      _magnets = [];
-      _magnetsError = null;
-      _magnetsLoading = true;
-      _reviews = [];
-      _reviewSort = MovieReviewSort.hotly;
-      _reviewsLoading = false;
-      _relatedLists = [];
-      _relatedListsError = null;
-      _relatedListsLoading = true;
-      _currentReview = null;
-      _reviewMutationLoading = false;
     });
+    _recreateSections();
+    _reviewStatus
+      ..setMutationLoading(false)
+      ..updateReview(null);
     try {
       final api = ApiClient.instanceOrNull;
       if (api == null) {
@@ -84,12 +79,14 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       setState(() {
         _service = service;
         _detail = detail;
-        _currentReview = detail.review;
         _loading = false;
       });
-      unawaited(_loadMagnets(service));
-      unawaited(_loadReviews(service));
-      unawaited(_loadRelatedLists(service));
+      _reviewStatus
+        ..setMutationLoading(false)
+        ..updateReview(detail.review);
+      unawaited(_loadMagnetsSection(service));
+      unawaited(_loadReviewsSection(service));
+      unawaited(_loadRelatedListsSection(service));
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -99,90 +96,69 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     }
   }
 
-  Future<void> _loadMagnets(MovieDetailService service) async {
-    if (mounted) {
-      setState(() {
-        _magnetsLoading = true;
-        _magnetsError = null;
-      });
-    }
+  Future<void> _loadMagnetsSection(MovieDetailService service) async {
+    final state = _magnetsState;
+    if (state == null) return;
+    state.beginLoad();
     try {
-      final magnets = await service.getMagnets(widget.id);
-      if (!mounted) return;
-      setState(() {
-        _magnets = magnets;
-        _magnetsLoading = false;
-      });
+      state.loaded(await service.getMagnets(widget.id));
     } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _magnetsError = error;
-        _magnetsLoading = false;
-      });
+      debugPrint('movie_detail magnets load failed: $error');
+      state.failed(error);
     }
   }
 
-  Future<void> _loadReviews(
+  Future<void> _loadReviewsSection(
     MovieDetailService service, {
     MovieReviewSort sort = MovieReviewSort.hotly,
   }) async {
-    if (mounted) {
-      setState(() {
-        _reviewsLoading = true;
-        _reviewSort = sort;
-      });
-    }
+    final state = _reviewsState;
+    if (state == null) return;
+    state.beginLoad(sort);
     try {
-      final reviews = await service.getReviews(widget.id, sortBy: sort.value);
-      if (!mounted) return;
-      setState(() {
-        _reviews = reviews;
-        _reviewsLoading = false;
-      });
-    } catch (_) {
-      // 短评继续沿用空状态，不影响本次磁链与相关清单错误处理。
-      if (!mounted) return;
-      setState(() => _reviewsLoading = false);
+      state.loaded(await service.getReviews(widget.id, sortBy: sort.value));
+    } catch (error, stackTrace) {
+      // 短评沿用空状态，不影响磁链与相关清单的错误处理；但保留失败日志。
+      debugPrint('movie_detail reviews load failed: $error\n$stackTrace');
+      state.failedAsEmpty();
     }
   }
 
-  Future<void> _loadRelatedLists(MovieDetailService service) async {
-    if (mounted) {
-      setState(() {
-        _relatedListsLoading = true;
-        _relatedListsError = null;
-      });
-    }
+  Future<void> _loadRelatedListsSection(MovieDetailService service) async {
+    final state = _relatedListsState;
+    if (state == null) return;
+    state.beginLoad();
     try {
-      final lists = await service.getRelatedLists(widget.id);
-      if (!mounted) return;
-      setState(() {
-        _relatedLists = lists;
-        _relatedListsLoading = false;
-      });
+      state.loaded(await service.getRelatedLists(widget.id));
     } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _relatedListsError = error;
-        _relatedListsLoading = false;
-      });
+      debugPrint('movie_detail related-lists load failed: $error');
+      state.failed(error);
     }
   }
 
   void _retryMagnets() {
     final service = _service;
-    if (service != null) unawaited(_loadMagnets(service));
+    if (_magnetsState != null && service != null) {
+      unawaited(_loadMagnetsSection(service));
+    }
   }
 
   void _retryRelatedLists() {
     final service = _service;
-    if (service != null) unawaited(_loadRelatedLists(service));
+    if (_relatedListsState != null && service != null) {
+      unawaited(_loadRelatedListsSection(service));
+    }
   }
 
   void _changeReviewSort(MovieReviewSort sort) {
-    if (_reviewsLoading || _reviewSort == sort) return;
+    final state = _reviewsState;
     final service = _service;
-    if (service != null) unawaited(_loadReviews(service, sort: sort));
+    if (state == null || state.loading || state.sort == sort) {
+      return;
+    }
+    if (service != null) {
+      unawaited(_loadReviewsSection(service, sort: sort));
+    }
   }
 
   Future<void> _createOrUpdateReview(
@@ -190,10 +166,10 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     int? score,
     String? content,
   }) async {
-    if (_reviewMutationLoading) return;
+    if (_reviewStatus.mutationLoading) return;
     final service = _service;
     if (service == null) return;
-    setState(() => _reviewMutationLoading = true);
+    _reviewStatus.setMutationLoading(true);
     try {
       final review = await service.createOrUpdateReview(
         movieId: widget.id,
@@ -203,41 +179,33 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       );
       if (!mounted) return;
       final generation = ++_reviewMutationGeneration;
-      setState(() => _currentReview = review);
+      _reviewStatus.updateReview(review);
       unawaited(_refreshDetailAfterReview(generation));
     } on DioException catch (error) {
       if (_isAuthError(error)) return;
       rethrow;
     } finally {
-      if (mounted) {
-        setState(() => _reviewMutationLoading = false);
-      } else {
-        _reviewMutationLoading = false;
-      }
+      _reviewStatus.setMutationLoading(false);
     }
   }
 
   Future<void> _deleteCurrentReview() async {
-    if (_reviewMutationLoading) return;
+    if (_reviewStatus.mutationLoading) return;
     final service = _service;
-    final review = _currentReview;
+    final review = _reviewStatus.review;
     if (service == null || review == null) return;
-    setState(() => _reviewMutationLoading = true);
+    _reviewStatus.setMutationLoading(true);
     try {
       await service.deleteReview(movieId: widget.id, reviewId: review.id);
       if (!mounted) return;
       final generation = ++_reviewMutationGeneration;
-      setState(() => _currentReview = null);
+      _reviewStatus.updateReview(null);
       unawaited(_refreshDetailAfterReview(generation));
     } on DioException catch (error) {
       if (_isAuthError(error)) return;
       rethrow;
     } finally {
-      if (mounted) {
-        setState(() => _reviewMutationLoading = false);
-      } else {
-        _reviewMutationLoading = false;
-      }
+      _reviewStatus.setMutationLoading(false);
     }
   }
 
@@ -249,8 +217,8 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       if (!mounted || generation != _reviewMutationGeneration) return;
       setState(() {
         _detail = detail;
-        _currentReview = detail.review;
       });
+      _reviewStatus.updateReview(detail.review);
     } on DioException catch (error) {
       if (!mounted ||
           generation != _reviewMutationGeneration ||
@@ -359,6 +327,14 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   }
 
   @override
+  void dispose() {
+    _magnetsState?.dispose();
+    _reviewsState?.dispose();
+    _relatedListsState?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -370,6 +346,9 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     }
 
     final detail = _detail!;
+    final magnetsState = _magnetsState!;
+    final reviewsState = _reviewsState!;
+    final relatedListsState = _relatedListsState!;
     return Stack(
       children: [
         Scaffold(
@@ -385,20 +364,13 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
             length: 4,
             child: MovieDetailTabs(
               detail: detail,
-              magnets: _magnets,
-              magnetsError: _magnetsError,
-              magnetsLoading: _magnetsLoading,
+              magnetsState: magnetsState,
+              reviewsState: reviewsState,
+              relatedListsState: relatedListsState,
               onRetryMagnets: _retryMagnets,
-              reviews: _reviews,
-              reviewsLoading: _reviewsLoading,
-              reviewSort: _reviewSort,
-              onReviewSortChanged: _changeReviewSort,
-              relatedLists: _relatedLists,
-              relatedListsError: _relatedListsError,
-              relatedListsLoading: _relatedListsLoading,
               onRetryRelatedLists: _retryRelatedLists,
-              review: _currentReview,
-              reviewMutationLoading: _reviewMutationLoading,
+              reviewStatus: _reviewStatus,
+              onReviewSortChanged: _changeReviewSort,
               onWantWatch: () => unawaited(_markWantWatch()),
               onWatched: () => unawaited(_openWatchedReviewSheet()),
               onDeleteReview: () => unawaited(_removeCurrentReview()),

@@ -160,6 +160,7 @@ class MovieScreenshotSection extends StatelessWidget {
                           previewCoverUrl!,
                           variant: MovieImageVariant.cover,
                           fit: BoxFit.cover,
+                          allowBlur: true,
                         ),
                         const Center(
                           child: DecoratedBox(

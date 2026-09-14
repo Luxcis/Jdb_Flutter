@@ -6,7 +6,7 @@ import 'package:jade/core/widgets/filter_drawer.dart';
 import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/sort_segmented.dart';
-import 'package:jade/features/profile/screens/profile_review_movies_page.dart';
+import 'package:jade/features/profile/screens/profile_review_movies_screen.dart';
 import 'package:jade/features/profile/services/review_movies_service.dart';
 
 typedef _Request = ({
@@ -67,7 +67,7 @@ Future<_RecordingSource> _pumpPage(
   final source = _RecordingSource(multiplePages: multiplePages);
   await tester.pumpWidget(
     MaterialApp(
-      home: ProfileReviewMoviesPage(
+      home: ProfileReviewMoviesScreen(
         title: '我想看的',
         status: 'want_watch',
         dataSource: source,

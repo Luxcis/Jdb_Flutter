@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:logger/logger.dart';
 
 class ThemeProvider with ChangeNotifier {
   static const _themeModeKey = 'theme-mode-index';
+  static final Logger _log = Logger(printer: SimplePrinter());
   ThemeMode _themeMode = ThemeMode.system;
   ThemeMode get themeMode => _themeMode;
 
@@ -18,7 +22,7 @@ class ThemeProvider with ChangeNotifier {
     if (_themeMode != newMode) {
       _themeMode = newMode;
       notifyListeners();
-      _saveThemePreference(newMode);
+      unawaited(_saveThemePreference(newMode));
     }
   }
 
@@ -32,13 +36,18 @@ class ThemeProvider with ChangeNotifier {
       notifyListeners();
     } else {
       _themeMode = ThemeMode.system;
-      _saveThemePreference(_themeMode);
       notifyListeners();
+      unawaited(_saveThemePreference(_themeMode));
     }
   }
 
-  void _saveThemePreference(ThemeMode option) async {
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setInt(_themeModeKey, option.index);
+  Future<void> _saveThemePreference(ThemeMode option) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_themeModeKey, option.index);
+    } catch (error, stackTrace) {
+      // 持久化失败不阻塞主题切换；记录日志便于排查。
+      _log.e('ThemeMode persist failed', error: error, stackTrace: stackTrace);
+    }
   }
 }

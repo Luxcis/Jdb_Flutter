@@ -33,6 +33,7 @@ class MovieCard extends StatelessWidget {
                   variant: MovieImageVariant.thumbnail,
                   semanticLabel: movie.title,
                   fit: BoxFit.contain,
+                  memCacheWidth: 360,
                 ),
               ),
             ),

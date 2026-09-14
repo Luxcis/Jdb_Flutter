@@ -15,12 +15,13 @@ import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/providers/theme_provider.dart';
 import 'package:jade/core/storage/storage_keys.dart';
-import 'package:jade/features/profile/screens/profile_sub_pages.dart';
+import 'package:jade/features/profile/screens/profile_sub_screens.dart';
 import 'package:jade/features/profile/services/app_version_service.dart';
-import 'package:jade/features/profile/services/token_authentication_service.dart';
+import 'package:jade/core/services/token_authentication_service.dart';
 import 'package:jade/features/profile/widgets/token_authentication_dialog.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jade/core/storage/testing/in_memory_secure_store.dart';
 
 class _FakeCacheService implements CacheService {
   _FakeCacheService({this.size = 0});
@@ -84,7 +85,7 @@ final class _CompletingTokenAuthenticationService
   }
 }
 
-Future<({AuthProvider auth, SharedPreferences prefs, void Function() dispose})>
+Future<({AuthProvider auth, SharedPreferences prefs, InMemorySecureValueStore secure, void Function() dispose})>
 _pumpSettings(
   WidgetTester tester, {
   required AppVersionService appVersionService,
@@ -97,7 +98,8 @@ _pumpSettings(
   final settings = await SettingsProvider.create(prefs);
   final theme = await ThemeProvider.create();
   final domainManager = await DomainManager.load(prefs);
-  final auth = await AuthProvider.create(prefs);
+  final secure = InMemorySecureValueStore();
+  final auth = await AuthProvider.create(prefs, secure: secure);
   if (initialToken != null && initialUser != null) {
     await auth.login(token: initialToken, user: initialUser);
   }
@@ -111,7 +113,7 @@ _pumpSettings(
         ChangeNotifierProvider.value(value: auth),
       ],
       child: MaterialApp(
-        home: ProfileSettingsPage(
+        home: ProfileSettingsScreen(
           cacheService: _FakeCacheService(),
           appVersionService: appVersionService,
           tokenAuthenticationService: tokenAuthenticationService,
@@ -123,6 +125,7 @@ _pumpSettings(
   return (
     auth: auth,
     prefs: prefs,
+    secure: secure,
     dispose: () {
       settings.dispose();
       theme.dispose();
@@ -134,7 +137,7 @@ _pumpSettings(
 
 void main() {
   testWidgets('我的收藏页展示六类收藏入口', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: ProfileFavoritesPage()));
+    await tester.pumpWidget(const MaterialApp(home: ProfileFavoritesScreen()));
 
     expect(find.text('收藏的演员'), findsOneWidget);
     expect(find.text('收藏的片商'), findsOneWidget);
@@ -158,7 +161,7 @@ void main() {
           ChangeNotifierProvider.value(value: dm),
         ],
         child: MaterialApp(
-          home: ProfileSettingsPage(cacheService: _FakeCacheService()),
+          home: ProfileSettingsScreen(cacheService: _FakeCacheService()),
         ),
       ),
     );
@@ -184,7 +187,7 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final settings = await SettingsProvider.create(prefs);
     final theme = await ThemeProvider.create();
-    final auth = await AuthProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
     await ApiClient.create(
       prefs: prefs,
       tokenProvider: auth,
@@ -205,7 +208,7 @@ void main() {
           ChangeNotifierProvider.value(value: dm),
         ],
         child: MaterialApp(
-          home: ProfileSettingsPage(cacheService: _FakeCacheService()),
+          home: ProfileSettingsScreen(cacheService: _FakeCacheService()),
         ),
       ),
     );
@@ -233,7 +236,7 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final settings = await SettingsProvider.create(prefs);
     final theme = await ThemeProvider.create();
-    final auth = await AuthProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
     await ApiClient.create(
       prefs: prefs,
       tokenProvider: auth,
@@ -255,7 +258,7 @@ void main() {
           ChangeNotifierProvider.value(value: dm),
         ],
         child: MaterialApp(
-          home: ProfileSettingsPage(cacheService: _FakeCacheService()),
+          home: ProfileSettingsScreen(cacheService: _FakeCacheService()),
         ),
       ),
     );
@@ -279,7 +282,7 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final settings = await SettingsProvider.create(prefs);
     final theme = await ThemeProvider.create();
-    final auth = await AuthProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
     await ApiClient.create(
       prefs: prefs,
       tokenProvider: auth,
@@ -296,7 +299,7 @@ void main() {
           ChangeNotifierProvider.value(value: dm),
         ],
         child: MaterialApp(
-          home: ProfileSettingsPage(cacheService: _FakeCacheService()),
+          home: ProfileSettingsScreen(cacheService: _FakeCacheService()),
         ),
       ),
     );
@@ -332,7 +335,7 @@ void main() {
           ChangeNotifierProvider.value(value: dm),
         ],
         child: MaterialApp(
-          home: ProfileSettingsPage(cacheService: _FakeCacheService()),
+          home: ProfileSettingsScreen(cacheService: _FakeCacheService()),
         ),
       ),
     );
@@ -370,7 +373,7 @@ void main() {
           ChangeNotifierProvider.value(value: dm),
         ],
         child: MaterialApp(
-          home: ProfileSettingsPage(cacheService: cacheService),
+          home: ProfileSettingsScreen(cacheService: cacheService),
         ),
       ),
     );
@@ -495,7 +498,7 @@ void main() {
     expect(service.lastToken, 'replacement-token');
     expect(subject.auth.token, 'replacement-token');
     expect(subject.auth.user?['username'], 'replacement-user');
-    expect(jsonDecode(subject.prefs.getString(StorageKeys.authSession)!), {
+    expect(jsonDecode(subject.secure[StorageKeys.authSession]!), {
       'token': 'replacement-token',
       'user': {
         'id': 10,
@@ -553,7 +556,7 @@ void main() {
     expect(renderedText, isNot(contains(candidateToken)));
     expect(subject.auth.token, 'old-token');
     expect(subject.auth.user?['username'], 'old-user');
-    expect(jsonDecode(subject.prefs.getString(StorageKeys.authSession)!), {
+    expect(jsonDecode(subject.secure[StorageKeys.authSession]!), {
       'token': 'old-token',
       'user': {'id': 1, 'username': 'old-user'},
     });
@@ -654,7 +657,7 @@ void main() {
           ChangeNotifierProvider.value(value: dm),
         ],
         child: MaterialApp(
-          home: ProfileSettingsPage(cacheService: _FakeCacheService()),
+          home: ProfileSettingsScreen(cacheService: _FakeCacheService()),
         ),
       ),
     );
@@ -692,7 +695,7 @@ void main() {
           ChangeNotifierProvider.value(value: dm),
         ],
         child: MaterialApp(
-          home: ProfileSettingsPage(cacheService: _FakeCacheService()),
+          home: ProfileSettingsScreen(cacheService: _FakeCacheService()),
         ),
       ),
     );
@@ -731,7 +734,7 @@ void main() {
           ChangeNotifierProvider.value(value: dm),
         ],
         child: MaterialApp(
-          home: ProfileSettingsPage(cacheService: _FakeCacheService()),
+          home: ProfileSettingsScreen(cacheService: _FakeCacheService()),
         ),
       ),
     );

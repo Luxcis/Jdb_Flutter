@@ -11,13 +11,14 @@ import 'package:jade/core/network/startup_api_client.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/startup_provider.dart';
 import 'package:jade/core/services/session_refresh_service.dart';
-import 'package:jade/features/following/models/follow_tag.dart';
-import 'package:jade/features/following/services/following_tags_provider.dart';
-import 'package:jade/features/following/services/following_tags_service.dart';
-import 'package:jade/features/following/services/following_tags_store.dart';
+import 'package:jade/core/models/follow_tag.dart';
+import 'package:jade/core/providers/following_tags_provider.dart';
+import 'package:jade/core/services/following_tags_service.dart';
+import 'package:jade/core/services/following_tags_store.dart';
 import 'package:jade/features/startup/screens/startup_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jade/core/storage/testing/in_memory_secure_store.dart';
 
 class _FakeStartupApi implements StartupApi {
   _FakeStartupApi(this.responses);
@@ -74,7 +75,7 @@ Future<GoRouter> _pumpSubject(
       GoRoute(
         path: '/startup',
         builder: (context, state) =>
-            StartupPage(sessionRefreshService: sessionRefreshService),
+            StartupScreen(sessionRefreshService: sessionRefreshService),
       ),
       GoRoute(
         path: '/home',
@@ -152,7 +153,7 @@ void main() {
     // 注入未登录的 AuthProvider：重试成功后 _refreshSessionThenNavigate
     // 会 context.read<AuthProvider>()，未登录分支直接 go 首页。
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
     final router = await _pumpSubject(tester, provider, auth: auth);
 
     await tester.pumpAndSettle();
@@ -175,7 +176,7 @@ void main() {
     ]);
     final provider = await _createProvider(api);
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
     await auth.login(
       token: 'session-token',
       user: {'id': 1, 'username': 'cached-user'},
@@ -202,7 +203,7 @@ void main() {
     ]);
     final provider = await _createProvider(api);
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
     await auth.login(
       token: 'session-token',
       user: {'id': 1, 'username': 'cached-user'},
@@ -231,7 +232,7 @@ void main() {
     ]);
     final provider = await _createProvider(api);
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
     await auth.login(
       token: 'session-token',
       user: {'id': 1, 'username': 'cached-user'},
@@ -272,7 +273,7 @@ void main() {
     ]);
     final provider = await _createProvider(api);
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
     await auth.login(
       token: 'session-token',
       user: {'id': 1, 'username': 'cached-user'},
@@ -300,7 +301,7 @@ void main() {
     ]);
     final provider = await _createProvider(api);
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
     final refresh = _FakeSessionRefreshService(
       () async => SessionRefreshStatus.skipped,
     );

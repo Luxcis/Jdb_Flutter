@@ -7,10 +7,11 @@ import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/widgets/search_entry.dart';
-import 'package:jade/features/home/screens/history_recommend_page.dart';
+import 'package:jade/features/home/screens/history_recommend_screen.dart';
 import 'package:jade/features/home/screens/home_screen.dart';
 import 'package:jade/features/home/widgets/tofu_scroll.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jade/core/storage/testing/in_memory_secure_store.dart';
 
 Future<FakeAdapter> _prepareApi(
   WidgetTester tester, {
@@ -34,7 +35,7 @@ Future<FakeAdapter> _prepareApi(
     'key_api_domains': ['https://jdforrepam.com'],
   });
   final prefs = await SharedPreferences.getInstance();
-  final auth = await AuthProvider.create(prefs);
+  final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
   final api = await ApiClient.create(
     prefs: prefs,
     tokenProvider: auth,
@@ -87,7 +88,7 @@ Future<FakeAdapter> _pumpHome(
     recommends: recommends,
   );
 
-  await tester.pumpWidget(const MaterialApp(home: HomePage()));
+  await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
   await tester.pump();
   if (settle) {
     await tester.pump(const Duration(milliseconds: 350));
@@ -106,7 +107,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('首页内容使用 SafeArea 避免状态栏遮挡', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: HomePage()));
+    await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
 
     expect(find.byType(SafeArea), findsOneWidget);
   });
@@ -321,10 +322,10 @@ void main() {
     final router = GoRouter(
       initialLocation: '/',
       routes: [
-        GoRoute(path: '/', builder: (_, _) => const HomePage()),
+        GoRoute(path: '/', builder: (_, _) => const HomeScreen()),
         GoRoute(
           path: AppRoutes.historyRecommend,
-          builder: (_, _) => const HistoryRecommendPage(),
+          builder: (_, _) => const HistoryRecommendScreen(),
         ),
       ],
     );
@@ -348,7 +349,7 @@ void main() {
     final router = GoRouter(
       initialLocation: '/',
       routes: [
-        GoRoute(path: '/', builder: (_, _) => const HomePage()),
+        GoRoute(path: '/', builder: (_, _) => const HomeScreen()),
         GoRoute(
           path: AppRoutes.latestMovies,
           builder: (_, _) => Scaffold(body: Text('最新影片页')),
@@ -376,7 +377,7 @@ void main() {
     final router = GoRouter(
       initialLocation: '/',
       routes: [
-        GoRoute(path: '/', builder: (_, _) => const HomePage()),
+        GoRoute(path: '/', builder: (_, _) => const HomeScreen()),
         GoRoute(
           path: AppRoutes.latestMovies,
           builder: (_, _) => Scaffold(body: Text('磁链更新页')),

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,10 +14,12 @@ import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/providers/startup_provider.dart';
 import 'package:jade/core/providers/theme_provider.dart';
 import 'package:jade/core/router/app_router.dart';
-import 'package:jade/features/following/services/following_tags_provider.dart';
-import 'package:jade/features/following/services/following_tags_service.dart';
-import 'package:jade/features/following/services/following_tags_store.dart';
-import 'package:jade/features/search/services/search_history_store.dart';
+import 'package:jade/core/storage/login_credential_store.dart';
+import 'package:jade/core/storage/testing/in_memory_secure_store.dart';
+import 'package:jade/core/providers/following_tags_provider.dart';
+import 'package:jade/core/services/following_tags_service.dart';
+import 'package:jade/core/services/following_tags_store.dart';
+import 'package:jade/features/search/index.dart';
 
 export 'package:jade/app.dart' show MyApp;
 
@@ -25,7 +28,13 @@ Future<void> mainForTest({
   StartupDomainsDecoder? decoder,
 }) async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(await _buildEntry(startupApi: startupApi, decoder: decoder));
+  runApp(
+    await _buildEntry(
+      startupApi: startupApi,
+      decoder: decoder,
+      authSecureStore: InMemorySecureValueStore(),
+    ),
+  );
 }
 
 void main() async {
@@ -37,10 +46,14 @@ void main() async {
 Future<Widget> _buildEntry({
   StartupApi? startupApi,
   StartupDomainsDecoder? decoder,
+  SecureValueStore? authSecureStore,
 }) async {
   final prefs = await SharedPreferences.getInstance();
   final themeProvider = await ThemeProvider.create();
-  final authProvider = await AuthProvider.create(prefs);
+  final authProvider = await AuthProvider.create(
+    prefs,
+    secure: authSecureStore ?? FlutterSecureValueStore(const FlutterSecureStorage()),
+  );
   final settingsProvider = await SettingsProvider.create(prefs);
   final followingStore = PrefsFollowingTagsStore(prefs);
   late final FollowingTagsProvider followingProvider;

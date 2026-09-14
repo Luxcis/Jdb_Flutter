@@ -3,11 +3,11 @@ import 'package:go_router/go_router.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/storage/login_credential_store.dart';
-import 'package:jade/features/following/services/following_tags_provider.dart';
+import 'package:jade/core/providers/following_tags_provider.dart';
 import 'package:provider/provider.dart';
 
-class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key, this.credentialStore});
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key, this.credentialStore});
 
   final LoginCredentialStore? credentialStore;
 

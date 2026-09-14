@@ -7,8 +7,8 @@ import 'package:jade/features/home/services/history_recommend_service.dart';
 import 'package:jade/features/home/widgets/recommend_movie_card.dart';
 
 /// 某一期推荐影片列表页。
-class HistoryRecommendDetailPage extends StatefulWidget {
-  const HistoryRecommendDetailPage({
+class HistoryRecommendDetailScreen extends StatefulWidget {
+  const HistoryRecommendDetailScreen({
     super.key,
     required this.period,
     this.dataSource,
@@ -20,12 +20,12 @@ class HistoryRecommendDetailPage extends StatefulWidget {
   final RecommendPeriodDataSource? dataSource;
 
   @override
-  State<HistoryRecommendDetailPage> createState() =>
-      _HistoryRecommendDetailPageState();
+  State<HistoryRecommendDetailScreen> createState() =>
+      _HistoryRecommendDetailScreenState();
 }
 
-class _HistoryRecommendDetailPageState
-    extends State<HistoryRecommendDetailPage> {
+class _HistoryRecommendDetailScreenState
+    extends State<HistoryRecommendDetailScreen> {
   late final RecommendPeriodDataSource _dataSource;
   List<MovieSummary>? _movies;
   Object? _error;

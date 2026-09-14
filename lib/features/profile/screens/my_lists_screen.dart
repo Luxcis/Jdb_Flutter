@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:developer' as developer;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:jade/core/models/list_model.dart';
@@ -8,27 +6,27 @@ import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/list_summary_tile.dart';
 import 'package:jade/core/widgets/paginated_list_view.dart';
+import 'package:jade/core/widgets/busy_page_mixin.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 import 'package:jade/features/profile/services/user_lists_service.dart';
 
 /// 「我的-我的清单」页：分页清单列表，支持排序切换与左滑编辑/删除。
-class MyListsPage extends StatefulWidget {
-  const MyListsPage({super.key, this.dataSource});
+class MyListsScreen extends StatefulWidget {
+  const MyListsScreen({super.key, this.dataSource});
 
   final UserListsDataSource? dataSource;
 
   @override
-  State<MyListsPage> createState() => _MyListsPageState();
+  State<MyListsScreen> createState() => _MyListsScreenState();
 }
 
-class _MyListsPageState extends State<MyListsPage> {
+class _MyListsScreenState extends State<MyListsScreen> with BusyPageState {
   static const _sortByUpdatedAt = 'updated_at';
   static const _sortByCreatedAt = 'created_at';
 
   late final UserListsDataSource _dataSource;
   late final PaginationController<ListModel> _controller;
   var _sortBy = _sortByUpdatedAt;
-  var _busy = false;
 
   @override
   void initState() {
@@ -61,41 +59,23 @@ class _MyListsPageState extends State<MyListsPage> {
     super.dispose();
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
-  }
-
   Future<void> _renameList(ListModel list) async {
     final newName = await showDialog<String>(
       context: context,
       builder: (_) => _RenameListDialog(initialName: list.name),
     );
     if (newName == null || newName.isEmpty || newName == list.name) return;
-    setState(() => _busy = true);
-    try {
-      try {
+    await runBusyOperation(
+      logName: 'my-lists',
+      failureMessage: '重命名失败',
+      operation: () async {
         await _dataSource.renameList(id: list.id, name: newName);
-      } catch (error, stackTrace) {
-        developer.log(
-          '重命名清单失败',
-          name: 'my-lists',
-          error: error,
-          stackTrace: stackTrace,
-        );
-        if (!mounted) return;
-        _showMessage('重命名失败');
-        return;
-      }
-      if (!mounted) return;
-      // 服务器为准：重载第一页，同时清掉分页状态与残留错误。
-      // reloadWith 保留清空语义：GET 失败时旧列表不残留（错误态兜底），
-      // 重命名已成功，不能再误报「重命名失败」。
-      await _controller.reloadWith(_fetchPage);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+        // 服务器为准：重载第一页，同时清掉分页状态与残留错误。
+        // reloadWith 保留清空语义：GET 失败时旧列表不残留（错误态兜底），
+        // 重命名已成功，不能再误报「重命名失败」。
+        await _controller.reloadWith(_fetchPage);
+      },
+    );
   }
 
   Future<void> _deleteList(ListModel list) async {
@@ -117,31 +97,18 @@ class _MyListsPageState extends State<MyListsPage> {
       ),
     );
     if (confirmed != true) return;
-    setState(() => _busy = true);
-    try {
-      try {
+    await runBusyOperation(
+      logName: 'my-lists',
+      failureMessage: '删除失败',
+      operation: () async {
         await _dataSource.deleteList(list.id);
-      } catch (error, stackTrace) {
-        developer.log(
-          '删除清单失败',
-          name: 'my-lists',
-          error: error,
-          stackTrace: stackTrace,
-        );
-        if (!mounted) return;
-        _showMessage('删除失败');
-        return;
-      }
-      if (!mounted) return;
-      // 服务器为准：重载第一页，同时清掉分页状态与残留错误。
-      // reloadWith 保留清空语义：GET 失败时旧列表不残留（错误态兜底），
-      // 删除已成功，不能再误报「删除失败」。
-      await _controller.reloadWith(_fetchPage);
-      if (!mounted) return;
-      _showMessage('清单已删除');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+        // 服务器为准：重载第一页，同时清掉分页状态与残留错误。
+        // reloadWith 保留清空语义：GET 失败时旧列表不残留（错误态兜底），
+        // 删除已成功，不能再误报「删除失败」。
+        await _controller.reloadWith(_fetchPage);
+      },
+      onSuccess: () => showPageMessage('清单已删除'),
+    );
   }
 
   @override
@@ -191,13 +158,10 @@ class _MyListsPageState extends State<MyListsPage> {
             ),
           ),
         ),
-        if (_busy)
-          const Positioned.fill(
-            child: ColoredBox(
-              color: Color(0x73000000),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-          ),
+        ValueListenableBuilder<bool>(
+          valueListenable: busyListenable,
+          builder: (_, value, _) => value ? busyOverlay() : const SizedBox.shrink(),
+        ),
       ],
     );
   }

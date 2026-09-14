@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/models/movie.dart';
-import 'package:jade/features/home/providers/home_provider.dart';
+import 'package:jade/features/home/services/home_provider.dart';
 import 'package:jade/features/home/services/home_service.dart';
 
 const _recommend = MovieSummary(

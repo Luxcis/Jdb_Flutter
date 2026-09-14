@@ -17,8 +17,8 @@ import 'package:jade/features/search/services/magnet_search_service.dart';
 import 'package:jade/features/search/services/search_history_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class MagnetSearchResultsPage extends StatefulWidget {
-  const MagnetSearchResultsPage({
+class MagnetSearchResultsScreen extends StatefulWidget {
+  const MagnetSearchResultsScreen({
     super.key,
     required this.query,
     required this.fromRecent,
@@ -32,11 +32,11 @@ class MagnetSearchResultsPage extends StatefulWidget {
   final MagnetSearchDataSource? dataSource;
 
   @override
-  State<MagnetSearchResultsPage> createState() =>
-      _MagnetSearchResultsPageState();
+  State<MagnetSearchResultsScreen> createState() =>
+      _MagnetSearchResultsScreenState();
 }
 
-class _MagnetSearchResultsPageState extends State<MagnetSearchResultsPage> {
+class _MagnetSearchResultsScreenState extends State<MagnetSearchResultsScreen> {
   late final TextEditingController _textController;
   late final MagnetSearchDataSource _dataSource;
   late final PaginationController<Magnet> _controller;

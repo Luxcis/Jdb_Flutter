@@ -46,7 +46,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: MoviePreviewPage(
+        home: MoviePreviewScreen(
           args: const MoviePreviewArgs(
             movieId: 'm1',
             title: '测试影片',
@@ -93,7 +93,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: MoviePreviewPage(
+        home: MoviePreviewScreen(
           args: const MoviePreviewArgs(
             movieId: 'm1',
             title: '测试影片',
@@ -122,7 +122,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: MoviePreviewPage(
+        home: MoviePreviewScreen(
           args: const MoviePreviewArgs(
             movieId: 'm1',
             title: '测试影片',
@@ -161,7 +161,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: MoviePreviewPage(
+        home: MoviePreviewScreen(
           args: const MoviePreviewArgs(
             movieId: 'm1',
             title: '测试影片',
@@ -218,7 +218,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: MoviePreviewPage(
+        home: MoviePreviewScreen(
           args: _validArgs,
           playbackFactory: (_) {
             factoryCalls++;
@@ -254,7 +254,7 @@ void main() {
 
     await _pumpPreviewRoute(
       tester,
-      MoviePreviewPage(
+      MoviePreviewScreen(
         args: _validArgs,
         playbackFactory: (_) => playback,
         orientationSetter: (orientations) async {
@@ -279,7 +279,7 @@ void main() {
   testWidgets('同步 factory 异常显示失败提示且不会冒泡', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: MoviePreviewPage(
+        home: MoviePreviewScreen(
           args: const MoviePreviewArgs(
             movieId: 'm1',
             title: '测试影片',
@@ -331,7 +331,7 @@ void main() {
 
     await _pumpPreviewRoute(
       tester,
-      MoviePreviewPage(
+      MoviePreviewScreen(
         args: _validArgs,
         playbackFactory: (_) {
           factoryCalls++;
@@ -368,7 +368,7 @@ void main() {
 
     await _pumpPreviewRoute(
       tester,
-      MoviePreviewPage(
+      MoviePreviewScreen(
         args: _validArgs,
         playbackFactory: (_) =>
             _FakePlayback(initializeCompleter: initializeCompleter),
@@ -388,7 +388,7 @@ void main() {
   testWidgets('非法参数错误状态显示安全区返回按钮和标题且可以退出', (tester) async {
     await _pumpPreviewRoute(
       tester,
-      MoviePreviewPage(
+      MoviePreviewScreen(
         args: const MoviePreviewArgs(
           movieId: 'm1',
           title: '测试影片',
@@ -409,7 +409,7 @@ void main() {
   testWidgets('初始化错误状态显示安全区返回按钮和标题且可以退出', (tester) async {
     await _pumpPreviewRoute(
       tester,
-      MoviePreviewPage(
+      MoviePreviewScreen(
         args: _validArgs,
         playbackFactory: (_) =>
             _FakePlayback(initializeError: StateError('init failed')),
@@ -506,7 +506,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: MoviePreviewPage(
+        home: MoviePreviewScreen(
           args: _validArgs,
           playbackFactory: (_) => _FakePlayback(),
           orientationSetter: (_) async {},
@@ -536,7 +536,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: MoviePreviewPage(
+        home: MoviePreviewScreen(
           args: _validArgs,
           playbackFactory: (_) => _FakePlayback(),
           orientationSetter: (_) async {
@@ -573,7 +573,7 @@ void main() {
 
     Widget buildPage() {
       return MaterialApp(
-        home: MoviePreviewPage(
+        home: MoviePreviewScreen(
           args: _validArgs,
           playbackFactory: (_) => _FakePlayback(),
           orientationSetter: (_) async {},
@@ -608,7 +608,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: MoviePreviewPage(
+        home: MoviePreviewScreen(
           args: _validArgs,
           playbackFactory: (_) => playback,
           orientationSetter: (_) async {},
@@ -640,7 +640,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: MoviePreviewPage(
+        home: MoviePreviewScreen(
           args: _validArgs,
           playbackFactory: (_) => playbacks.removeAt(0),
           orientationSetter: (_) async {},
@@ -722,7 +722,7 @@ Future<void> _pumpPreviewPage(
 ) async {
   await tester.pumpWidget(
     MaterialApp(
-      home: MoviePreviewPage(
+      home: MoviePreviewScreen(
         args: const MoviePreviewArgs(
           movieId: 'm1',
           title: '测试影片',

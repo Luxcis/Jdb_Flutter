@@ -14,13 +14,13 @@ import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/widgets/entity_list_tile.dart';
 import 'package:jade/core/widgets/paginated_list_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
-import 'package:jade/features/profile/services/collections_service.dart';
+import 'package:jade/core/services/collections_service.dart';
 
-export 'collected_lists_page.dart' show CollectedListsPage;
+export 'collected_lists_screen.dart' show CollectedListsScreen;
 
 /// 收藏的实体（片商/系列/导演/番号）分页页：左滑取消收藏，点击进影片列表。
-class CollectedEntitiesPage extends StatefulWidget {
-  const CollectedEntitiesPage({
+class CollectedEntitiesScreen extends StatefulWidget {
+  const CollectedEntitiesScreen({
     super.key,
     required this.category,
     required this.title,
@@ -32,10 +32,10 @@ class CollectedEntitiesPage extends StatefulWidget {
   final FavoritesDataSource? dataSource;
 
   @override
-  State<CollectedEntitiesPage> createState() => _CollectedEntitiesPageState();
+  State<CollectedEntitiesScreen> createState() => _CollectedEntitiesScreenState();
 }
 
-class _CollectedEntitiesPageState extends State<CollectedEntitiesPage> {
+class _CollectedEntitiesScreenState extends State<CollectedEntitiesScreen> {
   late final FavoritesDataSource _dataSource;
   late final PaginationController<dynamic> _controller;
   var _busy = false;

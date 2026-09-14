@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:jade/features/following/models/follow_tag.dart';
-import 'package:jade/features/following/services/following_tags_provider.dart';
-import 'package:jade/features/following/services/following_tags_service.dart';
-import 'package:jade/features/following/services/following_tags_store.dart';
+import 'package:jade/core/models/follow_tag.dart';
+import 'package:jade/core/providers/following_tags_provider.dart';
+import 'package:jade/core/services/following_tags_service.dart';
+import 'package:jade/core/services/following_tags_store.dart';
 
 class _MemoryStore implements FollowingTagsStore {
   List<FollowTagItem> stored = [];

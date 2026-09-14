@@ -1,7 +1,7 @@
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/api_data.dart';
 import 'package:jade/core/network/endpoints.dart';
-import 'package:jade/features/following/models/follow_tag.dart';
+import 'package:jade/core/models/follow_tag.dart';
 
 /// 关注标签数据源抽象，便于测试注入与 API 不可用时降级。
 abstract interface class FollowingTagsDataSource {

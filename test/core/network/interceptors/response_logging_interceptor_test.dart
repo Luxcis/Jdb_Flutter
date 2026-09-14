@@ -257,5 +257,82 @@ void main() {
       expect('Status: 608'.allMatches(output), hasLength(1));
       expect('Status: 200'.allMatches(output), hasLength(1));
     });
+
+    group('敏感请求体', () {
+      test('登录接口的请求体整段脱敏，不出现明文密码', () {
+        final logs = <String>[];
+        final interceptor = ResponseLoggingInterceptor(
+          enabled: true,
+          output: logs.add,
+        );
+        final options = RequestOptions(
+          path: '/api/v1/sessions',
+          baseUrl: 'https://example.test',
+          method: 'POST',
+          data: {'account': 'user-1', 'password': 'plain-secret'},
+        );
+        final response = Response<dynamic>(
+          requestOptions: options,
+          statusCode: 200,
+          data: {'success': 1, 'data': {'token': 't1'}},
+        );
+
+        interceptor.onResponse(response, _ResponseHandler());
+
+        final output = logs.join('\n');
+        expect(output, contains('Request Body: [REDACTED_REQUEST_BODY]'));
+        expect(output, isNot(contains('plain-secret')));
+        expect(output, isNot(contains('"password":')));
+      });
+
+      test('普通路径的请求体仍原样输出', () {
+        final logs = <String>[];
+        final interceptor = ResponseLoggingInterceptor(
+          enabled: true,
+          output: logs.add,
+        );
+        final options = RequestOptions(
+          path: '/api/v1/following_tags',
+          baseUrl: 'https://example.test',
+          method: 'POST',
+          data: {'name': 'tag-1'},
+        );
+        final response = Response<dynamic>(
+          requestOptions: options,
+          statusCode: 200,
+          data: {'success': 1},
+        );
+
+        interceptor.onResponse(response, _ResponseHandler());
+
+        final output = logs.join('\n');
+        expect(output, contains('Request Body: {"name":"tag-1"}'));
+      });
+
+      test('改密接口的请求体整段脱敏', () {
+        final logs = <String>[];
+        final interceptor = ResponseLoggingInterceptor(
+          enabled: true,
+          output: logs.add,
+        );
+        final options = RequestOptions(
+          path: '/api/v1/users/change_password',
+          baseUrl: 'https://example.test',
+          method: 'PUT',
+          data: {'old_password': 'a', 'password': 'b'},
+        );
+        final response = Response<dynamic>(
+          requestOptions: options,
+          statusCode: 200,
+          data: {'success': 1},
+        );
+
+        interceptor.onResponse(response, _ResponseHandler());
+
+        final output = logs.join('\n');
+        expect(output, contains('Request Body: [REDACTED_REQUEST_BODY]'));
+        expect(output, isNot(contains('old_password')));
+      });
+    });
   });
 }

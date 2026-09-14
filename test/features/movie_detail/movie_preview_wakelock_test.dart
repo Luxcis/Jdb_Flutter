@@ -69,7 +69,7 @@ void main() {
     final playback = _FakePlayback(disposeCompleter: disposeCompleter);
     await tester.pumpWidget(
       MaterialApp(
-        home: MoviePreviewPage(
+        home: MoviePreviewScreen(
           args: _argsA,
           playbackFactory: (_) => playback,
           orientationSetter: (_) async {},
@@ -101,7 +101,7 @@ Widget _buildOverlappingPages({
     home: Stack(
       children: [
         if (playbackA != null)
-          MoviePreviewPage(
+          MoviePreviewScreen(
             key: const ValueKey('preview-a'),
             args: _argsA,
             playbackFactory: (_) => playbackA,
@@ -109,7 +109,7 @@ Widget _buildOverlappingPages({
             wakelockCoordinator: coordinator,
           ),
         if (playbackB != null)
-          MoviePreviewPage(
+          MoviePreviewScreen(
             key: const ValueKey('preview-b'),
             args: _argsB,
             playbackFactory: (_) => playbackB,

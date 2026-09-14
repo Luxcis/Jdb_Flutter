@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/features/home/models/recommend_period.dart';
-import 'package:jade/features/home/screens/history_recommend_detail_page.dart';
+import 'package:jade/features/home/screens/history_recommend_detail_screen.dart';
 import 'package:jade/features/home/services/history_recommend_service.dart';
 import 'package:jade/features/home/widgets/recommend_movie_card.dart';
 
@@ -25,7 +25,7 @@ void main() {
     await _pumpPage(
       tester,
       MaterialApp(
-        home: HistoryRecommendDetailPage(period: '586', dataSource: source),
+        home: HistoryRecommendDetailScreen(period: '586', dataSource: source),
       ),
     );
 
@@ -41,7 +41,7 @@ void main() {
     await _pumpPage(
       tester,
       MaterialApp(
-        home: HistoryRecommendDetailPage(period: '586', dataSource: source),
+        home: HistoryRecommendDetailScreen(period: '586', dataSource: source),
       ),
     );
 
@@ -60,7 +60,7 @@ void main() {
     await _pumpPage(
       tester,
       MaterialApp(
-        home: HistoryRecommendDetailPage(period: '586', dataSource: source),
+        home: HistoryRecommendDetailScreen(period: '586', dataSource: source),
       ),
     );
 
@@ -75,7 +75,7 @@ void main() {
         GoRoute(
           path: '/',
           builder: (_, _) =>
-              HistoryRecommendDetailPage(period: '586', dataSource: source),
+              HistoryRecommendDetailScreen(period: '586', dataSource: source),
         ),
         GoRoute(
           path: '/movie/:id',

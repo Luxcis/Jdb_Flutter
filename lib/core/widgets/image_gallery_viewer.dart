@@ -90,6 +90,7 @@ class _ImageGalleryViewerState extends State<ImageGalleryViewer> {
                             widget.urls[index],
                             key: Key('image-gallery-page-$index'),
                             fit: BoxFit.contain,
+                            allowBlur: true,
                           ),
                 ),
               ),

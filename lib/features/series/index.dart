@@ -1,1 +1,1 @@
-export 'screens/series_page.dart';
+export 'screens/series_screen.dart';

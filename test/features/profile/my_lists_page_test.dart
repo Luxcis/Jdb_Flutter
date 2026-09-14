@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/models/list_model.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
-import 'package:jade/features/profile/screens/my_lists_page.dart';
+import 'package:jade/features/profile/screens/my_lists_screen.dart';
 import 'package:jade/features/profile/services/user_lists_service.dart';
 
 class _FakeUserListsDataSource implements UserListsDataSource {
@@ -96,7 +96,7 @@ Future<_FakeUserListsDataSource> _pumpPage(
     lists: lists ?? _sampleLists(),
     totalPages: totalPages,
   );
-  await tester.pumpWidget(MaterialApp(home: MyListsPage(dataSource: source)));
+  await tester.pumpWidget(MaterialApp(home: MyListsScreen(dataSource: source)));
   await tester.pumpAndSettle();
   return source;
 }

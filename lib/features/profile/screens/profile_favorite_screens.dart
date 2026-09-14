@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/router/routes.dart';
-import 'package:jade/features/following/screens/following_page.dart';
+import 'package:jade/features/following/index.dart';
 import 'package:jade/features/profile/widgets/profile_cell.dart';
 
-class ProfileFollowingPage extends StatelessWidget {
-  const ProfileFollowingPage({super.key});
+class ProfileFollowingScreen extends StatelessWidget {
+  const ProfileFollowingScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => const FollowingPage();
+  Widget build(BuildContext context) => const FollowingScreen();
 }
 
-class ProfileFavoritesPage extends StatelessWidget {
-  const ProfileFavoritesPage({super.key});
+class ProfileFavoritesScreen extends StatelessWidget {
+  const ProfileFavoritesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

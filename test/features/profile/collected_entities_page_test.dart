@@ -7,8 +7,8 @@ import 'package:jade/core/models/list_model.dart';
 import 'package:jade/core/models/maker.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/models/series.dart';
-import 'package:jade/features/profile/screens/collected_entities_page.dart';
-import 'package:jade/features/profile/services/collections_service.dart';
+import 'package:jade/features/profile/screens/collected_entities_screen.dart';
+import 'package:jade/core/services/collections_service.dart';
 
 class _FakeFavoritesDataSource implements FavoritesDataSource {
   _FakeFavoritesDataSource({List<Maker>? makers})
@@ -90,7 +90,7 @@ void main() {
     final source = _FakeFavoritesDataSource(makers: _sampleMakers());
     await tester.pumpWidget(
       MaterialApp(
-        home: CollectedEntitiesPage(
+        home: CollectedEntitiesScreen(
           category: 'm',
           title: '收藏的片商',
           dataSource: source,
@@ -128,7 +128,7 @@ void main() {
     source.failUncollect = true;
     await tester.pumpWidget(
       MaterialApp(
-        home: CollectedEntitiesPage(
+        home: CollectedEntitiesScreen(
           category: 'm',
           title: '收藏的片商',
           dataSource: source,

@@ -26,6 +26,14 @@ class ResponseLoggingInterceptor extends Interceptor {
 
   static const _loggedKey = 'response_logging_interceptor.logged';
   static const _redactedResponseBody = '[REDACTED_SECRET]';
+  static const _redactedRequestBody = '[REDACTED_REQUEST_BODY]';
+
+  /// 请求体可能包含明文密码的端点路径，日志中整段脱敏输出。
+  static const _sensitiveRequestPaths = <String>{
+    '/api/v1/sessions',
+    '/api/v1/users',
+    '/api/v1/users/change_password',
+  };
 
   final bool _enabled;
   final Logger _logger;
@@ -81,7 +89,7 @@ class ResponseLoggingInterceptor extends Interceptor {
         'Method: ${options.method}\n'
         'URI: ${options.uri}\n'
         'Query: ${_compactJson(options.queryParameters, empty: '{}')}\n'
-        'Request Body: ${_compactJson(options.data, empty: '无请求内容')}\n'
+        'Request Body: ${_hasSensitiveRequestBody(options) ? _redactedRequestBody : _compactJson(options.data, empty: '无请求内容')}\n'
         'Status: $status\n'
         'Result: $result\n'
         'Body: ${AuthRequestContext.hasSensitiveResponseBody(options) ? _redactedResponseBody : _compactJson(responseBody, empty: '无响应内容')}',
@@ -90,6 +98,9 @@ class ResponseLoggingInterceptor extends Interceptor {
       // 调试日志不得改变请求结果。
     }
   }
+
+  bool _hasSensitiveRequestBody(RequestOptions options) =>
+      _sensitiveRequestPaths.any(options.uri.path.endsWith);
 
   String _compactJson(Object? value, {required String empty}) {
     if (value == null) return empty;

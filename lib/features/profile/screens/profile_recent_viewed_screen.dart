@@ -13,19 +13,19 @@ import 'package:provider/provider.dart';
 ///
 /// 三列 `MovieCard` 宫格，自动分页加载；AppBar 右侧删除按钮可清空全部记录。
 /// 可通过 [dataSource] 注入数据源以复用页面或替换默认 API 实现。
-class ProfileRecentViewedPage extends StatefulWidget {
+class ProfileRecentViewedScreen extends StatefulWidget {
   /// 创建使用可选 [dataSource] 的近期浏览页面。
-  const ProfileRecentViewedPage({super.key, this.dataSource});
+  const ProfileRecentViewedScreen({super.key, this.dataSource});
 
   /// 可选的近期浏览数据源；未提供时使用默认 API 数据源。
   final RecentViewedDataSource? dataSource;
 
   @override
-  State<ProfileRecentViewedPage> createState() =>
-      _ProfileRecentViewedPageState();
+  State<ProfileRecentViewedScreen> createState() =>
+      _ProfileRecentViewedScreenState();
 }
 
-class _ProfileRecentViewedPageState extends State<ProfileRecentViewedPage> {
+class _ProfileRecentViewedScreenState extends State<ProfileRecentViewedScreen> {
   late final RecentViewedDataSource _dataSource;
   late final PaginationController<MovieSummary> _controller;
   var _wasLoggedIn = false;

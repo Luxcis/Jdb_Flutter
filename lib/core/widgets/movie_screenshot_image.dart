@@ -8,15 +8,26 @@ class MovieScreenshotImage extends StatelessWidget {
     this.width,
     this.height,
     this.fit = BoxFit.cover,
+    this.memCacheWidth,
+    this.memCacheHeight,
   });
 
   final String url;
   final double? width;
   final double? height;
   final BoxFit fit;
+  final int? memCacheWidth;
+  final int? memCacheHeight;
 
   @override
   Widget build(BuildContext context) {
-    return CachedImage(url, width: width, height: height, fit: fit);
+    return CachedImage(
+      url,
+      width: width,
+      height: height,
+      fit: fit,
+      memCacheWidth: memCacheWidth,
+      memCacheHeight: memCacheHeight,
+    );
   }
 }

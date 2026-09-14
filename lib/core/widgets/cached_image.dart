@@ -20,6 +20,9 @@ class CachedImage extends StatelessWidget {
     this.fallbackAsset,
     this.semanticLabel,
     this.onImageSize,
+    this.memCacheWidth,
+    this.memCacheHeight,
+    this.allowBlur = false,
   });
 
   final String url;
@@ -33,6 +36,13 @@ class CachedImage extends StatelessWidget {
   /// 图片真实尺寸解码后回调；加载失败或未提供时不回调。
   final ValueChanged<Size>? onImageSize;
 
+  /// 内存缓存位图的目标尺寸；小槽位应传入以避免解码整张原图。
+  final int? memCacheWidth;
+  final int? memCacheHeight;
+
+  /// 仅大图（详情大封面、全屏查看器）允许模糊；列表小图恒不模糊。
+  final bool allowBlur;
+
   String get _fullUrl {
     if (url.startsWith('http')) return url;
     final endpoint =
@@ -43,14 +53,21 @@ class CachedImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final blur = context.watch<SettingsProvider?>()?.blurMovieImages ?? true;
+    // select 精确订阅：仅模糊开关变化时才重建。
+    final blurEnabled =
+        context.select<SettingsProvider?, bool>(
+              (s) => s?.blurMovieImages ?? true,
+            ) &&
+        allowBlur;
     Widget image = CachedNetworkImage(
       imageUrl: _fullUrl,
       cacheManager: JdbImageCacheManager.instance,
       fit: fit,
       width: width,
       height: height,
-      imageBuilder: blur
+      memCacheWidth: memCacheWidth,
+      memCacheHeight: memCacheHeight,
+      imageBuilder: blurEnabled
           ? (_, imageProvider) => ClipRect(
               child: ImageFiltered(
                 imageFilter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),

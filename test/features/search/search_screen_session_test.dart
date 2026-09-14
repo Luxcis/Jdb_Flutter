@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/models/paged_result.dart';
-import 'package:jade/features/search/services/search_page_session.dart';
+import 'package:jade/features/search/services/search_screen_session.dart';
 
 void main() {
   test('重复下一页不追加并终止分页', () async {

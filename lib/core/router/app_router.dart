@@ -81,32 +81,32 @@ class AppRouter {
   static List<RouteBase> get _routes => [
     GoRoute(
       path: AppRoutes.startup,
-      builder: (context, state) => const StartupPage(),
+      builder: (context, state) => const StartupScreen(),
     ),
-    GoRoute(path: AppRoutes.login, builder: (c, s) => const LoginPage()),
-    GoRoute(path: AppRoutes.register, builder: (c, s) => const RegisterPage()),
+    GoRoute(path: AppRoutes.login, builder: (c, s) => const LoginScreen()),
+    GoRoute(path: AppRoutes.register, builder: (c, s) => const RegisterScreen()),
     GoRoute(
       path: AppRoutes.historyRecommend,
-      builder: (c, s) => const HistoryRecommendPage(),
+      builder: (c, s) => const HistoryRecommendScreen(),
     ),
     GoRoute(
       path: AppRoutes.historyRecommendDetail,
       builder: (c, s) =>
-          HistoryRecommendDetailPage(period: s.pathParameters['period']!),
+          HistoryRecommendDetailScreen(period: s.pathParameters['period']!),
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, shell) => MainShell(navigationShell: shell),
       branches: [
         StatefulShellBranch(
           routes: [
-            GoRoute(path: AppRoutes.home, builder: (c, s) => const HomePage()),
+            GoRoute(path: AppRoutes.home, builder: (c, s) => const HomeScreen()),
           ],
         ),
         StatefulShellBranch(
           routes: [
             GoRoute(
               path: AppRoutes.rankings,
-              builder: (context, state) => RankingsPage(
+              builder: (context, state) => RankingsScreen(
                 initialTabIndex: state.uri.queryParameters['tab'] == 'hot'
                     ? 1
                     : 2,
@@ -118,7 +118,7 @@ class AppRouter {
           routes: [
             GoRoute(
               path: AppRoutes.categories,
-              builder: (c, s) => const CategoriesPage(),
+              builder: (c, s) => const CategoriesScreen(),
             ),
           ],
         ),
@@ -126,7 +126,7 @@ class AppRouter {
           routes: [
             GoRoute(
               path: AppRoutes.actors,
-              builder: (c, s) => const ActorsPage(),
+              builder: (c, s) => const ActorsScreen(),
             ),
           ],
         ),
@@ -134,7 +134,7 @@ class AppRouter {
           routes: [
             GoRoute(
               path: AppRoutes.profile,
-              builder: (c, s) => const ProfilePage(),
+              builder: (c, s) => const ProfileScreen(),
             ),
           ],
         ),
@@ -142,7 +142,7 @@ class AppRouter {
     ),
     GoRoute(
       path: AppRoutes.moviePreview,
-      builder: (context, state) => MoviePreviewPage(
+      builder: (context, state) => MoviePreviewScreen(
         args: state.extra is MoviePreviewArgs
             ? state.extra! as MoviePreviewArgs
             : null,
@@ -150,15 +150,15 @@ class AppRouter {
     ),
     GoRoute(
       path: AppRoutes.movieDetail,
-      builder: (c, s) => MovieDetailPage(id: s.pathParameters['id']!),
+      builder: (c, s) => MovieDetailScreen(id: s.pathParameters['id']!),
     ),
     GoRoute(
       path: AppRoutes.actorDetail,
-      builder: (c, s) => ActorDetailPage(id: s.pathParameters['id']!),
+      builder: (c, s) => ActorDetailScreen(id: s.pathParameters['id']!),
     ),
     GoRoute(
       path: AppRoutes.search,
-      builder: (c, s) => const SearchPage(),
+      builder: (c, s) => const SearchScreen(),
       routes: [
         GoRoute(
           path: 'results',
@@ -168,7 +168,7 @@ class AppRouter {
           },
           // 页面键需包含 query：pageKey 仅由路径决定，修改关键词后
           // replace 到同路径不同 q 不会重建页面、不会重新搜索。
-          builder: (context, state) => SearchResultsPage(
+          builder: (context, state) => SearchResultsScreen(
             key: ValueKey(state.uri),
             query: state.uri.queryParameters['q']!.trim(),
           ),
@@ -177,18 +177,18 @@ class AppRouter {
     ),
     GoRoute(
       path: AppRoutes.articles,
-      builder: (c, s) => const ArticlesPage(),
+      builder: (c, s) => const ArticlesScreen(),
       routes: [
         GoRoute(
           path: ':id',
-          builder: (c, s) => ArticleDetailPage(id: s.pathParameters['id']!),
+          builder: (c, s) => ArticleDetailScreen(id: s.pathParameters['id']!),
         ),
       ],
     ),
-    GoRoute(path: AppRoutes.reviews, builder: (c, s) => const ReviewsPage()),
+    GoRoute(path: AppRoutes.reviews, builder: (c, s) => const ReviewsScreen()),
     GoRoute(
       path: AppRoutes.magnetSearch,
-      builder: (context, state) => const MagnetSearchPage(),
+      builder: (context, state) => const MagnetSearchScreen(),
       routes: [
         GoRoute(
           path: 'results',
@@ -196,7 +196,7 @@ class AppRouter {
             final query = state.uri.queryParameters['q']?.trim() ?? '';
             return query.isEmpty ? AppRoutes.magnetSearch : null;
           },
-          builder: (context, state) => MagnetSearchResultsPage(
+          builder: (context, state) => MagnetSearchResultsScreen(
             key: ValueKey(state.uri),
             query: state.uri.queryParameters['q']!.trim(),
             fromRecent:
@@ -206,17 +206,17 @@ class AppRouter {
         ),
       ],
     ),
-    GoRoute(path: AppRoutes.series, builder: (c, s) => const SeriesPage()),
-    GoRoute(path: AppRoutes.makers, builder: (c, s) => const MakersPage()),
+    GoRoute(path: AppRoutes.series, builder: (c, s) => const SeriesScreen()),
+    GoRoute(path: AppRoutes.makers, builder: (c, s) => const MakersScreen()),
     GoRoute(
       path: AppRoutes.directors,
-      builder: (c, s) => const DirectorsPage(),
+      builder: (c, s) => const DirectorsScreen(),
     ),
     GoRoute(
       path: AppRoutes.commonList,
       builder: (c, s) {
         final q = s.uri.queryParameters;
-        return CommonListPage(
+        return CommonListScreen(
           title: q['title'] ?? '',
           type: int.tryParse(q['type'] ?? '') ?? 0,
           category: q['category'] ?? '',
@@ -228,7 +228,7 @@ class AppRouter {
       path: AppRoutes.latestMovies,
       builder: (c, s) {
         final q = s.uri.queryParameters;
-        return LatestMoviesPage(
+        return LatestMoviesScreen(
           section: q['section'] ?? 'latest',
           title: q['title'] ?? '最新影片',
         );
@@ -238,7 +238,7 @@ class AppRouter {
       path: AppRoutes.profileWantWatch,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileWantWatch,
-        child: const ProfileReviewMoviesPage(
+        child: const ProfileReviewMoviesScreen(
           title: '我想看的',
           status: 'want_watch',
         ),
@@ -248,7 +248,7 @@ class AppRouter {
       path: AppRoutes.profileWatched,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileWatched,
-        child: const ProfileMovieCollectionPage(
+        child: const ProfileMovieCollectionScreen(
           title: '我看过的',
           filterButton: true,
         ),
@@ -258,79 +258,79 @@ class AppRouter {
       path: AppRoutes.profileFollowing,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileFollowing,
-        child: const ProfileFollowingPage(),
+        child: const ProfileFollowingScreen(),
       ),
     ),
     GoRoute(
       path: AppRoutes.profileFavorites,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileFavorites,
-        child: const ProfileFavoritesPage(),
+        child: const ProfileFavoritesScreen(),
       ),
     ),
     GoRoute(
       path: AppRoutes.profileFavoritesActors,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileFavoritesActors,
-        child: const CollectedActorsPage(),
+        child: const CollectedActorsScreen(),
       ),
     ),
     GoRoute(
       path: AppRoutes.profileFavoritesMakers,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileFavoritesMakers,
-        child: const CollectedEntitiesPage(category: 'm', title: '收藏的片商'),
+        child: const CollectedEntitiesScreen(category: 'm', title: '收藏的片商'),
       ),
     ),
     GoRoute(
       path: AppRoutes.profileFavoritesSeries,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileFavoritesSeries,
-        child: const CollectedEntitiesPage(category: 's', title: '收藏的系列'),
+        child: const CollectedEntitiesScreen(category: 's', title: '收藏的系列'),
       ),
     ),
     GoRoute(
       path: AppRoutes.profileFavoritesDirectors,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileFavoritesDirectors,
-        child: const CollectedEntitiesPage(category: 'd', title: '收藏的导演'),
+        child: const CollectedEntitiesScreen(category: 'd', title: '收藏的导演'),
       ),
     ),
     GoRoute(
       path: AppRoutes.profileFavoritesCodes,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileFavoritesCodes,
-        child: const CollectedEntitiesPage(category: 'c', title: '收藏的番号'),
+        child: const CollectedEntitiesScreen(category: 'c', title: '收藏的番号'),
       ),
     ),
     GoRoute(
       path: AppRoutes.profileFavoritesLists,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileFavoritesLists,
-        child: const CollectedListsPage(),
+        child: const CollectedListsScreen(),
       ),
     ),
     GoRoute(
       path: AppRoutes.profileLists,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileLists,
-        child: const MyListsPage(),
+        child: const MyListsScreen(),
       ),
     ),
     GoRoute(
       path: AppRoutes.profileRecent,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileRecent,
-        child: const ProfileRecentViewedPage(),
+        child: const ProfileRecentViewedScreen(),
       ),
     ),
     GoRoute(
       path: AppRoutes.profileSettings,
-      builder: (c, s) => const ProfileSettingsPage(),
+      builder: (c, s) => const ProfileSettingsScreen(),
     ),
     GoRoute(
       path: AppRoutes.followTagMovies,
-      builder: (c, s) => FollowTagMoviesPage(
+      builder: (c, s) => FollowTagMoviesScreen(
         value: Uri.decodeComponent(s.pathParameters['value']!),
       ),
     ),

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 const _imageSuffixes = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
@@ -7,17 +9,21 @@ bool looksLikeEncryptedImageUrl(String url) {
   return _imageSuffixes.any(path.endsWith);
 }
 
-List<int> decryptMobileImageBytes(List<int> data) {
+/// 加密 payload 首字节为密钥；未加密（key >= 0xff）时原样返回全部字节，
+/// 已加密时原地异或后返回去掉密钥首字节的解密内容。
+Uint8List decryptMobileImageBytes(List<int> data) {
   if (data.isEmpty) {
     throw ArgumentError('empty image payload');
   }
 
-  final key = data.first;
-  if (key >= 0xff) {
-    return List<int>.of(data);
-  }
+  final bytes = data is Uint8List ? data : Uint8List.fromList(data);
+  final key = bytes.first;
+  if (key >= 0xff) return bytes;
 
-  return [for (final byte in data.skip(1)) byte ^ key];
+  for (var i = 1; i < bytes.length; i++) {
+    bytes[i] ^= key;
+  }
+  return Uint8List.fromList(Uint8List.sublistView(bytes, 1));
 }
 
 class DecryptingImageFileService extends FileService {

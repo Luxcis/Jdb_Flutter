@@ -6,6 +6,7 @@ import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/features/articles/screens/articles_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jade/core/storage/testing/in_memory_secure_store.dart';
 
 Future<FakeAdapter> _pumpArticles(WidgetTester tester) async {
   tester.view.physicalSize = const Size(390, 1600);
@@ -17,7 +18,7 @@ Future<FakeAdapter> _pumpArticles(WidgetTester tester) async {
     'key_api_domains': ['https://jdforrepam.com'],
   });
   final prefs = await SharedPreferences.getInstance();
-  final auth = await AuthProvider.create(prefs);
+  final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
   final api = await ApiClient.create(
     prefs: prefs,
     tokenProvider: auth,
@@ -42,7 +43,7 @@ Future<FakeAdapter> _pumpArticles(WidgetTester tester) async {
     },
   });
 
-  await tester.pumpWidget(const MaterialApp(home: ArticlesPage()));
+  await tester.pumpWidget(const MaterialApp(home: ArticlesScreen()));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 350));
   await tester.pump();
@@ -71,7 +72,7 @@ void main() {
       'key_api_domains': ['https://jdforrepam.com'],
     });
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
     final api = await ApiClient.create(
       prefs: prefs,
       tokenProvider: auth,
@@ -92,7 +93,7 @@ void main() {
       },
     ]);
 
-    await tester.pumpWidget(const MaterialApp(home: ArticlesPage()));
+    await tester.pumpWidget(const MaterialApp(home: ArticlesScreen()));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
@@ -117,7 +118,7 @@ void main() {
       'key_api_domains': ['https://jdforrepam.com'],
     });
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
     final api = await ApiClient.create(
       prefs: prefs,
       tokenProvider: auth,
@@ -147,7 +148,7 @@ void main() {
       },
     ]);
 
-    await tester.pumpWidget(const MaterialApp(home: ArticlesPage()));
+    await tester.pumpWidget(const MaterialApp(home: ArticlesScreen()));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();

@@ -12,6 +12,7 @@ import 'package:jade/core/storage/storage_keys.dart';
 import 'package:jade/core/widgets/review_tile.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jade/core/storage/testing/in_memory_secure_store.dart';
 
 Review _review({
   ReviewMovie? movie,
@@ -49,7 +50,7 @@ Widget _wrapWithAuth(Widget child, AuthProvider auth) =>
 Future<AuthProvider> _loggedOutAuth() async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
-  return AuthProvider.create(prefs);
+  return AuthProvider.create(prefs, secure: InMemorySecureValueStore());
 }
 
 Future<AuthProvider> _loggedInAuth() async {

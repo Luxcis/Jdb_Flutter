@@ -68,7 +68,7 @@ void main() {
       routes: [
         GoRoute(
           path: AppRoutes.actors,
-          builder: (_, _) => ActorsPage(service: fixture.service),
+          builder: (_, _) => ActorsScreen(service: fixture.service),
         ),
         GoRoute(
           path: AppRoutes.search,
@@ -95,7 +95,7 @@ void main() {
     enqueueEmptyRecommend(fixture.adapter);
 
     await tester.pumpWidget(
-      MaterialApp(home: ActorsPage(service: fixture.service)),
+      MaterialApp(home: ActorsScreen(service: fixture.service)),
     );
     await pumpAsyncUi(tester);
 
@@ -112,7 +112,7 @@ void main() {
     enqueueEmptyRecommend(fixture.adapter);
 
     await tester.pumpWidget(
-      MaterialApp(home: ActorsPage(service: fixture.service)),
+      MaterialApp(home: ActorsScreen(service: fixture.service)),
     );
     await pumpAsyncUi(tester);
 
@@ -137,7 +137,7 @@ void main() {
     });
 
     await tester.pumpWidget(
-      MaterialApp(home: ActorsPage(service: fixture.service)),
+      MaterialApp(home: ActorsScreen(service: fixture.service)),
     );
     await pumpAsyncUi(tester);
 
@@ -174,7 +174,7 @@ void main() {
     enqueueEmptyActorPage(fixture.adapter);
 
     await tester.pumpWidget(
-      MaterialApp(home: ActorsPage(service: fixture.service)),
+      MaterialApp(home: ActorsScreen(service: fixture.service)),
     );
     await switchTab(tester, '有码(女)');
 
@@ -219,7 +219,7 @@ void main() {
     enqueueEmptyActorPage(fixture.adapter);
 
     await tester.pumpWidget(
-      MaterialApp(home: ActorsPage(service: fixture.service)),
+      MaterialApp(home: ActorsScreen(service: fixture.service)),
     );
     await switchTab(tester, '有码(女)');
     expect(
@@ -278,7 +278,7 @@ void main() {
     ]);
 
     await tester.pumpWidget(
-      MaterialApp(home: ActorsPage(service: fixture.service)),
+      MaterialApp(home: ActorsScreen(service: fixture.service)),
     );
     await switchTab(tester, '有码(女)');
     expect(find.text('原演员'), findsOneWidget);
@@ -312,7 +312,7 @@ void main() {
     enqueueEmptyActorPage(fixture.adapter);
 
     await tester.pumpWidget(
-      MaterialApp(home: ActorsPage(service: fixture.service)),
+      MaterialApp(home: ActorsScreen(service: fixture.service)),
     );
 
     for (final tab in ['有码(女)', '有码(男)', '无码', '欧美(女)', '欧美(男)']) {
@@ -363,7 +363,7 @@ void main() {
     });
 
     await tester.pumpWidget(
-      MaterialApp(home: ActorsPage(service: fixture.service)),
+      MaterialApp(home: ActorsScreen(service: fixture.service)),
     );
     await switchTab(tester, '有码(女)');
     await tester.drag(find.byType(GridView), const Offset(0, -600));
@@ -405,7 +405,7 @@ void main() {
       routes: [
         GoRoute(
           path: '/actors',
-          builder: (_, _) => ActorsPage(service: fixture.service),
+          builder: (_, _) => ActorsScreen(service: fixture.service),
         ),
         GoRoute(
           path: '/actor/:id',
@@ -458,7 +458,7 @@ void main() {
           ).copyWith(textScaler: const TextScaler.linear(2)),
           child: child!,
         ),
-        home: ActorsPage(service: fixture.service),
+        home: ActorsScreen(service: fixture.service),
       ),
     );
     await pumpAsyncUi(tester);
@@ -485,7 +485,7 @@ void main() {
     enqueueEmptyActorPage(fixture.adapter);
 
     await tester.pumpWidget(
-      MaterialApp(home: ActorsPage(service: fixture.service)),
+      MaterialApp(home: ActorsScreen(service: fixture.service)),
     );
     await switchTab(tester, '有码(女)');
 
@@ -524,7 +524,7 @@ void main() {
     });
 
     await tester.pumpWidget(
-      MaterialApp(home: ActorsPage(service: fixture.service)),
+      MaterialApp(home: ActorsScreen(service: fixture.service)),
     );
     await switchTab(tester, '有码(女)');
 
@@ -573,7 +573,7 @@ void main() {
     });
 
     await tester.pumpWidget(
-      MaterialApp(home: ActorsPage(service: fixture.service)),
+      MaterialApp(home: ActorsScreen(service: fixture.service)),
     );
     await switchTab(tester, '有码(女)');
 
@@ -607,7 +607,7 @@ void main() {
     enqueueEmptyActorPage(fixture.adapter);
 
     await tester.pumpWidget(
-      MaterialApp(home: ActorsPage(service: fixture.service)),
+      MaterialApp(home: ActorsScreen(service: fixture.service)),
     );
 
     for (final tab in ['无码', '欧美(女)']) {

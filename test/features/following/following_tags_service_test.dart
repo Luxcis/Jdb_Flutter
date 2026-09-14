@@ -5,8 +5,8 @@ import 'package:jade/core/network/domain_manager.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/interceptors/response_interceptor.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
-import 'package:jade/features/following/models/follow_tag.dart';
-import 'package:jade/features/following/services/following_tags_service.dart';
+import 'package:jade/core/models/follow_tag.dart';
+import 'package:jade/core/services/following_tags_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<({FakeAdapter adapter, FollowingTagsService service})>

@@ -15,10 +15,10 @@ import 'package:jade/features/categories/screens/categories_screen.dart';
 import 'package:jade/features/categories/services/category_service.dart';
 import 'package:jade/features/categories/services/category_tab_controller.dart';
 import 'package:jade/features/categories/widgets/category_filter_sheet.dart';
-import 'package:jade/features/following/models/follow_tag.dart';
-import 'package:jade/features/following/services/following_tags_provider.dart';
-import 'package:jade/features/following/services/following_tags_service.dart';
-import 'package:jade/features/following/services/following_tags_store.dart';
+import 'package:jade/core/models/follow_tag.dart';
+import 'package:jade/core/providers/following_tags_provider.dart';
+import 'package:jade/core/services/following_tags_service.dart';
+import 'package:jade/core/services/following_tags_store.dart';
 
 final class _MemoryFollowingStore implements FollowingTagsStore {
   List<FollowTagItem> stored = [];
@@ -235,7 +235,7 @@ Future<_FakeSource> _pumpCategories(WidgetTester tester) async {
       providers: [
         ChangeNotifierProvider.value(value: _followingProvider()),
       ],
-      child: MaterialApp(home: CategoriesPage(dataSource: source)),
+      child: MaterialApp(home: CategoriesScreen(dataSource: source)),
     ),
   );
   await tester.pump();
@@ -265,7 +265,7 @@ _pumpCategoriesWithSource(
   await tester.pumpWidget(
     MultiProvider(
       providers: [ChangeNotifierProvider.value(value: following)],
-      child: MaterialApp(home: CategoriesPage(dataSource: category)),
+      child: MaterialApp(home: CategoriesScreen(dataSource: category)),
     ),
   );
   await tester.pump();
@@ -281,7 +281,7 @@ void main() {
       routes: [
         GoRoute(
           path: AppRoutes.categories,
-          builder: (_, _) => CategoriesPage(dataSource: source),
+          builder: (_, _) => CategoriesScreen(dataSource: source),
         ),
         GoRoute(
           path: AppRoutes.search,
@@ -323,7 +323,7 @@ void main() {
       routes: [
         GoRoute(
           path: '/categories',
-          builder: (context, state) => CategoriesPage(dataSource: source),
+          builder: (context, state) => CategoriesScreen(dataSource: source),
         ),
         GoRoute(
           path: '/movie/:id',
@@ -430,7 +430,7 @@ void main() {
         providers: [
           ChangeNotifierProvider.value(value: _followingProvider()),
         ],
-        child: MaterialApp(home: CategoriesPage(dataSource: source)),
+        child: MaterialApp(home: CategoriesScreen(dataSource: source)),
       ),
     );
     await tester.pump();
@@ -795,7 +795,7 @@ void main() {
         providers: [
           ChangeNotifierProvider.value(value: _followingProvider()),
         ],
-        child: MaterialApp(home: CategoriesPage(dataSource: source)),
+        child: MaterialApp(home: CategoriesScreen(dataSource: source)),
       ),
     );
     await tester.pump();
@@ -827,7 +827,7 @@ void main() {
         providers: [
           ChangeNotifierProvider.value(value: _followingProvider()),
         ],
-        child: MaterialApp(home: CategoriesPage(dataSource: source)),
+        child: MaterialApp(home: CategoriesScreen(dataSource: source)),
       ),
     );
     await tester.pump();
@@ -859,7 +859,7 @@ void main() {
         providers: [
           ChangeNotifierProvider.value(value: _followingProvider()),
         ],
-        child: MaterialApp(home: CategoriesPage(dataSource: source)),
+        child: MaterialApp(home: CategoriesScreen(dataSource: source)),
       ),
     );
     await tester.pump();
@@ -911,7 +911,7 @@ void main() {
         providers: [
           ChangeNotifierProvider.value(value: _followingProvider()),
         ],
-        child: MaterialApp(home: CategoriesPage(dataSource: source)),
+        child: MaterialApp(home: CategoriesScreen(dataSource: source)),
       ),
     );
     await tester.pump();
@@ -958,7 +958,7 @@ void main() {
         providers: [
           ChangeNotifierProvider.value(value: _followingProvider()),
         ],
-        child: MaterialApp(home: CategoriesPage(dataSource: source)),
+        child: MaterialApp(home: CategoriesScreen(dataSource: source)),
       ),
     );
     await tester.pump();

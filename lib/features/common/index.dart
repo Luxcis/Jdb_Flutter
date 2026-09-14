@@ -1,1 +1,1 @@
-export 'screens/common_list_page.dart';
+export 'screens/common_list_screen.dart';

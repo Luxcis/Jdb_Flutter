@@ -4,11 +4,11 @@ import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/domain_manager.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
-import 'package:jade/features/following/models/follow_tag.dart';
-import 'package:jade/features/following/screens/follow_tag_movies_page.dart';
-import 'package:jade/features/following/services/following_tags_provider.dart';
-import 'package:jade/features/following/services/following_tags_service.dart';
-import 'package:jade/features/following/services/following_tags_store.dart';
+import 'package:jade/core/models/follow_tag.dart';
+import 'package:jade/features/following/screens/follow_tag_movies_screen.dart';
+import 'package:jade/core/providers/following_tags_provider.dart';
+import 'package:jade/core/services/following_tags_service.dart';
+import 'package:jade/core/services/following_tags_store.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -78,7 +78,7 @@ void main() {
     }
     await tester.pumpWidget(MultiProvider(
       providers: [ChangeNotifierProvider.value(value: provider)],
-      child: MaterialApp(home: FollowTagMoviesPage(value: value)),
+      child: MaterialApp(home: FollowTagMoviesScreen(value: value)),
     ));
   }
 

@@ -10,7 +10,7 @@ import 'package:jade/core/widgets/pagination_controller.dart';
 import 'package:jade/features/search/models/search_movie_filter.dart';
 import 'package:jade/features/search/services/search_entity_service.dart';
 import 'package:jade/features/search/services/search_movie_service.dart';
-import 'package:jade/features/search/services/search_page_session.dart';
+import 'package:jade/features/search/services/search_screen_session.dart';
 import 'package:jade/features/search/widgets/search_movie_filter_bar.dart';
 
 typedef EntityItemBuilder<T> = Widget Function(BuildContext context, T item);

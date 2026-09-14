@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:jade/features/following/models/follow_tag.dart';
-import 'package:jade/features/following/services/following_tags_store.dart';
+import 'package:jade/core/models/follow_tag.dart';
+import 'package:jade/core/services/following_tags_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

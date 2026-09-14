@@ -8,17 +8,17 @@ import 'package:jade/features/search/widgets/search_keyword_section.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class MagnetSearchPage extends StatefulWidget {
-  const MagnetSearchPage({super.key, this.historyStore, this.recentKeywords});
+class MagnetSearchScreen extends StatefulWidget {
+  const MagnetSearchScreen({super.key, this.historyStore, this.recentKeywords});
 
   final SearchHistoryStore? historyStore;
   final List<String>? recentKeywords;
 
   @override
-  State<MagnetSearchPage> createState() => _MagnetSearchPageState();
+  State<MagnetSearchScreen> createState() => _MagnetSearchScreenState();
 }
 
-class _MagnetSearchPageState extends State<MagnetSearchPage> {
+class _MagnetSearchScreenState extends State<MagnetSearchScreen> {
   final _controller = TextEditingController();
   SearchHistoryStore? _historyStore;
   List<String> _history = const [];

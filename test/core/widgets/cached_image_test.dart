@@ -94,7 +94,7 @@ void main() {
     );
   });
 
-  testWidgets('blur 开启时仅成功加载的网络图片使用模糊层', (tester) async {
+  testWidgets('blur 开启且大图时仅成功加载的网络图片使用模糊层', (tester) async {
     final settings = await _createSettings(blur: true);
     await _pumpWithSettings(
       tester,
@@ -102,6 +102,7 @@ void main() {
       const CachedImage(
         'covers/test.jpg',
         fallbackAsset: 'assets/images/noimage_600x404.jpg',
+        allowBlur: true,
       ),
     );
 
@@ -127,6 +128,20 @@ void main() {
 
   testWidgets('blur 关闭时不配置成功图片模糊构建器', (tester) async {
     final settings = await _createSettings(blur: false);
+    await _pumpWithSettings(
+      tester,
+      settings,
+      const CachedImage('covers/test.jpg'),
+    );
+
+    final networkImage = tester.widget<CachedNetworkImage>(
+      find.byType(CachedNetworkImage),
+    );
+    expect(networkImage.imageBuilder, isNull);
+  });
+
+  testWidgets('默认非大图：blur 开启时不配置模糊构建器', (tester) async {
+    final settings = await _createSettings(blur: true);
     await _pumpWithSettings(
       tester,
       settings,

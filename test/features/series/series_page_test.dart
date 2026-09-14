@@ -4,16 +4,16 @@ import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/models/series.dart';
 import 'package:jade/core/router/routes.dart';
-import 'package:jade/features/common/screens/common_list_page.dart';
+import 'package:jade/features/common/screens/common_list_screen.dart';
 import 'package:jade/features/series/models/series_letter.dart';
-import 'package:jade/features/series/screens/series_page.dart';
+import 'package:jade/features/series/screens/series_screen.dart';
 import 'package:jade/features/series/services/series_service.dart';
 
 void main() {
   testWidgets('渲染 5 个 Tab，番号 Tab 展示字母、数量与 description 副标题', (tester) async {
     final source = _RecordingSeriesDataSource();
     await tester.pumpWidget(
-      MaterialApp(home: SeriesPage(dataSource: source)),
+      MaterialApp(home: SeriesScreen(dataSource: source)),
     );
     await tester.pumpAndSettle();
 
@@ -30,7 +30,7 @@ void main() {
   testWidgets('切换到有码 Tab 触发 getSeries(type=0)', (tester) async {
     final source = _RecordingSeriesDataSource();
     await tester.pumpWidget(
-      MaterialApp(home: SeriesPage(dataSource: source)),
+      MaterialApp(home: SeriesScreen(dataSource: source)),
     );
     await tester.pumpAndSettle();
 
@@ -42,17 +42,17 @@ void main() {
     expect(find.text('(1100)'), findsOneWidget);
   });
 
-  testWidgets('番号与系列条目均经 /common-list 路由进入 CommonListPage', (tester) async {
+  testWidgets('番号与系列条目均经 /common-list 路由进入 CommonListScreen', (tester) async {
     final source = _RecordingSeriesDataSource();
     final router = GoRouter(
       initialLocation: '/',
       routes: [
-        GoRoute(path: '/', builder: (_, _) => SeriesPage(dataSource: source)),
+        GoRoute(path: '/', builder: (_, _) => SeriesScreen(dataSource: source)),
         GoRoute(
           path: AppRoutes.commonList,
           builder: (c, s) {
             final q = s.uri.queryParameters;
-            return CommonListPage(
+            return CommonListScreen(
               title: q['title'] ?? '',
               type: int.tryParse(q['type'] ?? '') ?? 0,
               category: q['category'] ?? '',

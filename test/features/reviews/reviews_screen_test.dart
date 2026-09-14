@@ -52,7 +52,7 @@ Future<FakeAdapter> _pumpReviews(WidgetTester tester) async {
   );
   final adapter = FakeAdapter();
   api.setAdapterForTest(adapter);
-  await tester.pumpWidget(const MaterialApp(home: ReviewsPage()));
+  await tester.pumpWidget(const MaterialApp(home: ReviewsScreen()));
   return adapter;
 }
 

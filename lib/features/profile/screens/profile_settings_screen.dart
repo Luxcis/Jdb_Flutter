@@ -9,7 +9,7 @@ import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/providers/theme_provider.dart';
 import 'package:jade/features/profile/services/app_version_service.dart';
-import 'package:jade/features/profile/services/token_authentication_service.dart';
+import 'package:jade/core/services/token_authentication_service.dart';
 import 'package:jade/features/profile/services/update_service.dart';
 import 'package:jade/features/profile/widgets/profile_pickers.dart';
 import 'package:jade/features/profile/widgets/profile_update_dialog.dart';
@@ -17,8 +17,8 @@ import 'package:jade/features/profile/widgets/token_authentication_dialog.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:provider/provider.dart';
 
-class ProfileSettingsPage extends StatefulWidget {
-  const ProfileSettingsPage({
+class ProfileSettingsScreen extends StatefulWidget {
+  const ProfileSettingsScreen({
     super.key,
     this.cacheService,
     this.appVersionService,
@@ -30,10 +30,10 @@ class ProfileSettingsPage extends StatefulWidget {
   final TokenAuthenticationService? tokenAuthenticationService;
 
   @override
-  State<ProfileSettingsPage> createState() => _ProfileSettingsPageState();
+  State<ProfileSettingsScreen> createState() => _ProfileSettingsScreenState();
 }
 
-class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
+class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   static const _tokenTapWindow = Duration(seconds: 2);
 
   late final CacheService _cacheService;

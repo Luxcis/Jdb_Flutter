@@ -11,9 +11,9 @@ import 'package:jade/core/models/series.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/sort_segmented.dart';
 
-import 'package:jade/features/common/screens/common_list_page.dart';
+import 'package:jade/features/common/screens/common_list_screen.dart';
 import 'package:jade/features/common/services/tag_movies_service.dart';
-import 'package:jade/features/profile/services/collections_service.dart';
+import 'package:jade/core/services/collections_service.dart';
 
 typedef _Call = ({
   int type,
@@ -61,7 +61,7 @@ void main() {
     final source = _RecordingTagMoviesDataSource();
     await tester.pumpWidget(
       MaterialApp(
-        home: CommonListPage(
+        home: CommonListScreen(
           title: '系列 - Madonna',
           type: 2,
           category: 's',
@@ -101,7 +101,7 @@ void main() {
     final source = _RecordingTagMoviesDataSource();
     await tester.pumpWidget(
       MaterialApp(
-        home: CommonListPage(
+        home: CommonListScreen(
           title: '清单 - 收藏精选',
           type: 0,
           category: 'l',
@@ -126,7 +126,7 @@ void main() {
     final source = _RecordingTagMoviesDataSource();
     await tester.pumpWidget(
       MaterialApp(
-        home: CommonListPage(
+        home: CommonListScreen(
           title: '番号 - IPZZ',
           type: 0,
           category: 'c',
@@ -147,7 +147,7 @@ void main() {
     final source = _RecordingTagMoviesDataSource();
     await tester.pumpWidget(
       MaterialApp(
-        home: CommonListPage(
+        home: CommonListScreen(
           title: '系列 - Madonna',
           type: 2,
           category: 's',
@@ -171,7 +171,7 @@ void main() {
     final source = _RecordingTagMoviesDataSource();
     await tester.pumpWidget(
       MaterialApp(
-        home: CommonListPage(
+        home: CommonListScreen(
           title: '系列 - Madonna',
           type: 2,
           category: 's',
@@ -195,7 +195,7 @@ void main() {
     final source = _RecordingTagMoviesDataSource();
     await tester.pumpWidget(
       MaterialApp(
-        home: CommonListPage(
+        home: CommonListScreen(
           title: '系列 - Madonna',
           type: 2,
           category: 's',
@@ -234,7 +234,7 @@ void main() {
     final source = _RecordingTagMoviesDataSource();
     await tester.pumpWidget(
       MaterialApp(
-        home: CommonListPage(
+        home: CommonListScreen(
           title: '清单 - 收藏精选',
           type: 0,
           category: 'l',
@@ -263,7 +263,7 @@ void main() {
     final favorites = _FakeFavoritesDataSource(hasCollected: true);
     await tester.pumpWidget(
       MaterialApp(
-        home: CommonListPage(
+        home: CommonListScreen(
           title: '片商 - SOD',
           type: 0,
           category: 'm',

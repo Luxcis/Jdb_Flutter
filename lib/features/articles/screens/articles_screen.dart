@@ -8,13 +8,13 @@ import 'package:jade/features/articles/models/article.dart';
 import 'package:jade/features/articles/services/article_service.dart';
 import 'package:jade/features/articles/widgets/article_card.dart';
 
-class ArticlesPage extends StatefulWidget {
-  const ArticlesPage({super.key});
+class ArticlesScreen extends StatefulWidget {
+  const ArticlesScreen({super.key});
   @override
-  State<ArticlesPage> createState() => _ArticlesPageState();
+  State<ArticlesScreen> createState() => _ArticlesScreenState();
 }
 
-class _ArticlesPageState extends State<ArticlesPage> {
+class _ArticlesScreenState extends State<ArticlesScreen> {
   late final PaginationController<ArticleSummary> _ctrl;
 
   @override

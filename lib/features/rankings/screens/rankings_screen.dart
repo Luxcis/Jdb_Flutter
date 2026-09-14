@@ -5,17 +5,17 @@ import 'package:jade/features/rankings/widgets/rank_tabs.dart';
 import 'package:jade/features/rankings/widgets/top250_filter_sheet.dart';
 import 'package:jade/features/rankings/widgets/top250_tab.dart';
 
-class RankingsPage extends StatefulWidget {
-  const RankingsPage({super.key, this.initialTabIndex = 2})
+class RankingsScreen extends StatefulWidget {
+  const RankingsScreen({super.key, this.initialTabIndex = 2})
     : assert(initialTabIndex >= 0 && initialTabIndex < 6);
 
   final int initialTabIndex;
 
   @override
-  State<RankingsPage> createState() => _RankingsPageState();
+  State<RankingsScreen> createState() => _RankingsScreenState();
 }
 
-class _RankingsPageState extends State<RankingsPage>
+class _RankingsScreenState extends State<RankingsScreen>
     with TickerProviderStateMixin {
   static const tabs = ['Top250', '看热播', '有码', '无码', '欧美', 'FC2'];
 
@@ -36,7 +36,7 @@ class _RankingsPageState extends State<RankingsPage>
   }
 
   @override
-  void didUpdateWidget(covariant RankingsPage oldWidget) {
+  void didUpdateWidget(covariant RankingsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialTabIndex == widget.initialTabIndex ||
         _tabController.index == widget.initialTabIndex) {

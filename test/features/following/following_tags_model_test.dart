@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:jade/features/following/models/follow_tag.dart';
+import 'package:jade/core/models/follow_tag.dart';
 
 void main() {
   test('fromJson 解析 id 为字符串且容忍数字 id', () {

@@ -16,16 +16,16 @@ import 'package:jade/features/actors/models/actor_recommend.dart';
 import 'package:jade/features/actors/services/actor_service.dart';
 import 'package:jade/features/actors/widgets/actor_filter_sheet.dart';
 
-class ActorsPage extends StatefulWidget {
-  const ActorsPage({super.key, this.service});
+class ActorsScreen extends StatefulWidget {
+  const ActorsScreen({super.key, this.service});
 
   final ActorService? service;
 
   @override
-  State<ActorsPage> createState() => _ActorsPageState();
+  State<ActorsScreen> createState() => _ActorsScreenState();
 }
 
-class _ActorsPageState extends State<ActorsPage> with TickerProviderStateMixin {
+class _ActorsScreenState extends State<ActorsScreen> with TickerProviderStateMixin {
   static const _tabs = ['推荐', '有码(女)', '有码(男)', '无码', '欧美(女)', '欧美(男)'];
 
   late final TabController _tabController;

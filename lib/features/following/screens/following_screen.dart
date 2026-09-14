@@ -3,21 +3,21 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:go_router/go_router.dart';
-import 'package:jade/features/following/models/follow_tag.dart';
-import 'package:jade/features/following/services/following_tags_provider.dart';
+import 'package:jade/core/models/follow_tag.dart';
+import 'package:jade/core/providers/following_tags_provider.dart';
 import 'package:provider/provider.dart';
 
 /// 我的关注页：展示已关注标签列表，左滑取消关注，点击跳转标签影片列表。
 /// 行样式对齐「我的」子页的菜单 cell（Divider 分隔 + 标题 + chevron），
 /// 左滑删除沿用与「我的收藏」页一致的交互。
-class FollowingPage extends StatefulWidget {
-  const FollowingPage({super.key});
+class FollowingScreen extends StatefulWidget {
+  const FollowingScreen({super.key});
 
   @override
-  State<FollowingPage> createState() => _FollowingPageState();
+  State<FollowingScreen> createState() => _FollowingScreenState();
 }
 
-class _FollowingPageState extends State<FollowingPage> {
+class _FollowingScreenState extends State<FollowingScreen> {
   Future<void> _unfollow(FollowTagItem tag) async {
     final provider = context.read<FollowingTagsProvider>();
     final confirmed = await showDialog<bool>(

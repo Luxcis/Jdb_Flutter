@@ -1,30 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:jade/core/models/maker.dart';
+import 'package:jade/core/models/director.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/widgets/entity_list_tile.dart';
 import 'package:jade/core/widgets/paginated_list_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
-import 'package:jade/features/makers/services/maker_service.dart';
+import 'package:jade/features/directors/services/director_service.dart';
 
-class MakersPage extends StatefulWidget {
-  const MakersPage({super.key, this.dataSource});
+class DirectorsScreen extends StatefulWidget {
+  const DirectorsScreen({super.key, this.dataSource});
 
-  final MakerDataSource? dataSource;
+  final DirectorDataSource? dataSource;
 
   @override
-  State<MakersPage> createState() => _MakersPageState();
+  State<DirectorsScreen> createState() => _DirectorsScreenState();
 }
 
-class _MakersPageState extends State<MakersPage>
+class _DirectorsScreenState extends State<DirectorsScreen>
     with TickerProviderStateMixin {
-  static const tabs = ['有码', '无码', '欧美', 'FC2', '动漫'];
-  static const types = ['0', '1', '2', '3', '4'];
+  static const tabs = ['有码', '欧美'];
+  static const types = ['0', '2'];
 
   late final TabController _tabController;
-  late final MakerDataSource _dataSource;
+  late final DirectorDataSource _dataSource;
 
   @override
   void initState() {
@@ -33,8 +33,8 @@ class _MakersPageState extends State<MakersPage>
     _dataSource =
         widget.dataSource ??
         switch (ApiClient.instanceOrNull) {
-          final api? => MakerService(api),
-          null => const UnavailableMakerDataSource(),
+          final api? => DirectorService(api),
+          null => const UnavailableDirectorDataSource(),
         };
   }
 
@@ -48,7 +48,7 @@ class _MakersPageState extends State<MakersPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('片商'),
+        title: const Text('导演'),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -59,12 +59,12 @@ class _MakersPageState extends State<MakersPage>
         controller: _tabController,
         children: [
           for (final type in types)
-            _MakersTab<Maker>(
-              fetchPage: (page) => _dataSource.getMakers(
+            _DirectorsTab<Director>(
+              fetchPage: (page) => _dataSource.getDirectors(
                 type: int.parse(type),
                 page: page,
               ),
-              emptyMessage: '暂无片商',
+              emptyMessage: '暂无导演',
               itemBuilder: (context, item) => EntityListTile(
                 name: item.name,
                 count: item.movieCount,
@@ -72,9 +72,9 @@ class _MakersPageState extends State<MakersPage>
                   Uri(
                     path: AppRoutes.commonList,
                     queryParameters: {
-                      'title': '片商 - ${item.name}',
+                      'title': '导演 - ${item.name}',
                       'type': '${item.type}',
-                      'category': 'm',
+                      'category': 'd',
                       'id': item.id,
                     },
                   ).toString(),
@@ -87,8 +87,8 @@ class _MakersPageState extends State<MakersPage>
   }
 }
 
-class _MakersTab<T> extends StatefulWidget {
-  const _MakersTab({
+class _DirectorsTab<T> extends StatefulWidget {
+  const _DirectorsTab({
     required this.fetchPage,
     required this.itemBuilder,
     required this.emptyMessage,
@@ -99,10 +99,10 @@ class _MakersTab<T> extends StatefulWidget {
   final String emptyMessage;
 
   @override
-  State<_MakersTab<T>> createState() => _MakersTabState<T>();
+  State<_DirectorsTab<T>> createState() => _DirectorsTabState<T>();
 }
 
-class _MakersTabState<T> extends State<_MakersTab<T>>
+class _DirectorsTabState<T> extends State<_DirectorsTab<T>>
     with AutomaticKeepAliveClientMixin {
   late final PaginationController<T> _controller;
 

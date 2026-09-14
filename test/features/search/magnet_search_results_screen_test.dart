@@ -79,7 +79,7 @@ Future<void> _pumpPage(
 }) async {
   await tester.pumpWidget(
     MaterialApp(
-      home: MagnetSearchResultsPage(
+      home: MagnetSearchResultsScreen(
         key: ValueKey(dataSource),
         query: query,
         fromRecent: fromRecent,
@@ -239,7 +239,7 @@ void main() {
           routes: [
             GoRoute(
               path: 'results',
-              builder: (_, state) => MagnetSearchResultsPage(
+              builder: (_, state) => MagnetSearchResultsScreen(
                 query: state.uri.queryParameters['q']!,
                 fromRecent: state.uri.queryParameters['from_recent'] == 'true',
                 dataSource: dataSource,
@@ -292,7 +292,7 @@ void main() {
                 return query.isEmpty ? AppRoutes.magnetSearch : null;
               },
               // 与 app_router.dart 保持一致：页面键包含完整 URI。
-              builder: (_, state) => MagnetSearchResultsPage(
+              builder: (_, state) => MagnetSearchResultsScreen(
                 key: ValueKey(state.uri),
                 query: state.uri.queryParameters['q']!,
                 fromRecent: state.uri.queryParameters['from_recent'] == 'true',

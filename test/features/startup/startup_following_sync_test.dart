@@ -9,13 +9,14 @@ import 'package:jade/core/network/startup_api_client.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/startup_provider.dart';
 import 'package:jade/core/services/session_refresh_service.dart';
-import 'package:jade/features/following/models/follow_tag.dart';
-import 'package:jade/features/following/services/following_tags_provider.dart';
-import 'package:jade/features/following/services/following_tags_service.dart';
-import 'package:jade/features/following/services/following_tags_store.dart';
+import 'package:jade/core/models/follow_tag.dart';
+import 'package:jade/core/providers/following_tags_provider.dart';
+import 'package:jade/core/services/following_tags_service.dart';
+import 'package:jade/core/services/following_tags_store.dart';
 import 'package:jade/features/startup/screens/startup_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jade/core/storage/testing/in_memory_secure_store.dart';
 
 class _FakeStartupApi2 implements StartupApi {
   @override
@@ -72,7 +73,7 @@ void main() {
       decoder: (_) =>
           const BackupDomains(apiDomains: ['https://backup.example']),
     );
-    final auth = await AuthProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
     await auth.login(token: 't', user: {'id': 1, 'username': 'u'});
     final provider = FollowingTagsProvider(
       store: _MemoryStore2(),
@@ -86,7 +87,7 @@ void main() {
         GoRoute(
           path: '/startup',
           builder: (context, state) =>
-              StartupPage(sessionRefreshService: _SuccessRefresh()),
+              StartupScreen(sessionRefreshService: _SuccessRefresh()),
         ),
         GoRoute(
           path: '/home',

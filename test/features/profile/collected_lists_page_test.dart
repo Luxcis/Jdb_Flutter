@@ -7,8 +7,8 @@ import 'package:jade/core/models/list_model.dart';
 import 'package:jade/core/models/maker.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/models/series.dart';
-import 'package:jade/features/profile/screens/collected_entities_page.dart';
-import 'package:jade/features/profile/services/collections_service.dart';
+import 'package:jade/features/profile/screens/collected_entities_screen.dart';
+import 'package:jade/core/services/collections_service.dart';
 
 class _FakeListFavoritesDataSource implements FavoritesDataSource {
   _FakeListFavoritesDataSource({List<ListModel>? lists})
@@ -80,7 +80,7 @@ void main() {
       lists: [ListModel(id: 'l1', name: '收藏精选', movieCount: 3)],
     );
     await tester.pumpWidget(
-      MaterialApp(home: CollectedListsPage(dataSource: source)),
+      MaterialApp(home: CollectedListsScreen(dataSource: source)),
     );
     await tester.pumpAndSettle();
 

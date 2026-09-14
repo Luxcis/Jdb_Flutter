@@ -7,12 +7,12 @@ import 'package:jade/core/network/api_exception.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/storage/login_credential_store.dart';
-import 'package:jade/features/following/models/follow_tag.dart';
-import 'package:jade/features/following/services/following_tags_provider.dart';
+import 'package:jade/core/models/follow_tag.dart';
+import 'package:jade/core/providers/following_tags_provider.dart';
 import 'package:provider/provider.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({
     super.key,
     this.deviceParametersProvider,
     this.credentialStore,
@@ -22,10 +22,10 @@ class LoginPage extends StatefulWidget {
   final LoginCredentialStore? credentialStore;
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginScreenState extends State<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   late final LoginCredentialStore _credentialStore;

@@ -8,12 +8,13 @@ import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/storage/login_credential_store.dart';
 import 'package:jade/features/auth/screens/login_screen.dart';
-import 'package:jade/features/following/models/follow_tag.dart';
-import 'package:jade/features/following/services/following_tags_provider.dart';
-import 'package:jade/features/following/services/following_tags_service.dart';
-import 'package:jade/features/following/services/following_tags_store.dart';
+import 'package:jade/core/models/follow_tag.dart';
+import 'package:jade/core/providers/following_tags_provider.dart';
+import 'package:jade/core/services/following_tags_service.dart';
+import 'package:jade/core/services/following_tags_store.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jade/core/storage/testing/in_memory_secure_store.dart';
 
 class _NoOpSource implements FollowingTagsDataSource {
   @override
@@ -47,7 +48,7 @@ void main() {
   testWidgets('登录响应含 following_tags 时写入 provider 缓存', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
     final provider = FollowingTagsProvider(
       store: _MemoryStore1(),
       dataSource: _NoOpSource(),
@@ -82,7 +83,7 @@ void main() {
       routes: [
         GoRoute(
           path: '/login',
-          builder: (context, state) => LoginPage(
+          builder: (context, state) => LoginScreen(
             deviceParametersProvider: _FakeDeviceParametersProvider(),
             credentialStore: _MemoryCredentialStore(),
           ),
@@ -121,7 +122,7 @@ void main() {
   testWidgets('登录响应 following_tags 含非 Map 元素时登录仍成功且按空列表处理', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs);
+    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
     final provider = FollowingTagsProvider(
       store: _MemoryStore1(),
       dataSource: _NoOpSource(),
@@ -152,7 +153,7 @@ void main() {
       routes: [
         GoRoute(
           path: '/login',
-          builder: (context, state) => LoginPage(
+          builder: (context, state) => LoginScreen(
             deviceParametersProvider: _FakeDeviceParametersProvider(),
             credentialStore: _MemoryCredentialStore(),
           ),

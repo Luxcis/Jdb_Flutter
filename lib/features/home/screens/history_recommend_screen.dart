@@ -9,16 +9,16 @@ import 'package:jade/features/home/models/recommend_period.dart';
 import 'package:jade/features/home/services/history_recommend_service.dart';
 
 /// 往期推荐列表页。
-class HistoryRecommendPage extends StatefulWidget {
-  const HistoryRecommendPage({super.key, this.dataSource});
+class HistoryRecommendScreen extends StatefulWidget {
+  const HistoryRecommendScreen({super.key, this.dataSource});
 
   final RecommendPeriodDataSource? dataSource;
 
   @override
-  State<HistoryRecommendPage> createState() => _HistoryRecommendPageState();
+  State<HistoryRecommendScreen> createState() => _HistoryRecommendScreenState();
 }
 
-class _HistoryRecommendPageState extends State<HistoryRecommendPage> {
+class _HistoryRecommendScreenState extends State<HistoryRecommendScreen> {
   late final RecommendPeriodDataSource _dataSource;
   late final PaginationController<RecommendPeriod> _controller;
 

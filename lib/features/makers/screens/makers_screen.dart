@@ -1,31 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:jade/core/models/maker.dart';
 import 'package:jade/core/models/paged_result.dart';
-import 'package:jade/core/models/series.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/widgets/entity_list_tile.dart';
 import 'package:jade/core/widgets/paginated_list_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
-import 'package:jade/features/series/models/series_letter.dart';
-import 'package:jade/features/series/services/series_service.dart';
+import 'package:jade/features/makers/services/maker_service.dart';
 
-class SeriesPage extends StatefulWidget {
-  const SeriesPage({super.key, this.dataSource});
+class MakersScreen extends StatefulWidget {
+  const MakersScreen({super.key, this.dataSource});
 
-  final SeriesDataSource? dataSource;
+  final MakerDataSource? dataSource;
 
   @override
-  State<SeriesPage> createState() => _SeriesPageState();
+  State<MakersScreen> createState() => _MakersScreenState();
 }
 
-class _SeriesPageState extends State<SeriesPage>
+class _MakersScreenState extends State<MakersScreen>
     with TickerProviderStateMixin {
-  static const tabs = ['番号', '有码', '无码', '欧美', '动漫'];
-  static const types = ['0', '1', '2', '4'];
+  static const tabs = ['有码', '无码', '欧美', 'FC2', '动漫'];
+  static const types = ['0', '1', '2', '3', '4'];
 
   late final TabController _tabController;
-  late final SeriesDataSource _dataSource;
+  late final MakerDataSource _dataSource;
 
   @override
   void initState() {
@@ -34,8 +33,8 @@ class _SeriesPageState extends State<SeriesPage>
     _dataSource =
         widget.dataSource ??
         switch (ApiClient.instanceOrNull) {
-          final api? => SeriesService(api),
-          null => const UnavailableSeriesDataSource(),
+          final api? => MakerService(api),
+          null => const UnavailableMakerDataSource(),
         };
   }
 
@@ -49,7 +48,7 @@ class _SeriesPageState extends State<SeriesPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('系列'),
+        title: const Text('片商'),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -59,31 +58,13 @@ class _SeriesPageState extends State<SeriesPage>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _SeriesTab<SeriesLetter>(
-            fetchPage: (page) => _dataSource.getLetters(page: page),
-            emptyMessage: '暂无番号',
-            itemBuilder: (context, item) => EntityListTile(
-              name: item.letter,
-              count: item.videosCount,
-              subtitle: item.description,
-              onTap: () => context.push(
-                Uri(
-                  path: AppRoutes.commonList,
-                  queryParameters: {
-                    'title': '番号 - ${item.letter}',
-                    'type': '${item.type}',
-                    'category': 'c',
-                    'id': item.id,
-                  },
-                ).toString(),
-              ),
-            ),
-          ),
           for (final type in types)
-            _SeriesTab<Series>(
-              fetchPage: (page) =>
-                  _dataSource.getSeries(type: type, page: page),
-              emptyMessage: '暂无系列',
+            _MakersTab<Maker>(
+              fetchPage: (page) => _dataSource.getMakers(
+                type: int.parse(type),
+                page: page,
+              ),
+              emptyMessage: '暂无片商',
               itemBuilder: (context, item) => EntityListTile(
                 name: item.name,
                 count: item.movieCount,
@@ -91,9 +72,9 @@ class _SeriesPageState extends State<SeriesPage>
                   Uri(
                     path: AppRoutes.commonList,
                     queryParameters: {
-                      'title': '系列 - ${item.name}',
+                      'title': '片商 - ${item.name}',
                       'type': '${item.type}',
-                      'category': 's',
+                      'category': 'm',
                       'id': item.id,
                     },
                   ).toString(),
@@ -106,8 +87,8 @@ class _SeriesPageState extends State<SeriesPage>
   }
 }
 
-class _SeriesTab<T> extends StatefulWidget {
-  const _SeriesTab({
+class _MakersTab<T> extends StatefulWidget {
+  const _MakersTab({
     required this.fetchPage,
     required this.itemBuilder,
     required this.emptyMessage,
@@ -118,10 +99,10 @@ class _SeriesTab<T> extends StatefulWidget {
   final String emptyMessage;
 
   @override
-  State<_SeriesTab<T>> createState() => _SeriesTabState<T>();
+  State<_MakersTab<T>> createState() => _MakersTabState<T>();
 }
 
-class _SeriesTabState<T> extends State<_SeriesTab<T>>
+class _MakersTabState<T> extends State<_MakersTab<T>>
     with AutomaticKeepAliveClientMixin {
   late final PaginationController<T> _controller;
 

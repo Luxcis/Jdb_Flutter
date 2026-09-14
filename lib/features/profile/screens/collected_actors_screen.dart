@@ -1,25 +1,24 @@
-import 'dart:developer' as developer;
-
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/actor_grid_view.dart';
+import 'package:jade/core/widgets/busy_page_mixin.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
-import 'package:jade/features/profile/services/collections_service.dart';
+import 'package:jade/core/services/collections_service.dart';
 import 'package:go_router/go_router.dart';
 
 /// 收藏的演员页：4 Tab（全部/有码/无码/欧美）+ 编辑批量取关。
-class CollectedActorsPage extends StatefulWidget {
-  const CollectedActorsPage({super.key, this.dataSource});
+class CollectedActorsScreen extends StatefulWidget {
+  const CollectedActorsScreen({super.key, this.dataSource});
 
   final FavoritesDataSource? dataSource;
 
   @override
-  State<CollectedActorsPage> createState() => _CollectedActorsPageState();
+  State<CollectedActorsScreen> createState() => _CollectedActorsScreenState();
 }
 
-class _CollectedActorsPageState extends State<CollectedActorsPage>
-    with TickerProviderStateMixin {
+class _CollectedActorsScreenState extends State<CollectedActorsScreen>
+    with TickerProviderStateMixin, BusyPageState {
   static const _tabs = [
     (label: '全部', type: 'all'),
     (label: '有码', type: '0'),
@@ -33,7 +32,6 @@ class _CollectedActorsPageState extends State<CollectedActorsPage>
   final _loadedTabs = <int>{};
   final _selectedIds = <String>{};
   var _editing = false;
-  var _busy = false;
 
   @override
   void initState() {
@@ -112,45 +110,28 @@ class _CollectedActorsPageState extends State<CollectedActorsPage>
       ),
     );
     if (confirmed != true) return;
-    setState(() => _busy = true);
-    try {
-      try {
+    await runBusyOperation(
+      logName: 'collected-actors',
+      failureMessage: '批量取关失败',
+      operation: () async {
         await _dataSource.batchUncollectActors(ids);
-      } catch (error, stackTrace) {
-        developer.log(
-          '批量取关失败',
-          name: 'collected-actors',
-          error: error,
-          stackTrace: stackTrace,
-        );
-        if (!mounted) return;
-        _showMessage('批量取关失败');
-        return;
-      }
-      if (!mounted) return;
-      // 服务器为准：批量取关后所有已加载 Tab 统一重载，避免其他 Tab
-      // 残留已取消收藏的演员（仍可被再次选中）。
-      for (final index in _loadedTabs.toList()) {
-        await _controllers[index].reloadWith(
-          (page) =>
-              _dataSource.getCollectedActors(type: _tabs[index].type, page: page),
-        );
-      }
-      if (!mounted) return;
-      setState(() {
-        _editing = false;
-        _selectedIds.clear();
-      });
-      _showMessage('已取消收藏 ${ids.length} 位演员');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+        // 服务器为准：批量取关后所有已加载 Tab 统一重载，避免其他 Tab
+        // 残留已取消收藏的演员（仍可被再次选中）。
+        for (final index in _loadedTabs.toList()) {
+          await _controllers[index].reloadWith(
+            (page) =>
+                _dataSource.getCollectedActors(type: _tabs[index].type, page: page),
+          );
+        }
+      },
+      onSuccess: () {
+        setState(() {
+          _editing = false;
+          _selectedIds.clear();
+        });
+        showPageMessage('已取消收藏 ${ids.length} 位演员');
+      },
+    );
   }
 
   @override
@@ -212,15 +193,10 @@ class _CollectedActorsPageState extends State<CollectedActorsPage>
                 )
               : null,
         ),
-        if (_busy)
-          const Positioned.fill(
-            child: AbsorbPointer(
-              child: ColoredBox(
-                color: Color(0x73000000),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-            ),
-          ),
+        ValueListenableBuilder<bool>(
+          valueListenable: busyListenable,
+          builder: (_, value, _) => value ? busyOverlay(absorb: true) : const SizedBox.shrink(),
+        ),
       ],
     );
   }

@@ -8,19 +8,19 @@ import 'package:jade/core/widgets/search_entry.dart';
 import 'package:jade/features/categories/services/category_service.dart';
 import 'package:jade/features/categories/services/category_tab_controller.dart';
 import 'package:jade/features/categories/widgets/category_filter_sheet.dart';
-import 'package:jade/features/following/services/following_tags_provider.dart';
-import 'package:jade/features/following/widgets/following_tags_button.dart';
+import 'package:jade/core/providers/following_tags_provider.dart';
+import 'package:jade/features/following/index.dart';
 
-class CategoriesPage extends StatefulWidget {
-  const CategoriesPage({super.key, this.dataSource});
+class CategoriesScreen extends StatefulWidget {
+  const CategoriesScreen({super.key, this.dataSource});
 
   final CategoryDataSource? dataSource;
 
   @override
-  State<CategoriesPage> createState() => _CategoriesPageState();
+  State<CategoriesScreen> createState() => _CategoriesScreenState();
 }
 
-class _CategoriesPageState extends State<CategoriesPage>
+class _CategoriesScreenState extends State<CategoriesScreen>
     with TickerProviderStateMixin {
   static const tabs = ['有码', '无码', '欧美', 'FC2', '动漫'];
 

@@ -13,11 +13,12 @@ import 'package:jade/core/storage/login_credential_store.dart';
 import 'package:jade/features/auth/screens/login_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jade/core/storage/testing/in_memory_secure_store.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('LoginPage 使用官方 multipart 参数并保存成功登录凭据', (tester) async {
+  testWidgets('LoginScreen 使用官方 multipart 参数并保存成功登录凭据', (tester) async {
     final store = _MemoryLoginCredentialStore();
     final subject = await _pumpLogin(tester, credentialStore: store);
 
@@ -189,7 +190,7 @@ Future<({AuthProvider auth, FakeAdapter adapter, GoRouter router})> _pumpLogin(
 }) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
-  final auth = await AuthProvider.create(prefs);
+  final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
   final api = await ApiClient.create(
     prefs: prefs,
     tokenProvider: auth,
@@ -214,7 +215,7 @@ Future<({AuthProvider auth, FakeAdapter adapter, GoRouter router})> _pumpLogin(
     routes: [
       GoRoute(
         path: '/login',
-        builder: (context, state) => LoginPage(
+        builder: (context, state) => LoginScreen(
           deviceParametersProvider: _FakeLoginDeviceParametersProvider(),
           credentialStore: credentialStore,
         ),

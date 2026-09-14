@@ -5,8 +5,8 @@ import 'package:jade/core/widgets/filter_drawer.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 
-class ProfileMovieCollectionPage extends StatefulWidget {
-  const ProfileMovieCollectionPage({
+class ProfileMovieCollectionScreen extends StatefulWidget {
+  const ProfileMovieCollectionScreen({
     super.key,
     required this.title,
     this.filterButton = false,
@@ -16,11 +16,11 @@ class ProfileMovieCollectionPage extends StatefulWidget {
   final bool filterButton;
 
   @override
-  State<ProfileMovieCollectionPage> createState() =>
-      _ProfileMovieCollectionPageState();
+  State<ProfileMovieCollectionScreen> createState() =>
+      _ProfileMovieCollectionScreenState();
 }
 
-class _ProfileMovieCollectionPageState extends State<ProfileMovieCollectionPage>
+class _ProfileMovieCollectionScreenState extends State<ProfileMovieCollectionScreen>
     with TickerProviderStateMixin {
   late final TabController _tabController;
   late final PaginationController<MovieSummary> _controller;

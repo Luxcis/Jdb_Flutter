@@ -29,7 +29,7 @@ GoRouter _router({
     routes: [
       GoRoute(
         path: AppRoutes.magnetSearch,
-        builder: (_, _) => MagnetSearchPage(
+        builder: (_, _) => MagnetSearchScreen(
           historyStore: store,
           recentKeywords: recentKeywords,
         ),
@@ -56,7 +56,7 @@ void main() {
     final store = await _magnetStore(const ['历史磁链']);
     await tester.pumpWidget(
       MaterialApp(
-        home: MagnetSearchPage(
+        home: MagnetSearchScreen(
           historyStore: store,
           recentKeywords: const ['近期磁链'],
         ),
@@ -135,7 +135,7 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
-        home: MagnetSearchPage(historyStore: magnet, recentKeywords: const []),
+        home: MagnetSearchScreen(historyStore: magnet, recentKeywords: const []),
       ),
     );
     await tester.pump();

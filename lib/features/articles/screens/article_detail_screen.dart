@@ -54,14 +54,14 @@ List<String> extractImageUrls(String content) {
   return urls;
 }
 
-class ArticleDetailPage extends StatefulWidget {
-  const ArticleDetailPage({super.key, required this.id});
+class ArticleDetailScreen extends StatefulWidget {
+  const ArticleDetailScreen({super.key, required this.id});
   final String id;
   @override
-  State<ArticleDetailPage> createState() => _ArticleDetailPageState();
+  State<ArticleDetailScreen> createState() => _ArticleDetailScreenState();
 }
 
-class _ArticleDetailPageState extends State<ArticleDetailPage> {
+class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   ArticleDetail? _detail;
   Object? _error;
   var _loading = true;

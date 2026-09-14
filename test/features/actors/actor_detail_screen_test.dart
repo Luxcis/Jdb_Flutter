@@ -19,7 +19,7 @@ void main() {
 
   Future<FakeAdapter> setupAdapter() async {
     final prefs = await SharedPreferences.getInstance();
-    // ActorDetailPage 通过 instanceOrNull 读取单例，必须走 create 而非 forTest。
+    // ActorDetailScreen 通过 instanceOrNull 读取单例，必须走 create 而非 forTest。
     final api = await ApiClient.create(
       prefs: prefs,
       tokenProvider: const _NoOpTokenProvider(),
@@ -67,7 +67,7 @@ void main() {
   }
 
   Future<void> pumpDetailPage(WidgetTester tester) async {
-    await tester.pumpWidget(const MaterialApp(home: ActorDetailPage(id: 'a1')));
+    await tester.pumpWidget(const MaterialApp(home: ActorDetailScreen(id: 'a1')));
     await settle(tester);
   }
 

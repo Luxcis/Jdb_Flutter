@@ -12,9 +12,9 @@ typedef _MovieTypeTab = ({String label, String value});
 /// 展示已认证用户指定状态的评鉴影片网格页。
 ///
 /// 可通过 [dataSource] 注入数据源以复用页面或替换默认 API 实现。
-class ProfileReviewMoviesPage extends StatefulWidget {
+class ProfileReviewMoviesScreen extends StatefulWidget {
   /// 创建使用 [title]、[status] 及可选 [dataSource] 的评鉴影片页。
-  const ProfileReviewMoviesPage({
+  const ProfileReviewMoviesScreen({
     super.key,
     required this.title,
     required this.status,
@@ -31,11 +31,11 @@ class ProfileReviewMoviesPage extends StatefulWidget {
   final ReviewMoviesDataSource? dataSource;
 
   @override
-  State<ProfileReviewMoviesPage> createState() =>
-      _ProfileReviewMoviesPageState();
+  State<ProfileReviewMoviesScreen> createState() =>
+      _ProfileReviewMoviesScreenState();
 }
 
-class _ProfileReviewMoviesPageState extends State<ProfileReviewMoviesPage>
+class _ProfileReviewMoviesScreenState extends State<ProfileReviewMoviesScreen>
     with TickerProviderStateMixin {
   static const _tabs = <_MovieTypeTab>[
     (label: '全部', value: 'all'),

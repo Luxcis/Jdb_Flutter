@@ -7,19 +7,19 @@ import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 import 'package:jade/core/widgets/sort_segmented.dart';
-import 'package:jade/features/following/services/following_tags_provider.dart';
+import 'package:jade/core/providers/following_tags_provider.dart';
 import 'package:provider/provider.dart';
 
-class FollowTagMoviesPage extends StatefulWidget {
-  const FollowTagMoviesPage({super.key, required this.value});
+class FollowTagMoviesScreen extends StatefulWidget {
+  const FollowTagMoviesScreen({super.key, required this.value});
 
   final String value;
 
   @override
-  State<FollowTagMoviesPage> createState() => _FollowTagMoviesPageState();
+  State<FollowTagMoviesScreen> createState() => _FollowTagMoviesScreenState();
 }
 
-class _FollowTagMoviesPageState extends State<FollowTagMoviesPage> {
+class _FollowTagMoviesScreenState extends State<FollowTagMoviesScreen> {
   static const _sortOptions = [
     (label: '更新日期', value: 'update'),
     (label: '发布日期', value: 'release'),

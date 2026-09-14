@@ -6,7 +6,7 @@ import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/sort_segmented.dart';
 import 'package:jade/core/widgets/sort_select.dart';
-import 'package:jade/features/home/screens/latest_movies_page.dart';
+import 'package:jade/features/home/screens/latest_movies_screen.dart';
 import 'package:jade/features/home/services/latest_movies_service.dart';
 
 typedef _Request = ({
@@ -66,7 +66,7 @@ Future<_RecordingSource> _pumpPage(
   final source = _RecordingSource(multiplePages: multiplePages);
   await tester.pumpWidget(
     MaterialApp(
-      home: LatestMoviesPage(
+      home: LatestMoviesScreen(
         section: section,
         title: title,
         dataSource: source,

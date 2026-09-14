@@ -4,14 +4,14 @@ import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/director.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/router/routes.dart';
-import 'package:jade/features/common/screens/common_list_page.dart';
-import 'package:jade/features/directors/screens/directors_page.dart';
+import 'package:jade/features/common/screens/common_list_screen.dart';
+import 'package:jade/features/directors/screens/directors_screen.dart';
 import 'package:jade/features/directors/services/director_service.dart';
 
 void main() {
   testWidgets('渲染 2 个 Tab，默认加载有码 type=0', (tester) async {
     final source = _RecordingDirectorDataSource();
-    await tester.pumpWidget(MaterialApp(home: DirectorsPage(dataSource: source)));
+    await tester.pumpWidget(MaterialApp(home: DirectorsScreen(dataSource: source)));
     await tester.pumpAndSettle();
 
     for (final tab in ['有码', '欧美']) {
@@ -24,7 +24,7 @@ void main() {
 
   testWidgets('切换到欧美 Tab 触发 getDirectors(type=2)', (tester) async {
     final source = _RecordingDirectorDataSource();
-    await tester.pumpWidget(MaterialApp(home: DirectorsPage(dataSource: source)));
+    await tester.pumpWidget(MaterialApp(home: DirectorsScreen(dataSource: source)));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('欧美'));
@@ -35,7 +35,7 @@ void main() {
 
   testWidgets('切回 Tab 保留列表状态，不重复请求', (tester) async {
     final source = _RecordingDirectorDataSource();
-    await tester.pumpWidget(MaterialApp(home: DirectorsPage(dataSource: source)));
+    await tester.pumpWidget(MaterialApp(home: DirectorsScreen(dataSource: source)));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('欧美'));
@@ -46,17 +46,17 @@ void main() {
     expect(source.calls, [(type: 0, page: 1), (type: 2, page: 1)]);
   });
 
-  testWidgets('点击导演条目经 /common-list 路由进入 CommonListPage', (tester) async {
+  testWidgets('点击导演条目经 /common-list 路由进入 CommonListScreen', (tester) async {
     final source = _RecordingDirectorDataSource();
     final router = GoRouter(
       initialLocation: '/',
       routes: [
-        GoRoute(path: '/', builder: (_, _) => DirectorsPage(dataSource: source)),
+        GoRoute(path: '/', builder: (_, _) => DirectorsScreen(dataSource: source)),
         GoRoute(
           path: AppRoutes.commonList,
           builder: (c, s) {
             final q = s.uri.queryParameters;
-            return CommonListPage(
+            return CommonListScreen(
               title: q['title'] ?? '',
               type: int.tryParse(q['type'] ?? '') ?? 0,
               category: q['category'] ?? '',
@@ -80,7 +80,7 @@ void main() {
       'category': 'd',
       'id': 'AqK',
     });
-    expect(find.byType(CommonListPage), findsOneWidget);
+    expect(find.byType(CommonListScreen), findsOneWidget);
     expect(find.byKey(const Key('common-list-filter')), findsOneWidget);
     expect(find.byKey(const Key('common-list-sort')), findsOneWidget);
   });

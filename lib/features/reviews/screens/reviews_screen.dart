@@ -9,14 +9,14 @@ import 'package:jade/core/widgets/review_tile.dart';
 import 'package:jade/features/reviews/models/review_period.dart';
 import 'package:jade/features/reviews/services/reviews_service.dart';
 
-class ReviewsPage extends StatefulWidget {
-  const ReviewsPage({super.key});
+class ReviewsScreen extends StatefulWidget {
+  const ReviewsScreen({super.key});
 
   @override
-  State<ReviewsPage> createState() => _ReviewsPageState();
+  State<ReviewsScreen> createState() => _ReviewsScreenState();
 }
 
-class _ReviewsPageState extends State<ReviewsPage>
+class _ReviewsScreenState extends State<ReviewsScreen>
     with TickerProviderStateMixin {
   static const tabs = ['最新', '上周热评', '月度热评', '季度热评', '年度热评', '全部'];
   static const periods = [

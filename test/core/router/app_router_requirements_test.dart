@@ -7,11 +7,12 @@ import 'package:jade/features/profile/index.dart';
 import 'package:jade/features/search/models/magnet_search_sort.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jade/core/storage/testing/in_memory_secure_store.dart';
 
 Future<Widget> _buildApp({required String initialLocation}) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
-  final auth = await AuthProvider.create(prefs);
+  final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
   final router = AppRouter.buildForTest(initialLocation: initialLocation);
 
   return ChangeNotifierProvider<AuthProvider>.value(
@@ -46,8 +47,8 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(ProfileReviewMoviesPage), findsOneWidget);
-    expect(find.byType(ProfileMovieCollectionPage), findsNothing);
+    expect(find.byType(ProfileReviewMoviesScreen), findsOneWidget);
+    expect(find.byType(ProfileMovieCollectionScreen), findsNothing);
     expect(find.text('我想看的'), findsOneWidget);
     expect(find.byIcon(Icons.filter_list), findsNothing);
   });
@@ -58,7 +59,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(ProfileRecentViewedPage), findsOneWidget);
+    expect(find.byType(ProfileRecentViewedScreen), findsOneWidget);
     expect(find.text('近期浏览'), findsOneWidget);
     expect(find.byIcon(Icons.delete_outline), findsOneWidget);
   });

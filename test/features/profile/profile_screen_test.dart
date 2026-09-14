@@ -3,13 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/storage/login_credential_store.dart';
-import 'package:jade/features/following/models/follow_tag.dart';
-import 'package:jade/features/following/services/following_tags_provider.dart';
-import 'package:jade/features/following/services/following_tags_service.dart';
-import 'package:jade/features/following/services/following_tags_store.dart';
+import 'package:jade/core/models/follow_tag.dart';
+import 'package:jade/core/providers/following_tags_provider.dart';
+import 'package:jade/core/services/following_tags_service.dart';
+import 'package:jade/core/services/following_tags_store.dart';
 import 'package:jade/features/profile/screens/profile_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jade/core/storage/testing/in_memory_secure_store.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -81,7 +82,7 @@ Future<({AuthProvider auth, GoRouter router})> _pumpProfile(
 }) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
-  final auth = await AuthProvider.create(prefs);
+  final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
   await auth.login(
     token: 'test-token',
     user: {'id': 1, 'username': 'test-user'},
@@ -93,7 +94,7 @@ Future<({AuthProvider auth, GoRouter router})> _pumpProfile(
       GoRoute(
         path: '/profile',
         builder: (context, state) =>
-            ProfilePage(credentialStore: credentialStore),
+            ProfileScreen(credentialStore: credentialStore),
       ),
       GoRoute(path: '/home', builder: (context, state) => const SizedBox()),
     ],

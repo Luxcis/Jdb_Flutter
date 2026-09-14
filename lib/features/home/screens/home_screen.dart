@@ -7,18 +7,18 @@ import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/search_entry.dart';
 import 'package:jade/core/widgets/section_header.dart';
-import 'package:jade/features/home/providers/home_provider.dart';
+import 'package:jade/features/home/services/home_provider.dart';
 import 'package:jade/features/home/services/home_service.dart';
 import 'package:jade/features/home/widgets/recommend_carousel.dart';
 import 'package:jade/features/home/widgets/tofu_scroll.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomeScreenState extends State<HomeScreen> {
   HomeProvider? _provider;
 
   @override
@@ -34,6 +34,10 @@ class _HomePageState extends State<HomePage> {
     setState(() => _provider = provider);
     for (final kind in HomeSectionKind.values) {
       provider.loadSection(kind).then((_) {
+        if (mounted) setState(() {});
+      }).catchError((Object error, StackTrace stackTrace) {
+        // loadSection 内部已把错误写入分区状态；这里兜底记录未预料的异常。
+        debugPrint('Home section ${kind.name} load failed: $error\n$stackTrace');
         if (mounted) setState(() {});
       });
     }

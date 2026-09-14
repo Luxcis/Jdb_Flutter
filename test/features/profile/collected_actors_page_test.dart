@@ -7,8 +7,8 @@ import 'package:jade/core/models/list_model.dart';
 import 'package:jade/core/models/maker.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/models/series.dart';
-import 'package:jade/features/profile/screens/collected_actors_page.dart';
-import 'package:jade/features/profile/services/collections_service.dart';
+import 'package:jade/features/profile/screens/collected_actors_screen.dart';
+import 'package:jade/core/services/collections_service.dart';
 
 class _FakeActorsFavoritesDataSource implements FavoritesDataSource {
   _FakeActorsFavoritesDataSource({List<ActorSummary>? actors})
@@ -95,7 +95,7 @@ void main() {
       actors: [ActorSummary(id: 'a1', name: '三上悠亜', avatarUrl: '')],
     );
     await tester.pumpWidget(
-      MaterialApp(home: CollectedActorsPage(dataSource: source)),
+      MaterialApp(home: CollectedActorsScreen(dataSource: source)),
     );
     await settle(tester);
 
@@ -116,7 +116,7 @@ void main() {
       ],
     );
     await tester.pumpWidget(
-      MaterialApp(home: CollectedActorsPage(dataSource: source)),
+      MaterialApp(home: CollectedActorsScreen(dataSource: source)),
     );
     await settle(tester);
 
@@ -157,7 +157,7 @@ void main() {
     );
     source.failBatch = true;
     await tester.pumpWidget(
-      MaterialApp(home: CollectedActorsPage(dataSource: source)),
+      MaterialApp(home: CollectedActorsScreen(dataSource: source)),
     );
     await settle(tester);
 
@@ -181,7 +181,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     final source = _FakeActorsFavoritesDataSource(actors: const []);
     await tester.pumpWidget(
-      MaterialApp(home: CollectedActorsPage(dataSource: source)),
+      MaterialApp(home: CollectedActorsScreen(dataSource: source)),
     );
     await settle(tester);
 

@@ -14,7 +14,7 @@ import 'package:jade/core/models/series.dart';
 import 'package:jade/core/router/routes.dart';
 import 'package:jade/core/storage/storage_keys.dart';
 import 'package:jade/core/widgets/actor_card.dart';
-import 'package:jade/features/common/screens/common_list_page.dart';
+import 'package:jade/features/common/screens/common_list_screen.dart';
 import 'package:jade/core/widgets/list_summary_tile.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/features/search/models/search_movie_filter.dart';
@@ -96,7 +96,7 @@ Future<void> _pumpSearchPage(
   final store = await _storeWithHistory(history);
   await tester.pumpWidget(
     MaterialApp(
-      home: SearchPage(historyStore: store, recentKeywords: recentKeywords),
+      home: SearchScreen(historyStore: store, recentKeywords: recentKeywords),
     ),
   );
   await tester.pump();
@@ -129,7 +129,7 @@ void main() {
     );
 
     final title = tester.widget<Text>(find.text('历史搜索'));
-    final theme = Theme.of(tester.element(find.byType(SearchPage)));
+    final theme = Theme.of(tester.element(find.byType(SearchScreen)));
     expect(title.style?.fontWeight, FontWeight.bold);
     expect(title.style?.fontSize, theme.textTheme.titleLarge?.fontSize);
     expect(
@@ -165,7 +165,7 @@ void main() {
     final store = await _storeWithHistory(const ['历史番号']);
     await tester.pumpWidget(
       MaterialApp(
-        home: SearchPage(historyStore: store, recentKeywords: const ['热门演员']),
+        home: SearchScreen(historyStore: store, recentKeywords: const ['热门演员']),
       ),
     );
     await tester.pump();
@@ -186,7 +186,7 @@ void main() {
         GoRoute(
           path: AppRoutes.search,
           builder: (_, _) =>
-              SearchPage(historyStore: store, recentKeywords: const ['热门演员']),
+              SearchScreen(historyStore: store, recentKeywords: const ['热门演员']),
           routes: [
             GoRoute(
               path: 'results',
@@ -218,7 +218,7 @@ void main() {
         GoRoute(
           path: AppRoutes.search,
           builder: (_, _) =>
-              SearchPage(historyStore: store, recentKeywords: const ['热门演员']),
+              SearchScreen(historyStore: store, recentKeywords: const ['热门演员']),
           routes: [
             GoRoute(
               path: 'results',
@@ -245,7 +245,7 @@ void main() {
     final store = await _storeWithHistory(const []);
     await tester.pumpWidget(
       MaterialApp(
-        home: SearchResultsPage(query: 'ABP-001', historyStore: store),
+        home: SearchResultsScreen(query: 'ABP-001', historyStore: store),
       ),
     );
     await tester.pump();
@@ -268,7 +268,7 @@ void main() {
     final dataSource = _RecordingSearchMovieDataSource();
     await tester.pumpWidget(
       MaterialApp(
-        home: SearchResultsPage(
+        home: SearchResultsScreen(
           query: 'ABP-001',
           historyStore: store,
           movieDataSource: dataSource,
@@ -334,7 +334,7 @@ void main() {
       MaterialApp(
         home: TickerMode(
           enabled: false,
-          child: SearchResultsPage(
+          child: SearchResultsScreen(
             query: 'ABP-001',
             historyStore: store,
             movieDataSource: dataSource,
@@ -366,11 +366,11 @@ void main() {
         GoRoute(
           path: AppRoutes.search,
           builder: (_, _) =>
-              SearchPage(historyStore: store, recentKeywords: const []),
+              SearchScreen(historyStore: store, recentKeywords: const []),
           routes: [
             GoRoute(
               path: 'results',
-              builder: (_, state) => SearchResultsPage(
+              builder: (_, state) => SearchResultsScreen(
                 key: state.pageKey,
                 query: state.uri.queryParameters['q']!,
                 historyStore: store,
@@ -520,7 +520,7 @@ Future<void> _pumpSearchResults(
   required SearchEntityDataSource entityDataSource,
 }) => tester.pumpWidget(
   MaterialApp(
-    home: SearchResultsPage(
+    home: SearchResultsScreen(
       query: 'test',
       entityDataSource: entityDataSource,
       movieDataSource: _RecordingSearchMovieDataSource(),
@@ -534,7 +534,7 @@ GoRouter _buildSearchResultsRouter(SearchEntityDataSource entityDataSource) =>
       routes: [
         GoRoute(
           path: '/search/results',
-          builder: (_, _) => SearchResultsPage(
+          builder: (_, _) => SearchResultsScreen(
             query: 'test',
             entityDataSource: entityDataSource,
             movieDataSource: _RecordingSearchMovieDataSource(),
@@ -557,7 +557,7 @@ GoRouter _buildNamedResultsRouter(
       routes: [
         GoRoute(
           path: '/search/results',
-          builder: (_, _) => SearchResultsPage(
+          builder: (_, _) => SearchResultsScreen(
             query: 'test',
             entityDataSource: entityDataSource,
             movieDataSource: movieDataSource ?? _RecordingSearchMovieDataSource(),
@@ -567,7 +567,7 @@ GoRouter _buildNamedResultsRouter(
           path: AppRoutes.commonList,
           builder: (c, s) {
             final q = s.uri.queryParameters;
-            return CommonListPage(
+            return CommonListScreen(
               title: q['title'] ?? '',
               type: int.tryParse(q['type'] ?? '') ?? 0,
               category: q['category'] ?? '',

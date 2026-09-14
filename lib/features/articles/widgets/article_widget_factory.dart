@@ -17,7 +17,7 @@ class ArticleWidgetFactory extends WidgetFactory
         uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
     final isSvg = uri != null && uri.path.toLowerCase().endsWith('.svg');
     if (isNetwork && !isSvg) {
-      return CachedImage(url, fit: BoxFit.fill);
+      return CachedImage(url, fit: BoxFit.fill, allowBlur: true);
     }
     return super.buildImageWidget(tree, src);
   }

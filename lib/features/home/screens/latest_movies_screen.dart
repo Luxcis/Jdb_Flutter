@@ -4,8 +4,8 @@ import 'package:jade/features/home/widgets/latest_type_tab.dart';
 
 typedef _MovieTypeTab = ({String label, String value});
 
-class LatestMoviesPage extends StatefulWidget {
-  const LatestMoviesPage({
+class LatestMoviesScreen extends StatefulWidget {
+  const LatestMoviesScreen({
     super.key,
     this.section = 'latest',
     this.title = '最新影片',
@@ -17,10 +17,10 @@ class LatestMoviesPage extends StatefulWidget {
   final LatestMoviesDataSource? dataSource;
 
   @override
-  State<LatestMoviesPage> createState() => _LatestMoviesPageState();
+  State<LatestMoviesScreen> createState() => _LatestMoviesScreenState();
 }
 
-class _LatestMoviesPageState extends State<LatestMoviesPage>
+class _LatestMoviesScreenState extends State<LatestMoviesScreen>
     with TickerProviderStateMixin {
   static const _tabs = <_MovieTypeTab>[
     (label: '全部', value: 'all'),

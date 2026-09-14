@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:jade/core/network/api_exception.dart';
 import 'package:jade/core/providers/auth_provider.dart';
-import 'package:jade/features/profile/services/token_authentication_service.dart';
+import 'package:jade/core/services/token_authentication_service.dart';
 
 /// 会话刷新结果。
 enum SessionRefreshStatus {

@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
-import 'package:jade/features/profile/services/token_authentication_service.dart';
+import 'package:jade/core/services/token_authentication_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final class _TokenProvider implements TokenProvider {

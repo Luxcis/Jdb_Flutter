@@ -5,7 +5,7 @@ import 'package:jade/core/network/domain_manager.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/interceptors/response_interceptor.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
-import 'package:jade/features/profile/services/collections_service.dart';
+import 'package:jade/core/services/collections_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<({FakeAdapter adapter, FavoritesService service})>

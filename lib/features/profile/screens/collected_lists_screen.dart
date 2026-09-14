@@ -8,19 +8,19 @@ import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/list_summary_tile.dart';
 import 'package:jade/core/widgets/paginated_list_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
-import 'package:jade/features/profile/services/collections_service.dart';
+import 'package:jade/core/services/collections_service.dart';
 
 /// 收藏的清单页：排序切换 + 左滑取消收藏。
-class CollectedListsPage extends StatefulWidget {
-  const CollectedListsPage({super.key, this.dataSource});
+class CollectedListsScreen extends StatefulWidget {
+  const CollectedListsScreen({super.key, this.dataSource});
 
   final FavoritesDataSource? dataSource;
 
   @override
-  State<CollectedListsPage> createState() => _CollectedListsPageState();
+  State<CollectedListsScreen> createState() => _CollectedListsScreenState();
 }
 
-class _CollectedListsPageState extends State<CollectedListsPage> {
+class _CollectedListsScreenState extends State<CollectedListsScreen> {
   static const _sortByRecently = 'recently';
   static const _sortByRelease = 'release';
 

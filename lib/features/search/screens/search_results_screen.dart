@@ -16,8 +16,8 @@ import 'package:jade/features/search/widgets/search_result_tabs.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class SearchResultsPage extends StatefulWidget {
-  const SearchResultsPage({
+class SearchResultsScreen extends StatefulWidget {
+  const SearchResultsScreen({
     super.key,
     required this.query,
     this.historyStore,
@@ -31,10 +31,10 @@ class SearchResultsPage extends StatefulWidget {
   final SearchEntityDataSource? entityDataSource;
 
   @override
-  State<SearchResultsPage> createState() => _SearchResultsPageState();
+  State<SearchResultsScreen> createState() => _SearchResultsScreenState();
 }
 
-class _SearchResultsPageState extends State<SearchResultsPage>
+class _SearchResultsScreenState extends State<SearchResultsScreen>
     with TickerProviderStateMixin {
   late final TextEditingController _controller;
   late final TabController _tab;

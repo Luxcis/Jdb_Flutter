@@ -4,14 +4,14 @@ import 'package:go_router/go_router.dart';
 import 'package:jade/features/auth/screens/register_screen.dart';
 
 void main() {
-  testWidgets('RegisterPage 渲染邮箱、密码、确认密码输入框和注册按钮',
+  testWidgets('RegisterScreen 渲染邮箱、密码、确认密码输入框和注册按钮',
       (tester) async {
     final router = GoRouter(
       initialLocation: '/register',
       routes: [
         GoRoute(
           path: '/register',
-          builder: (c, s) => const RegisterPage(),
+          builder: (c, s) => const RegisterScreen(),
         ),
       ],
     );
@@ -32,7 +32,7 @@ void main() {
       routes: [
         GoRoute(
           path: '/register',
-          builder: (c, s) => const RegisterPage(),
+          builder: (c, s) => const RegisterScreen(),
         ),
       ],
     );

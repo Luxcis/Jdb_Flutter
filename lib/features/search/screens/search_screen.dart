@@ -7,17 +7,17 @@ import 'package:jade/features/search/widgets/search_keyword_section.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class SearchPage extends StatefulWidget {
-  const SearchPage({super.key, this.historyStore, this.recentKeywords});
+class SearchScreen extends StatefulWidget {
+  const SearchScreen({super.key, this.historyStore, this.recentKeywords});
 
   final SearchHistoryStore? historyStore;
   final List<String>? recentKeywords;
 
   @override
-  State<SearchPage> createState() => _SearchPageState();
+  State<SearchScreen> createState() => _SearchScreenState();
 }
 
-class _SearchPageState extends State<SearchPage> {
+class _SearchScreenState extends State<SearchScreen> {
   final _controller = TextEditingController();
   SearchHistoryStore? _historyStore;
   List<String> _history = const [];
