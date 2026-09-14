@@ -27,17 +27,24 @@ Future<void> _pumpWithSettings(
 }
 
 void main() {
-  testWidgets('剧照小图不应用模糊层（性能）', (tester) async {
-    final settings = await _createSettings(blur: true);
+  testWidgets('剧照响应全局模糊开关', (tester) async {
+    final settings = await _createSettings(blur: false);
     await _pumpWithSettings(
       tester,
       settings,
       const MovieScreenshotImage('screenshots/test.jpg'),
     );
 
-    final networkImage = tester.widget<CachedNetworkImage>(
+    var networkImage = tester.widget<CachedNetworkImage>(
       find.byType(CachedNetworkImage),
     );
     expect(networkImage.imageBuilder, isNull);
+
+    await settings.setBlurMovieImages(true);
+    await tester.pump();
+    networkImage = tester.widget<CachedNetworkImage>(
+      find.byType(CachedNetworkImage),
+    );
+    expect(networkImage.imageBuilder, isNotNull);
   });
 }

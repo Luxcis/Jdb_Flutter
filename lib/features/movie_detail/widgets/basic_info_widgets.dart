@@ -31,7 +31,6 @@ class MovieDetailHero extends StatelessWidget {
               variant: MovieImageVariant.cover,
               semanticLabel: detail.title,
               fit: BoxFit.cover,
-              allowBlur: true,
             ),
           ),
         );

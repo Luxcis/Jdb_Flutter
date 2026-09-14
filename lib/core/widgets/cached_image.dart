@@ -22,7 +22,6 @@ class CachedImage extends StatelessWidget {
     this.onImageSize,
     this.memCacheWidth,
     this.memCacheHeight,
-    this.allowBlur = false,
   });
 
   final String url;
@@ -40,9 +39,6 @@ class CachedImage extends StatelessWidget {
   final int? memCacheWidth;
   final int? memCacheHeight;
 
-  /// 仅大图（详情大封面、全屏查看器）允许模糊；列表小图恒不模糊。
-  final bool allowBlur;
-
   String get _fullUrl {
     if (url.startsWith('http')) return url;
     final endpoint =
@@ -54,11 +50,9 @@ class CachedImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // select 精确订阅：仅模糊开关变化时才重建。
-    final blurEnabled =
-        context.select<SettingsProvider?, bool>(
-              (s) => s?.blurMovieImages ?? true,
-            ) &&
-        allowBlur;
+    final blurEnabled = context.select<SettingsProvider?, bool>(
+      (s) => s?.blurMovieImages ?? true,
+    );
     Widget image = CachedNetworkImage(
       imageUrl: _fullUrl,
       cacheManager: JdbImageCacheManager.instance,

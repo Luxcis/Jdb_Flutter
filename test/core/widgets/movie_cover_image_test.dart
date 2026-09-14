@@ -56,7 +56,7 @@ void main() {
     expect(image.fallbackAsset, 'assets/images/noimage_600x404.jpg');
   });
 
-  testWidgets('大图封面响应全局模糊开关，小图默认不模糊', (tester) async {
+  testWidgets('影片封面响应全局模糊开关', (tester) async {
     final settings = await _createSettings();
     await _pumpWithSettings(
       tester,
@@ -67,26 +67,6 @@ void main() {
       ),
     );
     var networkImage = tester.widget<CachedNetworkImage>(
-      find.byType(CachedNetworkImage),
-    );
-    // 小图槽位不再经过模糊层（性能）。
-    expect(networkImage.imageBuilder, isNull);
-
-    // allowBlur 的大图场景：开关开启时使用模糊层，关闭时移除。
-    await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: settings,
-        child: const MaterialApp(
-          home: MovieCoverImage(
-            'covers/test.jpg',
-            variant: MovieImageVariant.cover,
-            allowBlur: true,
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-    networkImage = tester.widget<CachedNetworkImage>(
       find.byType(CachedNetworkImage),
     );
     expect(networkImage.imageBuilder, isNotNull);
