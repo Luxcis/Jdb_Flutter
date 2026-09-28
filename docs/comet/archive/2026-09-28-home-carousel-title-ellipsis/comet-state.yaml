@@ -1,0 +1,190 @@
+schema: comet.native.v4
+name: home-carousel-title-ellipsis
+language: zh-CN
+phase: archive
+status: done
+state_version: 11
+brief: brief.md
+document_constraints_version: 1
+shape_confirmation_hash: 551422396112279585680684e911a882129ec6a9d384cca948da6b3d505a8c45
+spec_changes:
+  - capability: home-recommend-carousel
+    operation: create
+    source: specs/home-recommend-carousel/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/home-carousel-title-ellipsis
+  target_branch: master
+  finish: keep
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: 首页佳片推荐轮播卡片标题超出卡片宽度时，标题仅渲染一行并在行尾显示省略号，不换行，底部遮罩高度保持单行文本的高度。"
+    result: passed
+    reason:
+      text: lib/features/home/widgets/recommend_carousel.dart 底部遮罩内标题 Text 设置
+        maxLines:1 与
+        overflow:TextOverflow.ellipsis，长标题仅渲染单行并在行尾截断省略；测试'超宽标题限定单行并以省略号截断'用 100
+        字标题断言 RenderParagraph 单行高度、TextPainter 参考宽超出遮罩可用宽度（触发省略），且遮罩高度等于单行文本高 +
+        16 padding（recommend_carousel_test.dart:164-197），亲自复跑 flutter test
+        --no-pub 10/10 通过。
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A2: 首页佳片推荐轮播卡片标题未超出一行宽度时完整显示，行尾无省略号。"
+    result: passed
+    reason:
+      text: 测试'未超宽标题完整显示且无省略号'以短标题'短标题'断言 TextPainter
+        参考宽小于遮罩可用宽度（不触发省略）、RenderParagraph
+        高度与单行参考一致、遮罩高度保持单行（recommend_carousel_test.dart:199-232）；maxLines:1/ellipsis
+        配置下未超宽的 TextPainter 渲染不产生省略号，行为符合。
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "A3: 轮播既有行为保持不变：多张时每 5 秒自动切换、手动滑动、单张不自动切换、后台暂停恢复、TickerMode 暂停。"
+    result: passed
+    reason:
+      text: git diff master 确认实现改动仅为标题 Text
+        两属性（maxLines/overflow），自动播放同步、生命周期监听、TickerMode 监听与布局结构未动；既有 8 个行为用例（5
+        秒自动切换、手动滑动重计、单张不切、后台/TickerMode 暂停恢复、销毁无异常）在 Runtime 检查与我亲自复跑中均通过。
+      truncated: false
+  - id: A4
+    source: specs/home-recommend-carousel/spec.md
+    text: 长标题单行省略 Given 首页佳片推荐轮播展示的影片标题长度超过卡片宽度 When 卡片渲染完成 Then
+      标题仅渲染一行，行尾以省略号截断，不换行，底部遮罩高度保持单行文本的高度
+    result: passed
+    reason:
+      text: spec.md'长标题单行省略'场景由实现（recommend_carousel.dart:113-118）与测试'超宽标题限定单行并以省略号截断'共同满足：单行渲染、行尾省略号截断、遮罩高度
+        = 单行文本高 + 内边距，全部断言通过。
+      truncated: false
+  - id: A5
+    source: specs/home-recommend-carousel/spec.md
+    text: 短标题完整显示 Given 首页佳片推荐轮播展示的影片标题未超出一行宽度 When 卡片渲染完成 Then 标题完整显示且行尾无省略号
+    result: passed
+    reason:
+      text: spec.md'短标题完整显示'场景由测试'未超宽标题完整显示且无省略号'满足：短标题渲染宽度小于可用宽度、完整显示且无省略号、遮罩高度保持单行不变。
+      truncated: false
+builder_handoff:
+  candidate_id: a1f3c43b-0562-4294-b389-8073798b612d
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:0d0f313a-26e8-402d-8035-449adfac0eb9
+  iteration: 1
+  summary:
+    text: 本轮修改：lib/features/home/widgets/recommend_carousel.dart 底部遮罩标题 Text 增加
+      maxLines:1 与
+      overflow:TextOverflow.ellipsis，其余逻辑（自动播放同步、生命周期监听、布局结构）未动；test/features/home/recommend_carousel_test.dart
+      新增两个用例——超宽标题（100 字）单行渲染并以省略号截断、遮罩高度保持单行+16
+      padding，未超宽标题（'短标题'）不触发省略（无约束排版宽度小于可用宽度）且遮罩高度一致。处理验收项：A1-A5
+      全部。开发期检查：flutter test test/features/home/recommend_carousel_test.dart
+      --no-pub 10/10 通过（新增前 8 项既有行为用例亦全过）；flutter analyze --no-pub
+      无告警。未运行全量测试套件（改动仅为 Text 排版属性，影响面限于该组件，最终检查计划建议覆盖组件测试与 analyze）。已知限制：无。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+  checks:
+    - name:
+        text: flutter test test/features/home/recommend_carousel_test.dart --no-pub
+        truncated: false
+      result: passed
+      note:
+        text: 10/10 通过，含既有 8 个行为用例与新增 2 个单行省略用例
+        truncated: false
+    - name:
+        text: flutter analyze --no-pub
+        truncated: false
+      result: passed
+      note:
+        text: No issues found
+        truncated: false
+  checks_truncated: false
+  known_limits: []
+  known_limits_truncated: false
+  review: null
+  submitted_at: 2026-09-28T08:20:20.753Z
+blockers: []
+verification:
+  candidate_id: a1f3c43b-0562-4294-b389-8073798b612d
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:cf5a9f46-8546-48dc-a738-37671da29870
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: carousel-widget-tests
+      name:
+        text: flutter test recommend_carousel_test
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: test/features/home/recommend_carousel_test.dart
+          truncated: false
+        - text: --no-pub
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 2472
+    - id: static-analyze
+      name:
+        text: flutter analyze
+        truncated: false
+      argv_display:
+        - text: analyze
+          truncated: false
+        - text: --no-pub
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 2495
+  summary:
+    text: 实现采用标准 Text(maxLines:1, overflow:TextOverflow.ellipsis)，diff 范围与 brief
+      一致，轮播既有行为用例与新增单行省略用例共 10/10 通过，flutter analyze 无告警，A1-A5 全部满足。
+    truncated: false
+  risks: []
+  risks_truncated: false
+  completed_at: 2026-09-28T08:26:55.381Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 实现采用标准 Text(maxLines:1, overflow:TextOverflow.ellipsis)，diff 范围与 brief
+        一致，轮播既有行为用例与新增单行省略用例共 10/10 通过，flutter analyze 无告警，A1-A5 全部满足。
+      truncated: false
+    completed_at: 2026-09-28T08:26:55.381Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-09-28T08:02:26.690Z
