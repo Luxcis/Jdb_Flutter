@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
-import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/favorite_button.dart';
 import 'package:jade/core/widgets/busy_page_mixin.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
@@ -10,6 +9,7 @@ import 'package:jade/core/widgets/sort_segmented.dart';
 import 'package:jade/core/widgets/sort_select.dart';
 import 'package:jade/features/common/services/tag_movies_service.dart';
 import 'package:jade/core/services/collections_service.dart';
+import 'package:jade/features/common/services/common_list_service.dart';
 
 typedef _SortOption = ({String label, String value});
 
@@ -35,7 +35,8 @@ class CommonListScreen extends StatefulWidget {
   State<CommonListScreen> createState() => _CommonListScreenState();
 }
 
-class _CommonListScreenState extends State<CommonListScreen> with BusyPageState {
+class _CommonListScreenState extends State<CommonListScreen>
+    with BusyPageState {
   static const _filterOptions = [
     (label: '全部', value: 'all'),
     (label: '可播放', value: 'playable'),
@@ -75,18 +76,8 @@ class _CommonListScreenState extends State<CommonListScreen> with BusyPageState 
       _ => _commonSortOptions,
     };
     _sort = widget.category == 'l' ? 'update' : 'hit';
-    _dataSource =
-        widget.dataSource ??
-        switch (ApiClient.instanceOrNull) {
-          final api? => TagMoviesService(api),
-          null => const UnavailableTagMoviesDataSource(),
-        };
-    _favorites =
-        widget.favoritesDataSource ??
-        switch (ApiClient.instanceOrNull) {
-          final api? => FavoritesService(api),
-          null => const UnavailableFavoritesDataSource(),
-        };
+    _dataSource = widget.dataSource ?? defaultTagMoviesDataSource();
+    _favorites = widget.favoritesDataSource ?? defaultFavoritesDataSource();
     _ctrl = PaginationController<MovieSummary>(fetch: _fetchPage)..fetchMore();
     _loadCollected();
   }
@@ -150,7 +141,8 @@ class _CommonListScreenState extends State<CommonListScreen> with BusyPageState 
     await runBusyOperation(
       logName: 'common-list',
       failureMessage: '操作失败，请重试',
-      operation: () => _favorites.setCollected(widget.category, widget.id, !current),
+      operation: () =>
+          _favorites.setCollected(widget.category, widget.id, !current),
       onSuccess: () {
         setState(() => _hasCollected = !current);
         showPageMessage(current ? '已取消收藏' : '已收藏');

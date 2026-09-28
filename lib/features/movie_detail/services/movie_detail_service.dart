@@ -12,6 +12,17 @@ class MovieDetailService {
   MovieDetailService(this._api);
   final ApiClient _api;
 
+  /// 从全局 ApiClient 单例创建服务；未初始化（未登录/无连接）时返回 null，
+  /// 由调用方按空态处理。
+  static MovieDetailService? tryCreate() {
+    final api = ApiClient.instanceOrNull;
+    return api == null ? null : MovieDetailService(api);
+  }
+
+  /// 当前线路 base URL（源自 [ApiClient.domainManager]）；未初始化时为 null。
+  static String? get currentLineUrl =>
+      ApiClient.instanceOrNull?.domainManager.currentUrl;
+
   Future<MovieDetail> getDetail(String id) async {
     final resp = await _api.get('/api/v4/movies/$id');
     return MovieDetail.fromJson(normalizeMovieDetailJson(resp.data));

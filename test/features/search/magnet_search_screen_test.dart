@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/core/storage/storage_keys.dart';
 import 'package:jade/features/search/screens/magnet_search_screen.dart';
 import 'package:jade/features/search/services/search_history_store.dart';
@@ -135,7 +135,10 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
-        home: MagnetSearchScreen(historyStore: magnet, recentKeywords: const []),
+        home: MagnetSearchScreen(
+          historyStore: magnet,
+          recentKeywords: const [],
+        ),
       ),
     );
     await tester.pump();

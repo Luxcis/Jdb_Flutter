@@ -224,6 +224,15 @@ Map<String, dynamic> _codeJson(Map<String, dynamic> json) => {
   ),
 };
 
+/// 页面缺省数据源：注入 [override] 优先，否则按 ApiClient 可用性
+/// 返回 API 实现或不可用降级（screen 不再直接触碰 ApiClient）。
+FavoritesDataSource favoritesDataSource([FavoritesDataSource? override]) =>
+    override ??
+    switch (ApiClient.instanceOrNull) {
+      final api? => FavoritesService(api),
+      null => const UnavailableFavoritesDataSource(),
+    };
+
 /// ApiClient 未初始化时的空实现（页面数据源注入缺省值）。
 class UnavailableFavoritesDataSource implements FavoritesDataSource {
   const UnavailableFavoritesDataSource();

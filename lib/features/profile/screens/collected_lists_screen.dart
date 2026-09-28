@@ -4,9 +4,9 @@ import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:jade/core/models/list_model.dart';
-import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/list_summary_tile.dart';
 import 'package:jade/core/widgets/paginated_list_view.dart';
+import 'package:jade/core/widgets/confirm_dialog.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 import 'package:jade/core/services/collections_service.dart';
 
@@ -32,12 +32,7 @@ class _CollectedListsScreenState extends State<CollectedListsScreen> {
   @override
   void initState() {
     super.initState();
-    final api = ApiClient.instanceOrNull;
-    _dataSource =
-        widget.dataSource ??
-        (api == null
-            ? const UnavailableFavoritesDataSource()
-            : FavoritesService(api));
+    _dataSource = widget.dataSource ?? favoritesDataSource();
     _controller = PaginationController<ListModel>(
       fetch: (page) =>
           _dataSource.getCollectedLists(sortBy: _sortBy, page: page),
@@ -66,24 +61,12 @@ class _CollectedListsScreenState extends State<CollectedListsScreen> {
   }
 
   Future<void> _uncollectList(ListModel list) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('取消收藏清单？'),
-        content: Text('确定取消收藏「${list.name}」吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('确定'),
-          ),
-        ],
-      ),
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: '取消收藏清单？',
+      content: '确定取消收藏「${list.name}」吗？',
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     setState(() => _busy = true);
     try {
       try {

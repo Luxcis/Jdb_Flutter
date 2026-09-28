@@ -7,6 +7,13 @@ import 'package:jade/features/articles/models/article.dart';
 class ArticleService {
   ArticleService(this._api);
 
+  /// 从全局 ApiClient 单例创建服务；未初始化（无连接）时返回 null，
+  /// 由调用方按未登录/无连接空态处理。
+  static ArticleService? tryCreate() {
+    final api = ApiClient.instanceOrNull;
+    return api == null ? null : ArticleService(api);
+  }
+
   static const _pageSize = 48;
   final ApiClient _api;
 

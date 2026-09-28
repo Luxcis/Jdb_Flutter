@@ -35,6 +35,15 @@ abstract interface class SearchEntityDataSource {
 class SearchEntityService implements SearchEntityDataSource {
   SearchEntityService(this._api);
 
+  /// 从全局 ApiClient 单例解析数据源；未初始化（无连接）时返回
+  /// [UnavailableSearchEntityDataSource]，由其返回空态页。
+  static SearchEntityDataSource resolve() {
+    final api = ApiClient.instanceOrNull;
+    return api == null
+        ? const UnavailableSearchEntityDataSource()
+        : SearchEntityService(api);
+  }
+
   static const pageSize = 48;
 
   final ApiClient _api;

@@ -6,10 +6,7 @@ import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/features/series/models/series_letter.dart';
 
 abstract interface class SeriesDataSource {
-  Future<PagedResult<SeriesLetter>> getLetters({
-    int page = 1,
-    int limit = 48,
-  });
+  Future<PagedResult<SeriesLetter>> getLetters({int page = 1, int limit = 48});
 
   Future<PagedResult<Series>> getSeries({
     required String type,
@@ -20,6 +17,15 @@ abstract interface class SeriesDataSource {
 
 class SeriesService implements SeriesDataSource {
   SeriesService(this._api);
+
+  /// 从全局 ApiClient 单例解析数据源；未初始化（无连接）时返回
+  /// [UnavailableSeriesDataSource]，由其返回空态页。
+  static SeriesDataSource resolve() {
+    final api = ApiClient.instanceOrNull;
+    return api == null
+        ? const UnavailableSeriesDataSource()
+        : SeriesService(api);
+  }
 
   final ApiClient _api;
 

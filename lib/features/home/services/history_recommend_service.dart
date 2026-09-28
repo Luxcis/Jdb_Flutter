@@ -53,6 +53,13 @@ class HistoryRecommendService implements RecommendPeriodDataSource {
   }
 }
 
+/// 装配点判空：按可用连接构造数据源，未登录/无连接返回不可用数据源。
+RecommendPeriodDataSource defaultRecommendPeriodDataSource() =>
+    switch (ApiClient.instanceOrNull) {
+      final api? => HistoryRecommendService(api),
+      null => const UnavailableRecommendPeriodDataSource(),
+    };
+
 class UnavailableRecommendPeriodDataSource
     implements RecommendPeriodDataSource {
   const UnavailableRecommendPeriodDataSource();

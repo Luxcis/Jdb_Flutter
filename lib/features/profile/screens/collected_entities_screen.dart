@@ -9,8 +9,8 @@ import 'package:jade/core/models/director.dart';
 import 'package:jade/core/models/maker.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/models/series.dart';
-import 'package:jade/core/network/api_client.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
+import 'package:jade/core/widgets/confirm_dialog.dart';
 import 'package:jade/core/widgets/entity_list_tile.dart';
 import 'package:jade/core/widgets/paginated_list_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
@@ -32,7 +32,8 @@ class CollectedEntitiesScreen extends StatefulWidget {
   final FavoritesDataSource? dataSource;
 
   @override
-  State<CollectedEntitiesScreen> createState() => _CollectedEntitiesScreenState();
+  State<CollectedEntitiesScreen> createState() =>
+      _CollectedEntitiesScreenState();
 }
 
 class _CollectedEntitiesScreenState extends State<CollectedEntitiesScreen> {
@@ -56,12 +57,7 @@ class _CollectedEntitiesScreenState extends State<CollectedEntitiesScreen> {
   @override
   void initState() {
     super.initState();
-    final api = ApiClient.instanceOrNull;
-    _dataSource =
-        widget.dataSource ??
-        (api == null
-            ? const UnavailableFavoritesDataSource()
-            : FavoritesService(api));
+    _dataSource = widget.dataSource ?? favoritesDataSource();
     _controller = PaginationController<dynamic>(fetch: _fetchPage)..fetchMore();
   }
 
@@ -141,26 +137,12 @@ class _CollectedEntitiesScreenState extends State<CollectedEntitiesScreen> {
 
   Future<void> _uncollect(dynamic item) async {
     final id = _idOf(item);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(
-          '取消收藏${widget.category == 'c' ? '番号' : '${_entityLabel()}？'}',
-        ),
-        content: Text('确定取消收藏「${_nameOf(item)}」吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('确定'),
-          ),
-        ],
-      ),
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: '取消收藏${widget.category == 'c' ? '番号' : '${_entityLabel()}？'}',
+      content: '确定取消收藏「${_nameOf(item)}」吗？',
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     setState(() => _busy = true);
     try {
       try {

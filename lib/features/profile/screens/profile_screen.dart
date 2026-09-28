@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/providers/auth_provider.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/core/storage/login_credential_store.dart';
 import 'package:jade/core/providers/following_tags_provider.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +14,7 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final theme = Theme.of(context);
     if (!auth.isLogged) {
       return Scaffold(
         appBar: AppBar(title: const Text('我的')),
@@ -21,9 +22,12 @@ class ProfileScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.person, size: 80, color: Colors.grey),
+              Icon(Icons.person, size: 80, color: theme.colorScheme.outline),
               const SizedBox(height: 16),
-              const Text('登录后查看个人内容', style: TextStyle(color: Colors.grey)),
+              Text(
+                '登录后查看个人内容',
+                style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+              ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => context.push('/login?from=%2Fprofile'),

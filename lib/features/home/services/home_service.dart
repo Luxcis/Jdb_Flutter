@@ -7,6 +7,12 @@ class HomeService {
   HomeService(this._api);
   final ApiClient _api;
 
+  /// 装配点判空：未登录/无连接时返回 null，由调用方保留空态展示。
+  static HomeService? resolve() => switch (ApiClient.instanceOrNull) {
+    final api? => HomeService(api),
+    null => null,
+  };
+
   Future<List<MovieSummary>> getRecommends({String? period}) async {
     final resp = await _api.get(
       Endpoints.moviesRecommend,

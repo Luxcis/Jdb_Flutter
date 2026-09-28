@@ -16,6 +16,15 @@ abstract interface class SearchMovieDataSource {
 class SearchMovieService implements SearchMovieDataSource {
   SearchMovieService(this._api);
 
+  /// 从全局 ApiClient 单例解析数据源；未初始化（无连接）时返回
+  /// [UnavailableSearchMovieDataSource]，由其返回空态页。
+  static SearchMovieDataSource resolve() {
+    final api = ApiClient.instanceOrNull;
+    return api == null
+        ? const UnavailableSearchMovieDataSource()
+        : SearchMovieService(api);
+  }
+
   static const pageSize = 48;
 
   final ApiClient _api;
@@ -43,7 +52,8 @@ class SearchMovieService implements SearchMovieDataSource {
       keys: const ['movies'],
       page: page,
       pageSize: pageSize,
-      fromJson: (json) => MovieSummary.fromJson(normalizeMovieSummaryJson(json)),
+      fromJson: (json) =>
+          MovieSummary.fromJson(normalizeMovieSummaryJson(json)),
     );
   }
 }

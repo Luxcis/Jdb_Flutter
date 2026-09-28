@@ -1,5 +1,6 @@
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/api_data.dart';
+import 'package:jade/core/services/collections_service.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/movie.dart';
@@ -10,6 +11,17 @@ import 'package:jade/features/actors/models/actor_recommend.dart';
 class ActorService {
   ActorService(this._api);
   final ApiClient _api;
+
+  /// 从全局 ApiClient 单例创建服务；未初始化（未登录/无连接）时返回 null，
+  /// 由调用方按空态处理。
+  static ActorService? tryCreate() {
+    final api = ApiClient.instanceOrNull;
+    return api == null ? null : ActorService(api);
+  }
+
+  /// 收藏/取消收藏该演员（代理核心 [FavoritesService] 的演员收藏动作）。
+  Future<void> setCollected(String id, {required bool collect}) =>
+      FavoritesService(_api).setCollected('a', id, collect);
 
   Future<PagedResult<ActorSummary>> getActors({
     required ActorListCategory category,

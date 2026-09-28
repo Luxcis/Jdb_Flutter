@@ -92,33 +92,37 @@ class _RecommendCarouselState extends State<RecommendCarousel>
       ),
       itemBuilder: (context, index, realIndex) {
         final movie = widget.movies[index];
-        return GestureDetector(
-          key: Key('home-recommend-card-${movie.id}'),
-          onTap: () => widget.onMovieTap(movie),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              MovieCoverImage(
-                movie.coverUrl,
-                variant: MovieImageVariant.cover,
-                semanticLabel: movie.title,
-              ),
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  color: Colors.black54,
-                  padding: const EdgeInsets.all(8),
-                  child: Text(
-                    movie.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white),
+        return Semantics(
+          button: true,
+          label: movie.title,
+          child: GestureDetector(
+            key: Key('home-recommend-card-${movie.id}'),
+            onTap: () => widget.onMovieTap(movie),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                MovieCoverImage(
+                  movie.coverUrl,
+                  variant: MovieImageVariant.cover,
+                  semanticLabel: movie.title,
+                ),
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    color: Colors.black54,
+                    padding: const EdgeInsets.all(8),
+                    child: Text(
+                      movie.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

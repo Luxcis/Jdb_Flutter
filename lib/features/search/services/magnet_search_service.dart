@@ -17,6 +17,15 @@ abstract interface class MagnetSearchDataSource {
 class MagnetSearchService implements MagnetSearchDataSource {
   MagnetSearchService(this._api);
 
+  /// 从全局 ApiClient 单例解析数据源；未初始化（无连接）时返回
+  /// [UnavailableMagnetSearchDataSource]，由其返回空态页。
+  static MagnetSearchDataSource resolve() {
+    final api = ApiClient.instanceOrNull;
+    return api == null
+        ? const UnavailableMagnetSearchDataSource()
+        : MagnetSearchService(api);
+  }
+
   static const pageSize = 48;
 
   final ApiClient _api;
@@ -48,6 +57,25 @@ class MagnetSearchService implements MagnetSearchDataSource {
       currentPage: currentPage,
       totalPages: items.isNotEmpty ? currentPage + 1 : currentPage,
       total: apiInt(data['total_count'] ?? data['total'], items.length),
+    );
+  }
+}
+
+class UnavailableMagnetSearchDataSource implements MagnetSearchDataSource {
+  const UnavailableMagnetSearchDataSource();
+
+  @override
+  Future<PagedResult<Magnet>> getMagnets({
+    required String query,
+    required MagnetSearchSort sort,
+    required bool fromRecent,
+    int page = 1,
+  }) async {
+    return PagedResult(
+      items: const [],
+      currentPage: page,
+      totalPages: page,
+      total: 0,
     );
   }
 }

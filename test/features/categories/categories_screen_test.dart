@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/features/categories/models/category_filter.dart';
@@ -232,9 +232,7 @@ Future<_FakeSource> _pumpCategories(WidgetTester tester) async {
   final source = _FakeSource();
   await tester.pumpWidget(
     MultiProvider(
-      providers: [
-        ChangeNotifierProvider.value(value: _followingProvider()),
-      ],
+      providers: [ChangeNotifierProvider.value(value: _followingProvider())],
       child: MaterialApp(home: CategoriesScreen(dataSource: source)),
     ),
   );
@@ -293,9 +291,7 @@ void main() {
 
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider.value(value: _followingProvider()),
-        ],
+        providers: [ChangeNotifierProvider.value(value: _followingProvider())],
         child: MaterialApp.router(routerConfig: router),
       ),
     );
@@ -336,9 +332,7 @@ void main() {
 
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider.value(value: _followingProvider()),
-        ],
+        providers: [ChangeNotifierProvider.value(value: _followingProvider())],
         child: MaterialApp.router(routerConfig: router),
       ),
     );
@@ -427,9 +421,7 @@ void main() {
     final source = _FakeSource(hasMultiplePages: true);
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider.value(value: _followingProvider()),
-        ],
+        providers: [ChangeNotifierProvider.value(value: _followingProvider())],
         child: MaterialApp(home: CategoriesScreen(dataSource: source)),
       ),
     );
@@ -792,9 +784,7 @@ void main() {
     final source = _FakeSource(hasMultiplePages: true);
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider.value(value: _followingProvider()),
-        ],
+        providers: [ChangeNotifierProvider.value(value: _followingProvider())],
         child: MaterialApp(home: CategoriesScreen(dataSource: source)),
       ),
     );
@@ -824,9 +814,7 @@ void main() {
     final source = _FakeSource(hasMultiplePages: true);
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider.value(value: _followingProvider()),
-        ],
+        providers: [ChangeNotifierProvider.value(value: _followingProvider())],
         child: MaterialApp(home: CategoriesScreen(dataSource: source)),
       ),
     );
@@ -856,9 +844,7 @@ void main() {
     final source = _FakeSource(hasMultiplePages: true);
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider.value(value: _followingProvider()),
-        ],
+        providers: [ChangeNotifierProvider.value(value: _followingProvider())],
         child: MaterialApp(home: CategoriesScreen(dataSource: source)),
       ),
     );
@@ -908,9 +894,7 @@ void main() {
     final source = _FakeSource()..tagsResult = _scrollableTagGroups;
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider.value(value: _followingProvider()),
-        ],
+        providers: [ChangeNotifierProvider.value(value: _followingProvider())],
         child: MaterialApp(home: CategoriesScreen(dataSource: source)),
       ),
     );
@@ -955,9 +939,7 @@ void main() {
     final source = _FakeSource()..tagsResult = _scrollableTagGroups;
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider.value(value: _followingProvider()),
-        ],
+        providers: [ChangeNotifierProvider.value(value: _followingProvider())],
         child: MaterialApp(home: CategoriesScreen(dataSource: source)),
       ),
     );

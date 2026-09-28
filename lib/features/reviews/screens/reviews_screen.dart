@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/models/review.dart';
-import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/empty_state.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
@@ -55,7 +54,9 @@ class _ReviewsScreenState extends State<ReviewsScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [for (final period in periods) _HotReviewList(period: period)],
+        children: [
+          for (final period in periods) _HotReviewList(period: period),
+        ],
       ),
     );
   }
@@ -72,15 +73,16 @@ class _HotReviewList extends StatefulWidget {
 
 class _HotReviewListState extends State<_HotReviewList>
     with AutomaticKeepAliveClientMixin {
-  late final PaginationController<Review> _controller =
-      PaginationController(fetch: _fetchPage);
+  late final PaginationController<Review> _controller = PaginationController(
+    fetch: _fetchPage,
+  );
 
   Future<PagedResult<Review>> _fetchPage(int page) async {
-    final api = ApiClient.instanceOrNull;
-    if (api == null) {
+    final service = ReviewsService.tryCreate();
+    if (service == null) {
       throw StateError('网络客户端未初始化');
     }
-    return ReviewsService(api).getHotReviews(period: widget.period, page: page);
+    return service.getHotReviews(period: widget.period, page: page);
   }
 
   @override
@@ -134,11 +136,8 @@ class _HotReviewListState extends State<_HotReviewList>
                   key: Key('hot-reviews-${widget.period.value}'),
                   physics: const AlwaysScrollableScrollPhysics(),
                   itemCount: _controller.items.length + (showFooter ? 1 : 0),
-                  separatorBuilder: (_, _) => const Divider(
-                    height: 1,
-                    indent: 16,
-                    endIndent: 16,
-                  ),
+                  separatorBuilder: (_, _) =>
+                      const Divider(height: 1, indent: 16, endIndent: 16),
                   itemBuilder: (context, index) {
                     if (index == _controller.items.length) {
                       if (_controller.isLoading) {

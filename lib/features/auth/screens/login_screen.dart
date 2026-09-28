@@ -1,14 +1,12 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/device/login_device_info_service.dart';
-import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/api_exception.dart';
-import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/storage/login_credential_store.dart';
 import 'package:jade/core/models/follow_tag.dart';
 import 'package:jade/core/providers/following_tags_provider.dart';
+import 'package:jade/features/auth/services/auth_session_service.dart';
 import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -69,8 +67,8 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _login() async {
-    final api = ApiClient.instanceOrNull;
-    if (api == null) return;
+    final service = AuthSessionService.resolve();
+    if (service == null) return;
     setState(() {
       _loading = true;
       _error = null;
@@ -82,15 +80,11 @@ class _LoginScreenState extends State<LoginScreen> {
           widget.deviceParametersProvider ??
           await LoginDeviceInfoService.createDefault();
       final deviceParameters = await deviceProvider.load();
-      final resp = await api.post(
-        Endpoints.sessions,
-        data: FormData.fromMap({
-          'username': username,
-          'password': password,
-          ...deviceParameters.toMap(),
-        }),
+      final data = await service.login(
+        username: username,
+        password: password,
+        deviceParameters: deviceParameters.toMap(),
       );
-      final data = resp.data;
       final token = data['token'] as String;
       final user = data['user'] as Map<String, dynamic>;
       try {
@@ -105,8 +99,10 @@ class _LoginScreenState extends State<LoginScreen> {
         final following = data['following_tags'];
         if (following is List) {
           final tags = following
-              .map((e) =>
-                  FollowTagItem.fromJson(Map<String, dynamic>.from(e as Map)))
+              .map(
+                (e) =>
+                    FollowTagItem.fromJson(Map<String, dynamic>.from(e as Map)),
+              )
               .toList(growable: false);
           await context.read<FollowingTagsProvider>().syncFromLogin(tags);
         }
@@ -211,7 +207,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.only(top: 12),
                   child: Text(
                     _error!,
-                    style: const TextStyle(color: Colors.red),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ),

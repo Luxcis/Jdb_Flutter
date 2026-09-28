@@ -46,6 +46,17 @@ class RecentViewedService implements RecentViewedDataSource {
   }
 }
 
+/// 页面缺省数据源：注入 [override] 优先，否则按 ApiClient 可用性
+/// 返回 API 实现或不可用降级（screen 不再直接触碰 ApiClient）。
+RecentViewedDataSource recentViewedDataSource([
+  RecentViewedDataSource? override,
+]) =>
+    override ??
+    switch (ApiClient.instanceOrNull) {
+      final api? => RecentViewedService(api),
+      null => const UnavailableRecentViewedDataSource(),
+    };
+
 /// 在 API 客户端不可用时返回空分页结果、清空为空操作的数据源。
 class UnavailableRecentViewedDataSource implements RecentViewedDataSource {
   /// 创建不发起网络请求的空数据源。
@@ -54,7 +65,12 @@ class UnavailableRecentViewedDataSource implements RecentViewedDataSource {
   /// 返回指定页码的空影片结果。
   @override
   Future<PagedResult<MovieSummary>> getRecentViewed({int page = 1}) async =>
-      PagedResult(items: const [], currentPage: page, totalPages: page, total: 0);
+      PagedResult(
+        items: const [],
+        currentPage: page,
+        totalPages: page,
+        total: 0,
+      );
 
   /// 不发起请求的空清空操作。
   @override

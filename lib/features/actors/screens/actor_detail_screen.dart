@@ -2,7 +2,6 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/actor.dart';
-import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/actor_avatar_image.dart';
 import 'package:jade/core/widgets/favorite_button.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
@@ -10,7 +9,6 @@ import 'package:jade/features/actors/services/actor_movie_controller.dart';
 import 'package:jade/features/actors/services/actor_service.dart';
 import 'package:jade/features/actors/widgets/actor_info_sheet.dart';
 import 'package:jade/features/actors/widgets/actor_movie_filter_sheet.dart';
-import 'package:jade/core/services/collections_service.dart';
 
 class ActorDetailScreen extends StatefulWidget {
   const ActorDetailScreen({super.key, required this.id});
@@ -32,12 +30,12 @@ class _ActorDetailScreenState extends State<ActorDetailScreen> {
   Future<void> _toggleFavorite() async {
     final detail = _detail;
     if (detail == null || _favoriteBusy) return;
-    final api = ApiClient.instanceOrNull;
-    if (api == null) return;
+    final service = ActorService.tryCreate();
+    if (service == null) return;
     setState(() => _favoriteBusy = true);
     try {
       try {
-        await FavoritesService(api).setCollected('a', widget.id, !detail.hasCollected);
+        await service.setCollected(widget.id, collect: !detail.hasCollected);
       } catch (error, stackTrace) {
         developer.log(
           '收藏操作失败',
@@ -70,22 +68,18 @@ class _ActorDetailScreenState extends State<ActorDetailScreen> {
   }
 
   Future<void> _load() async {
-    final api = ApiClient.instanceOrNull;
-    if (api == null) {
+    final service = ActorService.tryCreate();
+    if (service == null) {
       if (!mounted) return;
       setState(() {
-        _detail = ActorDetail(
-          id: widget.id,
-          name: '演员详情',
-          avatarUrl: '',
-        );
+        _detail = ActorDetail(id: widget.id, name: '演员详情', avatarUrl: '');
         _isLoading = false;
       });
       return;
     }
 
     try {
-      final detail = await ActorService(api).getDetail(widget.id);
+      final detail = await service.getDetail(widget.id);
       if (!mounted) return;
       final type = detail.type;
       setState(() {
@@ -98,7 +92,7 @@ class _ActorDetailScreenState extends State<ActorDetailScreen> {
           type: type,
           filterTags: detail.filterTags,
           tags: detail.tags,
-          service: ActorService(api),
+          service: service,
         );
         _controller = controller;
         await controller.initialize();
@@ -141,9 +135,7 @@ class _ActorDetailScreenState extends State<ActorDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (_error != null) {
@@ -198,10 +190,7 @@ class _ActorDetailScreenState extends State<ActorDetailScreen> {
                     ],
                   ),
                 ),
-                TextButton(
-                  onPressed: _showInfo,
-                  child: const Text('更多信息'),
-                ),
+                TextButton(onPressed: _showInfo, child: const Text('更多信息')),
               ],
             ),
           ),

@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:jade/core/network/api_client.dart';
-import 'package:jade/core/router/app_router.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/app_router.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/features/common/screens/common_list_screen.dart';
 
 class _FakeAuth extends ChangeNotifier implements TokenProvider {

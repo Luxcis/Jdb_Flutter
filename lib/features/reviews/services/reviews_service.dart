@@ -8,6 +8,13 @@ import 'package:jade/features/reviews/models/review_period.dart';
 class ReviewsService {
   ReviewsService(this._api);
 
+  /// 从全局 ApiClient 单例创建服务；未初始化（无连接）时返回 null，
+  /// 由调用方按未登录/无连接错误处理。
+  static ReviewsService? tryCreate() {
+    final api = ApiClient.instanceOrNull;
+    return api == null ? null : ReviewsService(api);
+  }
+
   static const pageSize = 20;
 
   final ApiClient _api;

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/providers/auth_provider.dart';
-import 'package:jade/core/router/app_router.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/app_router.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/features/profile/index.dart';
 import 'package:jade/features/search/models/magnet_search_sort.dart';
 import 'package:provider/provider.dart';
@@ -12,7 +12,10 @@ import 'package:jade/core/storage/testing/in_memory_secure_store.dart';
 Future<Widget> _buildApp({required String initialLocation}) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
-  final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+  final auth = await AuthProvider.create(
+    prefs,
+    secure: InMemorySecureValueStore(),
+  );
   final router = AppRouter.buildForTest(initialLocation: initialLocation);
 
   return ChangeNotifierProvider<AuthProvider>.value(
@@ -66,9 +69,7 @@ void main() {
 
   testWidgets('搜索结果页修改关键词提交后重建为影片 Tab 的新结果页', (tester) async {
     await tester.pumpWidget(
-      await _buildApp(
-        initialLocation: '${AppRoutes.searchResults}?q=旧关键词',
-      ),
+      await _buildApp(initialLocation: '${AppRoutes.searchResults}?q=旧关键词'),
     );
     await tester.pumpAndSettle();
 

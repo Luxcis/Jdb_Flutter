@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/actor.dart';
-import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/actor_grid_view.dart';
 import 'package:jade/core/widgets/busy_page_mixin.dart';
+import 'package:jade/core/widgets/confirm_dialog.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 import 'package:jade/core/services/collections_service.dart';
 import 'package:go_router/go_router.dart';
@@ -36,12 +36,7 @@ class _CollectedActorsScreenState extends State<CollectedActorsScreen>
   @override
   void initState() {
     super.initState();
-    final api = ApiClient.instanceOrNull;
-    _dataSource =
-        widget.dataSource ??
-        (api == null
-            ? const UnavailableFavoritesDataSource()
-            : FavoritesService(api));
+    _dataSource = widget.dataSource ?? favoritesDataSource();
     _tabController = TabController(length: _tabs.length, vsync: this);
     _tabController.addListener(_onTabChanged);
     _controllers = [
@@ -92,24 +87,12 @@ class _CollectedActorsScreenState extends State<CollectedActorsScreen>
   Future<void> _batchUncollect() async {
     final ids = _selectedIds.toList();
     if (ids.isEmpty) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('取消收藏演员？'),
-        content: Text('确定取消收藏选中的 ${ids.length} 位演员吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('确定'),
-          ),
-        ],
-      ),
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: '取消收藏演员？',
+      content: '确定取消收藏选中的 ${ids.length} 位演员吗？',
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     await runBusyOperation(
       logName: 'collected-actors',
       failureMessage: '批量取关失败',
@@ -119,8 +102,10 @@ class _CollectedActorsScreenState extends State<CollectedActorsScreen>
         // 残留已取消收藏的演员（仍可被再次选中）。
         for (final index in _loadedTabs.toList()) {
           await _controllers[index].reloadWith(
-            (page) =>
-                _dataSource.getCollectedActors(type: _tabs[index].type, page: page),
+            (page) => _dataSource.getCollectedActors(
+              type: _tabs[index].type,
+              page: page,
+            ),
           );
         }
       },
@@ -195,7 +180,8 @@ class _CollectedActorsScreenState extends State<CollectedActorsScreen>
         ),
         ValueListenableBuilder<bool>(
           valueListenable: busyListenable,
-          builder: (_, value, _) => value ? busyOverlay(absorb: true) : const SizedBox.shrink(),
+          builder: (_, value, _) =>
+              value ? busyOverlay(absorb: true) : const SizedBox.shrink(),
         ),
       ],
     );

@@ -9,6 +9,13 @@ class RankingService {
   RankingService(this._api);
   final ApiClient _api;
 
+  /// 从全局 ApiClient 单例创建服务；未初始化（未登录/无连接）时返回 null，
+  /// 由调用方按空态处理。
+  static RankingService? tryCreate() {
+    final api = ApiClient.instanceOrNull;
+    return api == null ? null : RankingService(api);
+  }
+
   Future<PagedResult<MovieSummary>> getTop250({
     int startRank = 1,
     String type = 'all',

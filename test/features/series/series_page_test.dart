@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/models/series.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/features/common/screens/common_list_screen.dart';
 import 'package:jade/features/series/models/series_letter.dart';
 import 'package:jade/features/series/screens/series_screen.dart';
@@ -47,7 +47,10 @@ void main() {
     final router = GoRouter(
       initialLocation: '/',
       routes: [
-        GoRoute(path: '/', builder: (_, _) => SeriesScreen(dataSource: source)),
+        GoRoute(
+          path: '/',
+          builder: (_, _) => SeriesScreen(dataSource: source),
+        ),
         GoRoute(
           path: AppRoutes.commonList,
           builder: (c, s) {

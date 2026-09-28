@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/providers/startup_provider.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/features/search/services/search_history_store.dart';
 import 'package:jade/features/search/widgets/search_keyword_section.dart';
 import 'package:provider/provider.dart';

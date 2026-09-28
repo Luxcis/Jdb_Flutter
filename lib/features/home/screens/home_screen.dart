@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:jade/core/network/api_client.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/core/widgets/empty_state.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/movie_card.dart';
@@ -20,6 +19,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   HomeProvider? _provider;
+  // 装配点判空一次：未登录/无连接时为 null，分区停留在加载占位态。
+  final HomeService? _service = HomeService.resolve();
 
   @override
   void initState() {
@@ -28,18 +29,23 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _load() {
-    final api = ApiClient.instanceOrNull;
-    if (api == null) return;
-    final provider = HomeProvider(HomeService(api));
+    final service = _service;
+    if (service == null) return;
+    final provider = HomeProvider(service);
     setState(() => _provider = provider);
     for (final kind in HomeSectionKind.values) {
-      provider.loadSection(kind).then((_) {
-        if (mounted) setState(() {});
-      }).catchError((Object error, StackTrace stackTrace) {
-        // loadSection 内部已把错误写入分区状态；这里兜底记录未预料的异常。
-        debugPrint('Home section ${kind.name} load failed: $error\n$stackTrace');
-        if (mounted) setState(() {});
-      });
+      provider
+          .loadSection(kind)
+          .then((_) {
+            if (mounted) setState(() {});
+          })
+          .catchError((Object error, StackTrace stackTrace) {
+            // loadSection 内部已把错误写入分区状态；这里兜底记录未预料的异常。
+            debugPrint(
+              'Home section ${kind.name} load failed: $error\n$stackTrace',
+            );
+            if (mounted) setState(() {});
+          });
     }
   }
 
@@ -114,10 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTrailing: () => context.push(
                   Uri(
                     path: AppRoutes.latestMovies,
-                    queryParameters: {
-                      'section': 'latest',
-                      'title': '最新影片',
-                    },
+                    queryParameters: {'section': 'latest', 'title': '最新影片'},
                   ).toString(),
                 ),
               ),
@@ -135,10 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTrailing: () => context.push(
                   Uri(
                     path: AppRoutes.latestMovies,
-                    queryParameters: {
-                      'section': 'magnets',
-                      'title': '磁链更新',
-                    },
+                    queryParameters: {'section': 'magnets', 'title': '磁链更新'},
                   ).toString(),
                 ),
               ),

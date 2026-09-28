@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/features/following/index.dart';
 import 'package:jade/features/profile/widgets/profile_cell.dart';
 

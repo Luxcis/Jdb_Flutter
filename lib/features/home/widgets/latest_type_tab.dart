@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
-import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 import 'package:jade/core/widgets/sort_segmented.dart';
@@ -49,12 +48,7 @@ class _LatestTypeTabState extends State<LatestTypeTab>
   @override
   void initState() {
     super.initState();
-    final api = ApiClient.instanceOrNull;
-    _source =
-        widget.dataSource ??
-        (api == null
-            ? const UnavailableLatestMoviesDataSource()
-            : LatestMoviesService(api));
+    _source = widget.dataSource ?? defaultLatestMoviesDataSource();
     _filter = widget.defaultFilter;
     _controller = PaginationController<MovieSummary>(fetch: _fetchPage);
     unawaited(_controller.fetchMore());

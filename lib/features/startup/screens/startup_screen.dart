@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/startup_provider.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/core/services/session_refresh_service.dart';
 import 'package:jade/core/providers/following_tags_provider.dart';
 import 'package:jade/core/services/token_authentication_service.dart';

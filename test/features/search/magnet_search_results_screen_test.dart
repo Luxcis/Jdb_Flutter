@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/magnet.dart';
 import 'package:jade/core/models/paged_result.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/core/widgets/magnet_list_tile.dart';
 import 'package:jade/features/search/models/magnet_search_sort.dart';
 import 'package:jade/features/search/screens/magnet_search_results_screen.dart';
@@ -273,9 +273,7 @@ void main() {
   testWidgets('修改关键词提交后按新关键词重新加载磁链', (tester) async {
     final store = await _historyStore();
     final dataSource = _RecordingDataSource(
-      (call) async => _page([
-        _magnet('hash-${call.query}', '${call.query}磁链'),
-      ]),
+      (call) async => _page([_magnet('hash-${call.query}', '${call.query}磁链')]),
     );
     final router = GoRouter(
       initialLocation:

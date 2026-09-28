@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/paged_result.dart';
-import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/actor_card.dart';
 import 'package:jade/core/widgets/actor_grid_view.dart';
 import 'package:jade/core/widgets/empty_state.dart';
@@ -25,7 +24,8 @@ class ActorsScreen extends StatefulWidget {
   State<ActorsScreen> createState() => _ActorsScreenState();
 }
 
-class _ActorsScreenState extends State<ActorsScreen> with TickerProviderStateMixin {
+class _ActorsScreenState extends State<ActorsScreen>
+    with TickerProviderStateMixin {
   static const _tabs = ['推荐', '有码(女)', '有码(男)', '无码', '欧美(女)', '欧美(男)'];
 
   late final TabController _tabController;
@@ -35,8 +35,7 @@ class _ActorsScreenState extends State<ActorsScreen> with TickerProviderStateMix
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
-    final api = ApiClient.instanceOrNull;
-    _service = widget.service ?? (api == null ? null : ActorService(api));
+    _service = widget.service ?? ActorService.tryCreate();
   }
 
   @override
@@ -182,24 +181,24 @@ class _RecommendTabState extends State<_RecommendTab> {
   Widget _actorSliverGrid(List<ActorSummary> actors) {
     return SliverLayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount = (constraints.crossAxisExtent / 120)
-            .floor()
-            .clamp(3, 6);
-        const horizontalPadding = 16.0;
-        const crossAxisSpacing = 12.0;
-        final tileWidth =
-            (constraints.crossAxisExtent -
-                horizontalPadding * 2 -
-                crossAxisSpacing * (crossAxisCount - 1)) /
-            crossAxisCount;
+        // 布局推导与 ActorGridView 共用单点实现；crossAxisExtent 已含两侧
+        // padding 区域，与 metricsForWidth 的 fullWidth 语义一致。
+        final metrics = ActorGridView.metricsForWidth(
+          constraints.crossAxisExtent,
+        );
         return SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: horizontalPadding),
+          padding: const EdgeInsets.symmetric(
+            horizontal: ActorGridView.horizontalPadding,
+          ),
           sliver: SliverGrid(
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: crossAxisSpacing,
-              mainAxisExtent: ActorCard.mainAxisExtent(context, tileWidth),
+              crossAxisCount: metrics.crossAxisCount,
+              mainAxisSpacing: ActorGridView.mainAxisSpacing,
+              crossAxisSpacing: metrics.crossAxisSpacing,
+              mainAxisExtent: ActorCard.mainAxisExtent(
+                context,
+                metrics.tileWidth,
+              ),
             ),
             delegate: SliverChildBuilderDelegate(
               (context, index) => ActorCard(

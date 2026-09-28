@@ -16,6 +16,30 @@ class ActorGridView extends StatelessWidget {
     this.emptyMessage,
   });
 
+  /// 演员网格统一起来自宽度的布局推导：列数 3–6（每列目标宽约 120）、
+  /// 左右 content padding 16、卡距 12。fullWidth 为 LayoutBuilder 的总可用宽。
+  static ({int crossAxisCount, double crossAxisSpacing, double tileWidth})
+  metricsForWidth(double fullWidth) {
+    final crossAxisCount = (fullWidth / 120).floor().clamp(3, 6);
+    const crossAxisSpacing = 12.0;
+    const horizontalPadding = 16.0;
+    final tileWidth =
+        (fullWidth -
+            horizontalPadding * 2 -
+            crossAxisSpacing * (crossAxisCount - 1)) /
+        crossAxisCount;
+    return (
+      crossAxisCount: crossAxisCount,
+      crossAxisSpacing: crossAxisSpacing,
+      tileWidth: tileWidth,
+    );
+  }
+
+  /// 与 metricsForWidth 配对的网格常量：两侧 content padding、卡距、卡间主轴距。
+  static const horizontalPadding = 16.0;
+  static const crossAxisSpacing = 12.0;
+  static const mainAxisSpacing = 12.0;
+
   final PaginationController<ActorSummary> controller;
   final void Function(ActorSummary)? onActorTap;
 
@@ -52,17 +76,10 @@ class ActorGridView extends StatelessWidget {
         }
         return LayoutBuilder(
           builder: (context, constraints) {
-            final crossAxisCount = (constraints.maxWidth / 120).floor().clamp(
-              3,
-              6,
-            );
-            const horizontalPadding = 16.0;
-            const crossAxisSpacing = 12.0;
-            final tileWidth =
-                (constraints.maxWidth -
-                    horizontalPadding * 2 -
-                    crossAxisSpacing * (crossAxisCount - 1)) /
-                crossAxisCount;
+            final metrics = metricsForWidth(constraints.maxWidth);
+            final crossAxisCount = metrics.crossAxisCount;
+            final crossAxisSpacing = metrics.crossAxisSpacing;
+            final tileWidth = metrics.tileWidth;
             final hasTail =
                 controller.items.isNotEmpty &&
                 ((!controller.isRefreshing && controller.isLoading) ||
@@ -85,7 +102,7 @@ class ActorGridView extends StatelessWidget {
                       physics: const AlwaysScrollableScrollPhysics(),
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: crossAxisCount,
-                        mainAxisSpacing: 12,
+                        mainAxisSpacing: mainAxisSpacing,
                         crossAxisSpacing: crossAxisSpacing,
                         mainAxisExtent: ActorCard.mainAxisExtent(
                           context,
@@ -95,7 +112,7 @@ class ActorGridView extends StatelessWidget {
                       itemCount: controller.items.length + (hasTail ? 1 : 0),
                       padding: const EdgeInsets.symmetric(
                         horizontal: horizontalPadding,
-                        vertical: 12,
+                        vertical: mainAxisSpacing,
                       ),
                       itemBuilder: (_, index) {
                         if (index < controller.items.length) {

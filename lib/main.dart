@@ -13,7 +13,7 @@ import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/providers/startup_provider.dart';
 import 'package:jade/core/providers/theme_provider.dart';
-import 'package:jade/core/router/app_router.dart';
+import 'package:jade/router/app_router.dart';
 import 'package:jade/core/storage/login_credential_store.dart';
 import 'package:jade/core/storage/testing/in_memory_secure_store.dart';
 import 'package:jade/core/providers/following_tags_provider.dart';
@@ -52,7 +52,9 @@ Future<Widget> _buildEntry({
   final themeProvider = await ThemeProvider.create();
   final authProvider = await AuthProvider.create(
     prefs,
-    secure: authSecureStore ?? FlutterSecureValueStore(const FlutterSecureStorage()),
+    secure:
+        authSecureStore ??
+        FlutterSecureValueStore(const FlutterSecureStorage()),
   );
   final settingsProvider = await SettingsProvider.create(prefs);
   final followingStore = PrefsFollowingTagsStore(prefs);

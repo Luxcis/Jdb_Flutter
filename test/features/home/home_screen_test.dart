@@ -5,7 +5,7 @@ import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/providers/auth_provider.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/core/widgets/search_entry.dart';
 import 'package:jade/features/home/screens/history_recommend_screen.dart';
 import 'package:jade/features/home/screens/home_screen.dart';
@@ -35,7 +35,10 @@ Future<FakeAdapter> _prepareApi(
     'key_api_domains': ['https://jdforrepam.com'],
   });
   final prefs = await SharedPreferences.getInstance();
-  final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+  final auth = await AuthProvider.create(
+    prefs,
+    secure: InMemorySecureValueStore(),
+  );
   final api = await ApiClient.create(
     prefs: prefs,
     tokenProvider: auth,

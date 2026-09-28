@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/tag.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/core/widgets/actor_card.dart';
 import 'package:jade/core/widgets/image_gallery_viewer.dart';
 import 'package:jade/core/widgets/movie_card.dart';
@@ -14,7 +14,11 @@ import 'package:jade/features/movie_detail/widgets/movie_section.dart';
 
 /// 类别横滚区。
 class MovieCategorySection extends StatelessWidget {
-  const MovieCategorySection({super.key, required this.tags, required this.type});
+  const MovieCategorySection({
+    super.key,
+    required this.tags,
+    required this.type,
+  });
 
   final List<Tag> tags;
   final int type;

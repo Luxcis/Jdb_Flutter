@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/director.dart';
 import 'package:jade/core/models/paged_result.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/features/common/screens/common_list_screen.dart';
 import 'package:jade/features/directors/screens/directors_screen.dart';
 import 'package:jade/features/directors/services/director_service.dart';
@@ -11,7 +11,9 @@ import 'package:jade/features/directors/services/director_service.dart';
 void main() {
   testWidgets('渲染 2 个 Tab，默认加载有码 type=0', (tester) async {
     final source = _RecordingDirectorDataSource();
-    await tester.pumpWidget(MaterialApp(home: DirectorsScreen(dataSource: source)));
+    await tester.pumpWidget(
+      MaterialApp(home: DirectorsScreen(dataSource: source)),
+    );
     await tester.pumpAndSettle();
 
     for (final tab in ['有码', '欧美']) {
@@ -24,7 +26,9 @@ void main() {
 
   testWidgets('切换到欧美 Tab 触发 getDirectors(type=2)', (tester) async {
     final source = _RecordingDirectorDataSource();
-    await tester.pumpWidget(MaterialApp(home: DirectorsScreen(dataSource: source)));
+    await tester.pumpWidget(
+      MaterialApp(home: DirectorsScreen(dataSource: source)),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('欧美'));
@@ -35,7 +39,9 @@ void main() {
 
   testWidgets('切回 Tab 保留列表状态，不重复请求', (tester) async {
     final source = _RecordingDirectorDataSource();
-    await tester.pumpWidget(MaterialApp(home: DirectorsScreen(dataSource: source)));
+    await tester.pumpWidget(
+      MaterialApp(home: DirectorsScreen(dataSource: source)),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('欧美'));
@@ -51,7 +57,10 @@ void main() {
     final router = GoRouter(
       initialLocation: '/',
       routes: [
-        GoRoute(path: '/', builder: (_, _) => DirectorsScreen(dataSource: source)),
+        GoRoute(
+          path: '/',
+          builder: (_, _) => DirectorsScreen(dataSource: source),
+        ),
         GoRoute(
           path: AppRoutes.commonList,
           builder: (c, s) {
@@ -97,9 +106,7 @@ class _RecordingDirectorDataSource implements DirectorDataSource {
   }) async {
     calls.add((type: type, page: page));
     return PagedResult(
-      items: [
-        Director(id: 'AqK', name: 'K太郎', movieCount: 3122, type: type),
-      ],
+      items: [Director(id: 'AqK', name: 'K太郎', movieCount: 3122, type: type)],
       currentPage: page,
       totalPages: page,
       total: 1,

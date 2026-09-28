@@ -4,8 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/magnet.dart';
 import 'package:jade/core/models/paged_result.dart';
-import 'package:jade/core/network/api_client.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/core/storage/storage_keys.dart';
 import 'package:jade/core/widgets/empty_state.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
@@ -48,12 +47,7 @@ class _MagnetSearchResultsScreenState extends State<MagnetSearchResultsScreen> {
     super.initState();
     _textController = TextEditingController(text: widget.query);
     _historyStore = widget.historyStore;
-    final api = ApiClient.instanceOrNull;
-    _dataSource =
-        widget.dataSource ??
-        (api == null
-            ? const _UnavailableMagnetSearchDataSource()
-            : MagnetSearchService(api));
+    _dataSource = widget.dataSource ?? MagnetSearchService.resolve();
     _controller = PaginationController<Magnet>(fetch: _fetchPage)..fetchMore();
   }
 
@@ -196,25 +190,6 @@ class _MagnetSearchResultsScreenState extends State<MagnetSearchResultsScreen> {
           );
         },
       ),
-    );
-  }
-}
-
-class _UnavailableMagnetSearchDataSource implements MagnetSearchDataSource {
-  const _UnavailableMagnetSearchDataSource();
-
-  @override
-  Future<PagedResult<Magnet>> getMagnets({
-    required String query,
-    required MagnetSearchSort sort,
-    required bool fromRecent,
-    int page = 1,
-  }) async {
-    return PagedResult(
-      items: const [],
-      currentPage: page,
-      totalPages: page,
-      total: 0,
     );
   }
 }

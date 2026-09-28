@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/paged_result.dart';
-import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/empty_state.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
@@ -25,11 +24,16 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
   }
 
   Future<PagedResult<ArticleSummary>> _fetchPage(int page) async {
-    final api = ApiClient.instanceOrNull;
-    if (api == null) {
-      return PagedResult(items: const [], currentPage: page, totalPages: page, total: 0);
+    final service = ArticleService.tryCreate();
+    if (service == null) {
+      return PagedResult(
+        items: const [],
+        currentPage: page,
+        totalPages: page,
+        total: 0,
+      );
     }
-    return ArticleService(api).getArticles(page: page);
+    return service.getArticles(page: page);
   }
 
   @override

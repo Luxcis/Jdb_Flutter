@@ -37,6 +37,15 @@ class DirectorService implements DirectorDataSource {
   }
 }
 
+/// 页面缺省数据源：注入 [override] 优先，否则按 ApiClient 可用性
+/// 返回 API 实现或不可用降级（screen 不再直接触碰 ApiClient）。
+DirectorDataSource directorDataSource([DirectorDataSource? override]) =>
+    override ??
+    switch (ApiClient.instanceOrNull) {
+      final api? => DirectorService(api),
+      null => const UnavailableDirectorDataSource(),
+    };
+
 class UnavailableDirectorDataSource implements DirectorDataSource {
   const UnavailableDirectorDataSource();
 

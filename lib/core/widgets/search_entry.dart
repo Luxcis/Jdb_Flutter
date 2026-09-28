@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 
 class HomeSearchBar extends StatelessWidget {
   const HomeSearchBar({super.key});

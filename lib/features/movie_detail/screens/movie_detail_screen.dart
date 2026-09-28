@@ -6,9 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/list_model.dart';
 import 'package:jade/core/models/magnet.dart';
 import 'package:jade/core/models/movie.dart';
-import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/api_exception.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/models/movie_review_sort.dart';
@@ -65,15 +64,14 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
       ..setMutationLoading(false)
       ..updateReview(null);
     try {
-      final api = ApiClient.instanceOrNull;
-      if (api == null) {
+      final service = MovieDetailService.tryCreate();
+      if (service == null) {
         setState(() {
           _error = '网络客户端未初始化';
           _loading = false;
         });
         return;
       }
-      final service = MovieDetailService(api);
       final detail = await service.getDetail(widget.id);
       if (!mounted) return;
       setState(() {
@@ -274,8 +272,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
 
   Future<void> _openSaveToListSheet() async {
     if (_saveToListOpening) return;
-    final api = ApiClient.instanceOrNull;
-    final service = _service ?? (api == null ? null : MovieDetailService(api));
+    final service = _service ?? MovieDetailService.tryCreate();
     if (service == null) return;
     setState(() => _saveToListOpening = true);
     try {
@@ -382,7 +379,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                   title: detail.title,
                   videoUrl: MoviePreviewArgs.replaceHostWithLine(
                     detail.previewVideoUrl!,
-                    ApiClient.instanceOrNull?.domainManager.currentUrl,
+                    MovieDetailService.currentLineUrl,
                   ),
                 ),
               ),

@@ -12,13 +12,13 @@
 lib/
 ├── main.dart                 # 应用启动：初始化 Provider、注入依赖、构建路由
 ├── app.dart                  # MyApp：MaterialApp.router + Provider 注册 + 主题
+├── router/                   # 路由配置与路径常量（依赖 feature 的组装层，不放在 core）
 ├── core/                     # 公共层，被各 feature 依赖
 │   ├── constants/            # 全局常量
 │   ├── device/               # 设备信息相关
 │   ├── models/               # 跨 feature 共享的数据模型（含生成的 .g.dart）
 │   ├── network/              # 网络请求、API 客户端、拦截器、签名、域名管理
 │   ├── providers/            # 全局状态管理（主题/登录/设置/启动等）
-│   ├── router/               # 路由配置与路径常量
 │   ├── services/             # 跨 feature 公共服务
 │   ├── storage/              # 本地存储键常量与读写封装
 │   ├── theme/                # 应用主题
@@ -43,7 +43,7 @@ lib/
 | `models/` | 跨 feature 共享模型 | 影片、演员、导演、片商、系列、番号、磁链、评论、标签、排行榜、分页、启动数据等（`*.g.dart` 为 `build_runner` 生成） |
 | `network/` | 网络层 | `api_client.dart`（Dio 单例）、拦截器（签名/Auth/域名切换/响应/日志）、`domain_manager.dart`（域名轮转状态机）、`signature.dart`（签名算法）、`endpoints.dart`（路径常量）、`api_exception.dart`（统一异常）、`review_api.dart`、`startup_api_client.dart`、`backup_domains_decryptor.dart`、`image_decryptor.dart`、`cache_service.dart`、`testing/fake_adapter.dart` |
 | `providers/` | 全局状态 | `ThemeProvider`、`AuthProvider`、`SettingsProvider`、`StartupProvider`、`FollowingTagsProvider` |
-| `router/` | 路由 | `app_router.dart`（GoRouter 配置）、`routes.dart`（路径常量） |
+| `router/`（顶层） | 路由组装层 | `app_router.dart`（GoRouter 配置）、`routes.dart`（路径常量）；它必须引用各 feature 的入口页，因此放在 `lib/router/` 而非 `core/`，保证 `core` 不依赖 feature |
 | `services/` | 公共服务 | `session_refresh_service.dart`（会话刷新）、`token_authentication_service.dart`（Token 认证）、`collections_service.dart`（收藏）、`following_tags_service.dart` / `following_tags_store.dart`（关注标签数据源/缓存） |
 | `storage/` | 本地存储 | `storage_keys.dart`（SP 键常量）、`login_credential_store.dart` |
 | `theme/` | 主题 | `app_theme.dart`（Material 3、`ColorScheme.fromSeed`） |
@@ -101,7 +101,7 @@ lib/features/<feature_name>/
 1. **统一子目录**：feature 下允许 `screens/`、`widgets/`、`models/`、`services/`，新增时只在这几类目录中加，不随意在 feature 根目录创建新目录名。
 2. **入口文件**：每个 feature 必须有 `index.dart`，对外只 export 路由需要的 Page 与公开模型，内部实现细节不暴露。
 3. **依赖方向**：feature 只依赖 `lib/core/`，feature 之间不互相依赖；`core` 不依赖具体 feature。跨 feature 复用必须上提到 `core/`。
-4. **路由接入**：新增页面需要在 `lib/core/router/app_router.dart` 注册路由，并在 `lib/core/router/routes.dart` 添加路径常量。
+4. **路由接入**：新增页面需要在 `lib/router/app_router.dart` 注册路由，并在 `lib/router/routes.dart` 添加路径常量。
 
 ## 5. 相关文档
 

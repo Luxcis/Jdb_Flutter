@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/search_entry.dart';
 import 'package:jade/features/categories/services/category_service.dart';
@@ -37,12 +36,7 @@ class _CategoriesScreenState extends State<CategoriesScreen>
   @override
   void initState() {
     super.initState();
-    final api = ApiClient.instanceOrNull;
-    _source =
-        widget.dataSource ??
-        (api != null
-            ? CategoryService(api)
-            : const UnavailableCategoryDataSource());
+    _source = widget.dataSource ?? CategoryService.resolve();
     _controllers = [
       for (var type = 0; type < tabs.length; type++)
         CategoryTabController(type: type, source: _source),
@@ -137,28 +131,28 @@ class _CategoriesScreenState extends State<CategoriesScreen>
         try {
           await provider.unfollow(tag.id);
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('已取消关注')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('已取消关注')));
         } catch (_) {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('操作失败，请重试')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('操作失败，请重试')));
         }
       } else {
         final name = _selectedTagNames(controller);
         try {
           await provider.follow(name: name, value: value);
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('已关注')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('已关注')));
         } catch (_) {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('操作失败，请重试')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('操作失败，请重试')));
         }
       }
     } finally {
@@ -184,20 +178,22 @@ class _CategoriesScreenState extends State<CategoriesScreen>
       appBar: AppBar(
         title: const Text('类别'),
         actions: [
-          Builder(builder: (context) {
-            final controller = _controllers[_selectedIndex];
-            final followed = context.watch<FollowingTagsProvider>();
-            final value = controller.filter.toFilterBy(
-              controller.type,
-              controller.groupOrder,
-            );
-            return FollowingTagsButton(
-              following: followed.isFollowing(value),
-              enabled: controller.hasSelectedTags,
-              busy: _followingBusy,
-              onPressed: () => _toggleFollowing(controller, value),
-            );
-          }),
+          Builder(
+            builder: (context) {
+              final controller = _controllers[_selectedIndex];
+              final followed = context.watch<FollowingTagsProvider>();
+              final value = controller.filter.toFilterBy(
+                controller.type,
+                controller.groupOrder,
+              );
+              return FollowingTagsButton(
+                following: followed.isFollowing(value),
+                enabled: controller.hasSelectedTags,
+                busy: _followingBusy,
+                onPressed: () => _toggleFollowing(controller, value),
+              );
+            },
+          ),
           IconButton(
             key: const Key('categories-filter-button'),
             tooltip: '筛选',

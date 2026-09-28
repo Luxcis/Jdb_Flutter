@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/api_exception.dart';
-import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/storage/storage_keys.dart';
+import 'package:jade/features/auth/services/auth_session_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -41,8 +40,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _register() async {
-    final api = ApiClient.instanceOrNull;
-    if (api == null) return;
+    final service = AuthSessionService.resolve();
+    if (service == null) return;
 
     final email = _emailCtrl.text.trim();
     if (_passCtrl.text != _confirmCtrl.text) {
@@ -60,22 +59,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
     try {
       final deviceUuid = await _deviceUuid();
-      await api.post(Endpoints.users, data: {
-        'email': email,
-        'username': email,
-        'password': _passCtrl.text,
-        'device_uuid': deviceUuid,
-        'device_name': 'Jade',
-        'device_model': 'Flutter',
-        'platform': 'android',
-        'system_version': '14',
-        'app_channel': 'google',
-        'app_version': '1.9.29',
-        'app_version_number': '35',
-      });
+      await service.register(
+        email: email,
+        password: _passCtrl.text,
+        deviceUuid: deviceUuid,
+      );
       if (!mounted) return;
-      final from =
-          GoRouterState.of(context).uri.queryParameters['from'] ?? '';
+      final from = GoRouterState.of(context).uri.queryParameters['from'] ?? '';
       final to = from.isNotEmpty ? '/login?from=$from' : '/login';
       context.go(to);
     } on ApiException catch (e) {
@@ -95,8 +85,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final from =
-        GoRouterState.of(context).uri.queryParameters['from'] ?? '';
+    final from = GoRouterState.of(context).uri.queryParameters['from'] ?? '';
     final hasFrom = from.isNotEmpty;
 
     return PopScope(
@@ -109,82 +98,83 @@ class _RegisterScreenState extends State<RegisterScreen> {
         appBar: AppBar(title: const Text('注册')),
         body: Padding(
           padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (hasFrom)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Text(
-                  '注册后可继续操作',
-                  style: Theme.of(context).textTheme.titleMedium,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (hasFrom)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Text(
+                    '注册后可继续操作',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              TextField(
+                controller: _emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: '邮箱',
+                  border: OutlineInputBorder(),
                 ),
               ),
-            TextField(
-              controller: _emailCtrl,
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: '邮箱',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _passCtrl,
-              obscureText: true,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: '密码',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _confirmCtrl,
-              obscureText: true,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => _register(),
-              decoration: const InputDecoration(
-                labelText: '确认密码',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _loading ? null : _register,
-                child: _loading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('注册'),
-              ),
-            ),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Text(
-                  _error!,
-                  style: const TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center,
+              const SizedBox(height: 12),
+              TextField(
+                controller: _passCtrl,
+                obscureText: true,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: '密码',
+                  border: OutlineInputBorder(),
                 ),
               ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () {
-                final to =
-                    hasFrom ? '/login?from=$from' : '/login';
-                context.push(to);
-              },
-              child: const Text('已有账号？去登录'),
-            ),
-          ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: _confirmCtrl,
+                obscureText: true,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _register(),
+                decoration: const InputDecoration(
+                  labelText: '确认密码',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _loading ? null : _register,
+                  child: _loading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('注册'),
+                ),
+              ),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(
+                    _error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () {
+                  final to = hasFrom ? '/login?from=$from' : '/login';
+                  context.push(to);
+                },
+                child: const Text('已有账号？去登录'),
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

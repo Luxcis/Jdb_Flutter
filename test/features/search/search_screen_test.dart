@@ -11,7 +11,7 @@ import 'package:jade/core/models/maker.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/models/series.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/core/storage/storage_keys.dart';
 import 'package:jade/core/widgets/actor_card.dart';
 import 'package:jade/features/common/screens/common_list_screen.dart';
@@ -551,32 +551,31 @@ GoRouter _buildSearchResultsRouter(SearchEntityDataSource entityDataSource) =>
 GoRouter _buildNamedResultsRouter(
   SearchEntityDataSource entityDataSource, {
   SearchMovieDataSource? movieDataSource,
-}) =>
-    GoRouter(
-      initialLocation: '/search/results',
-      routes: [
-        GoRoute(
-          path: '/search/results',
-          builder: (_, _) => SearchResultsScreen(
-            query: 'test',
-            entityDataSource: entityDataSource,
-            movieDataSource: movieDataSource ?? _RecordingSearchMovieDataSource(),
-          ),
-        ),
-        GoRoute(
-          path: AppRoutes.commonList,
-          builder: (c, s) {
-            final q = s.uri.queryParameters;
-            return CommonListScreen(
-              title: q['title'] ?? '',
-              type: int.tryParse(q['type'] ?? '') ?? 0,
-              category: q['category'] ?? '',
-              id: q['id'] ?? '',
-            );
-          },
-        ),
-      ],
-    );
+}) => GoRouter(
+  initialLocation: '/search/results',
+  routes: [
+    GoRoute(
+      path: '/search/results',
+      builder: (_, _) => SearchResultsScreen(
+        query: 'test',
+        entityDataSource: entityDataSource,
+        movieDataSource: movieDataSource ?? _RecordingSearchMovieDataSource(),
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.commonList,
+      builder: (c, s) {
+        final q = s.uri.queryParameters;
+        return CommonListScreen(
+          title: q['title'] ?? '',
+          type: int.tryParse(q['type'] ?? '') ?? 0,
+          category: q['category'] ?? '',
+          id: q['id'] ?? '',
+        );
+      },
+    ),
+  ],
+);
 
 class _FakeSearchEntityDataSource implements SearchEntityDataSource {
   _FakeSearchEntityDataSource({

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/movie.dart';
-import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/empty_state.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/features/home/services/history_recommend_service.dart';
@@ -33,12 +32,7 @@ class _HistoryRecommendDetailScreenState
   @override
   void initState() {
     super.initState();
-    _dataSource =
-        widget.dataSource ??
-        switch (ApiClient.instanceOrNull) {
-          final api? => HistoryRecommendService(api),
-          null => const UnavailableRecommendPeriodDataSource(),
-        };
+    _dataSource = widget.dataSource ?? defaultRecommendPeriodDataSource();
     _load();
   }
 

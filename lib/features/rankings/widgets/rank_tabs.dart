@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
-import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 import 'package:jade/core/widgets/sort_segmented.dart';
@@ -27,11 +26,9 @@ class _HotPlayTabState extends State<HotPlayTab>
       PaginationController(fetch: _fetchPage);
 
   Future<PagedResult<MovieSummary>> _fetchPage(int _) async {
-    final api = ApiClient.instanceOrNull;
-    if (api == null) return emptyMoviePage();
-    return RankingService(
-      api,
-    ).getPlayback(filterBy: _filterBy, period: _period);
+    final service = RankingService.tryCreate();
+    if (service == null) return emptyMoviePage();
+    return service.getPlayback(filterBy: _filterBy, period: _period);
   }
 
   @override
@@ -132,11 +129,9 @@ class _RankTabState extends State<RankTab> with AutomaticKeepAliveClientMixin {
       PaginationController(fetch: _fetchPage);
 
   Future<PagedResult<MovieSummary>> _fetchPage(int page) async {
-    final api = ApiClient.instanceOrNull;
-    if (api == null) return emptyMoviePage(page: page);
-    return RankingService(
-      api,
-    ).getRanking(type: widget.type, period: _period, page: page);
+    final service = RankingService.tryCreate();
+    if (service == null) return emptyMoviePage(page: page);
+    return service.getRanking(type: widget.type, period: _period, page: page);
   }
 
   @override

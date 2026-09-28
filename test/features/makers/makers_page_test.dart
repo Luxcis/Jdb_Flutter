@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/maker.dart';
 import 'package:jade/core/models/paged_result.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/features/common/screens/common_list_screen.dart';
 import 'package:jade/features/makers/screens/makers_screen.dart';
 import 'package:jade/features/makers/services/maker_service.dart';
@@ -11,7 +11,9 @@ import 'package:jade/features/makers/services/maker_service.dart';
 void main() {
   testWidgets('渲染 5 个 Tab，默认加载有码 type=0', (tester) async {
     final source = _RecordingMakerDataSource();
-    await tester.pumpWidget(MaterialApp(home: MakersScreen(dataSource: source)));
+    await tester.pumpWidget(
+      MaterialApp(home: MakersScreen(dataSource: source)),
+    );
     await tester.pumpAndSettle();
 
     for (final tab in ['有码', '无码', '欧美', 'FC2', '动漫']) {
@@ -24,7 +26,9 @@ void main() {
 
   testWidgets('切换到无码 Tab 触发 getMakers(type=1)', (tester) async {
     final source = _RecordingMakerDataSource();
-    await tester.pumpWidget(MaterialApp(home: MakersScreen(dataSource: source)));
+    await tester.pumpWidget(
+      MaterialApp(home: MakersScreen(dataSource: source)),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('无码'));
@@ -35,7 +39,9 @@ void main() {
 
   testWidgets('切回 Tab 保留列表状态，不重复请求', (tester) async {
     final source = _RecordingMakerDataSource();
-    await tester.pumpWidget(MaterialApp(home: MakersScreen(dataSource: source)));
+    await tester.pumpWidget(
+      MaterialApp(home: MakersScreen(dataSource: source)),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('无码'));
@@ -51,7 +57,10 @@ void main() {
     final router = GoRouter(
       initialLocation: '/',
       routes: [
-        GoRoute(path: '/', builder: (_, _) => MakersScreen(dataSource: source)),
+        GoRoute(
+          path: '/',
+          builder: (_, _) => MakersScreen(dataSource: source),
+        ),
         GoRoute(
           path: AppRoutes.commonList,
           builder: (c, s) {

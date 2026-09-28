@@ -8,6 +8,7 @@ import 'package:jade/core/network/domain_manager.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/providers/theme_provider.dart';
+import 'package:jade/core/widgets/confirm_dialog.dart';
 import 'package:jade/features/profile/services/app_version_service.dart';
 import 'package:jade/core/services/token_authentication_service.dart';
 import 'package:jade/features/profile/services/update_service.dart';
@@ -147,10 +148,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => UpdateDialog(
-        result: result,
-        install: _downloadAndInstall,
-      ),
+      builder: (_) =>
+          UpdateDialog(result: result, install: _downloadAndInstall),
     );
   }
 
@@ -162,40 +161,26 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     final proxy = context.read<SettingsProvider>().githubProxy;
     final deviceInfo = await DeviceInfoPlugin().androidInfo;
     final installer = UpdateInstaller(proxy: proxy);
-    final asset = installer.pickAsset(
-      result.release,
-      deviceInfo.supportedAbis,
-    );
+    final asset = installer.pickAsset(result.release, deviceInfo.supportedAbis);
     final path = await installer.download(asset, onProgress: onProgress);
     if (!mounted) return;
     final opened = await OpenFilex.open(path);
     if (!mounted) return;
     if (opened.type != ResultType.done) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('安装包已下载，请在通知栏/文件管理器中安装')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('安装包已下载，请在通知栏/文件管理器中安装')));
     }
   }
 
   Future<void> _confirmAndClearCache() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('清除图片缓存？'),
-        content: const Text('将删除已下载的图片封面与剧照。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('清除'),
-          ),
-        ],
-      ),
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: '清除图片缓存？',
+      content: '将删除已下载的图片封面与剧照。',
+      confirmLabel: '清除',
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
     try {
       await _cacheService.clearAll();
       if (!mounted) return;
@@ -351,9 +336,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     final settingsProvider = context.read<SettingsProvider>();
     showModalBottomSheet<void>(
       context: context,
-      builder: (sheetContext) => GithubProxyPickerSheet(
-        settingsProvider: settingsProvider,
-      ),
+      builder: (sheetContext) =>
+          GithubProxyPickerSheet(settingsProvider: settingsProvider),
     );
   }
 }

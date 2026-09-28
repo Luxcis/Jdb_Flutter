@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/features/home/models/recommend_period.dart';
 import 'package:jade/features/home/screens/history_recommend_detail_screen.dart';
 import 'package:jade/features/home/screens/history_recommend_screen.dart';

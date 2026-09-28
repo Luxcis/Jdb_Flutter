@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/sort_segmented.dart';
 import 'package:jade/features/profile/services/review_movies_service.dart';
@@ -64,12 +63,7 @@ class _ProfileReviewMoviesScreenState extends State<ProfileReviewMoviesScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
-    final api = ApiClient.instanceOrNull;
-    _dataSource =
-        widget.dataSource ??
-        (api == null
-            ? const UnavailableReviewMoviesDataSource()
-            : ReviewMoviesService(api));
+    _dataSource = widget.dataSource ?? reviewMoviesDataSource();
     _controllers = [
       for (final tab in _tabs)
         ReviewMoviesTabController(

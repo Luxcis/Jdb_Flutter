@@ -37,6 +37,15 @@ class MakerService implements MakerDataSource {
   }
 }
 
+/// 页面缺省数据源：注入 [override] 优先，否则按 ApiClient 可用性
+/// 返回 API 实现或不可用降级（screen 不再直接触碰 ApiClient）。
+MakerDataSource makerDataSource([MakerDataSource? override]) =>
+    override ??
+    switch (ApiClient.instanceOrNull) {
+      final api? => MakerService(api),
+      null => const UnavailableMakerDataSource(),
+    };
+
 class UnavailableMakerDataSource implements MakerDataSource {
   const UnavailableMakerDataSource();
 

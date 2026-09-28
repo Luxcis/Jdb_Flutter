@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
-import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/widgets/login_guide_card.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
+import 'package:jade/core/widgets/confirm_dialog.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 import 'package:jade/features/profile/services/recent_viewed_service.dart';
 import 'package:provider/provider.dart';
@@ -33,12 +33,7 @@ class _ProfileRecentViewedScreenState extends State<ProfileRecentViewedScreen> {
   @override
   void initState() {
     super.initState();
-    final api = ApiClient.instanceOrNull;
-    _dataSource =
-        widget.dataSource ??
-        (api == null
-            ? const UnavailableRecentViewedDataSource()
-            : RecentViewedService(api));
+    _dataSource = widget.dataSource ?? recentViewedDataSource();
     // 首次加载由 didChangeDependencies 触发（登录态就绪后），
     // 避免与 initState 的 fetch 叠加导致重复请求。
     _controller = PaginationController(fetch: _fetchPage);
@@ -67,36 +62,25 @@ class _ProfileRecentViewedScreenState extends State<ProfileRecentViewedScreen> {
   }
 
   Future<void> _confirmAndClear() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('清空近期浏览？'),
-        content: const Text('将删除全部浏览记录，此操作不可恢复。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('清空'),
-          ),
-        ],
-      ),
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: '清空近期浏览？',
+      content: '将删除全部浏览记录，此操作不可恢复。',
+      confirmLabel: '清空',
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
     try {
       await _dataSource.clearRecentViewed();
       if (!mounted) return;
       _controller.reloadWith(_fetchPage);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已清空近期浏览')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已清空近期浏览')));
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('清空失败，请稍后重试')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('清空失败，请稍后重试')));
     }
   }
 

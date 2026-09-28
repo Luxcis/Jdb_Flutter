@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
-import 'package:jade/core/network/api_client.dart';
-import 'package:jade/core/network/api_data.dart';
-import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
 import 'package:jade/core/widgets/sort_segmented.dart';
 import 'package:jade/core/providers/following_tags_provider.dart';
+import 'package:jade/features/following/services/follow_tag_movies_service.dart';
 import 'package:provider/provider.dart';
 
 class FollowTagMoviesScreen extends StatefulWidget {
@@ -26,20 +24,23 @@ class _FollowTagMoviesScreenState extends State<FollowTagMoviesScreen> {
   ];
 
   late final PaginationController<MovieSummary> _ctrl;
+  late final FollowTagMoviesService? _service;
   late String _sort;
   late String _orderBy;
 
   @override
   void initState() {
     super.initState();
+    // 装配点判空一次：未登录/无连接时 service 为 null，分页返回空结果。
+    _service = FollowTagMoviesService.resolve();
     _sort = 'update';
     _orderBy = 'desc';
     _ctrl = PaginationController<MovieSummary>(fetch: _fetchPage)..fetchMore();
   }
 
   Future<PagedResult<MovieSummary>> _fetchPage(int page) async {
-    final api = ApiClient.instanceOrNull;
-    if (api == null) {
+    final service = _service;
+    if (service == null) {
       return PagedResult(
         items: const [],
         currentPage: page,
@@ -47,20 +48,11 @@ class _FollowTagMoviesScreenState extends State<FollowTagMoviesScreen> {
         total: 0,
       );
     }
-    final query = <String, dynamic>{
-      'filter_by': widget.value,
-      'sort_by': _sort,
-      if (_sort == 'release') 'order_by': _orderBy,
-      'page': page,
-      'limit': 48,
-    };
-    final response = await api.get(Endpoints.moviesTags, queryParameters: query);
-    return apiPageResult(
-      response.data,
-      keys: const ['movies'],
+    return service.getMovies(
+      filterBy: widget.value,
+      sortBy: _sort,
+      orderBy: _orderBy,
       page: page,
-      pageSize: 48,
-      fromJson: (json) => MovieSummary.fromJson(normalizeMovieSummaryJson(json)),
     );
   }
 

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/review.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/core/widgets/star_rating.dart';
 import 'package:jade/features/movie_detail/widgets/movie_review_actions.dart';
 import 'package:jade/features/movie_detail/widgets/top_ranking_tile.dart';

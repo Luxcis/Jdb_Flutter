@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:jade/core/network/api_client.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/core/widgets/entity_list_tile.dart';
 import 'package:jade/core/widgets/paginated_list_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
@@ -25,12 +24,7 @@ class _HistoryRecommendScreenState extends State<HistoryRecommendScreen> {
   @override
   void initState() {
     super.initState();
-    _dataSource =
-        widget.dataSource ??
-        switch (ApiClient.instanceOrNull) {
-          final api? => HistoryRecommendService(api),
-          null => const UnavailableRecommendPeriodDataSource(),
-        };
+    _dataSource = widget.dataSource ?? defaultRecommendPeriodDataSource();
     _controller = PaginationController<RecommendPeriod>(
       fetch: (page) => _dataSource.getPeriods(page: page),
     )..fetchMore();

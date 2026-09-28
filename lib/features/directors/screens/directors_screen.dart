@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/director.dart';
 import 'package:jade/core/models/paged_result.dart';
-import 'package:jade/core/network/api_client.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/core/widgets/entity_list_tile.dart';
 import 'package:jade/core/widgets/paginated_list_view.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
@@ -30,12 +29,7 @@ class _DirectorsScreenState extends State<DirectorsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: tabs.length, vsync: this);
-    _dataSource =
-        widget.dataSource ??
-        switch (ApiClient.instanceOrNull) {
-          final api? => DirectorService(api),
-          null => const UnavailableDirectorDataSource(),
-        };
+    _dataSource = widget.dataSource ?? directorDataSource();
   }
 
   @override
@@ -60,10 +54,8 @@ class _DirectorsScreenState extends State<DirectorsScreen>
         children: [
           for (final type in types)
             _DirectorsTab<Director>(
-              fetchPage: (page) => _dataSource.getDirectors(
-                type: int.parse(type),
-                page: page,
-              ),
+              fetchPage: (page) =>
+                  _dataSource.getDirectors(type: int.parse(type), page: page),
               emptyMessage: '暂无导演',
               itemBuilder: (context, item) => EntityListTile(
                 name: item.name,

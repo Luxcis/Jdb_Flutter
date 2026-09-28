@@ -20,7 +20,8 @@ class MovieListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -64,7 +65,9 @@ class MovieListTile extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     '${movie.number}  ${movie.releaseDate ?? ''}',
-                    style: textTheme.labelSmall?.copyWith(color: Colors.grey),
+                    style: textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   if (screenshots != null && screenshots!.isNotEmpty)
                     Padding(

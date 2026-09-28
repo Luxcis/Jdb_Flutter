@@ -40,6 +40,15 @@ class UnavailableCategoryDataSource implements CategoryDataSource {
 class CategoryService implements CategoryDataSource {
   CategoryService(this._api);
 
+  /// 从全局 ApiClient 单例解析数据源；未初始化（无连接）时返回
+  /// [UnavailableCategoryDataSource]，由其返回空态页。
+  static CategoryDataSource resolve() {
+    final api = ApiClient.instanceOrNull;
+    return api == null
+        ? const UnavailableCategoryDataSource()
+        : CategoryService(api);
+  }
+
   static const _pageSize = 48;
 
   final ApiClient _api;
@@ -78,7 +87,8 @@ class CategoryService implements CategoryDataSource {
       keys: const ['movies', 'items'],
       page: page,
       pageSize: _pageSize,
-      fromJson: (json) => MovieSummary.fromJson(normalizeMovieSummaryJson(json)),
+      fromJson: (json) =>
+          MovieSummary.fromJson(normalizeMovieSummaryJson(json)),
     );
   }
 }

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:jade/core/providers/auth_provider.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/core/widgets/main_shell.dart';
 import 'package:jade/features/home/index.dart';
 import 'package:jade/features/rankings/index.dart';
@@ -84,7 +84,10 @@ class AppRouter {
       builder: (context, state) => const StartupScreen(),
     ),
     GoRoute(path: AppRoutes.login, builder: (c, s) => const LoginScreen()),
-    GoRoute(path: AppRoutes.register, builder: (c, s) => const RegisterScreen()),
+    GoRoute(
+      path: AppRoutes.register,
+      builder: (c, s) => const RegisterScreen(),
+    ),
     GoRoute(
       path: AppRoutes.historyRecommend,
       builder: (c, s) => const HistoryRecommendScreen(),
@@ -99,7 +102,10 @@ class AppRouter {
       branches: [
         StatefulShellBranch(
           routes: [
-            GoRoute(path: AppRoutes.home, builder: (c, s) => const HomeScreen()),
+            GoRoute(
+              path: AppRoutes.home,
+              builder: (c, s) => const HomeScreen(),
+            ),
           ],
         ),
         StatefulShellBranch(

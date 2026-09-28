@@ -5,6 +5,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/follow_tag.dart';
 import 'package:jade/core/providers/following_tags_provider.dart';
+import 'package:jade/core/widgets/confirm_dialog.dart';
 import 'package:provider/provider.dart';
 
 /// 我的关注页：展示已关注标签列表，左滑取消关注，点击跳转标签影片列表。
@@ -20,24 +21,12 @@ class FollowingScreen extends StatefulWidget {
 class _FollowingScreenState extends State<FollowingScreen> {
   Future<void> _unfollow(FollowTagItem tag) async {
     final provider = context.read<FollowingTagsProvider>();
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('取消关注标签？'),
-        content: Text('确定取消关注「${tag.name}」吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('确定'),
-          ),
-        ],
-      ),
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: '取消关注标签？',
+      content: '确定取消关注「${tag.name}」吗？',
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
     try {
       await provider.unfollow(tag.id);
       if (!mounted) return;

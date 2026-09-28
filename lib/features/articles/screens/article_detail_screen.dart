@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
-import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/utils/time_format.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/image_gallery_viewer.dart';
@@ -26,11 +25,8 @@ String resolveArticleImageUrls(String content, String? imageDomain) {
     if (src == base || src.startsWith('$base/')) return m[0]!;
     final uri = Uri.tryParse(src);
     if (uri == null) return m[0]!;
-    if (src.startsWith('//') ||
-        uri.scheme == 'http' ||
-        uri.scheme == 'https') {
-      final pathAndQuery =
-          uri.hasQuery ? '${uri.path}?${uri.query}' : uri.path;
+    if (src.startsWith('//') || uri.scheme == 'http' || uri.scheme == 'https') {
+      final pathAndQuery = uri.hasQuery ? '${uri.path}?${uri.query}' : uri.path;
       return 'src="$base$pathAndQuery"';
     }
     if (uri.scheme.isNotEmpty) return m[0]!;
@@ -79,8 +75,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         _error = null;
       });
     }
-    final api = ApiClient.instanceOrNull;
-    if (api == null) {
+    final service = ArticleService.tryCreate();
+    if (service == null) {
       if (mounted) {
         setState(() {
           _loading = false;
@@ -90,7 +86,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       return;
     }
     try {
-      final detail = await ArticleService(api).getArticleDetail(widget.id);
+      final detail = await service.getArticleDetail(widget.id);
       if (mounted) {
         setState(() {
           _detail = detail;
@@ -126,8 +122,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     final detail = _detail!;
     final textTheme = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
-    final content =
-        resolveArticleImageUrls(detail.content ?? '', detail.imageDomain);
+    final content = resolveArticleImageUrls(
+      detail.content ?? '',
+      detail.imageDomain,
+    );
     final imageUrls = extractImageUrls(content);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -147,7 +145,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                     detail.author!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: textTheme.labelMedium?.copyWith(color: Colors.grey),
+                    style: textTheme.labelMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -155,7 +155,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               if (detail.category != null && detail.category!.isNotEmpty) ...[
                 Text(
                   detail.category!,
-                  style: textTheme.labelMedium?.copyWith(color: Colors.red),
+                  style: textTheme.labelMedium?.copyWith(color: scheme.error),
                 ),
                 const SizedBox(width: 12),
               ],
@@ -163,7 +163,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 Text(
                   formatIsoRelativeTime(detail.releasedAt),
                   style: textTheme.labelMedium?.copyWith(
-                    color: Colors.grey.shade500,
+                    color: scheme.onSurfaceVariant,
                   ),
                 ),
             ],

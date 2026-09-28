@@ -5,7 +5,7 @@ import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/endpoints.dart';
 import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/core/providers/auth_provider.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/core/widgets/movie_list_tile.dart';
 import 'package:jade/core/widgets/rating_badge.dart';
 import 'package:jade/features/rankings/screens/rankings_screen.dart';
@@ -54,7 +54,10 @@ Future<_RankingFixture> _pumpRankings(
     'key_api_domains': ['https://jdforrepam.com'],
   });
   final prefs = await SharedPreferences.getInstance();
-  final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+  final auth = await AuthProvider.create(
+    prefs,
+    secure: InMemorySecureValueStore(),
+  );
   if (loggedIn) {
     await auth.login(token: 'token', user: {'id': 1});
   }
@@ -115,7 +118,8 @@ Future<_RankingFixture> _pumpRankings(
           routes: [
             GoRoute(
               path: '/rankings',
-              builder: (_, _) => RankingsScreen(initialTabIndex: initialTabIndex),
+              builder: (_, _) =>
+                  RankingsScreen(initialTabIndex: initialTabIndex),
             ),
             GoRoute(
               path: '/movie/:id',

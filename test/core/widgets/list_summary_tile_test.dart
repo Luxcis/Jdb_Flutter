@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/list_model.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/core/widgets/list_summary_tile.dart';
 
 void main() {
@@ -54,9 +54,8 @@ void main() {
         ),
         GoRoute(
           path: AppRoutes.commonList,
-          builder: (_, state) => Scaffold(
-            body: Text('common-list ${state.uri.queryParameters}'),
-          ),
+          builder: (_, state) =>
+              Scaffold(body: Text('common-list ${state.uri.queryParameters}')),
         ),
       ],
     );

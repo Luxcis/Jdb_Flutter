@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
-import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/providers/auth_provider.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/login_guide_card.dart';
@@ -36,9 +35,9 @@ class _Top250TabState extends State<Top250Tab>
       ((_maxRank - widget.filter.startRank + 1) / _pageSize).ceil();
 
   Future<PagedResult<MovieSummary>> _fetchPage(int page) async {
-    final api = ApiClient.instanceOrNull;
-    if (api == null) return emptyMoviePage(page: page);
-    final result = await RankingService(api).getTop250(
+    final service = RankingService.tryCreate();
+    if (service == null) return emptyMoviePage(page: page);
+    final result = await service.getTop250(
       startRank: widget.filter.startRank + (page - 1) * _pageSize,
       type: widget.filter.type,
       typeValue: widget.filter.typeValue,

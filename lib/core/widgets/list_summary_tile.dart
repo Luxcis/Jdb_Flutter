@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/list_model.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 
 class ListSummaryTile extends StatelessWidget {
   const ListSummaryTile({

@@ -5,8 +5,7 @@ import 'package:jade/core/models/director.dart';
 import 'package:jade/core/models/list_model.dart';
 import 'package:jade/core/models/maker.dart';
 import 'package:jade/core/models/series.dart';
-import 'package:jade/core/network/api_client.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/core/widgets/entity_list_tile.dart';
 import 'package:jade/core/widgets/list_summary_tile.dart';
 import 'package:jade/features/search/services/search_entity_service.dart';
@@ -47,11 +46,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen>
     _controller = TextEditingController(text: widget.query);
     _tab = TabController(length: 7, vsync: this);
     _entityDataSource =
-        widget.entityDataSource ??
-        switch (ApiClient.instanceOrNull) {
-          final api? => SearchEntityService(api),
-          null => const UnavailableSearchEntityDataSource(),
-        };
+        widget.entityDataSource ?? SearchEntityService.resolve();
     _historyStore = widget.historyStore;
   }
 
@@ -88,11 +83,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen>
   @override
   Widget build(BuildContext context) {
     final movieDataSource =
-        widget.movieDataSource ??
-        switch (ApiClient.instanceOrNull) {
-          final api? => SearchMovieService(api),
-          null => const UnavailableSearchMovieDataSource(),
-        };
+        widget.movieDataSource ?? SearchMovieService.resolve();
     return Scaffold(
       appBar: AppBar(
         title: TextField(
@@ -208,10 +199,8 @@ class _SearchResultsScreenState extends State<SearchResultsScreen>
                   ),
                   idOf: (item) => item.id,
                   emptyMessage: '暂无清单',
-                  itemBuilder: (context, item) => ListSummaryTile(
-                    list: item,
-                    showViewCount: false,
-                  ),
+                  itemBuilder: (context, item) =>
+                      ListSummaryTile(list: item, showViewCount: false),
                 ),
                 PaginatedEntitySearchTab<Code>(
                   fetchPage: (page) => _entityDataSource.getCodes(

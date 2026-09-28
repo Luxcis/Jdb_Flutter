@@ -60,6 +60,17 @@ class ReviewMoviesService implements ReviewMoviesDataSource {
   }
 }
 
+/// 页面缺省数据源：注入 [override] 优先，否则按 ApiClient 可用性
+/// 返回 API 实现或不可用降级（screen 不再直接触碰 ApiClient）。
+ReviewMoviesDataSource reviewMoviesDataSource([
+  ReviewMoviesDataSource? override,
+]) =>
+    override ??
+    switch (ApiClient.instanceOrNull) {
+      final api? => ReviewMoviesService(api),
+      null => const UnavailableReviewMoviesDataSource(),
+    };
+
 /// 在 API 客户端不可用时返回空分页结果的数据源。
 class UnavailableReviewMoviesDataSource implements ReviewMoviesDataSource {
   /// 创建不发起网络请求的空数据源。

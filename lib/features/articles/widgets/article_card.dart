@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:jade/core/router/routes.dart';
+import 'package:jade/router/routes.dart';
 import 'package:jade/core/utils/time_format.dart';
 import 'package:jade/core/widgets/cached_image.dart';
 import 'package:jade/features/articles/models/article.dart';
@@ -28,10 +28,10 @@ class ArticleCard extends StatelessWidget {
               child: ColoredBox(
                 color: scheme.surfaceContainerHighest,
                 child: coverUrl == null || coverUrl.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Icon(
                           Icons.image_outlined,
-                          color: Colors.grey,
+                          color: scheme.outline,
                           size: 40,
                         ),
                       )
@@ -65,7 +65,7 @@ class ArticleCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: textTheme.labelSmall?.copyWith(
-                            color: Colors.grey,
+                            color: scheme.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -77,13 +77,13 @@ class ArticleCard extends StatelessWidget {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.red,
+                            color: scheme.error,
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
                             article.category!,
                             style: textTheme.labelSmall?.copyWith(
-                              color: Colors.white,
+                              color: scheme.onError,
                             ),
                           ),
                         ),
@@ -92,7 +92,7 @@ class ArticleCard extends StatelessWidget {
                       Text(
                         formatIsoRelativeTime(article.releasedAt),
                         style: textTheme.labelSmall?.copyWith(
-                          color: Colors.grey.shade500,
+                          color: scheme.onSurfaceVariant,
                         ),
                       ),
                     ],

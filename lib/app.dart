@@ -4,7 +4,7 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:jade/core/providers/theme_provider.dart';
-import 'package:jade/core/router/app_router.dart';
+import 'package:jade/router/app_router.dart';
 import 'package:jade/core/theme/app_theme.dart';
 
 class MyApp extends StatefulWidget {

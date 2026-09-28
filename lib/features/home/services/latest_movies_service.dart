@@ -13,6 +13,13 @@ abstract interface class LatestMoviesDataSource {
   });
 }
 
+/// 装配点判空：按可用连接构造数据源，未登录/无连接返回不可用数据源。
+LatestMoviesDataSource defaultLatestMoviesDataSource() =>
+    switch (ApiClient.instanceOrNull) {
+      final api? => LatestMoviesService(api),
+      null => const UnavailableLatestMoviesDataSource(),
+    };
+
 class LatestMoviesService implements LatestMoviesDataSource {
   LatestMoviesService(this._api);
 

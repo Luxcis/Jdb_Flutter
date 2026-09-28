@@ -22,7 +22,9 @@ void main() {
 
   Future<void> pumpCard(WidgetTester tester, ArticleSummary item) async {
     await tester.pumpWidget(
-      MaterialApp(home: Scaffold(body: ArticleCard(article: item))),
+      MaterialApp(
+        home: Scaffold(body: ArticleCard(article: item)),
+      ),
     );
   }
 
@@ -43,10 +45,13 @@ void main() {
 
     expect(find.text('业界'), findsOneWidget);
     final container = tester.widget<Container>(
-      find.ancestor(of: find.text('业界'), matching: find.byType(Container)).first,
+      find
+          .ancestor(of: find.text('业界'), matching: find.byType(Container))
+          .first,
     );
     final decoration = container.decoration! as BoxDecoration;
-    expect(decoration.color, Colors.red);
+    final context = tester.element(find.text('业界'));
+    expect(decoration.color, Theme.of(context).colorScheme.error);
   });
 
   testWidgets('category 为空时不渲染标签', (tester) async {
