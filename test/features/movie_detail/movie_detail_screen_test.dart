@@ -21,6 +21,7 @@ import 'package:jade/features/common/screens/common_list_screen.dart';
 import 'package:jade/features/common/services/tag_movies_service.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/screens/movie_detail_screen.dart';
+import 'package:jade/features/movie_detail/widgets/basic_info_widgets.dart';
 import 'package:jade/features/movie_detail/widgets/movie_review_actions.dart';
 import 'package:jade/features/movie_detail/widgets/top_ranking_tile.dart';
 import 'package:jade/features/movie_detail/widgets/watched_review_sheet.dart';
@@ -130,6 +131,7 @@ void _enqueueCompleteMovieDetail(
   FakeAdapter adapter, {
   String? previewVideoUrl,
   Map<String, dynamic>? userReview,
+  String coverUrl = 'covers/test.jpg',
   List<Object?> previewImages = const [
     {'url': 'screenshots/test.jpg'},
     {'url': 'screenshots/test-2.jpg'},
@@ -145,7 +147,7 @@ void _enqueueCompleteMovieDetail(
         'number': 'SSIS-001',
         'number_letter': 'SSIS',
         'title': '测试影片',
-        'cover_url': 'covers/test.jpg',
+        'cover_url': coverUrl,
         'preview_video_url': ?previewVideoUrl,
         'release_date': '2026-07-22',
         'duration': 120,
@@ -2468,6 +2470,47 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.byKey(const Key('image-gallery-viewer')), findsNothing);
+  });
+
+  testWidgets('点击顶部封面打开仅含封面的大图查看器', (tester) async {
+    _mockPathProvider(tester);
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(adapter);
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await _pumpUntilText(tester, '测试影片');
+
+    expect(find.bySemanticsLabel('查看《测试影片》封面大图'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('movie-detail-cover')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byKey(const Key('image-gallery-viewer')), findsOneWidget);
+    expect(find.text('1 / 1'), findsOneWidget);
+    expect(find.byType(PhotoViewGallery), findsOneWidget);
+    expect(find.byKey(const Key('image-gallery-page-0')), findsOneWidget);
+    expect(find.byKey(const Key('image-gallery-page-1')), findsNothing);
+
+    await tester.tap(find.byTooltip('关闭'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byKey(const Key('image-gallery-viewer')), findsNothing);
+  });
+
+  testWidgets('封面 URL 为空时不提供点击放大入口', (tester) async {
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(adapter, coverUrl: '');
+
+    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byKey(const Key('movie-detail-cover')), findsNothing);
+    expect(find.bySemanticsLabel('查看《测试影片》封面大图'), findsNothing);
+    expect(find.byType(MovieDetailHero), findsOneWidget);
   });
 
   testWidgets('详情页在评分下方按序渲染 top_rankings 榜单行', (tester) async {

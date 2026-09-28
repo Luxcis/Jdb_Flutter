@@ -3,6 +3,7 @@ import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/list_model.dart';
 import 'package:jade/core/models/magnet.dart';
 import 'package:jade/core/models/movie.dart';
+import 'package:jade/core/widgets/image_gallery_viewer.dart';
 import 'package:jade/core/widgets/movie_cover_image.dart';
 import 'package:jade/features/movie_detail/models/movie_review_sort.dart';
 import 'package:jade/features/movie_detail/services/detail_section_state.dart';
@@ -11,6 +12,9 @@ import 'package:jade/features/movie_detail/widgets/movie_detail_lists.dart';
 import 'package:jade/features/movie_detail/widgets/movie_info_card.dart';
 
 /// 影片详情页顶部封面区（含动态高度）。
+///
+/// 封面可点击放大：打开与剧照一致的全屏大图查看器，仅显示封面一张；
+/// 封面 URL 为空时不提供点击入口，保持纯展示。
 class MovieDetailHero extends StatelessWidget {
   const MovieDetailHero({super.key, required this.detail});
 
@@ -21,17 +25,40 @@ class MovieDetailHero extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final height = (constraints.maxWidth / 1.45).clamp(220.0, 360.0);
+        final canZoom = detail.coverUrl.trim().isNotEmpty;
+        final image = MovieCoverImage(
+          detail.coverUrl,
+          variant: MovieImageVariant.cover,
+          // 可点击时由外层按钮语义统一播报，避免标题重复朗读。
+          semanticLabel: canZoom ? null : detail.title,
+          fit: BoxFit.cover,
+        );
         return SizedBox(
           width: double.infinity,
           height: height,
           child: ColoredBox(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: MovieCoverImage(
-              detail.coverUrl,
-              variant: MovieImageVariant.cover,
-              semanticLabel: detail.title,
-              fit: BoxFit.cover,
-            ),
+            child: canZoom
+                ? Semantics(
+                    button: true,
+                    label: '查看《${detail.title}》封面大图',
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        key: const Key('movie-detail-cover'),
+                        onTap: () => showDialog<void>(
+                          context: context,
+                          useSafeArea: false,
+                          builder: (_) => ImageGalleryViewer(
+                            urls: [detail.coverUrl],
+                            initialIndex: 0,
+                          ),
+                        ),
+                        child: image,
+                      ),
+                    ),
+                  )
+                : image,
           ),
         );
       },
