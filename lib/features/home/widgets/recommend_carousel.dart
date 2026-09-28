@@ -112,6 +112,8 @@ class _RecommendCarouselState extends State<RecommendCarousel>
                   padding: const EdgeInsets.all(8),
                   child: Text(
                     movie.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: Colors.white),
                   ),
                 ),

@@ -1,5 +1,6 @@
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/features/home/widgets/recommend_carousel.dart';
@@ -158,5 +159,75 @@ void main() {
     await tester.pump(const Duration(seconds: 10));
 
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('超宽标题限定单行并以省略号截断', (tester) async {
+    final longTitle = '超' * 100;
+    await pumpCarousel(
+      tester,
+      items: [
+        MovieSummary(id: 'long', number: 'L-1', title: longTitle, coverUrl: ''),
+      ],
+    );
+
+    final titleFinder = find.text(longTitle);
+    final textWidget = tester.widget<Text>(titleFinder);
+    expect(textWidget.maxLines, 1);
+    expect(textWidget.overflow, TextOverflow.ellipsis);
+
+    final overlayFinder = find.descendant(
+      of: find.byKey(const Key('home-recommend-card-long')),
+      matching: find.byWidgetPredicate(
+        (widget) => widget is Container && widget.color == Colors.black54,
+      ),
+    );
+    final overlaySize = tester.getSize(overlayFinder);
+    final style = tester.renderObject<RenderParagraph>(titleFinder).text.style;
+    final reference = TextPainter(
+      text: TextSpan(text: longTitle, style: style),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    expect(reference.width, greaterThan(overlaySize.width - 16));
+    expect(
+      tester.renderObject<RenderParagraph>(titleFinder).textSize.height,
+      closeTo(reference.height, 0.1),
+    );
+    expect(overlaySize.height, closeTo(reference.height + 16, 0.1));
+  });
+
+  testWidgets('未超宽标题完整显示且无省略号', (tester) async {
+    const shortTitle = '短标题';
+    await pumpCarousel(
+      tester,
+      items: const [
+        MovieSummary(id: 'short', number: 'S-1', title: shortTitle, coverUrl: ''),
+      ],
+    );
+
+    final titleFinder = find.text(shortTitle);
+    final textWidget = tester.widget<Text>(titleFinder);
+    expect(textWidget.maxLines, 1);
+    expect(textWidget.overflow, TextOverflow.ellipsis);
+
+    final overlayFinder = find.descendant(
+      of: find.byKey(const Key('home-recommend-card-short')),
+      matching: find.byWidgetPredicate(
+        (widget) => widget is Container && widget.color == Colors.black54,
+      ),
+    );
+    final overlaySize = tester.getSize(overlayFinder);
+    final style = tester.renderObject<RenderParagraph>(titleFinder).text.style;
+    final reference = TextPainter(
+      text: TextSpan(text: shortTitle, style: style),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    expect(reference.width, lessThan(overlaySize.width - 16));
+    expect(
+      tester.renderObject<RenderParagraph>(titleFinder).textSize.height,
+      closeTo(reference.height, 0.1),
+    );
+    expect(overlaySize.height, closeTo(reference.height + 16, 0.1));
   });
 }
