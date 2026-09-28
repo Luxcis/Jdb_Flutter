@@ -1,21 +1,15 @@
 # Authored 区质量标尺（样例）
 
-这是你编写的 **Authored 区**（entry 的 `## Decision Core`、node 的 `## Guidance`）的具体质量标尺。生成器把你的
-Authored 区组装到确定性 **Auto 区**（frontmatter、路由表、Entry/Exit Check、证据格式、Recovery）之上。**你只写
-Authored 区**。请按本样例校准，而不是写一行套话。
+这是你编写的 **Authored 区**（entry 的 `## Decision Core`、node 的 `## Guidance`）的具体质量标尺。生成器把你的 Authored 区组装到确定性 **Auto 区**（frontmatter、路由表、Entry/Exit Check、证据格式、Recovery）之上。**你只写 Authored 区**。请按本样例校准，而不是写一行套话。
 
 ## "Auto" 与 "Authored" 的含义
 
-- **Auto 区（模板，不要重写）**：不变的控制面。node 的 Auto 区包括 `## Node Goal`、`## Entry Check`、
-  `## Skill Implementation`、`## Required Skill Calls`、`## Output Schemas`、`## Evidence Record`、
-  `## Guardrails`、`## Exit Check`、`## Recovery`。entry 的 Auto 区包括 `## Workflow Nodes`、
-  `## Skill Bindings`、`## Guardrails And Evidence`、`## Runtime And Recovery`。
+- **Auto 区（模板，不要重写）**：不变的控制面。node 的 Auto 区包括 `## Node Goal`、`## Entry Check`、`## Skill Implementation`、`## Required Skill Calls`、`## Output Schemas`、`## Evidence Record`、`## Guardrails`、`## Exit Check`、`## Recovery`。entry 的 Auto 区包括 `## Workflow Nodes`、`## Skill Bindings`、`## Guardrails And Evidence`、`## Runtime And Recovery`。
 - **Authored 区（你写）**：Auto 区无法得知的领域决策。这是让 Skill "好用"而非"只是能跑"的关键。
 
 ## 样例：`substance` 节点的 Guidance 区（workflow-kernel）
 
-下面是 research-writer workflow 中"Research"生产者节点的 `## Guidance` 正文。注意它是**决策内容**
-：前提、有序的领域步骤、超出机械 Exit Check 的完成判断、Red flags。它按名引用绑定的 Skill，但不复制其正文。
+下面是 research-writer workflow 中"Research"生产者节点的 `## Guidance` 正文。注意它是**决策内容**：前提、有序的领域步骤、超出机械 Exit Check 的完成判断、Red flags。它按名引用绑定的 Skill，但不复制其正文。
 
 ```markdown
 ## Prerequisites
@@ -42,17 +36,13 @@ Authored 区**。请按本样例校准，而不是写一行套话。
 - 对需要多视角的主题，仅凭单一来源就认为充分。
 ```
 
-用 `###` 子标题，使其嵌套在 `## Guidance` 之下。上述四段（Prerequisites / Steps / Completion
-reasoning / Red flags）是 `substance` 节点的预期形态。
+用 `###` 子标题，使其嵌套在 `## Guidance` 之下。上述四段（Prerequisites / Steps / Completion reasoning / Red flags）是 `substance` 节点的预期形态。
 
 ## 样例：entry Decision Core（workflow-entry）
 
-下面是 entry SKILL.md 的 `## Decision Core` 正文。entry 是**每次调用最先读取的文件**——一个薄 Decision
-Core（"跑 next，照做"）会让整个 Skill 感觉机械。一个富 Decision Core 是 comet 级 Skill "好用"的核心。
+下面是 entry SKILL.md 的 `## Decision Core` 正文。entry 是**每次调用最先读取的文件**——一个薄 Decision Core（"跑 next，照做"）会让整个 Skill 感觉机械。一个富 Decision Core 是 comet 级 Skill "好用"的核心。
 
-Decision Core 应建模 Auto 区不处理的三件事：(1) **语义化当前节点检测**（如何判断用户在哪个
-Node，而非只看脚本输出），(2) **resume 与 drift 规则**（上下文恢复或状态与文件冲突时怎么办），(3) **决策点与
-Red flags**（何时暂停等用户，以及什么是假进展）。
+Decision Core 应建模 Auto 区不处理的三件事：(1) **语义化当前节点检测**（如何判断用户在哪个 Node，而非只看脚本输出），(2) **resume 与 drift 规则**（上下文恢复或状态与文件冲突时怎么办），(3) **决策点与 Red flags**（何时暂停等用户，以及什么是假进展）。
 
 ```markdown
 ### 自动节点检测
@@ -96,18 +86,12 @@ Node guard 失败时先自动读取证据并执行唯一安全修复；若缺少
 | "Exit Check 通过了，所以工作够好了" | Exit Check 是机械的。你的职责是判断检查之外的质量——稀疏笔记、浅层分析、缺失视角，脚本抓不到。 |
 ```
 
-此样例以精简形式建模了 comet 的 Decision Core：语义检测（Step 0 读 Node
-顺序，非只看脚本输出）、状态忠实（文件优先于过期状态）、resume 规则（每次恢复重新检测）、阻塞决策点（显式表格）、Red
-flags（"想法 → 风险"模式，抓 agent 自欺）。
+此样例以精简形式建模了 comet 的 Decision Core：语义检测（Step 0 读 Node 顺序，非只看脚本输出）、状态忠实（文件优先于过期状态）、resume 规则（每次恢复重新检测）、阻塞决策点（显式表格）、Red flags（"想法 → 风险"模式，抓 agent 自欺）。
 
 ## substance 与 delegates
 
-- **substance** 节点（workflow-kernel）：上面的样例就是标尺。必须有富 Guidance；缺失时该节点渲染为
-  `AUTHORING PENDING`，Bundle 不得 ready。
-- **delegates** 节点（comet-five-phase-overlay，委托给已安装的富 Skill）：富执行内容由被委托 Skill 承载，
-  **不要复制**。但如果该节点声明了 **Required Skill Calls**（如 execute 节点要求 `elementui`
-  ），请写一段聚焦的整合说明——在被委托流程的什么时机必须加载该 Skill、它补充什么
-  evidence——而不是泛泛一句"加载 X"。例如要求 `elementui` 的 delegates execute 节点：
+- **substance** 节点（workflow-kernel）：上面的样例就是标尺。必须有富 Guidance；缺失时该节点渲染为 `AUTHORING PENDING`，Bundle 不得 ready。
+- **delegates** 节点（comet-five-phase-overlay，委托给已安装的富 Skill）：富执行内容由被委托 Skill 承载，**不要复制**。但如果该节点声明了 **Required Skill Calls**（如 execute 节点要求 `elementui`），请写一段聚焦的整合说明——在被委托流程的什么时机必须加载该 Skill、它补充什么 evidence——而不是泛泛一句"加载 X"。例如要求 `elementui` 的 delegates execute 节点：
 
 ```markdown
 本节点用 `comet-build` 执行。在其流程之外，每当改动涉及组件库时加载 `elementui`，并在记录 `required-skill:execute.elementui` 检查前确认改动使用了项目认可的组件。不要重复实现 `comet-build` 已做的事。

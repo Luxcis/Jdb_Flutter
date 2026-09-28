@@ -2,8 +2,7 @@
 
 ## 职责
 
-编写 internal Node Skill 的用户可见核心内容。entry Skill 由 workflow entry 作者单独负责。目标是产出
-Comet-like 的多 Node workflow，
+编写 internal Node Skill 的用户可见核心内容。entry Skill 由 workflow entry 作者单独负责。目标是产出 Comet-like 的多 Node workflow，
 不得把来源 Skill 简单串联，也不复制粘贴原 Skill 全文。
 
 必须覆盖：
@@ -14,23 +13,16 @@ Comet-like 的多 Node workflow，
 
 ## 创作区（你写什么）
 
-生成器把每个 Node SKILL.md 组装成确定性 **Auto 区**（frontmatter、Node Goal、Entry Check、Skill
-Implementation、Required Skill Calls、Output Schemas、Evidence Record、Guardrails、Exit Check、Recovery）+
-由你编写的 **Authored 区**（`## Guidance`）。**你只写 Guidance 正文，不写整个文件**。主会话通过
-`comet creator authoring-record <name> --lane skill-core --file <out.json>` 记录你的产出；artifact
-`../<node-skill>/SKILL.md` 的 `content` 即 Guidance 正文。
+生成器把每个 Node SKILL.md 组装成确定性 **Auto 区**（frontmatter、Node Goal、Entry Check、Skill Implementation、Required Skill Calls、Output Schemas、Evidence Record、Guardrails、Exit Check、Recovery）+ 由你编写的 **Authored 区**（`## Guidance`）。**你只写 Guidance 正文，不写整个文件**。主会话通过 `comet creator authoring-record <name> --lane skill-core --file <out.json>` 记录你的产出；artifact `../<node-skill>/SKILL.md` 的 `content` 即 Guidance 正文。
 
-质量标尺：真实的 Comet 阶段 skill（如 `comet-build/SKILL.md`）；完整 substance 节点 Guidance 范例见
-`reference/authored-zone-example.md`。写决策内容，不写套话。在 Guidance 内用 `###` 子标题（嵌套在
-`## Guidance` 之下）：
+质量标尺：真实的 Comet 阶段 skill（如 `comet-build/SKILL.md`）；完整 substance 节点 Guidance 范例见 `reference/authored-zone-example.md`。写决策内容，不写套话。在 Guidance 内用 `###` 子标题（嵌套在 `## Guidance` 之下）：
 
 - `### Prerequisites` — 本 Node 开始前必须成立的前提。
 - `### Steps` — 有序、领域相关的步骤；按名引用绑定的 Skill 并说明何时调用（不要复制它的正文）。
 - `### Completion reasoning` — 本 Node 真正完成的判定（超出机械的 Exit Check），以及其中的判断取舍。
 - `### Red flags` — 看似进展、实则不然的失败模式。
 
-下面是"Research" substance 节点的具体摘录，展示预期深度。注意它是**决策内容**
-（何时停止、什么算充分、什么该拒绝），不是重述路由表或 output schema。
+下面是"Research" substance 节点的具体摘录，展示预期深度。注意它是**决策内容**（何时停止、什么算充分、什么该拒绝），不是重述路由表或 output schema。
 
 ```markdown
 ### Prerequisites
@@ -59,10 +51,8 @@ Implementation、Required Skill Calls、Output Schemas、Evidence Record、Guard
 
 节点模式（来自 protocol）：
 
-- **substance** 节点（workflow-kernel 默认）：必须有富 Guidance。缺失时该节点渲染为 `AUTHORING PENDING`
-  ，Bundle 不得 ready。
-- **delegates** 节点（comet-five-phase-overlay，委托给已安装的富 Skill）：短 Guidance 注即可——富内容由被委托
-  Skill 承载，不要复制。
+- **substance** 节点（workflow-kernel 默认）：必须有富 Guidance。缺失时该节点渲染为 `AUTHORING PENDING`，Bundle 不得 ready。
+- **delegates** 节点（comet-five-phase-overlay，委托给已安装的富 Skill）：短 Guidance 注即可——富内容由被委托 Skill 承载，不要复制。
 
 ## 输入
 
@@ -96,8 +86,7 @@ prompt:
 返回 internal Node Skill 草稿，必须体现：
 
 - internal Node Skill 负责单 Node 目标、必须调用的 Skill、Node 完成证据和脚本守卫。
-- 若 protocol 声明 `requiredSkillCalls`，对应阶段必须明确写出目标槽位、必调 Skill、适用范围和证据要求；subagent
-  场景必须写明子代理任务提示中也要加载该 Skill。
+- 若 protocol 声明 `requiredSkillCalls`，对应阶段必须明确写出目标槽位、必调 Skill、适用范围和证据要求；subagent 场景必须写明子代理任务提示中也要加载该 Skill。
 - 阶段未达成目标时继续工作，不因为流程清单走完就退出。
 - 自动推进必须来自脚本输出的 `NEXT:` 和 `SKILL:`，而不是让 Agent 猜下一步。
 - 嵌套 Skill 调用只写 Skill 名字，不写 provider 前缀。

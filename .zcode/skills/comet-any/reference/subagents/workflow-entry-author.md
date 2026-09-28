@@ -2,8 +2,7 @@
 
 ## 职责
 
-编写生成 Skill 的 entry `SKILL.md`。entry 只负责入口、恢复、主路由说明和用户停顿点；不得把阶段路线写成会立即触发多个
-Skill 的执行清单。
+编写生成 Skill 的 entry `SKILL.md`。entry 只负责入口、恢复、主路由说明和用户停顿点；不得把阶段路线写成会立即触发多个 Skill 的执行清单。
 
 必须覆盖：
 
@@ -13,26 +12,16 @@ Skill 的执行清单。
 
 ## 创作区（你写什么）
 
-生成器把 entry SKILL.md 组装成确定性 **Auto 区**（frontmatter、Workflow Nodes 路由表、Skill
-Bindings、Guardrails And Evidence、Runtime And Recovery）+ 由你编写的 **Authored 区**（
-`## Decision Core`）。**你只写 Decision Core 正文，不写整个文件**。主会话通过
-`comet creator authoring-record <name> --lane workflow-entry --file <out.json>` 记录；artifact
-`SKILL.md` 的 `content` 即 Decision Core 正文。
+生成器把 entry SKILL.md 组装成确定性 **Auto 区**（frontmatter、Workflow Nodes 路由表、Skill Bindings、Guardrails And Evidence、Runtime And Recovery）+ 由你编写的 **Authored 区**（`## Decision Core`）。**你只写 Decision Core 正文，不写整个文件**。主会话通过 `comet creator authoring-record <name> --lane workflow-entry --file <out.json>` 记录；artifact `SKILL.md` 的 `content` 即 Decision Core 正文。
 
-质量标尺：`comet/SKILL.md` 的 Decision Core（完整 entry Decision Core 范例见
-`reference/authored-zone-example.md`）。写 agent 可读的决策规则——机械路由已由 Auto 区的
-`workflow-state.mjs next` 处理，所以聚焦判断：
+质量标尺：`comet/SKILL.md` 的 Decision Core（完整 entry Decision Core 范例见 `reference/authored-zone-example.md`）。写 agent 可读的决策规则——机械路由已由 Auto 区的 `workflow-state.mjs next` 处理，所以聚焦判断：
 
-- **语义化当前节点检测** — 如何判断用户在哪个 Node，而非只跑脚本。建模 comet 的 Step 0（从用户消息检测意图，检查
-  Node 顺序，处理"属于前序/后序 Node"的冲突）+ Step 1（读状态，文件优先于过期状态）。
-- **Resume 与 drift 规则** — 上下文恢复时怎么办（从头重新检测，永远不信任对话历史），状态说 DONE 但
-  artifact 缺失时怎么办，用户在 Node 中途换话题时怎么办。
-- **决策分类与决策点** — 先区分用户决策、自动处理、停止条件和手动衔接，再只为真正需要用户选择的情况建表。清晰的首次调用、可确定修复的
-  guard 失败、单一合法下一步和 `NEXT: manual` 都不得制造确认点。
+- **语义化当前节点检测** — 如何判断用户在哪个 Node，而非只跑脚本。建模 comet 的 Step 0（从用户消息检测意图，检查 Node 顺序，处理"属于前序/后序 Node"的冲突）+ Step 1（读状态，文件优先于过期状态）。
+- **Resume 与 drift 规则** — 上下文恢复时怎么办（从头重新检测，永远不信任对话历史），状态说 DONE 但 artifact 缺失时怎么办，用户在 Node 中途换话题时怎么办。
+- **决策分类与决策点** — 先区分用户决策、自动处理、停止条件和手动衔接，再只为真正需要用户选择的情况建表。清晰的首次调用、可确定修复的 guard 失败、单一合法下一步和 `NEXT: manual` 都不得制造确认点。
 - **Red flags** — "agent 想法 → 实际风险"模式，抓自欺（如"用户提到了主题所以研究已确认" → 提到 ≠ 确认）。
 
-没有这四个子节的 Decision Core 是 stub，不是 Decision Core。entry 是每次调用最先读取的文件——它决定了
-Skill 感觉"智能"还是"机械"。
+没有这四个子节的 Decision Core 是 stub，不是 Decision Core。entry 是每次调用最先读取的文件——它决定了 Skill 感觉"智能"还是"机械"。
 
 Auto 区的 Node 路由表仅供参考——不要复制成执行清单，不要发出多个立即 Skill 加载。
 
@@ -45,8 +34,7 @@ Auto 区的 Node 路由表仅供参考——不要复制成执行清单，不要
 - 脚本作者返回的 `status`、`init`、`next`、`NEXT:`、`SKILL:` 和 guard 契约。
 - `/comet-classic` 定制场景下必须保留的 open / design / build / verify / archive 边界。
 
-使用文件交接：主会话提供路径，不粘贴大段全文。不要继承主会话历史；只使用本 brief、通用输入、脚本契约和
-reference 证据。
+使用文件交接：主会话提供路径，不粘贴大段全文。不要继承主会话历史；只使用本 brief、通用输入、脚本契约和 reference 证据。
 
 ## 派发模板
 
@@ -72,8 +60,7 @@ entry 草稿必须体现：
 - 未启动时先初始化状态，再查询 `next`。
 - 只有脚本输出 `NEXT: auto` 和 `SKILL: <node-skill>` 后，才加载这一个 Node Skill。
 - 阶段路线只能作为参考表，不能使用“立即执行”或“必须加载”这类执行指令。
-- 对 `/comet-classic` 定制，entry 必须列出必调槽位 Skill，但只能作为阶段内义务说明，不能变成 entry
-  立即执行清单。
+- 对 `/comet-classic` 定制，entry 必须列出必调槽位 Skill，但只能作为阶段内义务说明，不能变成 entry 立即执行清单。
 - 用户决策、自动处理、停止条件、手动衔接、恢复路径和参考文件清楚可见；只有至少两个真实合法选项时才停顿，相邻选择应合并。
 - 对 `/comet-classic` 定制，说明保留 open / design / build / verify / archive 主路径和阶段守卫。
 
@@ -106,5 +93,4 @@ entry 草稿必须体现：
 
 状态必须是 `DONE`、`DONE_WITH_CONCERNS`、`NEEDS_CONTEXT`、`BLOCKED`。
 
-完整报告写入报告文件路径。返回给主会话的摘要只返回 15 行以内状态摘要，包含状态、报告文件路径、claim
-列表、未解决疑虑和建议返工点。若状态是 `BLOCKED` 或 `NEEDS_CONTEXT`，必须直接说明缺什么上下文、尝试过什么、需要主会话如何处理。
+完整报告写入报告文件路径。返回给主会话的摘要只返回 15 行以内状态摘要，包含状态、报告文件路径、claim 列表、未解决疑虑和建议返工点。若状态是 `BLOCKED` 或 `NEEDS_CONTEXT`，必须直接说明缺什么上下文、尝试过什么、需要主会话如何处理。

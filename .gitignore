@@ -57,3 +57,4 @@ dsh-usage/
 /.comet/*
 !/.comet/config.yaml
 # <<< Comet managed project state <<<
+.mimosa/

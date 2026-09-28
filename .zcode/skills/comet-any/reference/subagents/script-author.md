@@ -11,21 +11,16 @@
 - `scripts/workflow-guard.mjs`
 - `scripts/workflow-handoff.mjs`
 
-factory 还会从同一份 `workflow-protocol.json` 确定性生成 `scripts/comet-plan.mjs`、
-`scripts/comet-check.mjs`、`scripts/comet-hook-guard.mjs`。不要重复设计这三个脚本；你的契约只针对
-skill-core 作者与 entry 作者引用的 `workflow-*.mjs`。
+factory 还会从同一份 `workflow-protocol.json` 确定性生成 `scripts/comet-plan.mjs`、`scripts/comet-check.mjs`、`scripts/comet-hook-guard.mjs`。不要重复设计这三个脚本；你的契约只针对 skill-core 作者与 entry 作者引用的 `workflow-*.mjs`。
 
 ## 输入
 
 读取主会话提供的通用输入，尤其关注：
 
 - `reference/workflow-protocol.json`
-- `plan.json` 的 `workflow.kind`、`workflow.nodes`、`engineMode`、`runnerMode`，以及规范化后的
-  `workflow-protocol.json`
+- `plan.json` 的 `workflow.kind`、`workflow.nodes`、`engineMode`、`runnerMode`，以及规范化后的 `workflow-protocol.json`
 - `reference/resolved-skills.json`
-- `/comet-classic` 定制时的 `.comet.yaml` 受保护语义；`comet-five-phase-overlay` 的主状态只来自
-  Classic layout resolver 绑定的 `<classic-change-dir>/.comet.yaml`，不得创建
-  `.comet/runs/<workflow>/state.json` 作为 Comet overlay 主状态
+- `/comet-classic` 定制时的 `.comet.yaml` 受保护语义；`comet-five-phase-overlay` 的主状态只来自 Classic layout resolver 绑定的 `<classic-change-dir>/.comet.yaml`，不得创建 `.comet/runs/<workflow>/state.json` 作为 Comet overlay 主状态
 
 使用文件交接：主会话提供路径，不粘贴大段全文。不要读取主会话历史，也不要要求用户重新解释已经写入
 artifact 的内容。
