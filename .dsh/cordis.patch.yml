@@ -1,0 +1,3 @@
+- dsh-hooks-claude-code:
+    configPath: ./.dsh/hooks.json
+    projectDir: .

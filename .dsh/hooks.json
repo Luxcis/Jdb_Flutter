@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"/Users/luxcis/data/workspace/Flutter/Jdb_Flutter/.dsh/skills/comet/scripts/comet-hook-router.mjs\" --platform \"dsh\" --project-root \"/Users/luxcis/data/workspace/Flutter/Jdb_Flutter\""
+          }
+        ]
+      }
+    ]
+  }
+}
