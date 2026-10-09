@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/cache_service.dart';
 import 'package:jade/core/network/domain_manager.dart';
@@ -10,6 +11,7 @@ import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/providers/theme_provider.dart';
 import 'package:jade/core/widgets/confirm_dialog.dart';
 import 'package:jade/features/profile/services/app_version_service.dart';
+import 'package:jade/features/profile/services/update_check_session.dart';
 import 'package:jade/core/services/token_authentication_service.dart';
 import 'package:jade/features/profile/services/update_service.dart';
 import 'package:jade/features/profile/widgets/profile_pickers.dart';
@@ -24,11 +26,19 @@ class ProfileSettingsScreen extends StatefulWidget {
     this.cacheService,
     this.appVersionService,
     this.tokenAuthenticationService,
+    this.updateCheckSession,
+    this.updateHttpClient,
   });
 
   final CacheService? cacheService;
   final AppVersionService? appVersionService;
   final TokenAuthenticationService? tokenAuthenticationService;
+
+  /// 检查更新结论的会话级记录；默认共享进程级单例（测试可注入独立实例）。
+  final UpdateCheckSession? updateCheckSession;
+
+  /// 检查更新使用的 http.Client；仅测试注入，默认按既有行为创建。
+  final http.Client? updateHttpClient;
 
   @override
   State<ProfileSettingsScreen> createState() => _ProfileSettingsScreenState();
@@ -39,6 +49,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   late final CacheService _cacheService;
   late final AppVersionService _appVersionService;
+  late final UpdateCheckSession _updateCheckSession;
   Timer? _tokenTapTimer;
   var _versionTapCount = 0;
   int? _cacheSizeBytes;
@@ -52,6 +63,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     _cacheService = widget.cacheService ?? JdbImageCacheService();
     _appVersionService =
         widget.appVersionService ?? const PackageAppVersionService();
+    _updateCheckSession =
+        widget.updateCheckSession ?? UpdateCheckSession.shared;
     unawaited(_loadCacheSize());
     unawaited(_loadAppVersion());
   }
@@ -125,9 +138,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       final checker = UpdateChecker(
         currentVersion: _appVersion == '…' ? '0.0.0' : _appVersion,
         proxy: proxy,
+        client: widget.updateHttpClient,
       );
       final result = await checker.check();
       if (!mounted) return;
+      _updateCheckSession.record(result.hasUpdate);
       if (!result.hasUpdate) {
         ScaffoldMessenger.of(
           context,
@@ -230,6 +245,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     );
     final dm = context.watch<DomainManager>();
     final themeMode = context.watch<ThemeProvider>().themeMode;
+    final updateCheckButton = ListenableBuilder(
+      listenable: _updateCheckSession,
+      builder: (context, _) => _buildUpdateButton(_updateCheckSession.status),
+    );
     final cells = <Widget>[
       ListTile(
         leading: const Icon(Icons.brightness_6_outlined),
@@ -272,16 +291,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         leading: const Icon(Icons.info_outline),
         title: const Text('当前版本'),
         subtitle: Text(_appVersion),
-        trailing: TextButton(
-          onPressed: _checkingUpdate ? null : _checkForUpdate,
-          child: _checkingUpdate
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('检查更新'),
-        ),
+        trailing: updateCheckButton,
         onTap: _onVersionTap,
       ),
     ];
@@ -293,6 +303,22 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         itemBuilder: (_, index) => cells[index],
       ),
     );
+  }
+
+  /// 检查更新入口按钮：检查中显示加载态；本次运行已确认「已是最新版」
+  /// 时显示不可点击的「暂无更新」；其余情况保持「检查更新」可点击。
+  Widget _buildUpdateButton(UpdateCheckStatus status) {
+    if (_checkingUpdate) {
+      return const SizedBox(
+        width: 18,
+        height: 18,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+    if (status == UpdateCheckStatus.upToDate) {
+      return const TextButton(onPressed: null, child: Text('暂无更新'));
+    }
+    return TextButton(onPressed: _checkForUpdate, child: const Text('检查更新'));
   }
 
   /// 弹出外观模式选择弹窗；选中后立即生效并持久化。
