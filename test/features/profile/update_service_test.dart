@@ -53,7 +53,31 @@ const _releaseJson = '''
 }
 ''';
 
+const _releaseJsonWithDigestSource = '''
+{
+  "tag_name": "v0.10.0",
+  "name": "v0.10.0",
+  "body": "",
+  "assets": [
+    {
+      "name": "app-arm64-v8a-release.apk",
+      "size": 36009801,
+      "digest": "sha256:__DIGEST__",
+      "browser_download_url":
+          "https://github.com/Luxcis/Jdb_Flutter/releases/download/v0.10.0/app-arm64-v8a-release.apk"
+    }
+  ]
+}
+''';
+
 void main() {
+  const helloSha256 =
+      '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824';
+  final releaseJsonWithDigest = _releaseJsonWithDigestSource.replaceFirst(
+    '__DIGEST__',
+    'a' * 64,
+  );
+
   group('GitHubRelease JSON 解析', () {
     test('解析 tagName/body/assets', () {
       final release = GitHubRelease.fromJson(
@@ -69,6 +93,18 @@ void main() {
         release.assets.first.downloadUrl,
         contains('app-arm64-v8a-release.apk'),
       );
+    });
+
+    test('解析资产 digest 字段，旧格式缺失时为空串', () {
+      final release = GitHubRelease.fromJson(
+        jsonDecode(_releaseJson) as Map<String, dynamic>,
+      );
+      expect(release.assets.first.digest, '');
+
+      final withDigest = GitHubRelease.fromJson(
+        jsonDecode(releaseJsonWithDigest) as Map<String, dynamic>,
+      );
+      expect(withDigest.assets.first.digest, 'sha256:${'a' * 64}');
     });
   });
 
@@ -163,8 +199,11 @@ void main() {
             request.url.toString(),
             'https://hub.luxcis.top/https://api.github.com/repos/Luxcis/Jdb_Flutter/releases/latest',
           );
-          return http.Response('{}', 200,
-              headers: {'content-type': 'application/json'});
+          return http.Response(
+            '{}',
+            200,
+            headers: {'content-type': 'application/json'},
+          );
         }),
       );
 
@@ -251,8 +290,11 @@ void main() {
             request.url.toString(),
             'https://hub.luxcis.top/https://github.com/Luxcis/Jdb_Flutter/releases/download/v0.10.0/app-arm64-v8a-release.apk',
           );
-          return http.Response.bytes(List<int>.filled(64, 1), 200,
-              headers: {'content-length': '64'});
+          return http.Response.bytes(
+            List<int>.filled(64, 1),
+            200,
+            headers: {'content-length': '64'},
+          );
         }),
       );
       final asset = const GitHubReleaseAsset(
@@ -265,6 +307,222 @@ void main() {
       final path = await installer.download(asset);
 
       expect(await File(path).length(), 64);
+    });
+  });
+
+  group('parseApkDigest', () {
+    test('解析 digest 字段 sha256:<hex> 并转小写', () {
+      final upper = 'sha256:${'AB' * 32}';
+      expect(parseApkDigest(upper), 'ab' * 32);
+    });
+
+    test('解析 sha256sum 输出首列（双空格 + 文件名）', () {
+      expect(
+        parseApkDigest('$helloSha256  app-arm64-v8a-release.apk'),
+        helloSha256,
+      );
+    });
+
+    test('纯哈希串可直接解析', () {
+      expect(parseApkDigest(helloSha256), helloSha256);
+    });
+
+    test('无法识别的算法与格式返回 null', () {
+      expect(parseApkDigest('md5:$helloSha256'), isNull);
+      expect(parseApkDigest('sha256:${'a' * 63}'), isNull);
+      expect(parseApkDigest(''), isNull);
+      expect(parseApkDigest('not-a-hash'), isNull);
+    });
+  });
+
+  group('UpdateInstaller.resolveExpectedSha256', () {
+    GitHubReleaseAsset assetWithDigest(String digest) => GitHubReleaseAsset(
+      name: 'app-arm64-v8a-release.apk',
+      size: 100,
+      downloadUrl:
+          'https://github.com/Luxcis/Jdb_Flutter/releases/download/v0.10.0/app-arm64-v8a-release.apk',
+      digest: digest,
+    );
+
+    test('digest 可用时直接返回且不发网络请求', () async {
+      var requested = 0;
+      final installer = UpdateInstaller(
+        client: MockClient((request) async {
+          requested++;
+          return http.Response('should-not-be-called', 200);
+        }),
+      );
+
+      final result = await installer.resolveExpectedSha256(
+        assetWithDigest('sha256:$helloSha256'),
+      );
+
+      expect(result, helloSha256);
+      expect(requested, 0);
+    });
+
+    test('digest 缺失时下载同名 .sha256 文件并按代理拼接 URL', () async {
+      final installer = UpdateInstaller(
+        proxy: 'https://hub.luxcis.top/',
+        client: MockClient((request) async {
+          expect(
+            request.url.toString(),
+            'https://hub.luxcis.top/https://github.com/Luxcis/Jdb_Flutter/releases/download/v0.10.0/app-arm64-v8a-release.apk.sha256',
+          );
+          return http.Response(
+            '$helloSha256  app-arm64-v8a-release.apk\n',
+            200,
+          );
+        }),
+        downloadDir: Directory.systemTemp.createTempSync('update_test'),
+      );
+
+      final result = await installer.resolveExpectedSha256(assetWithDigest(''));
+
+      expect(result, helloSha256);
+    });
+
+    test('digest 缺失且 .sha256 请求失败时返回 null', () async {
+      final installer = UpdateInstaller(
+        client: MockClient((request) async {
+          return http.Response('error', 500);
+        }),
+        downloadDir: Directory.systemTemp.createTempSync('update_test'),
+      );
+
+      final result = await installer.resolveExpectedSha256(assetWithDigest(''));
+
+      expect(result, isNull);
+    });
+
+    test('digest 格式非法时回退下载 .sha256 文件', () async {
+      final installer = UpdateInstaller(
+        client: MockClient((request) async {
+          return http.Response('$helloSha256  app-arm64-v8a-release.apk', 200);
+        }),
+        downloadDir: Directory.systemTemp.createTempSync('update_test'),
+      );
+
+      final result = await installer.resolveExpectedSha256(
+        assetWithDigest('md5:${'c' * 32}'),
+      );
+
+      expect(result, helloSha256);
+    });
+  });
+
+  group('UpdateInstaller.computeFileSha256', () {
+    test('流式计算结果与参考值一致', () async {
+      final dir = Directory.systemTemp.createTempSync('update_test');
+      final file = File('${dir.path}/hello.bin')..writeAsStringSync('hello');
+
+      final digest = await UpdateInstaller.computeFileSha256(file.path);
+
+      expect(digest, helloSha256);
+      expect(digest, digest.toLowerCase());
+    });
+  });
+
+  group('UpdateInstaller.verifyApk', () {
+    late Directory dir;
+    setUp(() {
+      dir = Directory.systemTemp.createTempSync('update_test');
+    });
+
+    GitHubReleaseAsset buildAsset(String digest) => GitHubReleaseAsset(
+      name: 'app-arm64-v8a-release.apk',
+      size: 100,
+      downloadUrl: 'https://example.com/app.apk',
+      digest: digest,
+    );
+
+    test('实际哈希与 digest 一致返回 verified（大小写不敏感）', () async {
+      final file = File('${dir.path}/app.apk')..writeAsStringSync('hello');
+      final installer = UpdateInstaller();
+      final asset = buildAsset('sha256:${helloSha256.toUpperCase()}');
+
+      final verification = await installer.verifyApk(file.path, asset);
+
+      expect(verification.status, UpdateHashStatus.verified);
+      expect(verification.expectedHash, helloSha256);
+      expect(verification.actualHash, helloSha256);
+    });
+
+    test('实际哈希与期望不一致返回 mismatch', () async {
+      final file = File('${dir.path}/app.apk')..writeAsStringSync('tampered');
+      final installer = UpdateInstaller();
+      final asset = buildAsset('sha256:$helloSha256');
+
+      final verification = await installer.verifyApk(file.path, asset);
+
+      expect(verification.status, UpdateHashStatus.mismatch);
+      expect(verification.actualHash, isNot(verification.expectedHash));
+    });
+
+    test('digest 缺失且 .sha256 文件可用时按文件内容校验', () async {
+      final file = File('${dir.path}/app.apk')..writeAsStringSync('hello');
+      final installer = UpdateInstaller(
+        client: MockClient((request) async {
+          return http.Response('$helloSha256  app.apk', 200);
+        }),
+        downloadDir: dir,
+      );
+      final asset = buildAsset('');
+
+      final verification = await installer.verifyApk(file.path, asset);
+
+      expect(verification.status, UpdateHashStatus.verified);
+    });
+
+    test('期望哈希不可用返回 unavailable 且不读取本地文件', () async {
+      final installer = UpdateInstaller(
+        client: MockClient((request) async {
+          return http.Response('error', 404);
+        }),
+        downloadDir: dir,
+      );
+      final asset = buildAsset('');
+
+      final verification = await installer.verifyApk(
+        '${dir.path}/missing.apk',
+        asset,
+      );
+
+      expect(verification.status, UpdateHashStatus.unavailable);
+      expect(verification.expectedHash, isNull);
+    });
+
+    test('本地文件缺失返回 unavailable', () async {
+      final installer = UpdateInstaller();
+      final asset = buildAsset('sha256:$helloSha256');
+
+      final verification = await installer.verifyApk(
+        '${dir.path}/missing.apk',
+        asset,
+      );
+
+      expect(verification.status, UpdateHashStatus.unavailable);
+      expect(verification.expectedHash, helloSha256);
+    });
+  });
+
+  group('UpdateInstaller.deleteApk', () {
+    test('删除已存在的文件', () async {
+      final dir = Directory.systemTemp.createTempSync('update_test');
+      final file = File('${dir.path}/app.apk')..writeAsStringSync('x');
+      final installer = UpdateInstaller();
+
+      await installer.deleteApk(file.path);
+
+      expect(file.existsSync(), isFalse);
+    });
+
+    test('文件不存在时不抛出', () async {
+      final installer = UpdateInstaller();
+
+      await installer.deleteApk(
+        '${Directory.systemTemp.createTempSync('update_test').path}/missing.apk',
+      );
     });
   });
 }
