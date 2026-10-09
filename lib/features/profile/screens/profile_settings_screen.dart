@@ -44,6 +44,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   int? _cacheSizeBytes;
   String _appVersion = '…';
   var _checkingUpdate = false;
+  GitHubReleaseAsset? _selectedUpdateAsset;
 
   @override
   void initState() {
@@ -148,13 +149,17 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) =>
-          UpdateDialog(result: result, install: _downloadAndInstall),
+      builder: (_) => UpdateDialog(
+        result: result,
+        download: _downloadApk,
+        install: _verifyAndInstallApk,
+      ),
     );
   }
 
-  /// 下载选中 ABI 的 APK 并调起系统安装器；进度通过 onProgress 上报。
-  Future<void> _downloadAndInstall(
+  /// 下载选中 ABI 的 APK 并记录对应资产，供安装时校验哈希；进度通过
+  /// onProgress 上报。
+  Future<String> _downloadApk(
     UpdateCheckResult result,
     void Function(int received, int total) onProgress,
   ) async {
@@ -162,15 +167,34 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     final deviceInfo = await DeviceInfoPlugin().androidInfo;
     final installer = UpdateInstaller(proxy: proxy);
     final asset = installer.pickAsset(result.release, deviceInfo.supportedAbis);
-    final path = await installer.download(asset, onProgress: onProgress);
-    if (!mounted) return;
-    final opened = await OpenFilex.open(path);
-    if (!mounted) return;
-    if (opened.type != ResultType.done) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('安装包已下载，请在通知栏/文件管理器中安装')));
+    _selectedUpdateAsset = asset;
+    return installer.download(asset, onProgress: onProgress);
+  }
+
+  /// 点击「安装」时编排哈希校验与系统安装器调起：
+  /// 不一致 → 删除已下载文件并阻止安装；无法校验 → fail-closed 阻止安装；
+  /// 一致 → 调起安装器（调起失败保持既有降级语义）。
+  Future<ApkInstallOutcome> _verifyAndInstallApk(String apkPath) async {
+    final proxy = context.read<SettingsProvider>().githubProxy;
+    final asset = _selectedUpdateAsset;
+    final installer = UpdateInstaller(proxy: proxy);
+    if (asset == null) {
+      return ApkInstallOutcome.hashUnavailable;
     }
+    final verification = await installer.verifyApk(apkPath, asset);
+    switch (verification.status) {
+      case UpdateHashStatus.verified:
+        break;
+      case UpdateHashStatus.mismatch:
+        await installer.deleteApk(apkPath);
+        return ApkInstallOutcome.hashMismatch;
+      case UpdateHashStatus.unavailable:
+        return ApkInstallOutcome.hashUnavailable;
+    }
+    final opened = await OpenFilex.open(apkPath);
+    return opened.type == ResultType.done
+        ? ApkInstallOutcome.opened
+        : ApkInstallOutcome.openFailed;
   }
 
   Future<void> _confirmAndClearCache() async {
