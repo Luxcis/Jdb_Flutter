@@ -186,9 +186,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     return installer.download(asset, onProgress: onProgress);
   }
 
-  /// 点击「安装」时编排哈希校验与系统安装器调起：
-  /// 不一致 → 删除已下载文件并阻止安装；无法校验 → fail-closed 阻止安装；
-  /// 一致 → 调起安装器（调起失败保持既有降级语义）。
+  /// 校验已下载 APK 并在通过后调起系统安装器：下载完成后由弹窗自动触发，
+  /// 校验失败后由「安装」按钮手动重试。不一致 → 删除已下载文件并阻止安装；
+  /// 无法校验 → fail-closed 阻止安装；一致 → 调起安装器（调起失败保持既有降级语义）。
   Future<ApkInstallOutcome> _verifyAndInstallApk(String apkPath) async {
     final proxy = context.read<SettingsProvider>().githubProxy;
     final asset = _selectedUpdateAsset;
