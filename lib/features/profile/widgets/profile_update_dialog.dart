@@ -16,8 +16,9 @@ enum ApkInstallOutcome {
   openFailed,
 }
 
-/// 更新弹窗：展示新版本号与更新日志；下载完成后停在完成态，点击「安装」
-/// 时由 Screen 校验哈希并在通过后调起系统安装器。
+/// 更新弹窗：展示新版本号与更新日志；下载完成后自动触发安装编排，
+/// 由 Screen 校验哈希并在通过后调起系统安装器。校验失败后停在失败态，
+/// 交由用户手动「安装」重试或「重新下载」。
 class UpdateDialog extends StatefulWidget {
   const UpdateDialog({
     super.key,
@@ -43,6 +44,9 @@ class UpdateDialog extends StatefulWidget {
 }
 
 enum _Phase { idle, downloading, downloaded, verifying }
+
+// `downloaded` 仅作为校验失败后的重试状态：下载成功后不停留，
+// 直接进入 verifying 自动触发安装编排。
 
 enum _FailureKind { download, hashMismatch, hashUnavailable, openFailed }
 
@@ -81,10 +85,9 @@ class _UpdateDialogState extends State<UpdateDialog> {
         }
       });
       if (!mounted) return;
-      setState(() {
-        _apkPath = path;
-        _phase = _Phase.downloaded;
-      });
+      setState(() => _apkPath = path);
+      // 下载完成后自动触发安装流程：校验通过即调起系统安装器，无需点击。
+      await _runInstall();
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -96,8 +99,9 @@ class _UpdateDialogState extends State<UpdateDialog> {
     }
   }
 
-  Future<void> _startInstall() async {
-    if (_phase != _Phase.downloaded) return;
+  /// 校验并调起安装编排：下载完成后自动触发；校验失败停留在重新下载态，
+  /// 之后由「安装」按钮手动重试。
+  Future<void> _runInstall() async {
     setState(() {
       _phase = _Phase.verifying;
       _failureText = null;
@@ -119,6 +123,11 @@ class _UpdateDialogState extends State<UpdateDialog> {
       };
       _failureText = _failureMessage;
     });
+  }
+
+  Future<void> _startInstall() async {
+    if (_phase != _Phase.downloaded) return;
+    await _runInstall();
   }
 
   @override
