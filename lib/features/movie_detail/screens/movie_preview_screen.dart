@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
+import 'package:jade/features/movie_detail/services/movie_preview_operation_manager.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_orientation.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_playback.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_system_ui.dart';
@@ -21,6 +22,7 @@ class MoviePreviewScreen extends StatefulWidget {
     this.orientationCoordinator,
     this.wakelockCoordinator,
     this.systemUiCoordinator,
+    this.operationManager,
   }) : assert(
          orientationSetter == null || orientationCoordinator == null,
          'Only one orientation dependency can be provided.',
@@ -32,6 +34,7 @@ class MoviePreviewScreen extends StatefulWidget {
   final MoviePreviewOrientationCoordinator? orientationCoordinator;
   final MoviePreviewWakelockCoordinator? wakelockCoordinator;
   final MoviePreviewSystemUiCoordinator? systemUiCoordinator;
+  final MoviePreviewOperationManager? operationManager;
 
   @override
   State<MoviePreviewScreen> createState() => _MoviePreviewScreenState();
@@ -40,14 +43,10 @@ class MoviePreviewScreen extends StatefulWidget {
 class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
   static const _cleanupStepTimeout = Duration(milliseconds: 1500);
 
-  late final MoviePreviewOrientationCoordinator _orientationCoordinator;
-  late final MoviePreviewWakelockCoordinator _wakelockCoordinator;
-  late final MoviePreviewSystemUiCoordinator _systemUiCoordinator;
+  late final MoviePreviewOperationManager _operationManager;
 
   _PlaybackSession? _session;
-  MoviePreviewOrientationLease? _orientationLease;
-  MoviePreviewWakelockLease? _wakelockLease;
-  MoviePreviewSystemUiLease? _systemUiLease;
+  MoviePreviewOperationLease? _operationLease;
   var _isLoading = true;
   var _hasError = false;
   var _isRetrying = false;
@@ -69,22 +68,32 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
   @override
   void initState() {
     super.initState();
-    _orientationCoordinator =
+    _operationManager =
+        widget.operationManager ?? _createOperationManagerFromInjected();
+    final lease = _operationManager.acquire();
+    _operationLease = lease;
+    unawaited(_ignoreSystemUiOperation(lease.systemUiLease.enabled));
+    final generation = ++_lifecycleGeneration;
+    unawaited(_acquireOrientationAndInitialize(generation));
+  }
+
+  MoviePreviewOperationManager _createOperationManagerFromInjected() {
+    final orientationCoordinator =
         widget.orientationCoordinator ??
         (widget.orientationSetter == null
             ? MoviePreviewOrientationCoordinator.system
             : MoviePreviewOrientationCoordinator(
                 setPreferredOrientations: widget.orientationSetter!,
               ));
-    _wakelockCoordinator =
+    final wakelockCoordinator =
         widget.wakelockCoordinator ?? MoviePreviewWakelockCoordinator.system;
-    _systemUiCoordinator =
+    final systemUiCoordinator =
         widget.systemUiCoordinator ?? MoviePreviewSystemUiCoordinator.system;
-    final systemUiLease = _systemUiCoordinator.acquire();
-    _systemUiLease = systemUiLease;
-    unawaited(_ignoreSystemUiOperation(systemUiLease.enabled));
-    final generation = ++_lifecycleGeneration;
-    unawaited(_acquireOrientationAndInitialize(generation));
+    return MoviePreviewOperationManager(
+      orientationCoordinator: orientationCoordinator,
+      wakelockCoordinator: wakelockCoordinator,
+      systemUiCoordinator: systemUiCoordinator,
+    );
   }
 
   @override
@@ -92,16 +101,9 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
     _lifecycleGeneration++;
     final session = _session;
     _session = null;
-    final orientationLease = _orientationLease;
-    _orientationLease = null;
-    final wakelockLease = _wakelockLease;
-    _wakelockLease = null;
+    _operationLease = null;
     _orientationReady = false;
-    unawaited(_releaseOrientation(orientationLease));
-    unawaited(_releaseWakelock(wakelockLease));
-    final systemUiLease = _systemUiLease;
-    _systemUiLease = null;
-    unawaited(_releaseSystemUi(systemUiLease));
+    unawaited(_operationManager.release());
     unawaited(_cleanupSession(session));
     super.dispose();
   }
@@ -205,8 +207,8 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
       try {
         await _togglePlayback(command);
       } catch (error, stackTrace) {
-      _logIgnored('ignored-operation', error, stackTrace);
-    }
+        _logIgnored('ignored-operation', error, stackTrace);
+      }
     }());
   }
 
@@ -223,25 +225,24 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
   }
 
   Future<void> _acquireOrientationAndInitialize(int generation) async {
-    final lease = _orientationCoordinator.acquire();
-    _orientationLease = lease;
+    var lease = _operationLease;
+    if (lease == null) return;
+
     try {
-      await lease.locked;
+      await lease.orientationLocked;
     } catch (error, stackTrace) {
       _logIgnored('orientation-lock', error, stackTrace);
       if (_isCurrentGeneration(generation) &&
-          identical(_orientationLease, lease)) {
-        _orientationLease = null;
+          identical(_operationLease, lease)) {
         _orientationReady = false;
         _showPageError();
       }
-      unawaited(_releaseOrientation(lease));
+      unawaited(_releaseOrientationLease(lease));
       return;
     }
 
     if (!_isCurrentGeneration(generation) ||
-        !identical(_orientationLease, lease)) {
-      unawaited(_releaseOrientation(lease));
+        !identical(_operationLease, lease)) {
       return;
     }
     _orientationReady = true;
@@ -271,7 +272,10 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
         _detachAndCleanup(session);
         return;
       }
-      _acquireWakelock();
+      final lease = _operationLease;
+      if (lease != null) {
+        _operationManager.acquireWakelock(lease);
+      }
       setState(() {
         _isLoading = false;
         _hasError = false;
@@ -306,6 +310,10 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
       if (_orientationReady) {
         await _initializePlayback(generation);
       } else {
+        final lease = _operationLease;
+        if (lease != null) {
+          _operationLease = _operationManager.replaceOrientationLease(lease);
+        }
         await _acquireOrientationAndInitialize(generation);
       }
     } finally {
@@ -337,41 +345,17 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
     unawaited(_cleanupSession(session));
   }
 
-  Future<void> _releaseOrientation(MoviePreviewOrientationLease? lease) async {
-    if (lease == null) return;
+  Future<void> _releaseOrientationLease(
+    MoviePreviewOperationLease lease,
+  ) async {
     try {
-      await lease.release();
+      await lease.orientationLease.release();
     } catch (error, stackTrace) {
       _logIgnored('ignored-operation', error, stackTrace);
     }
-  }
-
-  void _acquireWakelock() {
-    if (_wakelockLease != null) return;
-    final lease = _wakelockCoordinator.acquire();
-    _wakelockLease = lease;
-    unawaited(_ignoreWakelockOperation(lease.enabled));
-  }
-
-  Future<void> _releaseWakelock(MoviePreviewWakelockLease? lease) async {
-    if (lease == null) return;
-    await _ignoreWakelockOperation(lease.release());
-  }
-
-  Future<void> _releaseSystemUi(MoviePreviewSystemUiLease? lease) async {
-    if (lease == null) return;
-    await _ignoreSystemUiOperation(lease.release());
   }
 
   Future<void> _ignoreSystemUiOperation(Future<void> operation) async {
-    try {
-      await operation;
-    } catch (error, stackTrace) {
-      _logIgnored('ignored-operation', error, stackTrace);
-    }
-  }
-
-  Future<void> _ignoreWakelockOperation(Future<void> operation) async {
     try {
       await operation;
     } catch (error, stackTrace) {
