@@ -2,8 +2,8 @@ schema: comet.native.v4
 name: refactor-movie-preview-operations
 language: zh-CN
 phase: archive
-status: active
-state_version: 8
+status: done
+state_version: 11
 brief: brief.md
 document_constraints_version: 1
 shape_confirmation_hash: 602583284582a1135f22a37494bf1e2d39e31da7dad522185e7057aec18bdc2c
@@ -17,7 +17,7 @@ workspace:
   target_branch: master
   finish: merge
 loop:
-  stage: archive-ready
+  stage: done
   goal_cycle: 1
   iteration: 1
   attempt: 1
@@ -26,7 +26,7 @@ loop:
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: archive
+  next_action: null
 acceptance:
   - id: A1
     source: brief.md
@@ -244,5 +244,5 @@ history_overflow:
     recovery: 0
 verification_result: pass
 verification_report: verification.md
-archived: false
+archived: true
 created_at: 2026-10-10T06:32:43.456Z
