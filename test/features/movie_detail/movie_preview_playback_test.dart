@@ -83,21 +83,18 @@ void main() {
     await playback.dispose();
   });
 
-  test('未初始化 buildView 抛 StateError，初始化后返回主题包裹的 Video', () async {
+  test('未初始化 buildView 抛 StateError，初始化后返回无内置控件的 Video', () async {
     final platform = _FakePlatformPlayer();
     final playback = _build(platform);
 
     expect(playback.buildView, throwsStateError);
 
     await playback.initialize();
-    final theme = playback.buildView() as MaterialVideoControlsTheme;
-    expect(theme.normal.speedUpOnLongPress, isTrue);
-
-    final video = theme.child as Video;
+    final video = playback.buildView() as Video;
     expect(video.controller.player, isA<Player>());
     expect(video.wakelock, isFalse);
     expect(video.fit, BoxFit.contain);
-    expect(video.controls, same(MaterialVideoControls));
+    expect(video.controls, same(NoVideoControls));
     await playback.dispose();
   });
 

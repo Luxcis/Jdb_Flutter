@@ -9,8 +9,8 @@ import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/screens/movie_preview_screen.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_playback.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_system_ui.dart';
+import 'package:jade/features/movie_detail/widgets/movie_preview_controls_overlay.dart';
 import 'package:jade/features/movie_detail/widgets/movie_preview_header.dart';
-import 'package:jade/features/movie_detail/widgets/movie_preview_header_overlay.dart';
 
 void main() {
   test('MoviePreviewArgs 只接受带 host 的 HTTP(S) 地址', () {
@@ -491,7 +491,7 @@ void main() {
     expect(find.text('重试'), findsOneWidget);
     expect(find.byTooltip('返回'), findsOneWidget);
     expect(
-      find.byKey(MoviePreviewHeaderOverlay.headerOpacityKey),
+      find.byKey(MoviePreviewControlsOverlay.headerOpacityKey),
       findsNothing,
     );
   });
@@ -762,6 +762,7 @@ class _FakePlayback implements MoviePreviewPlayback {
   int playCalls = 0;
   int pauseCalls = 0;
   int disposeCalls = 0;
+  final List<double> rates = [];
 
   @override
   ValueListenable<MoviePreviewPlaybackState> get state => _state;
@@ -805,6 +806,12 @@ class _FakePlayback implements MoviePreviewPlayback {
   Future<void> seekTo(Duration position) async {
     commands.add('seek:${position.inMilliseconds}');
     await seekCompleter?.future;
+  }
+
+  @override
+  Future<void> setRate(double rate) async {
+    commands.add('rate:$rate');
+    rates.add(rate);
   }
 
   void emit(MoviePreviewPlaybackState value) {

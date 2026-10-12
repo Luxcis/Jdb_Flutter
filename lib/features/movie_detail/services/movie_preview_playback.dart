@@ -36,6 +36,7 @@ abstract interface class MoviePreviewPlayback {
   Future<void> play();
   Future<void> pause();
   Future<void> seekTo(Duration position);
+  Future<void> setRate(double rate);
   Future<void> dispose();
 }
 
@@ -91,18 +92,12 @@ class MediaKitMoviePreviewPlayback implements MoviePreviewPlayback {
     if (!_isInitialized) {
       throw StateError('Movie preview playback is not initialized.');
     }
-    return MaterialVideoControlsTheme(
-      normal: const MaterialVideoControlsThemeData(speedUpOnLongPress: true),
-      fullscreen: const MaterialVideoControlsThemeData(
-        speedUpOnLongPress: true,
-      ),
-      child: Video(
-        controller: _videoController,
-        fit: BoxFit.contain,
-        fill: Colors.black,
-        wakelock: false,
-        controls: MaterialVideoControls,
-      ),
+    return Video(
+      controller: _videoController,
+      fit: BoxFit.contain,
+      fill: Colors.black,
+      wakelock: false,
+      controls: NoVideoControls,
     );
   }
 
@@ -121,6 +116,9 @@ class MediaKitMoviePreviewPlayback implements MoviePreviewPlayback {
 
   @override
   Future<void> seekTo(Duration position) => _player.seek(position);
+
+  @override
+  Future<void> setRate(double rate) => _player.setRate(rate);
 
   @override
   Future<void> dispose() => _disposeOperation ??= _dispose();
