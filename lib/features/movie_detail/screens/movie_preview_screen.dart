@@ -2,14 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
+import 'package:jade/features/movie_detail/services/movie_preview_brightness.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_operation_manager.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_orientation.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_playback.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_system_ui.dart';
+import 'package:jade/features/movie_detail/services/movie_preview_volume.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_wakelock.dart';
-import 'package:jade/features/movie_detail/widgets/movie_preview_double_tap_detector.dart';
+import 'package:jade/features/movie_detail/widgets/movie_preview_controls_overlay.dart';
 import 'package:jade/features/movie_detail/widgets/movie_preview_header.dart';
-import 'package:jade/features/movie_detail/widgets/movie_preview_header_overlay.dart';
 
 typedef PreferredOrientationsSetter = MoviePreviewPreferredOrientationsSetter;
 
@@ -23,6 +24,8 @@ class MoviePreviewScreen extends StatefulWidget {
     this.wakelockCoordinator,
     this.systemUiCoordinator,
     this.operationManager,
+    this.brightnessController,
+    this.volumeController,
   }) : assert(
          orientationSetter == null || orientationCoordinator == null,
          'Only one orientation dependency can be provided.',
@@ -35,6 +38,8 @@ class MoviePreviewScreen extends StatefulWidget {
   final MoviePreviewWakelockCoordinator? wakelockCoordinator;
   final MoviePreviewSystemUiCoordinator? systemUiCoordinator;
   final MoviePreviewOperationManager? operationManager;
+  final MoviePreviewBrightnessController? brightnessController;
+  final MoviePreviewVolumeController? volumeController;
 
   @override
   State<MoviePreviewScreen> createState() => _MoviePreviewScreenState();
@@ -44,6 +49,8 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
   static const _cleanupStepTimeout = Duration(milliseconds: 1500);
 
   late final MoviePreviewOperationManager _operationManager;
+  late final MoviePreviewBrightnessController _brightnessController;
+  late final MoviePreviewVolumeController _volumeController;
 
   _PlaybackSession? _session;
   MoviePreviewOperationLease? _operationLease;
@@ -70,6 +77,10 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
     super.initState();
     _operationManager =
         widget.operationManager ?? _createOperationManagerFromInjected();
+    _brightnessController =
+        widget.brightnessController ?? SystemMoviePreviewBrightnessController();
+    _volumeController =
+        widget.volumeController ?? SystemMoviePreviewVolumeController();
     final lease = _operationManager.acquire();
     _operationLease = lease;
     unawaited(_ignoreSystemUiOperation(lease.systemUiLease.enabled));
@@ -105,7 +116,16 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
     _orientationReady = false;
     unawaited(_operationManager.release());
     unawaited(_cleanupSession(session));
+    unawaited(_resetBrightness());
     super.dispose();
+  }
+
+  Future<void> _resetBrightness() async {
+    try {
+      await _brightnessController.reset();
+    } catch (error, stackTrace) {
+      _logIgnored('reset-brightness', error, stackTrace);
+    }
   }
 
   @override
@@ -123,16 +143,8 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
 
   Widget _buildPlaybackBody(_PlaybackSession session) {
     final playback = session.playback;
-    final command = _PlaybackCommand(
-      session: session,
-      generation: _lifecycleGeneration,
-    );
     return ValueListenableBuilder<MoviePreviewPlaybackState>(
       valueListenable: playback.state,
-      child: MoviePreviewDoubleTapDetector(
-        onDoubleTap: () => _onDoubleTap(command),
-        child: playback.buildView(),
-      ),
       builder: (context, state, child) {
         if (state.errorDescription?.isNotEmpty ?? false) {
           return _buildStatusBody(hasError: true);
@@ -140,11 +152,13 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
         return Stack(
           fit: StackFit.expand,
           children: [
-            child!,
-            MoviePreviewHeaderOverlay(
+            playback.buildView(),
+            MoviePreviewControlsOverlay(
               title: _title,
               onBack: _pop,
-              state: playback.state,
+              playback: playback,
+              brightnessController: _brightnessController,
+              volumeController: _volumeController,
             ),
           ],
         );
@@ -182,46 +196,6 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
         ),
       ],
     );
-  }
-
-  Future<void> _togglePlayback(_PlaybackCommand command) async {
-    _ensureCommandIsCurrent(command);
-    final playback = command.session.playback;
-    final value = playback.state.value;
-    if (value.isCompleted) {
-      await playback.seekTo(Duration.zero);
-      _ensureCommandIsCurrent(command);
-      await playback.play();
-      _ensureCommandIsCurrent(command);
-    } else if (value.isPlaying) {
-      await playback.pause();
-      _ensureCommandIsCurrent(command);
-    } else {
-      await playback.play();
-      _ensureCommandIsCurrent(command);
-    }
-  }
-
-  void _onDoubleTap(_PlaybackCommand command) {
-    unawaited(() async {
-      try {
-        await _togglePlayback(command);
-      } catch (error, stackTrace) {
-        _logIgnored('ignored-operation', error, stackTrace);
-      }
-    }());
-  }
-
-  bool _isCommandCurrent(_PlaybackCommand command) {
-    return mounted &&
-        command.generation == _lifecycleGeneration &&
-        identical(_session, command.session);
-  }
-
-  void _ensureCommandIsCurrent(_PlaybackCommand command) {
-    if (!_isCommandCurrent(command)) {
-      throw const _PlaybackCommandInvalidated();
-    }
   }
 
   Future<void> _acquireOrientationAndInitialize(int generation) async {
@@ -387,17 +361,6 @@ class _PlaybackSession {
 
   final MoviePreviewPlayback playback;
   Future<void>? cleanupOperation;
-}
-
-class _PlaybackCommand {
-  const _PlaybackCommand({required this.session, required this.generation});
-
-  final _PlaybackSession session;
-  final int generation;
-}
-
-class _PlaybackCommandInvalidated implements Exception {
-  const _PlaybackCommandInvalidated();
 }
 
 void _logIgnored(String stage, Object error, StackTrace stackTrace) {

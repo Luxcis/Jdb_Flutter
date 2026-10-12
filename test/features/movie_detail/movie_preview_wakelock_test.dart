@@ -164,6 +164,9 @@ class _FakePlayback implements MoviePreviewPlayback {
   Future<void> seekTo(Duration position) async {}
 
   @override
+  Future<void> setRate(double rate) async {}
+
+  @override
   Future<void> dispose() async {
     disposeCalls++;
     await disposeCompleter?.future;

@@ -1,0 +1,284 @@
+schema: comet.native.v4
+name: movie-preview-gestures
+language: zh-CN
+phase: archive
+status: done
+state_version: 13
+brief: brief.md
+document_constraints_version: 1
+shape_confirmation_hash: f3f26a6c51331570b768bd653279693013e389fa626cc644678c46dba413cd08
+spec_changes:
+  - capability: movie-preview-controls
+    operation: create
+    source: specs/movie-preview-controls/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/movie-preview-gestures
+  target_branch: master
+  finish: merge
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 2
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "**A1**.
+      播放页面中，顶部标题栏与底部操作栏始终同步显示、同步隐藏：单击播放画面可在“两者同时显示”与“两者同时隐藏”之间切换，不存在只显示其一的状态。"
+    result: passed
+    reason:
+      text: MoviePreviewControlsOverlay 使用同一个 _visible ValueNotifier
+        驱动顶部标题栏与底部操作栏，测试中验证了单击可同步切换显隐。
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "**A2**. 操作层显示后，在持续播放且无交互约 3 秒后自动同时隐藏；暂停、缓冲、播放完成或出错时操作层保持显示，不自动隐藏。"
+    result: passed
+    reason:
+      text: 实现中 _resetHideTimer 在 isPlaying && !isBuffering && !isCompleted && 无错误 时启动
+        3 秒自动隐藏；暂停、缓冲、完成、出错时 _canAutoHide 为 false，保持显示。
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "**A3**. 播放中长按画面任意位置，播放速度变为 2 倍并显示倍速指示；松开手指后立即恢复 1 倍原速，倍速指示消失。"
+    result: passed
+    reason:
+      text: 长按手势 onLongPressStart 设置 setRate(2.0) 并显示倍速指示；onLongPressEnd 恢复
+        setRate(1.0) 并隐藏指示，测试覆盖。
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "**A4**. 在屏幕左半区上下滑动时，屏幕亮度随之增大/减小，并实时显示当前亮度（图标 + 百分比）；手指离开后继续滑动可连续调节。"
+    result: passed
+    reason:
+      text: 左半区垂直滑动通过 brightnessController.setBrightness 调节亮度，数值 clamp 到
+        [0,1]，并实时显示图标与百分比指示器；退出页面时 _resetBrightness 恢复系统亮度。
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "**A5**. 在屏幕右半区上下滑动时，系统媒体音量随之增大/减小，并实时显示当前音量（图标 + 百分比）；手指离开后继续滑动可连续调节。"
+    result: passed
+    reason:
+      text: 右半区垂直滑动通过 volumeController.setVolume 调节系统媒体音量，数值 clamp 到
+        [0,1]，并实时显示图标与百分比指示器。
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: "**A6**. 在播放画面上左右滑动时，按拖动距离快进/快退，滑动过程中实时显示目标位置（或偏移量）；松开后播放停留在目标位置。"
+    result: passed
+    reason:
+      text: 水平滑动按满宽映射 90 秒 seek 窗口计算目标位置，clamp 在 [0, duration]，滑动中实时显示目标位置与偏移量，松开后
+        seekTo(target)。
+      truncated: false
+  - id: A7
+    source: brief.md
+    text: "**A7**. 双击播放画面仍在“播放 ↔ 暂停”之间切换（与现有行为一致），且不再触发 media_kit 内置的双击快退/快进。"
+    result: passed
+    reason:
+      text: 双击调用 _togglePlayPause 在播放/暂停间切换；buildView 使用 NoVideoControls，不再触发
+        media_kit 内置双击快进/快退。
+      truncated: false
+  - id: A8
+    source: brief.md
+    text: "**A8**. 加载中与播放失败页面保持现有行为：顶部标题栏可见可返回，不显示底部操作栏与手势指示器。"
+    result: passed
+    reason:
+      text: 加载/错误状态由 _buildStatusBody 渲染，只显示顶部 MoviePreviewHeader 与加载/错误内容，不叠加
+        MoviePreviewControlsOverlay，底部栏与手势指示器均不显示。
+      truncated: false
+  - id: A9
+    source: brief.md
+    text: "**A9**. 全部 `test/features/movie_detail/movie_preview_*`
+      测试与新增操作层测试通过；`dart analyze` 无错误。"
+    result: passed
+    reason:
+      text: flutter test test/features/movie_detail/ 通过（144 tests passed）；针对变更文件的
+        flutter analyze 无错误（No issues found!）。
+      truncated: false
+  - id: A10
+    source: specs/movie-preview-controls/spec.md
+    text: 单击切换顶部标题栏与底部操作栏同步显隐 Given 预告片正在播放且操作层处于隐藏状态 When 单击播放画面 Then
+      顶部标题栏与底部操作栏同时显示；再次单击后两者同时隐藏，任何时刻不存在只显示其一的状态
+    result: passed
+    reason:
+      text: 顶部标题栏与底部操作栏共享同一个 _visible 状态，单击同步显隐；测试中验证了不存在只显示其一的状态。
+      truncated: false
+  - id: A11
+    source: specs/movie-preview-controls/spec.md
+    text: 播放中自动隐藏、暂停时保持显示 Given 操作层处于可见状态且正在持续播放 When 约 3 秒内没有任何交互 Then
+      顶部标题栏与底部操作栏同时自动隐藏 Given 操作层处于可见状态 When 播放进入暂停、缓冲、完成或出错状态 Then
+      操作层保持显示，不自动隐藏
+    result: passed
+    reason:
+      text: 播放中持续无交互约 3 秒后同时自动隐藏；暂停/缓冲/完成/出错时 _canAutoHide 为 false，操作层保持显示。
+      truncated: false
+  - id: A12
+    source: specs/movie-preview-controls/spec.md
+    text: 长按 2 倍速、松开恢复 Given 预告片正在以 1 倍速播放 When 长按播放画面不移动 Then 播放速度变为 2 倍并显示倍速指示
+      Given 正处于长按 2 倍速状态 When 松开手指 Then 播放速度立即恢复 1 倍，倍速指示消失
+    result: passed
+    reason:
+      text: 长按播放画面 setRate(2.0) 并显示倍速指示；手指松开 setRate(1.0)，倍速指示消失。
+      truncated: false
+  - id: A13
+    source: specs/movie-preview-controls/spec.md
+    text: 左半区垂直滑动调节亮度并实时显示 Given 预告片正在播放 When 在屏幕左半区向上或向下滑动 Then
+      屏幕亮度随之增大或减小，并实时显示当前亮度图标与百分比
+    result: passed
+    reason:
+      text: 屏幕左半区垂直滑动调节亮度，实时显示当前亮度图标与百分比；亮度值 clamp 在 [0,1]，退出页面恢复系统亮度。
+      truncated: false
+  - id: A14
+    source: specs/movie-preview-controls/spec.md
+    text: 右半区垂直滑动调节音量并实时显示 Given 预告片正在播放 When 在屏幕右半区向上或向下滑动 Then
+      系统媒体音量随之增大或减小，并实时显示当前音量图标与百分比
+    result: passed
+    reason:
+      text: 屏幕右半区垂直滑动调节系统媒体音量，实时显示当前音量图标与百分比；音量值 clamp 在 [0,1]。
+      truncated: false
+  - id: A15
+    source: specs/movie-preview-controls/spec.md
+    text: 水平滑动快进快退并实时显示目标位置 Given 预告片正在播放且总时长已知 When 在播放画面上向右或向左滑动 Then
+      滑动过程中实时显示目标位置与偏移量，松开后播放停留在 clamp 后的目标位置
+    result: passed
+    reason:
+      text: 水平滑动从按下位置出发，按拖动距离比例换算 90 秒窗口内的 seek 偏移，目标位置 clamp 在 [0,
+        duration]，实时显示目标位置与偏移量，松开后 seek 到目标位置。
+      truncated: false
+  - id: A16
+    source: specs/movie-preview-controls/spec.md
+    text: 双击切换播放暂停 Given 预告片正在播放 When 双击播放画面 Then 播放暂停；再次双击恢复播放
+    result: passed
+    reason:
+      text: 双击播放画面切换播放/暂停；完成态双击（或点击播放按钮）从头重新播放。
+      truncated: false
+  - id: A17
+    source: specs/movie-preview-controls/spec.md
+    text: 加载与错误页行为保持不变 Given 播放尚未初始化成功或播放出错 When 查看页面 Then
+      只显示顶部标题栏（与加载/错误内容），不显示底部操作栏，亮度/音量/seek/倍速手势均不生效
+    result: passed
+    reason:
+      text: 加载/错误页只显示顶部标题栏与加载/错误内容，不显示底部操作栏，亮度/音量/seek/倍速手势层均不生效。
+      truncated: false
+builder_handoff:
+  candidate_id: cb06fd97-0969-4bfc-92d5-c62e6c17fbb6
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:6cb7f43e-dc7a-4179-8afb-68ed91b5167a
+  iteration: 2
+  summary:
+    text: 本轮实现预告片播放页自定义操作层：统一顶部标题栏与底部操作栏显隐状态机，接入单击/双击/长按/垂直滑/水平滑手势；新增亮度/音量可注入服务与对应测试，更新
+      playback 接口与 Screen 集成；移除旧 double-tap detector 与 header overlay 组件及其测试。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+  checks:
+    - name:
+        text: flutter test test/features/movie_detail/
+        truncated: false
+      result: passed
+      note:
+        text: 144 tests passed
+        truncated: false
+    - name:
+        text: flutter analyze (change files)
+        truncated: false
+      result: passed
+      note:
+        text: No issues found in 11 changed files
+        truncated: false
+    - name:
+        text: flutter analyze (full project)
+        truncated: false
+      result: failed
+      note:
+        text: 10 pre-existing warnings/info in unrelated test files
+          (movie_preview_lease_test.dart,
+          movie_preview_operation_manager_test.dart); no new issues introduced
+          by this change
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: master 上已有 10 个与本次无关的 analyze
+        warning/info（movie_preview_lease_test.dart、movie_preview_operation_manager_test.dart），本次
+        change 未引入新 lint 问题。
+      truncated: false
+  known_limits_truncated: false
+  review: null
+  submitted_at: 2026-10-12T08:35:01.916Z
+blockers: []
+verification:
+  candidate_id: cb06fd97-0969-4bfc-92d5-c62e6c17fbb6
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:17719d62-a05e-4307-a661-ccbcd04dcf42
+  iteration: 2
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks: []
+  summary:
+    text: 候选实现满足全部 17 项验收要求。自定义操作层统一驱动顶部/底部栏显隐与 3 秒自动隐藏，手势层覆盖单击、双击、长按倍速、亮度/音量垂直滑动、水平
+      seek；亮度/音量服务可注入且带 fake 测试；buildView 已改用 NoVideoControls；所有 movie_detail
+      测试通过（144/144），变更文件 flutter analyze 无错误。
+    truncated: false
+  risks: []
+  risks_truncated: false
+  completed_at: 2026-10-12T08:40:21.949Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native check input changed after the candidate was built; a new Builder
+        candidate is required before checks can run again.
+      truncated: false
+    completed_at: 2026-10-12T08:34:31.014Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 候选实现满足全部 17 项验收要求。自定义操作层统一驱动顶部/底部栏显隐与 3 秒自动隐藏，手势层覆盖单击、双击、长按倍速、亮度/音量垂直滑动、水平
+        seek；亮度/音量服务可注入且带 fake 测试；buildView 已改用 NoVideoControls；所有 movie_detail
+        测试通过（144/144），变更文件 flutter analyze 无错误。
+      truncated: false
+    completed_at: 2026-10-12T08:40:21.949Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-10-12T06:39:07.001Z
