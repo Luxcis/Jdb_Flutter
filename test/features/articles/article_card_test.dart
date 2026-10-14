@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/features/articles/models/article.dart';
 import 'package:jade/features/articles/widgets/article_card.dart';
+import 'package:jade/features/articles/widgets/article_cover_image.dart';
 
 void main() {
   ArticleSummary article({
@@ -71,6 +72,17 @@ void main() {
     await pumpCard(tester, article(coverUrl: null));
 
     expect(find.byType(AspectRatio), findsOneWidget);
-    expect(find.byIcon(Icons.image_outlined), findsOneWidget);
+    expect(find.byType(ArticleCoverImage), findsOneWidget);
+    expect(find.byType(Image), findsOneWidget);
+  });
+
+  testWidgets('有封面时使用 ArticleCoverImage 渲染', (tester) async {
+    await pumpCard(tester, article(coverUrl: 'cover.jpg'));
+
+    final coverImage = tester.widget<ArticleCoverImage>(
+      find.byType(ArticleCoverImage),
+    );
+    expect(coverImage.url, 'cover.jpg');
+    expect(coverImage.semanticLabel, '标题');
   });
 }
