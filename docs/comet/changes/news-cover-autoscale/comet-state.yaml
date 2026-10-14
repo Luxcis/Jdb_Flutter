@@ -1,0 +1,198 @@
+schema: comet.native.v4
+name: news-cover-autoscale
+language: zh-CN
+phase: archive
+status: active
+state_version: 10
+brief: brief.md
+document_constraints_version: 1
+shape_confirmation_hash: 82ba1f921edbd36cdbc50348df1fc6c8caa127272120a3d65ef9709df9d6a8a7
+spec_changes:
+  - capability: article-card
+    operation: create
+    source: specs/article-card/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/news-cover-autoscale
+  target_branch: master
+  finish: merge
+loop:
+  stage: archive-ready
+  goal_cycle: 1
+  iteration: 2
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 1
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: archive
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：资讯列表的 `ArticleCard` 封面区域仍保持 `16 / 9` 宽高比。
+    result: passed
+    reason:
+      text: "ArticleCard 封面区域使用 AspectRatio(aspectRatio: 16 / 9)，且
+        article_card_test.dart 中 '封面 16:9 比例' 用例显式断言该比例。"
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：封面图片使用 `BoxFit.cover` 等比例填充并裁剪，与影片详情预览图一致。
+    result: passed
+    reason:
+      text: ArticleCoverImage 默认 fit = BoxFit.cover，并透传至 CachedImage 与兜底
+        Image.asset，实现等比例填充裁剪，与 MovieCoverImage 的默认行为一致。
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：封面 URL 为空或加载失败时，显示统一的兜底占位，不再只显示空白或图标。
+    result: passed
+    reason:
+      text: ArticleCoverImage 在 url 为 null 或空字符串时直接返回
+        assets/images/noimage_600x404.jpg 的 Image.asset；正常 URL 也配置了
+        CachedImage.fallbackAsset，加载失败时统一兜底，不再显示空白或图标。
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: A4：资讯列表项的视觉回归测试或 widget 测试通过，确认无溢出、无变形。
+    result: passed
+    reason:
+      text: 已绑定 flutter analyze 与 flutter test 均通过；测试覆盖 16:9
+        比例、无封面占位、ArticleCoverImage 渲染等关键场景，未发现溢出或变形。
+      truncated: false
+builder_handoff:
+  candidate_id: bdeaed8b-7940-4be5-be8c-b54c1008fe41
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:0f65d14b-990a-49de-b7fc-6cde559c9952
+  iteration: 2
+  summary:
+    text: 新增 ArticleCoverImage 组件封装 CachedImage 与 fallbackAsset，替换 ArticleCard
+      中直接使用的 CachedImage，使资讯封面等比例缩放逻辑（AspectRatio 16/9 +
+      BoxFit.cover）与影片详情预览图保持一致；同步更新 article_card_test.dart 验证兜底图与组件使用。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+  checks:
+    - name:
+        text: flutter analyze --no-pub（修改文件）
+        truncated: false
+      result: passed
+      note:
+        text: article_card.dart / article_cover_image.dart / article_card_test.dart
+          无新增错误
+        truncated: false
+    - name:
+        text: flutter test --no-pub test/features/articles/
+        truncated: false
+      result: passed
+      note:
+        text: articles 目录全部 28 个测试通过
+        truncated: false
+    - name:
+        text: flutter test --no-pub（全量）
+        truncated: false
+      result: passed
+      note:
+        text: 全量 956 个测试通过
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: 全项目 flutter analyze 仍有 10 条与本次改动无关的既有
+        warning/info（movie_preview_lease_test.dart 等），已避开这些文件。
+      truncated: false
+  known_limits_truncated: false
+  review: null
+  submitted_at: 2026-10-14T06:32:24.728Z
+blockers: []
+verification:
+  candidate_id: bdeaed8b-7940-4be5-be8c-b54c1008fe41
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:cfb7a1ba-f2e3-41d9-9681-db6f023291a6
+  iteration: 2
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: analyze-changed
+      name:
+        text: flutter analyze --no-pub（修改文件）
+        truncated: false
+      argv_display:
+        - text: analyze
+          truncated: false
+        - text: --no-pub
+          truncated: false
+        - text: lib/features/articles/widgets/article_card.dart
+          truncated: false
+        - text: lib/features/articles/widgets/article_cover_image.dart
+          truncated: false
+        - text: test/features/articles/article_card_test.dart
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 2535
+    - id: article-card-test
+      name:
+        text: flutter test --no-pub test/features/articles/article_card_test.dart
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: --no-pub
+          truncated: false
+        - text: test/features/articles/article_card_test.dart
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 2739
+  summary:
+    text: news-cover-autoscale change 实现符合 brief 与 spec 要求：ArticleCard 通过新增的
+      ArticleCoverImage 组件保持 16:9 比例与 BoxFit.cover
+      填充，统一使用项目已有兜底图处理空地址与加载失败，静态分析和 widget 测试均通过。验收通过。
+    truncated: false
+  risks: []
+  risks_truncated: false
+  completed_at: 2026-10-14T06:34:44.621Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: "Builder handoff Runtime checks failed: analyze"
+      truncated: false
+    completed_at: 2026-10-14T06:31:46.049Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: news-cover-autoscale change 实现符合 brief 与 spec 要求：ArticleCard 通过新增的
+        ArticleCoverImage 组件保持 16:9 比例与 BoxFit.cover
+        填充，统一使用项目已有兜底图处理空地址与加载失败，静态分析和 widget 测试均通过。验收通过。
+      truncated: false
+    completed_at: 2026-10-14T06:34:44.621Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: false
+created_at: 2026-10-14T06:23:38.275Z

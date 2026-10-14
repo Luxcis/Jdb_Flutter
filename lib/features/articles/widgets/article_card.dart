@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/router/routes.dart';
 import 'package:jade/core/utils/time_format.dart';
-import 'package:jade/core/widgets/cached_image.dart';
 import 'package:jade/features/articles/models/article.dart';
+import 'package:jade/features/articles/widgets/article_cover_image.dart';
 
 class ArticleCard extends StatelessWidget {
   const ArticleCard({super.key, required this.article});
@@ -25,21 +25,9 @@ class ArticleCard extends StatelessWidget {
           children: [
             AspectRatio(
               aspectRatio: 16 / 9,
-              child: ColoredBox(
-                color: scheme.surfaceContainerHighest,
-                child: coverUrl == null || coverUrl.isEmpty
-                    ? Center(
-                        child: Icon(
-                          Icons.image_outlined,
-                          color: scheme.outline,
-                          size: 40,
-                        ),
-                      )
-                    : CachedImage(
-                        coverUrl,
-                        fit: BoxFit.cover,
-                        semanticLabel: article.title,
-                      ),
+              child: ArticleCoverImage(
+                coverUrl,
+                semanticLabel: article.title,
               ),
             ),
             Padding(
