@@ -2,8 +2,8 @@ schema: comet.native.v4
 name: news-cover-autoscale
 language: zh-CN
 phase: archive
-status: active
-state_version: 10
+status: done
+state_version: 12
 brief: brief.md
 document_constraints_version: 1
 shape_confirmation_hash: 82ba1f921edbd36cdbc50348df1fc6c8caa127272120a3d65ef9709df9d6a8a7
@@ -17,7 +17,7 @@ workspace:
   target_branch: master
   finish: merge
 loop:
-  stage: archive-ready
+  stage: done
   goal_cycle: 1
   iteration: 2
   attempt: 1
@@ -26,7 +26,7 @@ loop:
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: archive
+  next_action: null
 acceptance:
   - id: A1
     source: brief.md
@@ -194,5 +194,5 @@ history_overflow:
     recovery: 0
 verification_result: pass
 verification_report: verification.md
-archived: false
+archived: true
 created_at: 2026-10-14T06:23:38.275Z
