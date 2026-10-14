@@ -1,0 +1,210 @@
+schema: comet.native.v4
+name: fix-news-cover-fit
+language: zh-CN
+phase: archive
+status: done
+state_version: 10
+brief: brief.md
+document_constraints_version: 3
+shape_confirmation_hash: e3eb0913febeed65729def8f709685ea90a7c562e7f17d1d5436a73534d0ae7b
+spec_changes:
+  - capability: article-card
+    operation: modify
+    source: specs/article-card/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/fix-news-cover-fit
+  target_branch: master
+  finish: merge
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 2
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 1
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：`ArticleCoverImage` 使用 `LayoutBuilder` 读取父容器尺寸并传给 `CachedImage` 的
+      `width`/`height`。
+    result: passed
+    reason:
+      text: ArticleCoverImage 使用 LayoutBuilder 读取父容器
+        constraints.maxWidth/maxHeight，并将计算后的宽高显式传给 CachedImage 的
+        width/height，兜底 Image.asset 也获得相同尺寸。
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：`ArticleCard` 中 `AspectRatio(16 / 9)` 容器内的图片按 `BoxFit.cover`
+      填充裁剪，不显示完整原始比例。
+    result: passed
+    reason:
+      text: ArticleCard 中 AspectRatio(16 / 9) 容器包裹 ArticleCoverImage，ArticleCoverImage
+        默认 fit = BoxFit.cover，且通过 LayoutBuilder 获得显式宽高，图片会等比例填充裁剪，不会按原始比例完整显示。
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：`flutter analyze --no-pub`（修改文件）通过。
+    result: passed
+    reason:
+      text: 绑定证据 flutter analyze --no-pub
+        lib/features/articles/widgets/article_cover_image.dart 已通过，无静态分析告警。
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: A4：`flutter test --no-pub test/features/articles/article_card_test.dart`
+      通过。
+    result: passed
+    reason:
+      text: 绑定证据 flutter test --no-pub test/features/articles/article_card_test.dart
+        已通过，覆盖比例、占位与渲染等回归场景。
+      truncated: false
+builder_handoff:
+  candidate_id: eb115122-f5ca-4352-bb10-1f086057b7e3
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:74d1efa6-cff0-46fc-aff6-528a39f4cfcb
+  iteration: 2
+  summary:
+    text: 在 ArticleCoverImage 中使用 LayoutBuilder 读取父容器尺寸，将 maxWidth/maxHeight 显式传给
+      CachedImage 与兜底 Image.asset，确保资讯列表卡片封面在 AspectRatio(16/9) 容器内按
+      BoxFit.cover 正确填充裁剪。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+  acceptance_review:
+    - id: A1
+      status: implemented-with-evidence
+      evidence:
+        - lib/features/articles/widgets/article_cover_image.dart 使用
+          LayoutBuilder 包裹，builder 内将 constraints.maxWidth/maxHeight 作为
+          CachedImage 与 Image.asset 的 width/height
+      note: LayoutBuilder 读取父容器尺寸并显式传递给底层图片组件
+    - id: A2
+      status: implemented-with-evidence
+      evidence:
+        - CachedImage 默认 fit = BoxFit.cover，且现在获得明确 width/height，会在
+          AspectRatio(16/9) 容器内等比例填充裁剪
+      note: BoxFit.cover 在明确尺寸约束下生效，图片按 16/9 容器填充裁剪
+    - id: A3
+      status: implemented-with-evidence
+      evidence:
+        - worktree 中运行 flutter analyze --no-pub
+          lib/features/articles/widgets/article_cover_image.dart 通过
+      note: 修改文件静态分析零告警
+    - id: A4
+      status: implemented-with-evidence
+      evidence:
+        - worktree 中运行 flutter test --no-pub
+          test/features/articles/article_card_test.dart 通过
+      note: widget 测试通过，无溢出、无变形
+  checks:
+    - name:
+        text: flutter analyze --no-pub（修改文件）
+        truncated: false
+      result: passed
+      note:
+        text: worktree 中修改文件 analyze 通过
+        truncated: false
+    - name:
+        text: flutter test --no-pub test/features/articles/article_card_test.dart
+        truncated: false
+      result: passed
+      note:
+        text: worktree 中测试通过
+        truncated: false
+  checks_truncated: false
+  known_limits: []
+  known_limits_truncated: false
+  review: null
+  submitted_at: 2026-10-14T08:45:29.838Z
+blockers: []
+verification:
+  candidate_id: eb115122-f5ca-4352-bb10-1f086057b7e3
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:90a34eae-a6ec-49ba-ba34-cd86c112631b
+  iteration: 2
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: analyze-changed
+      name:
+        text: flutter analyze --no-pub（修改文件）
+        truncated: false
+      argv_display:
+        - text: analyze
+          truncated: false
+        - text: --no-pub
+          truncated: false
+        - text: lib/features/articles/widgets/article_cover_image.dart
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 1965
+    - id: article-card-test
+      name:
+        text: flutter test --no-pub test/features/articles/article_card_test.dart
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: --no-pub
+          truncated: false
+        - text: test/features/articles/article_card_test.dart
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 2203
+  summary:
+    text: 独立代码检查与已绑定的 analyze/test 证据均表明，资讯卡片封面图片已正确通过 LayoutBuilder 获取父容器尺寸并传给
+      CachedImage，在 16:9 容器内按 BoxFit.cover 等比例填充裁剪，所有验收项通过，无遗留风险。
+    truncated: false
+  risks: []
+  risks_truncated: false
+  completed_at: 2026-10-14T08:48:33.190Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: "Builder handoff Runtime checks failed: article-card-test"
+      truncated: false
+    completed_at: 2026-10-14T08:44:04.512Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 独立代码检查与已绑定的 analyze/test 证据均表明，资讯卡片封面图片已正确通过 LayoutBuilder 获取父容器尺寸并传给
+        CachedImage，在 16:9 容器内按 BoxFit.cover 等比例填充裁剪，所有验收项通过，无遗留风险。
+      truncated: false
+    completed_at: 2026-10-14T08:48:33.190Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-10-14T08:32:02.618Z

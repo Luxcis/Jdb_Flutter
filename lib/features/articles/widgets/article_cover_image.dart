@@ -29,25 +29,31 @@ class ArticleCoverImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final coverUrl = url;
-    if (coverUrl == null || coverUrl.isEmpty) {
-      return Image.asset(
-        _fallbackAsset,
-        width: width,
-        height: height,
-        fit: fit,
-      );
-    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final coverWidth = width ?? constraints.maxWidth;
+        final coverHeight = height ?? constraints.maxHeight;
+        final coverUrl = url;
+        if (coverUrl == null || coverUrl.isEmpty) {
+          return Image.asset(
+            _fallbackAsset,
+            width: coverWidth,
+            height: coverHeight,
+            fit: fit,
+          );
+        }
 
-    return CachedImage(
-      coverUrl,
-      width: width,
-      height: height,
-      fit: fit,
-      fallbackAsset: _fallbackAsset,
-      semanticLabel: semanticLabel,
-      memCacheWidth: memCacheWidth,
-      memCacheHeight: memCacheHeight,
+        return CachedImage(
+          coverUrl,
+          width: coverWidth,
+          height: coverHeight,
+          fit: fit,
+          fallbackAsset: _fallbackAsset,
+          semanticLabel: semanticLabel,
+          memCacheWidth: memCacheWidth,
+          memCacheHeight: memCacheHeight,
+        );
+      },
     );
   }
 }
