@@ -23,13 +23,7 @@ class ArticleCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: ArticleCoverImage(
-                coverUrl,
-                semanticLabel: article.title,
-              ),
-            ),
+            ArticleCoverImage(coverUrl, semanticLabel: article.title),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
               child: Column(
