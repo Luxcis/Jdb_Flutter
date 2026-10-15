@@ -11,7 +11,7 @@ void main() {
       onDisable: () async => calls.add('disable'),
     );
 
-    final lease = coordinator.acquire() as _TestLease;
+    final lease = coordinator.acquire();
     await lease.enabled;
     await lease.release();
 
@@ -32,7 +32,7 @@ void main() {
       onDisable: () async => calls.add('disable'),
     );
 
-    final lease = coordinator.acquire() as _TestLease;
+    final lease = coordinator.acquire();
     final release = lease.release();
     await enableStarted.future;
     expect(calls, ['enable-start']);
@@ -48,9 +48,9 @@ void main() {
       onDisable: () async => calls.add('disable'),
     );
 
-    final first = coordinator.acquire() as _TestLease;
+    final first = coordinator.acquire();
     await first.enabled;
-    final second = coordinator.acquire() as _TestLease;
+    final second = coordinator.acquire();
     await second.enabled;
 
     await first.release();
@@ -67,7 +67,7 @@ void main() {
       onDisable: () async => calls.add('disable'),
     );
 
-    final lease = coordinator.acquire() as _TestLease;
+    final lease = coordinator.acquire();
     await lease.enabled;
     await lease.release();
     await lease.release();
@@ -85,7 +85,7 @@ void main() {
       onDisable: () async => calls.add('disable'),
     );
 
-    final lease = coordinator.acquire() as _TestLease;
+    final lease = coordinator.acquire();
     await expectLater(lease.enabled, throwsA(isA<StateError>()));
     await lease.release();
 
@@ -102,13 +102,13 @@ void main() {
       },
     );
 
-    final lease = coordinator.acquire() as _TestLease;
+    final lease = coordinator.acquire();
     await lease.enabled;
     // release 可能抛出错误，但应由调用方决定如何处理；
     // 关键是不会阻塞队列中后续操作。
     unawaited(lease.release().catchError((Object _) {}));
 
-    final lease2 = coordinator.acquire() as _TestLease;
+    final lease2 = coordinator.acquire();
     await lease2.enabled;
     expect(calls, ['enable', 'disable', 'enable']);
   });
@@ -147,5 +147,5 @@ class _TestCoordinator extends MoviePreviewLeaseCoordinator {
 }
 
 class _TestLease extends MoviePreviewLease {
-  _TestLease._(_TestCoordinator coordinator) : super(coordinator);
+  _TestLease._(_TestCoordinator super.coordinator);
 }
