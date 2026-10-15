@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>MissAV 番号即时播放器</title>
+    <style>
+        :root {
+          --bg: #0c1016;
+          --panel: #121821;
+          --panel2: #171e29;
+          --line: #243040;
+          --line2: #2b3a4d;
+          --fg: #e6edf3;
+          --muted: #93a4bb;
+          --accent: #ff5c8a;
+          --accent2: #ff8fb1;
+          --ok: #3fb950;
+          --warn: #d29922;
+          --err: #f85149;
+          --radius: 12px;
+        }
+        * { box-sizing: border-box; }
+        body {
+          margin: 0; padding: 24px 16px 48px;
+          background:
+            radial-gradient(1200px 500px at 70% -10%, rgba(255,92,138,.13), transparent 60%),
+            radial-gradient(900px 420px at 10% 0%, rgba(90,140,255,.10), transparent 55%),
+            var(--bg);
+          color: var(--fg);
+          font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+          min-height: 100vh;
+        }
+        .wrap { max-width: 980px; margin: 0 auto; }
+        h1 { font-size: 22px; margin: 4px 0 2px; letter-spacing: .3px; }
+        h1 .brand { color: var(--accent); }
+        .sub { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+        .panel {
+          background: linear-gradient(180deg, var(--panel2), var(--panel));
+          border: 1px solid var(--line);
+          border-radius: var(--radius);
+          padding: 16px;
+        }
+        form#go { display: flex; gap: 10px; flex-wrap: wrap; }
+        input#code {
+          flex: 1 1 320px; padding: 12px 14px; font-size: 15px;
+          border-radius: 10px; border: 1px solid var(--line);
+          background: #0b0f16; color: var(--fg); outline: none;
+        }
+        input#code:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,92,138,.18); }
+        button {
+          padding: 12px 20px; border: 0; border-radius: 10px; cursor: pointer;
+          font-weight: 600; font-size: 15px; color: #fff;
+          background: linear-gradient(135deg, var(--accent), #ff7a5c);
+        }
+        button:hover { filter: brightness(1.08); }
+        button.ghost {
+          background: transparent; color: var(--muted);
+          border: 1px solid var(--line); font-weight: 500;
+        }
+        button.ghost:hover { color: var(--fg); border-color: var(--muted); }
+        #status { margin: 12px 2px 0; font-size: 13.5px; color: var(--muted); min-height: 20px; }
+        #status.ok { color: var(--ok); }
+        #status.err { color: var(--err); }
+        #status.warn { color: var(--warn); }
+        video#v {
+          width: 100%; border-radius: var(--radius); background: #000;
+          display: none; margin-top: 14px;
+        }
+        .row2 { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+        select#quality {
+          display: none; padding: 8px 10px; border-radius: 8px;
+          background: #0b0f16; color: var(--fg); border: 1px solid var(--line); font-size: 13px;
+        }
+        .hint { color: var(--muted); font-size: 12.5px; margin-top: 14px; }
+        .hint b { color: var(--fg); }
+        code { background: #0b0f16; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--line); font-size: 12px; }
+        kbd { background:#0b0f16; border:1px solid var(--line); border-bottom-width:2px; border-radius:5px; padding:1px 6px; font-size:12px }
+        a { color: var(--accent2); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .fence {
+          margin-top: 18px; padding: 14px 16px; border-radius: var(--radius);
+          background: #0e1420; border: 1px dashed var(--line);
+          color: var(--muted); font-size: 13px;
+        }
+        .fence b { color: var(--fg); }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <h1><span class="brand">MissAV</span> 番号即时播放器</h1>
+    <p class="sub">输入番号（如 <code>DLDSS-564</code>，也支持完整链接）→ 回车自动解析 → 自动播放</p>
+
+    <div class="panel">
+        <form autocomplete="off" id="go">
+            <input autofocus id="code" placeholder="DLDSS-564">
+            <button type="submit">播 放</button>
+            <button class="ghost" id="copyDirect" title="复制 surrit 原始 m3u8（需自配 Referer 下载器）"
+                    type="button">复制 m3u8
+            </button>
+        </form>
+        <div id="status"></div>
+
+        <video controls id="v" muted playsinline></video>
+
+        <div class="row2">
+            <select id="quality"></select>
+            <button class="ghost" id="openSite" type="button">打开原站页面</button>
+            <button class="ghost" id="copyRelay" type="button">复制中继 m3u8</button>
+        </div>
+    </div>
+
+    <div class="fence" id="fence">
+        <b>二、播放模式自动探测</b><br>
+        ① 若与本目录的 <code>server.js</code> 同源（即通过 <code>node server.js</code> 后访问本页），则直接可用。<br>
+        ② 若直接双击 HTML 文件打开，会自动探测 <code>http://127.0.0.1:8931</code> 的本地中继。<br>
+        ③ surrit 的 Cloudflare 拒绝无 Referer 的请求，因此纯 HTML 无法绕过：请先运行
+        <code>node server.js</code>，再打开本页。
+    </div>
+
+    <p class="hint">
+        原理与反爬结论见 <a href="README.md">README.md</a>。仅限设备上的个人观看用途；请勿批量抓取。
+    </p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.21/dist/hls.min.js"></script>
+<script>
+    (() => {
+      'use strict'
+
+      const $ = (id) => document.getElementById(id)
+      const statusEl = $('status')
+      const video = $('v')
+      const selQ = $('quality')
+      let currentHls = null
+      let currentMaster = ''   // relay 侧 master m3u8
+      let currentRaw = ''      // surrit 原始 master m3u8
+      let currentCode = ''
+
+      /* ---------------- 状态显示 ---------------- */
+      function say(msg, cls) {
+        statusEl.textContent = msg
+        statusEl.className = cls || ''
+      }
+
+      /* ---------------- 中继探测 ---------------- */
+      function relayCandidates() {
+        const list = []
+        try {
+          if (localStorage.getItem('missav.relay')) list.push(localStorage.getItem('missav.relay').replace(/\/+$/, ''))
+        } catch (e) {}
+        // 1. 同源（html 由 server.js 托管）
+        if (location.origin && location.origin !== 'null') list.push('')
+        // 2. 本机默认端口
+        list.push('http://127.0.0.1:8931')
+        // 去重
+        return [...new Set(list)]
+      }
+
+      /* ---------------- JS packer 解码器（Dean Edwards unPacker 等价实现） ---------------- */
+      function unesc(s) {
+        let out = '', i = 0
+        while (i < s.length) {
+          const c = s[i]
+          if (c === '\\' && i + 1 < s.length) {
+            const n = s[i + 1]
+            const map = { n: '\n', t: '\t', r: '\r', '0': '\0' }
+            if (n in map) { out += map[n]; i += 2; continue }
+            if (n === 'x' && i + 4 <= s.length) { out += String.fromCharCode(parseInt(s.slice(i + 2, i + 4), 16)); i += 4; continue }
+            if (n === 'u' && i + 6 <= s.length) { out += String.fromCharCode(parseInt(s.slice(i + 2, i + 6), 16)); i += 6; continue }
+            out += n; i += 2; continue
+          }
+          out += c; i += 1
+        }
+        return out
+      }
+
+      function radix(c, a) {
+        let out = ''
+        for (;;) {
+          const r = c % a
+          out = (r > 35 ? String.fromCharCode(r + 29) : '0123456789abcdefghijklmnopqrstuvwxyz'[r]) + out
+          c = Math.floor(c / a)
+          if (c === 0) break
+        }
+        return out
+      }
+
+      function unpack(payload, radixBase, count, kwStr) {
+        payload = unesc(payload)
+        const table = new Map()
+        const kws = kwStr.split('|')
+        for (let c = 0; c < count; c++) {
+          const tok = radixBase === 10 ? String(c) : radix(c, radixBase)
+          table.set(tok, (c < kws.length && kws[c]) ? kws[c] : tok)
+        }
+        const toks = [...table.keys()].sort((x, y) => y.length - x.length)
+        const re = new RegExp('\\b(?:' + toks.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\$&')).join('|') + ')\\b', 'g')
+        return payload.replace(re, (t) => table.get(t) || t)
+      }
+
+      const PACK_RE = /eval\(function\(p,a,c,k,e,d\).*?\}\(\s*'(.*?)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'(.*?)'\s*\.split\('\|'\)\s*,\s*0\s*,\s*\{\}\s*\)\)/gs
+
+      function extractSurritMaster(html) {
+        const uuidRe = /surrit\.com\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/g
+        // 1) 从解码后的 packer 产物里找（页面真正使用的 m3u8 都在 packer 字符串中）
+        let decoded = html
+        for (const m of html.matchAll(PACK_RE)) {
+          try {
+            decoded += '\n' + unpack(m[1], Number(m[2]), Number(m[3]), m[4])
+          } catch (e) { /* 单个 packer 解码失败不影响其他 */ }
+        }
+        let best = null
+        for (const m of decoded.matchAll(uuidRe)) {
+          const uuid = m[1]
+          best = best || `https://surrit.com/${uuid}/playlist.m3u8`
+        }
+        return best
+      }
+
+      /* ---------------- 番号 → surrit master ---------------- */
+      function normalizeCode(input) {
+        input = (input || '').trim()
+        if (!input) return ''
+        // 支持完整 URL：取最后一段路径
+        const m = input.match(/missav[^/]*\/[a-z-]{0,6}\/([\w-]+)/i) ||
+                  input.match(/https?:\/\/[^/]+\/([\w-]+)\/?$/i) ||
+                  input.match(/\/([\w-]+)\/?$/i)
+        if (m) return m[1]
+        // 纯番号：去掉空格与多余分隔
+        return input.replace(/\s+/g, '').toLowerCase().replace(/^https?:\/\//, '')
+      }
+
+      async function resolveMaster(code) {
+        const candidates = relayCandidates()
+        let lastErr = ''
+        for (const relay of candidates) {
+          try {
+            say(`正在通过 ${relay || '（同源中继）'} 抓取 ${code} 页面…`)
+            const resp = await fetch(`${relay}/page/${encodeURIComponent(code)}`, { cache: 'no-store' })
+            if (!resp.ok) { lastErr = `relay ${relay || '同源'} → HTTP ${resp.status}`; continue }
+            const html = await resp.text()
+            const master = extractSurritMaster(html)
+            if (master) return { master, relay, html }
+            lastErr = `relay ${relay || '同源'} 页面已获取但未找到 surrit UUID（可能不存在该番号）`
+          } catch (e) {
+            lastErr = `relay ${relay || '同源'} 不可用（${e.message}）`
+          }
+        }
+        throw new Error(lastErr || '所有中继均不可用：请先运行 node server.js')
+      }
+
+      /* ---------------- 播放 ---------------- */
+      function relayUrl(raw, relay) {
+        if (!relay) return raw.replace('https://surrit.com/', '/hls/')
+        return raw.replace('https://surrit.com/', `${relay}/hls/`)
+      }
+
+      function stopCurrent() {
+        if (currentHls) { try { currentHls.destroy() } catch (e) {} currentHls = null }
+        try { video.pause(); video.removeAttribute('src'); video.load() } catch (e) {}
+        video.style.display = 'none'
+        selQ.style.display = 'none'
+        selQ.innerHTML = ''
+      }
+
+      async function play(masterRaw, relay) {
+        currentMaster = relayUrl(masterRaw, relay)
+        currentRaw = masterRaw
+        video.style.display = 'block'
+        say('已取得播放列表，正在加载 HLS …', '')
+        if (window.Hls && Hls.isSupported()) {
+          const hls = new Hls({ maxBufferLength: 30, maxMaxBufferLength: 60 })
+          currentHls = hls
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            // 画质选项（由高到低倒序 + 自动）
+            const opts = ['<option value="-1">自动</option>']
+              .concat(hls.levels.map((lv, i) => `<option value="${i}">${Math.min(lv.height, 2160)}p</option>`).reverse())
+            selQ.innerHTML = opts.join('')
+            selQ.style.display = 'block'
+          })
+          hls.on(Hls.Events.ERROR, (_e, data) => {
+            if (data.fatal) {
+              say(`播放失败：${data.type} ${data.details}（若 403/502 请确认 server.js 正在运行）`, 'err')
+            }
+          })
+          hls.loadSource(currentMaster)
+          hls.attachMedia(video)
+          hls.on(Hls.Events.MANIFEST_PARSED, () => { try { video.play() } catch (e) {} })
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.src = currentMaster
+          try { await video.play() } catch (e) { say('已就绪：请点击画面播放（浏览器自动播放策略限制）', 'warn') }
+        } else {
+          say('当前浏览器不支持 HLS（hls.js CDN 可能被网络拦截），请换 Edge/Chrome 或检查代理', 'err')
+          return
+        }
+
+        say(`▶ 已开始播放（番号：${currentCode}）`, 'ok')
+        // 若浏览器策略阻止自动播放，提示用户点击
+        setTimeout(() => {
+          if (video.paused && currentHls) say('已就绪：自动播放被浏览器拦截时，点击画面即可播放', 'warn')
+        }, 1200)
+        $('openSite').onclick = () => window.open(`https://missav.ai/${currentCode}`, '_blank')
+        $('copyRelay').onclick = () => navigator.clipboard.writeText(location.origin ? new URL(currentMaster, location.origin).href : currentMaster)
+      }
+
+      /* ---------------- 表单 ---------------- */
+      $('go').addEventListener('submit', async (evt) => {
+        evt.preventDefault()
+        const code = normalizeCode($('code').value)
+        if (!code) { say('请输入番号', 'warn'); return }
+        currentCode = code
+        stopCurrent()
+        try {
+          const { master, relay } = await resolveMaster(code)
+          try { localStorage.setItem('missav.relay', relay || location.origin) } catch (e) {}
+          say('解析成功，正在准备播放 …', '')
+          await play(master, relay)
+        } catch (e) {
+          say('解析失败：' + e.message, 'err')
+        }
+      })
+
+      selQ.addEventListener('change', () => {
+        if (currentHls) currentHls.currentLevel = Number(selQ.value)
+      })
+
+      $('copyDirect').addEventListener('click', () => {
+        if (!currentRaw) { say('先解析一个番号', 'warn'); return }
+        navigator.clipboard.writeText(currentRaw)
+        say('已复制原始 m3u8（下载器需自行携带 Referer: https://missav.live/ja/）', 'ok')
+      })
+    })()
+</script>
+</body>
+</html>
