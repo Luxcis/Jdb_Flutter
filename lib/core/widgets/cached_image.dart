@@ -17,6 +17,7 @@ class CachedImage extends StatelessWidget {
     this.width,
     this.height,
     this.fit = BoxFit.cover,
+    this.alignment = Alignment.center,
     this.fallbackAsset,
     this.semanticLabel,
     this.onImageSize,
@@ -29,6 +30,9 @@ class CachedImage extends StatelessWidget {
   final double? width;
   final double? height;
   final BoxFit fit;
+
+  /// [BoxFit.cover] 等裁剪模式下的图片对齐方式；限高裁剪时可取顶部。
+  final Alignment alignment;
   final String? fallbackAsset;
   final String? semanticLabel;
 
@@ -57,6 +61,7 @@ class CachedImage extends StatelessWidget {
       imageUrl: _fullUrl,
       cacheManager: JdbImageCacheManager.instance,
       fit: fit,
+      alignment: alignment,
       width: width,
       height: height,
       memCacheWidth: memCacheWidth,
@@ -70,6 +75,7 @@ class CachedImage extends StatelessWidget {
                   width: width,
                   height: height,
                   fit: fit,
+                  alignment: alignment,
                 ),
               ),
             )
@@ -83,7 +89,13 @@ class CachedImage extends StatelessWidget {
       ),
       errorWidget: (_, _, _) => fallbackAsset == null
           ? const Center(child: Icon(Icons.broken_image))
-          : Image.asset(fallbackAsset!, width: width, height: height, fit: fit),
+          : Image.asset(
+              fallbackAsset!,
+              width: width,
+              height: height,
+              fit: fit,
+              alignment: alignment,
+            ),
     );
     final label = semanticLabel;
     if (label != null) {

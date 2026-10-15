@@ -61,22 +61,16 @@ void main() {
     expect(find.textContaining('业界'), findsNothing);
   });
 
-  testWidgets('封面 16:9 比例', (tester) async {
-    await pumpCard(tester, article());
+  testWidgets('无封面时显示 16:9 占位兜底图', (tester) async {
+    await pumpCard(tester, article(coverUrl: null));
 
     final aspect = tester.widget<AspectRatio>(find.byType(AspectRatio));
     expect(aspect.aspectRatio, 16 / 9);
-  });
-
-  testWidgets('无封面时显示占位而非崩溃', (tester) async {
-    await pumpCard(tester, article(coverUrl: null));
-
-    expect(find.byType(AspectRatio), findsOneWidget);
     expect(find.byType(ArticleCoverImage), findsOneWidget);
     expect(find.byType(Image), findsOneWidget);
   });
 
-  testWidgets('有封面时使用 ArticleCoverImage 渲染', (tester) async {
+  testWidgets('加载前封面使用 16:9 占位区', (tester) async {
     await pumpCard(tester, article(coverUrl: 'cover.jpg'));
 
     final coverImage = tester.widget<ArticleCoverImage>(
@@ -84,5 +78,55 @@ void main() {
     );
     expect(coverImage.url, 'cover.jpg');
     expect(coverImage.semanticLabel, '标题');
+
+    // 图片尺寸未解锁前保持 16:9 占位高度（视口宽 800）。
+    const cardWidth = 800.0;
+    final placeholderHeight = cardWidth * 9 / 16;
+    final placeholders = tester
+        .widgetList<SizedBox>(
+          find.descendant(
+            of: find.byType(ArticleCoverImage),
+            matching: find.byType(SizedBox),
+          ),
+        )
+        .where(
+          (box) =>
+              box.width == cardWidth &&
+              box.height != null &&
+              (box.height! - placeholderHeight).abs() < 1,
+        )
+        .toList();
+    expect(placeholders, isNotEmpty);
+  });
+
+  group('resolveDisplayHeight', () {
+    test('宽幅封面按真实比例完整自适应', () {
+      const width = 800.0;
+      final height = ArticleCoverImage.resolveDisplayHeight(
+        coverWidth: width,
+        imageSize: const Size(1920, 800),
+      );
+      expect(height, closeTo(width * 800 / 1920, 0.01));
+      expect(height, lessThan(width * ArticleCoverImage.maxHeightFactor));
+    });
+
+    test('竖版封面未超限时完整显示', () {
+      const width = 400.0;
+      final height = ArticleCoverImage.resolveDisplayHeight(
+        coverWidth: width,
+        imageSize: const Size(900, 800),
+      );
+      expect(height, closeTo(width * 800 / 900, 0.01));
+      expect(height, lessThanOrEqualTo(width * ArticleCoverImage.maxHeightFactor));
+    });
+
+    test('超高封面被截断为宽度上限并触发顶部裁剪', () {
+      const width = 400.0;
+      final height = ArticleCoverImage.resolveDisplayHeight(
+        coverWidth: width,
+        imageSize: const Size(500, 1000),
+      );
+      expect(height, width * ArticleCoverImage.maxHeightFactor);
+    });
   });
 }
