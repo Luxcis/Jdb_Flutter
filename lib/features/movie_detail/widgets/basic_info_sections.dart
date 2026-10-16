@@ -117,7 +117,7 @@ class MovieActorSection extends StatelessWidget {
   }
 }
 
-/// 预告片 / 剧照区。
+/// 正片 / 预告片 / 剧照区。
 class MovieScreenshotSection extends StatelessWidget {
   const MovieScreenshotSection({
     super.key,
@@ -125,6 +125,8 @@ class MovieScreenshotSection extends StatelessWidget {
     required this.previewCoverUrl,
     required this.previewTitle,
     required this.onPreviewTap,
+    required this.onlineCoverUrl,
+    required this.onOnlineTap,
   });
 
   final List<String> urls;
@@ -132,65 +134,48 @@ class MovieScreenshotSection extends StatelessWidget {
   final String previewTitle;
   final VoidCallback onPreviewTap;
 
+  /// 正片入口卡的封面（影片封面）。
+  final String onlineCoverUrl;
+  final VoidCallback onOnlineTap;
+
   @override
   Widget build(BuildContext context) {
     final hasPreview = previewCoverUrl != null;
+    final playEntryCount = hasPreview ? 2 : 1;
     return MovieSection(
-      title: '预告片 / 剧照',
+      title: '正片 / 预告片 / 剧照',
       titleTrailing: urls.isEmpty ? null : '共 ${urls.length} 张',
       height: 164,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
-        itemCount: urls.length + (hasPreview ? 1 : 0),
+        itemCount: playEntryCount + urls.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (_, index) {
-          if (index == 0 && hasPreview) {
-            return Semantics(
-              button: true,
-              label: '播放《$previewTitle》预告片',
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: Material(
-                  clipBehavior: Clip.antiAlias,
-                  borderRadius: BorderRadius.circular(8),
-                  child: InkWell(
-                    key: const Key('movie-detail-preview'),
-                    onTap: onPreviewTap,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        MovieCoverImage(
-                          previewCoverUrl!,
-                          variant: MovieImageVariant.cover,
-                          fit: BoxFit.cover,
-                        ),
-                        const Center(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: Color(0x99000000),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Padding(
-                              padding: EdgeInsets.all(10),
-                              child: Icon(
-                                Icons.play_arrow_rounded,
-                                key: Key('movie-detail-preview-play-icon'),
-                                color: Colors.white,
-                                size: 32,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+          if (index == 0) {
+            return _PlayEntryCard(
+              cardKey: const Key('movie-detail-online'),
+              iconKey: const Key('movie-detail-online-play-icon'),
+              labelKey: const Key('movie-detail-online-label'),
+              semanticsLabel: '播放《$previewTitle》正片',
+              coverUrl: onlineCoverUrl,
+              label: '正片',
+              onTap: onOnlineTap,
+            );
+          }
+          if (index == 1 && hasPreview) {
+            return _PlayEntryCard(
+              cardKey: const Key('movie-detail-preview'),
+              iconKey: const Key('movie-detail-preview-play-icon'),
+              labelKey: const Key('movie-detail-preview-label'),
+              semanticsLabel: '播放《$previewTitle》预告片',
+              coverUrl: previewCoverUrl!,
+              label: '预告片',
+              onTap: onPreviewTap,
             );
           }
 
-          final screenshotIndex = index - (hasPreview ? 1 : 0);
+          final screenshotIndex = index - playEntryCount;
           return Semantics(
             button: true,
             label: '查看剧照 ${screenshotIndex + 1}，共 ${urls.length} 张',
@@ -208,6 +193,98 @@ class MovieScreenshotSection extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// 播放入口卡（正片 / 预告片）：封面图 + 中央播放图标 + 文本标识。
+class _PlayEntryCard extends StatelessWidget {
+  const _PlayEntryCard({
+    required this.cardKey,
+    required this.iconKey,
+    required this.labelKey,
+    required this.semanticsLabel,
+    required this.coverUrl,
+    required this.label,
+    required this.onTap,
+  });
+
+  final Key cardKey;
+  final Key iconKey;
+  final Key labelKey;
+  final String semanticsLabel;
+  final String coverUrl;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: semanticsLabel,
+      excludeSemantics: true,
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: Material(
+          clipBehavior: Clip.antiAlias,
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            key: cardKey,
+            onTap: onTap,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                MovieCoverImage(
+                  coverUrl,
+                  variant: MovieImageVariant.cover,
+                  fit: BoxFit.cover,
+                ),
+                Center(
+                  child: DecoratedBox(
+                    decoration: const BoxDecoration(
+                      color: Color(0x99000000),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Icon(
+                        Icons.play_arrow_rounded,
+                        key: iconKey,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(8, 12, 8, 6),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0x00000000), Color(0xB3000000)],
+                      ),
+                    ),
+                    child: Text(
+                      label,
+                      key: labelKey,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

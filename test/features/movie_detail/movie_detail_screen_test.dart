@@ -21,6 +21,7 @@ import 'package:jade/features/common/screens/common_list_screen.dart';
 import 'package:jade/features/common/services/tag_movies_service.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/screens/movie_detail_screen.dart';
+import 'package:jade/features/movie_detail/widgets/basic_info_sections.dart';
 import 'package:jade/features/movie_detail/widgets/basic_info_widgets.dart';
 import 'package:jade/features/movie_detail/widgets/movie_review_actions.dart';
 import 'package:jade/features/movie_detail/widgets/top_ranking_tile.dart';
@@ -125,6 +126,26 @@ Future<void> _scrollUntilFound(
     await tester.drag(scrollable, const Offset(0, -300));
     await tester.pump();
   }
+}
+
+/// 把「正片 / 预告片 / 剧照」入口行滚到最右，让第二张剧照进入懒构建窗口。
+Future<void> _scrollPlayEntryRow(WidgetTester tester) async {
+  final section = find.byType(MovieScreenshotSection);
+  await Scrollable.ensureVisible(tester.element(section), alignment: 0);
+  await tester.pump();
+  final row = find
+      .descendant(
+        of: section,
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is Scrollable &&
+              widget.axisDirection == AxisDirection.right,
+        ),
+      )
+      .first;
+  final position = tester.state<ScrollableState>(row).position;
+  position.jumpTo(position.maxScrollExtent);
+  await tester.pump();
 }
 
 void _enqueueCompleteMovieDetail(
@@ -1371,7 +1392,7 @@ void main() {
     expect(find.text('剧情'), findsOneWidget);
   });
 
-  testWidgets('有预告片时封面入口位于第一项并具有播放语义', (tester) async {
+  testWidgets('有预告片时正片入口在预告片入口之前，两个入口都有文本标识', (tester) async {
     final adapter = await _setupApiClient();
     _enqueueCompleteMovieDetail(
       adapter,
@@ -1395,21 +1416,34 @@ void main() {
         )
         .first;
     await tester.scrollUntilVisible(
-      find.text('预告片 / 剧照'),
+      find.text('正片 / 预告片 / 剧照'),
       300,
       scrollable: innerScrollable,
     );
 
+    final online = find.byKey(const Key('movie-detail-online'));
+    final onlineIcon = find.byKey(const Key('movie-detail-online-play-icon'));
     final preview = find.byKey(const Key('movie-detail-preview'));
     final playIcon = find.byKey(const Key('movie-detail-preview-play-icon'));
     final firstScreenshot = find.byKey(const Key('movie-detail-screenshot-0'));
+    expect(online, findsOneWidget);
+    expect(onlineIcon, findsOneWidget);
     expect(preview, findsOneWidget);
     expect(playIcon, findsOneWidget);
     expect(firstScreenshot, findsOneWidget);
     expect(
+      tester.getTopLeft(online).dx,
+      lessThan(tester.getTopLeft(preview).dx),
+    );
+    expect(
       tester.getTopLeft(preview).dx,
       lessThan(tester.getTopLeft(firstScreenshot).dx),
     );
+    expect(find.byKey(const Key('movie-detail-online-label')), findsOneWidget);
+    expect(find.byKey(const Key('movie-detail-preview-label')), findsOneWidget);
+    expect(find.text('正片'), findsOneWidget);
+    expect(find.text('预告片'), findsOneWidget);
+    expect(find.bySemanticsLabel('播放《测试影片》正片'), findsOneWidget);
     expect(find.bySemanticsLabel('播放《测试影片》预告片'), findsOneWidget);
   });
 
@@ -1444,7 +1478,7 @@ void main() {
       scrollable: innerScrollable,
     );
 
-    expect(find.text('预告片 / 剧照'), findsOneWidget);
+    expect(find.text('正片 / 预告片 / 剧照'), findsOneWidget);
     expect(preview, findsOneWidget);
     expect(find.byType(MovieStillThumbnail), findsNothing);
   });
@@ -1478,6 +1512,40 @@ void main() {
     expect(find.byKey(const Key('movie-detail-preview')), findsNothing);
     expect(find.byKey(const Key('movie-detail-screenshot-0')), findsOneWidget);
     expect(find.byKey(const Key('movie-detail-screenshot-1')), findsOneWidget);
+  });
+
+  testWidgets('没有预告片与剧照时仍显示正片入口', (tester) async {
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(adapter, previewImages: const []);
+
+    await tester.pumpWidget(
+      const MaterialApp(home: MovieDetailScreen(id: 'm1')),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final innerScrollable = find
+        .descendant(
+          of: find.byType(TabBarView),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Scrollable &&
+                widget.axisDirection == AxisDirection.down,
+          ),
+        )
+        .first;
+    final online = find.byKey(const Key('movie-detail-online'));
+    await _scrollUntilFound(
+      tester,
+      target: online,
+      scrollable: innerScrollable,
+    );
+
+    expect(find.text('正片 / 预告片 / 剧照'), findsOneWidget);
+    expect(online, findsOneWidget);
+    expect(find.text('正片'), findsOneWidget);
+    expect(find.byKey(const Key('movie-detail-preview')), findsNothing);
+    expect(find.text('预告片'), findsNothing);
   });
 
   testWidgets('点击预告入口传递播放参数', (tester) async {
@@ -1529,6 +1597,54 @@ void main() {
       args.videoUrl,
       'https://jdforrepam.com/preview.m3u8?sign=a%2Bb%3Dc&t=123',
     );
+  });
+
+  testWidgets('点击正片入口传递在线番号参数', (tester) async {
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(
+      adapter,
+      previewVideoUrl: 'https://media.example.com/preview.m3u8',
+    );
+    Object? capturedArgs;
+    final router = _buildMovieDetailRouter(
+      onPreviewExtra: (extra) => capturedArgs = extra,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final innerScrollable = find
+        .descendant(
+          of: find.byType(TabBarView),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Scrollable &&
+                widget.axisDirection == AxisDirection.down,
+          ),
+        )
+        .first;
+    final online = find.byKey(const Key('movie-detail-online'));
+    await _scrollUntilFound(
+      tester,
+      target: online,
+      scrollable: innerScrollable,
+    );
+    expect(online, findsOneWidget);
+    await Scrollable.ensureVisible(tester.element(online), alignment: 0.5);
+    await tester.pump();
+    await tester.tap(online);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(router.state.uri.path, '/movie/m1/preview');
+    expect(capturedArgs, isA<MoviePreviewArgs>());
+    final args = capturedArgs! as MoviePreviewArgs;
+    expect(args.movieId, 'm1');
+    expect(args.title, '测试影片');
+    expect(args.isOnline, isTrue);
+    expect(args.onlineNumber, 'SSIS-001');
   });
 
   for (final target in [
@@ -1921,11 +2037,12 @@ void main() {
     expect(find.text('演员'), findsOneWidget);
 
     await tester.scrollUntilVisible(
-      find.byKey(const Key('movie-detail-screenshot-1')),
+      find.text('正片 / 预告片 / 剧照'),
       300,
       scrollable: innerScrollable,
     );
-    expect(find.text('预告片 / 剧照'), findsOneWidget);
+    await _scrollPlayEntryRow(tester);
+    expect(find.text('正片 / 预告片 / 剧照'), findsOneWidget);
     expect(find.text('全部 2 ›'), findsNothing);
     expect(find.byType(MovieStillThumbnail), findsNWidgets(2));
 
@@ -2474,17 +2591,13 @@ void main() {
         )
         .first;
     await tester.scrollUntilVisible(
-      find.text('预告片 / 剧照'),
+      find.text('正片 / 预告片 / 剧照'),
       300,
       scrollable: innerScrollable,
     );
+    await _scrollPlayEntryRow(tester);
     final secondScreenshot = find.byKey(const Key('movie-detail-screenshot-1'));
     expect(secondScreenshot, findsOneWidget);
-    await Scrollable.ensureVisible(
-      tester.element(secondScreenshot),
-      alignment: 0.5,
-    );
-    await tester.pump();
 
     await tester.tap(secondScreenshot);
     await tester.pump();
@@ -2538,7 +2651,9 @@ void main() {
     final adapter = await _setupApiClient();
     _enqueueCompleteMovieDetail(adapter);
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
+    await tester.pumpWidget(
+      const MaterialApp(home: MovieDetailScreen(id: 'm1')),
+    );
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
     await _pumpUntilText(tester, '测试影片');
@@ -2565,7 +2680,9 @@ void main() {
     final adapter = await _setupApiClient();
     _enqueueCompleteMovieDetail(adapter, coverUrl: '');
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
+    await tester.pumpWidget(
+      const MaterialApp(home: MovieDetailScreen(id: 'm1')),
+    );
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 

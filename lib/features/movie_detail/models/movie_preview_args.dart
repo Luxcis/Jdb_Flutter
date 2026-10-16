@@ -2,12 +2,22 @@ class MoviePreviewArgs {
   const MoviePreviewArgs({
     required this.movieId,
     required this.title,
-    required this.videoUrl,
-  });
+    this.videoUrl = '',
+    this.onlineNumber,
+  }) : assert(
+         onlineNumber != null || videoUrl != '',
+         '预告片需要 videoUrl，在线正片需要 onlineNumber。',
+       );
 
   final String movieId;
   final String title;
   final String videoUrl;
+
+  /// 在线正片来源的影片番号；非空表示本播放页为「正片」在线播放。
+  final String? onlineNumber;
+
+  /// 本播放页是否为在线正片来源。
+  bool get isOnline => (onlineNumber ?? '').trim().isNotEmpty;
 
   /// 将 [videoUrl] 的 host 替换为当前选中线路 [lineBaseUrl] 的 host。
   ///

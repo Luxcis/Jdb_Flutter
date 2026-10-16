@@ -383,6 +383,14 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                   ),
                 ),
               ),
+              onOnlineTap: () => context.push(
+                AppRoutes.moviePreviewLocation(detail.id),
+                extra: MoviePreviewArgs(
+                  movieId: detail.id,
+                  title: detail.title,
+                  onlineNumber: detail.number,
+                ),
+              ),
               onActorTap: (actor) => context.push('/actor/${actor.id}'),
             ),
           ),

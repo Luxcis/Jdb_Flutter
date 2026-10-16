@@ -16,14 +16,15 @@ class _FakePlatformPlayer extends PlatformPlayer {
   final Object? disposeError;
   Object? seekError;
   final events = <String>[];
-  final opened = <({String uri, bool play})>[];
+  final opened = <({String uri, bool play, Map<String, String>? headers})>[];
 
   @override
   Future<void> open(Playable playable, {bool play = true}) async {
     if (openError != null) {
       throw openError!;
     }
-    opened.add((uri: (playable as Media).uri, play: play));
+    final media = playable as Media;
+    opened.add((uri: media.uri, play: play, headers: media.httpHeaders));
   }
 
   @override
@@ -67,9 +68,35 @@ void main() {
     await playback.initialize();
 
     expect(platform.opened, [
-      (uri: 'https://media.example.com/preview.m3u8', play: false),
+      (
+        uri: 'https://media.example.com/preview.m3u8',
+        play: false,
+        headers: null,
+      ),
     ]);
     expect(playback.state.value.isInitialized, isTrue);
+    await playback.dispose();
+  });
+
+  test('httpHeaders 注入到打开的 Media（在线正片 Referer）', () async {
+    final platform = _FakePlatformPlayer();
+    final playback = MediaKitMoviePreviewPlayback(
+      Uri.parse(
+        'https://surrit.com/a5e4d7c9-2206-4f41-901c-1dd66a6ead27/playlist.m3u8',
+      ),
+      player: Player(platformPlayer: platform),
+      httpHeaders: const {
+        'Referer': 'https://missav.live/ja/',
+        'User-Agent': 'ua',
+      },
+    );
+
+    await playback.initialize();
+
+    expect(platform.opened.single.headers, {
+      'Referer': 'https://missav.live/ja/',
+      'User-Agent': 'ua',
+    });
     await playback.dispose();
   });
 

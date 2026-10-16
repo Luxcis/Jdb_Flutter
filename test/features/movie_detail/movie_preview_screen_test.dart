@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/screens/movie_preview_screen.dart';
+import 'package:jade/features/movie_detail/services/missav_stream_resolver.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_playback.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_system_ui.dart';
 import 'package:jade/features/movie_detail/widgets/movie_preview_controls_overlay.dart';
@@ -37,6 +38,30 @@ void main() {
         videoUrl: 'not a URL',
       ).videoUri,
       isNull,
+    );
+  });
+
+  test('MoviePreviewArgs 在线来源以番号标记，预告片不需要番号', () {
+    const online = MoviePreviewArgs(
+      movieId: 'm1',
+      title: '测试影片',
+      onlineNumber: 'DLDSS-564',
+    );
+    expect(online.isOnline, isTrue);
+    expect(online.videoUri, isNull);
+
+    const trailer = MoviePreviewArgs(
+      movieId: 'm1',
+      title: '测试影片',
+      videoUrl: 'https://media.example.com/preview.m3u8',
+    );
+    expect(trailer.isOnline, isFalse);
+  });
+
+  test('MoviePreviewArgs 既无视频地址也无番号时不合法', () {
+    expect(
+      () => MoviePreviewArgs(movieId: 'm1', title: '测试影片'),
+      throwsA(isA<AssertionError>()),
     );
   });
 
@@ -111,6 +136,125 @@ void main() {
     await tester.pump();
 
     expect(find.text('预告片播放失败'), findsOneWidget);
+    expect(factoryCalls, 0);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('在线来源：先显示解析中，解析成功后自动播放解析地址', (tester) async {
+    final playback = _FakePlayback();
+    Uri? createdUri;
+    final resolver = _FakeResolver((_) async => _resolvedStream());
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MoviePreviewScreen(
+          args: const MoviePreviewArgs(
+            movieId: 'm1',
+            title: '测试影片',
+            onlineNumber: 'DLDSS-564',
+          ),
+          onlineResolver: resolver,
+          playbackFactory: (uri) {
+            createdUri = uri;
+            return playback;
+          },
+          orientationSetter: (_) async {},
+          systemUiCoordinator: _testSystemUiCoordinator,
+        ),
+      ),
+    );
+
+    expect(find.text('正在解析播放地址…'), findsOneWidget);
+
+    await tester.pump();
+    await tester.pump();
+
+    expect(resolver.calls, ['DLDSS-564']);
+    expect(
+      createdUri.toString(),
+      'https://surrit.com/$_fixtureUuid/playlist.m3u8',
+    );
+    expect(playback.initializeCalls, 1);
+    expect(playback.playCalls, 1);
+    expect(find.text('正在解析播放地址…'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('在线来源：解析失败显示在线播放失败，重试成功后播放', (tester) async {
+    final playback = _FakePlayback();
+    var attempts = 0;
+    final resolver = _FakeResolver((_) async {
+      attempts++;
+      if (attempts == 1) {
+        throw const MissavResolveException('页面请求失败（HTTP 404），番号可能不存在');
+      }
+      return _resolvedStream();
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MoviePreviewScreen(
+          args: const MoviePreviewArgs(
+            movieId: 'm1',
+            title: '测试影片',
+            onlineNumber: 'DLDSS-564',
+          ),
+          onlineResolver: resolver,
+          playbackFactory: (_) => playback,
+          orientationSetter: (_) async {},
+          systemUiCoordinator: _testSystemUiCoordinator,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('在线播放失败'), findsOneWidget);
+    expect(find.text('预告片播放失败'), findsNothing);
+    expect(find.text('重试'), findsOneWidget);
+    expect(playback.initializeCalls, 0);
+
+    await tester.tap(find.text('重试'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(resolver.calls, ['DLDSS-564', 'DLDSS-564']);
+    expect(playback.initializeCalls, 1);
+    expect(playback.playCalls, 1);
+    expect(find.text('在线播放失败'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('在线来源：解析中退出不启动播放且无副作用', (tester) async {
+    final completer = Completer<MissavResolvedStream>();
+    var factoryCalls = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MoviePreviewScreen(
+          args: const MoviePreviewArgs(
+            movieId: 'm1',
+            title: '测试影片',
+            onlineNumber: 'DLDSS-564',
+          ),
+          onlineResolver: _FakeResolver((_) => completer.future),
+          playbackFactory: (_) {
+            factoryCalls++;
+            return _FakePlayback();
+          },
+          orientationSetter: (_) async {},
+          systemUiCoordinator: _testSystemUiCoordinator,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+
+    completer.complete(_resolvedStream());
+    await tester.pump();
+
     expect(factoryCalls, 0);
     expect(tester.takeException(), isNull);
   });
@@ -740,6 +884,31 @@ Future<void> _pumpPreviewPage(
 Offset _backgroundPoint(WidgetTester tester) {
   return tester.getTopLeft(find.byKey(const Key('fake-preview-video'))) +
       const Offset(64, 240);
+}
+
+const _fixtureUuid = 'a5e4d7c9-2206-4f41-901c-1dd66a6ead27';
+
+MissavResolvedStream _resolvedStream() {
+  return MissavResolvedStream(
+    playlistUrl: Uri.parse('https://surrit.com/$_fixtureUuid/playlist.m3u8'),
+    httpHeaders: const {
+      'Referer': missavReferer,
+      'User-Agent': missavUserAgent,
+    },
+  );
+}
+
+class _FakeResolver implements MissavStreamResolver {
+  _FakeResolver(this._handler);
+
+  final Future<MissavResolvedStream> Function(String number) _handler;
+  final calls = <String>[];
+
+  @override
+  Future<MissavResolvedStream> resolve(String number) {
+    calls.add(number);
+    return _handler(number);
+  }
 }
 
 class _FakePlayback implements MoviePreviewPlayback {
