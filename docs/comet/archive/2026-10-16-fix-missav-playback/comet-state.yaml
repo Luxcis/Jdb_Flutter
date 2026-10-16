@@ -1,0 +1,648 @@
+schema: comet.native.v4
+name: fix-missav-playback
+language: zh-CN
+phase: archive
+status: done
+state_version: 12
+brief: brief.md
+document_constraints_version: 3
+shape_confirmation_hash: 4a28a0fcd316fe3b21f5d8b962682a079162e16f23622dcf15ef99697aab9683
+spec_changes:
+  - capability: missav-playback
+    operation: modify
+    source: specs/missav-playback/spec.md
+workspace:
+  isolation: current
+  change_branch: master
+  target_branch: master
+  finish: null
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 2
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: 模拟器上播放「正片」：出现真实画面（非全黑），进度推进，拖动到任意时间点后继续播放出画面。
+    result: passed
+    reason:
+      text: 本机独立复现（emulator-5554，候选 debug 0.14.0-alpha，pid
+        920）：VOV-055「正片」出真实画面（MISSV.com 水印可见），进度 00:19→00:36→00:50 实时推进；横向拖动
+        seek 到 02:41 后继续出画（03:00）。截图
+        /private/tmp/v2_a1_t8.png、v2_a1_ctrl2.png、v2_seek_after.png、v2_seek_after2.png。
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: 模拟器上播放「预告片」：出现真实画面，进度推进。
+    result: passed
+    reason:
+      text: 本轮已闭环（iteration 1 该场景受阻）：本机复现 VOV-055「预告片」出真实画面，时长 01:00，进度 00:28→00:36
+        推进（截图 /private/tmp/v2_a2_ctrl1.png、v2_a2_ctrl2.png）；日志 13:23:41.900
+        VideoOutput 已绑定 surface（wid 非 0）且无 view-ready 超时。iteration 1
+        出现的「预告片永久加载态」本轮未复现（同时起播阶段已有 20s 上界兜底）。
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: 起播时序：视频输出在播放页画面输出（surface）就绪并绑定后才开始播放，不出现「先起播、后中途切换视频输出」造成的卡死或黑屏。
+    result: passed
+    reason:
+      text: 代码：initialize → session.isInitialized=true + setState 挂载画面 →
+        waitUntilViewReady（surface id 就绪 + 1s 稳定窗，等待上限 5s）→ play；设备日志显示
+        VideoOutput wid 绑定（13:24:40.592 / 13:31:08.592 /
+        13:35:26.106）先于画面出现；本轮新增 widget 测试「起播前先挂载播放画面并等待画面输出就绪」由本人单独运行通过（断言 play
+        不早于 view-ready、操作层不提前出现）。
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: Android 视频渲染使用 MediaCodec 直接渲染输出，不依赖 GL/EGL 上下文（模拟器上 GL 上下文不可用也能出画）。
+    result: passed
+    reason:
+      text: moviePreviewVideoControllerConfiguration(isAndroid:true) 返回
+        vo=mediacodec_embed + hwdec=mediacodec，非 Android
+        返回默认（本人单独运行该单测通过）；media_kit_video-2.0.1
+        android_video_controller/real.dart 确认 configuration.vo/hwdec 透传 mpv，且对
+        vo=mediacodec_embed 额外补 vid=auto；设备端（gfxstream+SwiftShader，GL/EGL
+        不可用）出画，全程无 EGL/GLES/vo=gpu fatal 日志。
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: 播放链路出现 error/fatal 级信息（视频输出初始化失败、网络失败、解码失败等）时，设备日志包含其 prefix、级别与文本，可定位失败环节。
+    result: passed
+    reason:
+      text: "设备实测（本人独立抓取 /private/tmp/v2_evidence_logcat_final.txt，18800+
+        行）：movie_preview mpv[ffmpeg/error] tcp: Failed to resolve hostname
+        surrit.com: No address associated with hostname（13:32:55
+        断网播放时真实网络失败）、movie_preview mpv[lavf/error] Failed to create file
+        cache.、movie_preview mpv[media_kit/error] ...，格式为 mpv[prefix/level]
+        text；media_kit 1.2.6 源码确认 MPV_EVENT_LOG_MESSAGE 全量转发（error 及更高，含
+        fatal）。"
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: 既有测试全部通过；新增测试覆盖渲染配置、起播时序与日志转发；`flutter analyze` 零告警。
+    result: passed
+    reason:
+      text: "本人独立复跑：flutter analyze --no-pub → 「No issues found!」；flutter test
+        --no-pub → 「+992: All tests passed!」；新增两个 widget
+        测试单独运行亦通过（「起播长时间无响应时按播放失败呈现并可重试」「起播前先挂载播放画面并等待画面输出就绪」），movie_preview_pl\
+        ayback_test 18 项全通过。Runtime
+        检查记录（analyze/test，13:13:39–13:14:20）与当前工作区一致：源文件最后修改
+        12:10–12:59，早于检查执行；新增测试覆盖渲染配置、日志格式化/转发、view-ready 与稳定窗、起播时序与 20s 起播上界。"
+      truncated: false
+  - id: A7
+    source: specs/missav-playback/spec.md
+    text: 解析成功得到播放地址 Given 番号在 MissAV 有对应影片页且页面包含 packer 混淆的 surrit 地址 When 触发解析
+      Then 返回 `https://surrit.com/{uuid}/playlist.m3u8` 形态的播放地址与 Referer/UA 请求头
+    result: passed
+    reason:
+      text: missav_stream_resolver_test「解析成功返回播放地址与 Referer/UA 请求头」随全量测试通过；设备端解析请求
+        uri=https://missav.live/ja/vov-055（番号小写、语言段正确），解析成功后直连 surrit
+        播放出画（13:31:05.981 创建播放器）。
+      truncated: false
+  - id: A8
+    source: specs/missav-playback/spec.md
+    text: packer 解码支持两种 radix 与转义 Given 页面含 radix 16 或 radix 62 的 packer 混淆脚本（含 `\x`
+      / `\u` 转义） When 执行解码 Then 解出的文本包含正确的 surrit UUID，不因转义导致解码失败
+    result: passed
+    reason:
+      text: missav_page_parser_test 的 radix 16 / radix 62 packer 与 \x/\u
+        转义用例随全量测试（992）通过。
+      truncated: false
+  - id: A9
+    source: specs/missav-playback/spec.md
+    text: 无 packer 时正则兜底 Given 页面未使用 packer 混淆但含明文 `surrit.com/{uuid}/playlist.m3u8`
+      When 触发解析 Then 仍能提取到播放地址
+    result: passed
+    reason:
+      text: missav_page_parser_test 无 packer 时明文 surrit 兜底用例随全量测试通过。
+      truncated: false
+  - id: A10
+    source: specs/missav-playback/spec.md
+    text: 番号规范化容错 Given 输入为完整 missav 链接（含语言段与路径）或带空格/大小写差异的纯番号 When 执行规范化 Then
+      输出小写、无空白的番号并用于页面请求
+    result: passed
+    reason:
+      text: missav_page_parser_test/lib 规范化用例（纯番号小写、去空白、完整链接取末段）随全量测试通过；设备日志中请求路径与失败
+        uri 均为 /ja/vov-055。
+      truncated: false
+  - id: A11
+    source: specs/missav-playback/spec.md
+    text: 解析失败返回可读原因 Given 番号不存在、页面请求非 200 或页面中找不到 surrit 地址 When 触发解析 Then
+      解析以失败结束并给出可展示的原因，播放页进入失败状态
+    result: passed
+    reason:
+      text: "本机复现：断网（飞行模式）进入「正片」→
+        页面显示「在线播放失败」+「重试」（/private/tmp/v2_offline_t12.png）；日志 13:34:45
+        movie_preview online-resolve failed: 页面请求失败：NetworkClientException: ...
+        net::ERR_PROXY_CONNECTION_FAILED ...
+        uri=https://missav.live/ja/vov-055（可读原因）。"
+      truncated: false
+  - id: A12
+    source: specs/missav-playback/spec.md
+    text: 解析成功后自动开始播放 Given 解析已成功返回播放地址与请求头 When 播放页就绪 Then 自动开始播放（画面与进度推进），操作层可用
+    result: passed
+    reason:
+      text: 设备：解析完成后无需操作即自动出画，操作层可用（标题/暂停/进度/seek 均生效）；widget
+        测试「在线来源：先显示解析中，解析成功后自动播放解析地址」随全量测试通过。
+      truncated: false
+  - id: A13
+    source: specs/missav-playback/spec.md
+    text: "播放请求携带 Referer Given 在线正片播放已开始 When 检查播放器对 surrit 的请求构造 Then 请求携带
+      `Referer: https://missav.live/ja/` 与浏览器 UA"
+    result: passed
+    reason:
+      text: "resolver 输出 httpHeaders（Referer: https://missav.live/ja/ + 浏览器 UA）经 Media
+        注入播放器（单测「httpHeaders 注入到打开的 Media（在线正片 Referer）」随全量测试通过）；设备端 surrit
+        直连播放成功（该 CDN 强制 Referer 白名单，缺失即拒绝），说明播放请求头生效。"
+      truncated: false
+  - id: A14
+    source: specs/missav-playback/spec.md
+    text: 画面输出就绪后起播 Given 播放地址已就绪且播放页开始建立视频画面输出 When 播放器开始播放 Then
+      视频输出已绑定到播放页的画面输出后再起播，画面可见（非全黑）且进度推进
+    result: passed
+    reason:
+      text: 与 A1/A3 同源：画面可见（非全黑）且进度实时推进（00:19→00:36→00:50，seek 后 02:41→03:00
+        继续出画）；play 在 waitUntilViewReady 之后调用（widget 测试断言），不存在「先起播、后中途切换视频输出」。
+      truncated: false
+  - id: A15
+    source: specs/missav-playback/spec.md
+    text: MediaCodec 直渲染路径 Given Android 环境（含 GL/EGL 不可用的模拟器） When 初始化播放器渲染 Then 使用
+      MediaCodec 直接渲染输出到播放页画面，经 MediaCodec 硬件解码播放，不需要 GL 上下文
+    result: passed
+    reason:
+      text: 与 A4 同源：设备（模拟器 GL 上下文不可用）经 vo=mediacodec_embed + hwdec=mediacodec 出画，无 EGL
+        失败；media_kit_video 源码确认该配置走 MediaCodec 直接渲染到 surface。
+      truncated: false
+  - id: A16
+    source: specs/missav-playback/spec.md
+    text: 解析失败可原地重试恢复 Given 首次解析失败（例如网络不可达或番号不存在） When 查看播放页 Then
+      显示失败状态与「重试」；条件恢复后点击重试，解析成功并开始播放
+    result: passed
+    reason:
+      text: 本机复现闭环：断网进入 → 「在线播放失败」+「重试」→ 恢复网络（airplane_mode_on=0，proxy=10.0.2.2:7890）→
+        点击「重试」→ 重新解析成功并播放出真实画面（13:35:23 重试 → 13:35:26 surface 绑定；截图
+        /private/tmp/v2_a16_retry_t22.png）。
+      truncated: false
+  - id: A17
+    source: specs/missav-playback/spec.md
+    text: 播放失败可重试 Given 解析成功但播放器报错（例如 CDN 拒绝） When 查看播放页 Then
+      显示失败状态与「重试」，点击重试重新走解析与播放
+    result: passed
+    reason:
+      text: "本机复现两条腿：(1) 媒体不可达时起播挂起 → 13:24:58.165 日志「movie_preview session-init
+        failed: TimeoutException after 0:00:20.000000」（起播上界精确 20s 触发）→
+        页面显示「在线播放失败」+「重试」（点击处 /private/tmp/v2_a17_t24.png），点击后重新走解析/播放；(2) 播放中断网
+        → mpv ffmpeg/error → 页面「在线播放失败」+「重试」（v2_net_off_t42.png）→ 恢复网络点重试 →
+        重新解析并出画（v2_retry2_t26.png）。新增 widget 测试「起播长时间无响应时按播放失败呈现并可重试」本人单独运行通过。"
+      truncated: false
+  - id: A18
+    source: specs/missav-playback/spec.md
+    text: 播放失败原因写入日志 Given 播放器在播放链路报出 error 或 fatal 级信息（例如视频输出初始化失败、网络失败、解码失败） When
+      查看设备日志 Then 日志包含该信息的 prefix、级别与文本，可据此定位失败环节
+    result: passed
+    reason:
+      text: 同 A5：设备日志含 prefix、级别与文本（movie_preview mpv[prefix/level] text）；代码核对 _onLog
+        仅写 logSink（debugPrint），不改变播放状态与用户可见文案（失败文案仍统一「在线播放失败」）。
+      truncated: false
+  - id: A19
+    source: specs/missav-playback/spec.md
+    text: 退出播放页停止取流 Given 在线正片正在播放 When 退出播放页 Then 播放器被释放、无继续拉流；再次进入可重新解析并播放
+    result: passed
+    reason:
+      text: 本机复现：正常播放中进程 2 个 mpv 线程、CPU 82%、443 连接 7 条；按返回退出后 10s 内 mpv 线程 0、CPU
+        0.0%、无 ESTABLISHED 443（仅 TIME_WAIT）；再次进入同一影片可重新解析并出画（13:20:49、13:23:40
+        预告片、13:35:23 三次均成立）。注：起播挂起（20s 上界触发）场景下的资源残留见 risks[0]。
+      truncated: false
+  - id: A20
+    source: specs/missav-playback/spec.md
+    text: 解析中退出无副作用 Given 解析请求仍在进行 When 退出播放页 Then 请求完成后不启动播放、不写入页面状态、不崩溃
+    result: passed
+    reason:
+      text: widget 测试「在线来源：解析中退出不启动播放且无副作用」随全量测试通过；代码核对解析、初始化、等待画面、play 各阶段均以
+        _isCurrentGeneration/_isCurrentSession 校验，代际过期走
+        _detachAndCleanup，无写状态/崩溃路径。
+      truncated: false
+  - id: A21
+    source: specs/missav-playback/spec.md
+    text: 发布构建携带 embedded Cronet 配置 Given CI 或本地发布构建 When 检查构建命令（workflow /
+      RULES.md） Then 包含 `--dart-define=cronetHttpNoPlay=true`，APK 依赖
+      cronet-embedded 而非 play-services-cronet
+    result: passed
+    reason:
+      text: .github/workflows/compile_apk.yml:71 `flutter build apk --split-per-abi
+        --dart-define=cronetHttpNoPlay=true`；RULES.md:15
+        同步该构建约定；cronet_http-1.10.0/android/build.gradle:67-70 在该 define 为 'true'
+        时 implementation org.chromium.net:cronet-embedded:143.7445.0，否则
+        play-services-cronet。
+      truncated: false
+builder_handoff:
+  candidate_id: 4d44089e-7448-414f-b872-a6104456123e
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:7958901a-5809-44eb-b99d-91ab65f7dc25
+  iteration: 2
+  summary:
+    text: 修复「正片」在线播放两个失败形态：模拟器黑屏（根因：mpv vo=gpu 在模拟器无法创建 EGL
+      context，降级为纯音频）与真机在线播放失败（根因待真机日志）。改动四处：(1) Android 视频渲染改 MediaCodec
+      直渲染（vo=mediacodec_embed + hwdec=mediacodec，等价 mpv-android 默认，不经
+      GL/EGL）；(2) 起播时序改为「初始化 → 挂载播放画面 → 等待画面输出就绪 + 有界稳定窗 →
+      play」，消除中途切换视频输出导致的卡死/全黑；(3) 起播阶段（就绪等待 + play）加 20s 上界：媒体不可达导致 play
+      长时间不返回时按播放失败呈现并可重试，修复上一轮 Verifier 发现的「永久停在加载态」缺陷；(4) 播放器 mpv
+      日志（error/fatal
+      等）转发到设备日志，失败原因可见。涉及文件：movie_preview_playback.dart、movie_preview_screen.dart
+      及 movie_detail 下 4 个测试文件。开发期已运行：flutter analyze --no-pub（0 告警）、flutter
+      test --no-pub（992
+      通过）、模拟器设备实测（在线流出画与进度推进、失败→重试→成功、预告片出画、拖动回退后继续出画、退出后无残留拉流）、旧构建 A/B
+      对照。未运行：真机（用户设备）验证；release 构建与 CI。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+    - A20
+    - A21
+  acceptance_review:
+    - id: A1
+      status: implemented-with-evidence
+      evidence:
+        - "设备实测（emulator-5554，iteration 2 候选 debug 构建）：DBER-065「正片」出画并推进进度（00:43
+          / 136:25，画面含 MISSAV.com 水印）；首次进入因 CDN 读超时失败（日志 `movie_preview
+          mpv[ffmpeg/error] tcp: ffurl_read returned 0xffffff92`），点「重试」后成功出画。此前
+          iteration 1 候选上 VOV-055「正片」亦实测出画、进度 00:20→01:13、拖动回退到 00:03 后继续出画。"
+        - 实现：movie_preview_playback.dart（Android 渲染配置 +
+          起播前等待画面输出）、movie_preview_screen.dart（先挂载画面再起播）。
+      note: 原先 mpv vo=gpu 在模拟器上无法创建 EGL context，改为 MediaCodec 直渲染后出画；拖动回退后画面继续。
+    - id: A2
+      status: implemented-with-evidence
+      evidence:
+        - 设备实测（iteration 2 候选）：START-649「预告片」出画（surface 768x432，画面含 SODSTAR
+          水印，截图 177）；另一次预告片播放同样出画。
+        - 同一模拟器在改动前预告片全黑（进度推进但无画面），说明渲染路径问题与片源无关。
+      note: 上一轮 Verifier 三次尝试未出画，其设备日志显示相同 CDN 读超时（部分预告片 host
+        在本机网络下瞬时不达，与本改动无关：修改前构建同样失败）；本轮网络恢复后预告片正常出画。
+    - id: A3
+      status: implemented-with-evidence
+      evidence:
+        - widget 测试
+          test/features/movie_detail/movie_preview_screen_test.dart「起播前先挂载播放画面并等待画面输出就绪」：画面已挂载但等待未完成时
+          playCalls==0，完成后为 1。
+        - 播放适配器测试「画面输出就绪后仍需等稳定窗口（视频输出绑定）结束」验证稳定窗等待。
+        - 设备对照：不等稳定窗时（首版实现）播放进度停在 00:00（黑屏），等待后正常起播（截图 111 vs 114/122）。
+      note: 顺序为 initialize → 挂载画面 → waitUntilViewReady（surface 就绪 + 有界稳定窗）→ play。
+    - id: A4
+      status: implemented-with-evidence
+      evidence:
+        - "moviePreviewVideoControllerConfiguration(isAndroid: true) 返回
+          vo=mediacodec_embed、hwdec=mediacodec；非 Android 返回 media_kit 默认（单测覆盖）。"
+        - "设备实测：模拟器 GL/EGL 不可用（mpv 日志 fatal: Could not create EGL context for
+          GLES 2.x +!）仍能出画，只有 MediaCodec 直渲染路径可解释。"
+      note: 平台选择经 `!kIsWeb && Platform.isAndroid` 判定，测试用 isAndroid 参数注入。
+    - id: A5
+      status: implemented-with-evidence
+      evidence:
+        - "设备实测日志（候选构建）：`movie_preview mpv[media_kit/error] error: property not
+          found _setProperty(osc, 1)`、`movie_preview mpv[lavf/error] Failed to
+          create file cache.`、`movie_preview mpv[ffmpeg/demuxer/error] hls:
+          Unable to open key file ...`、`movie_preview mpv[cplayer/error] Failed
+          to recognize file format.`。"
+        - 单测：formatMoviePreviewPlayerLog 断言 `movie_preview
+          mpv[vo/gpu/opengl/fatal] Could not create EGL context for GLES 2.x +!`
+          格式；日志转发单测断言 logSink 收到 `movie_preview mpv[vd/error] Could not open
+          codec`。
+      note: 只做诊断输出，不改变播放状态与用户可见文案。
+    - id: A6
+      status: implemented-with-evidence
+      evidence:
+        - "`flutter analyze --no-pub`：No issues found!"
+        - "`flutter test --no-pub`：991 tests passed。"
+        - 新增/更新测试：渲染配置选择、播放器日志格式化与转发、画面输出就绪等待（含稳定窗与已就绪立即返回）、起播时序（先挂载后起播）。
+      note: 开发期已跑完整 analyze + 全量 test；正式检查计划随 handoff 提交。
+    - id: A7
+      status: implemented-with-evidence
+      evidence:
+        - 既有实现未改动：missav_stream_resolver.dart 抓页 + extractSurritMasterUrl 返回
+          playlist 地址与 headers。
+        - 既有测试 test/features/movie_detail/missav_stream_resolver_test.dart
+          覆盖解析成功与请求头（在冻结计划中随全量测试执行）。
+      note: 本次未修改解析管线，行为保持。
+    - id: A8
+      status: implemented-with-evidence
+      evidence:
+        - 既有实现未改动：missav_page_parser.dart 的 unpackPackerScript（radix 生成 + \x/\u
+          转义）。
+        - 既有测试 test/features/movie_detail/missav_page_parser_test.dart 覆盖
+          radix16/radix62 与转义（随冻结计划执行）。
+      note: 本次未修改解析管线。
+    - id: A9
+      status: implemented-with-evidence
+      evidence:
+        - 既有实现未改动：extractSurritMasterUrl 在原文中按 surrit.com/{uuid} 兜底匹配。
+        - 既有测试 missav_page_parser_test.dart 覆盖无 packer 明文兜底。
+      note: 本次未修改解析管线。
+    - id: A10
+      status: implemented-with-evidence
+      evidence:
+        - 既有实现未改动：normalizeMissavCode 处理完整链接与纯番号。
+        - 既有测试 missav_page_parser_test.dart 覆盖规范化。
+      note: 本次未修改解析管线。
+    - id: A11
+      status: implemented-with-evidence
+      evidence:
+        - 既有实现未改动：MissavResolveException 携带可展示原因，播放页进入失败状态。
+        - "设备实测：VRKM-1816 解析返回 HTTP 404 → 页面显示「在线播放失败」+「重试」（日志 `movie_preview
+          online-resolve failed: 页面请求失败（HTTP 404），番号可能不存在`）。"
+      note: 本次未修改解析失败路径。
+    - id: A12
+      status: implemented-with-evidence
+      evidence:
+        - widget 测试「在线来源：先显示解析中，解析成功后自动播放解析地址」与「进入页面先锁定横屏，初始化成功后自动播放…」。
+        - 设备实测：解析完成后自动起播并推进进度（截图 122/123）。
+      note: 自动播放语义保持不变，仅在其前插入画面就绪等待。
+    - id: A13
+      status: implemented-with-evidence
+      evidence:
+        - 既有测试「httpHeaders 注入到打开的 Media（在线正片 Referer）」断言 Referer/UA 注入。
+        - 设备实测：surrit CDN 无 Referer/UA 时返回 403（host 侧 curl 对照
+          403/200），模拟器播放成功说明注入生效。
+      note: 请求头构造未改动。
+    - id: A14
+      status: implemented-with-evidence
+      evidence:
+        - widget 测试「起播前先挂载播放画面并等待画面输出就绪」证明 play 在画面就绪后才调用。
+        - 设备实测：画面可见（非全黑）且进度推进（截图 122/123）。
+      note: 与 A1/A3 同源证据，验收点为「就绪后起播」这一时序约束。
+    - id: A15
+      status: implemented-with-evidence
+      evidence:
+        - "moviePreviewVideoControllerConfiguration(isAndroid: true) =
+          vo:mediacodec_embed + hwdec:mediacodec（单测）。"
+        - 设备实测：模拟器 EGL 上下文创建失败仍能出画（截图 122/162）。
+      note: 与 A4 同源证据，验收点落在 Android 环境（含 GL 不可用模拟器）。
+    - id: A16
+      status: implemented-with-evidence
+      evidence:
+        - widget 测试「在线来源：解析失败显示在线播放失败，重试成功后播放」验证重试重新解析并播放。
+        - 设备实测：VRKM-1816 解析失败 → 失败态 + 重试按钮（截图 44）。
+      note: 重试流程未改动。
+    - id: A17
+      status: implemented-with-evidence
+      evidence:
+        - 设备实测（iteration 2 候选）：DBER-065 在线流出画后因 CDN 读超时失败 → 页面显示「在线播放失败」+「重试」→
+          点击重试后重新解析并成功播放出画（00:43 / 136:25）。
+        - "设备实测：START-649 预告片在 CDN 不可达时显示「预告片播放失败」+「重试」（日志 `hls: Unable to open
+          key file ...`）。"
+        - 新增 widget 测试「起播长时间无响应时按播放失败呈现并可重试」：play 永不完成时 20s
+          后出现失败态与「重试」，不再永久停在加载态（对应上一轮 Verifier 报告的静默挂起）。
+      note: 失败原因现可在日志中看到，便于定位。
+    - id: A18
+      status: implemented-with-evidence
+      evidence:
+        - "设备日志包含 prefix/级别/文本：`movie_preview mpv[ffmpeg/demuxer/error] hls:
+          Unable to open key file ...`、`movie_preview mpv[cplayer/error] Failed
+          to recognize file format.`。"
+        - 单测断言格式化文本与 logSink 转发。
+      note: 日志为诊断输出，不影响用户可见文案。
+    - id: A19
+      status: implemented-with-evidence
+      evidence:
+        - 设备实测（iteration 2 候选）：退出播放页后 `top -H` 无 mpv 线程、进程 CPU 回落（0%→3.8%
+          详情页渲染），在线流与预告片两次均验证。
+        - 既有 widget 测试「退出时 pause/dispose 各一次」等覆盖清理。
+      note: 清理路径（有界超时 + dispose）未改动。
+    - id: A20
+      status: implemented-with-evidence
+      evidence:
+        - 既有 widget 测试「在线来源：解析中退出不启动播放且无副作用」覆盖代际失效后不启动播放、不写状态。
+        - 本次改动保留代际校验：解析/初始化/等待/播放各阶段均检查 _isCurrentSession/_isCurrentGeneration。
+      note: 退出语义未改动。
+    - id: A21
+      status: implemented-with-evidence
+      evidence:
+        - RULES.md 第 15 行记录构建必须携带
+          `--dart-define=cronetHttpNoPlay=true`；`.github/workflows/compile_apk.yml`
+          同步。
+        - 本次候选 APK 即以该 define 构建（flutter build apk --debug
+          --dart-define=cronetHttpNoPlay=true）。
+      note: 依赖与构建约定未改动，本次未调整 pubspec 依赖。
+  checks:
+    - name:
+        text: flutter analyze --no-pub
+        truncated: false
+      result: passed
+      note:
+        text: No issues found!
+        truncated: false
+    - name:
+        text: flutter test --no-pub
+        truncated: false
+      result: passed
+      note:
+        text: 992 tests passed
+        truncated: false
+    - name:
+        text: 模拟器设备实测（emulator-5554，iteration 2 候选 debug 构建）
+        truncated: false
+      result: passed
+      note:
+        text: 在线流出画/进度推进/失败→重试→成功；预告片出画；退出播放页后 0 个 mpv 线程；失败原因出现在设备日志中。
+        truncated: false
+    - name:
+        text: 旧构建 A/B 对照（预告片 CDN 失败）
+        truncated: false
+      result: passed
+      note:
+        text: 修改前 APK 在同一影片预告片上也失败，确认该失败为环境/CDN 可达性问题，不是本次改动引入。
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: 真机（用户设备）未在本机验证：真机「解析成功后提示在线播放失败」的根因需真机日志确认（新构建会把 mpv 失败原因写入日志）。
+      truncated: false
+    - text: 起播前有 1s 稳定窗口（viewBindingSettle），真机起播会相应延迟约 1s；起播阶段另有 20s 上界（超时进入可重试失败态）。
+      truncated: false
+    - text: mpv `video-params.hw-pixelformat` 在 media_kit 1.2.6 +
+        本片源上未出现，未能用确定性信号替代稳定窗；已改为有界等待（超时继续）。
+      truncated: false
+    - text: 模拟器上部分片源 CDN（如 ygp.blxr5es.com、部分 surrit
+        分段）在当前网络下会瞬时不可达，导致播放失败；与本改动无关（修改前构建同样失败），失败会呈现并可重试。
+      truncated: false
+    - text: "`flutter test` 计划内含既有测试，若仓库既有测试告警会导致检查失败（当前 0 告警、全通过）。"
+      truncated: false
+  known_limits_truncated: false
+  review: null
+  submitted_at: 2026-10-16T05:13:35.266Z
+blockers: []
+verification:
+  candidate_id: 4d44089e-7448-414f-b872-a6104456123e
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:874ff4e2-3e2c-439a-9237-9cb544eb8041
+  iteration: 2
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: analyze
+      name:
+        text: flutter analyze
+        truncated: false
+      argv_display:
+        - text: analyze
+          truncated: false
+        - text: --no-pub
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 5785
+    - id: test
+      name:
+        text: flutter test
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: --no-pub
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 35938
+  summary:
+    text: "21/21 全部通过（iteration 2，candidate
+      4d44089e）。本轮修复的两点均在本机独立复现：（1）媒体不可达时起播不再永久加载——play() 挂起被 20s
+      起播上界拦住，13:24:58.165 日志「session-init failed: TimeoutException after
+      0:00:20.000000」并进入「在线播放失败」+「重试」，点击重试重新走解析与播放；（2）Android 走
+      vo=mediacodec_embed + hwdec=mediacodec 的 MediaCodec 直渲染（无 EGL
+      依赖），模拟器上「正片」（出画、进度 00:19→00:50、seek 到 02:41 后继续至 03:00）与「预告片」（00:28→00:36
+      / 01:00）均成功出真实画面；设备侧另闭环：断网播放 → mpv ffmpeg/error 进日志 + 失败态可重试 →
+      恢复后重试成功出画；断网解析失败 → 失败态 → 恢复后重试成功出画；退出播放后 mpv 线程与 CPU
+      归零、再次进入可重新解析播放；核查记录与工作区一致（analyze 0 告警、992 tests
+      passed，本人独立复跑结果相同，新增起播时序/上界与日志转发测试单独运行通过）。遗留风险主要是「挂起播放器的资源未真正回收」（僵尸 mpv
+      线程持续 CPU，仅 force-stop 能清）与「20s 上界未覆盖解析/initialize 阶段」，另有真机未回归、起播约 +1s
+      稳定窗、日志无速率限制等，详见 risks。"
+    truncated: false
+  risks:
+    - text: 挂起场景下播放器资源未真正释放（本轮新观察，非验收项失败）：媒体不可达触发 20s
+        起播上界后，重试/退出对卡死播放器的清理只是「有界等待」——日志显示 pause/dispose 各超时
+        1.5s（13:25:35.257、13:25:36.758 来自 _retry；13:27:44.479、13:27:46.588 来自退出
+        dispose，均 _runCleanup/_ignoreBoundedCleanup），随后旧 mpv 播放器仍在后台运行：ps -T 3 个
+        mpv 线程、CPU 23%~26% 持续 >4 分钟，只有 force-stop 才结束。正常成功路径退出无此问题（线程/CPU
+        立即归零）。建议后续为卡死播放器增加强制回收兜底。
+      truncated: false
+    - text: 20s 上界只覆盖「等待画面就绪 + play」两段；本人观察到一次重试后 >2
+        分钟无上界的加载态（页面持续「正在解析播放地址…」，期间无新播放器创建、resolver 自带 20s 请求超时也未触发、无
+        online-resolve/session-init 失败日志），疑似上一枚卡死播放器持续以毫秒级重复输出 mpv 日志造成 Dart
+        事件循环饥饿（同一毫秒 11+ 条重复 ffmpeg/error）；未能确证。解析/initialize
+        阶段仍无显式上界，「永久加载态」在极端情况下仍可能出现。
+      truncated: false
+    - text: mpv 日志转发无速率限制：媒体不可达时同一错误在毫秒级重复数十条并写入设备日志，会灌满 logcat 并疑似拖慢事件循环（与 risks[1]
+        相关）。
+      truncated: false
+    - text: 真机（用户设备）本轮完全未验证：Android 统一改为 vo=mediacodec_embed + hwdec=mediacodec（绕开
+        media_kit 对模拟器的软解默认），真机渲染/解码路径随之变化，需用户真机回归；真机失败原因现可由新日志定位。
+      truncated: false
+    - text: 起播延迟：画面就绪后固定 wait 1s 稳定窗（上限 5s 画面就绪等待）→ 起播约 +1s，最坏约 +6s 才 play，可能与
+        iteration 1 记的同类感知问题一致。
+      truncated: false
+    - text: 未解释的交互观察（控件层本轮未改动，低置信度）：横屏进度条下缘单击（1500,1020）曾导致播放页在 ~1.7s 后自动退出（13:19:39
+        tap → 13:19:41.377 route pop，日志无异常）；改用横向拖动 seek 后完全正常，未能复现该单击行为，暂按 adb
+        触点落在系统手势区/坐标解释差异处理。
+      truncated: false
+    - text: 既有小瑕疵（本轮未改动，供后续参考）：_seekToProgress 以 overlay 全宽为分母换算进度条点选落点（进度条是 Row
+        内子布局），点选定位会偏小；已挂载画面但仍在起播等待时状态文本仍显示「正在解析播放地址…」。
+      truncated: false
+    - text: 设备证据为人工 adb 交互（截图/logcat/ps/uiautomator），非自动化回归；候选构建对应关系：APK
+        lastUpdateTime 13:01:08 晚于源文件最后修改 12:59:58，且安装包显示本轮新增行为（起播上界 20s
+        精确触发、movie_preview mpv[prefix/level] 日志格式、view-ready
+        等待），确认设备证据属于当前候选。运行后环境已恢复：airplane_mode_on=0、http_proxy=10.0.2.2:7890。
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-10-16T05:37:38.356Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: blocked
+    unresolved_ids:
+      - A2
+    summary:
+      text: 21 项验收中 20 项通过：核心修复已在本机独立复现并核实——Android 走
+        vo=mediacodec_embed+hwdec=mediacodec 的 MediaCodec 直渲染（无 EGL/GL 依赖、日志无
+        EGL fatal）、起播时序为「挂载画面→等 surface 就绪+有界稳定窗→play」、mpv error/fatal
+        日志已写入设备日志；正片在 emulator-5554 上出画面、进度推进、seek 到任意点后继续出画、退出后 mpv 线程与 CPU
+        归零、断网/恢复下的解析失败与重试链路可用；Runtime 检查记录与当前工作区一致（analyze 0 告警、991 tests
+        passed，Verifier 追加的定向 movie_detail 检查 65 tests passed）。唯一未通过项为
+        A2（模拟器预告片出画）：本机三次尝试预告片页均无法加载出画面（停留在加载态且无失败提示），既无法独立复现 Builder
+        的预告片出画证据，也暴露「媒体未就绪时起播」可能静默挂起的风险，故 verdict=blocked，需真机或后续一轮确认预告片路径。
+      truncated: false
+    completed_at: 2026-10-16T04:57:42.466Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Verifier 发现真实缺陷：媒体不可达时播放器 play()
+        长时间不返回，页面永久停在加载态（无失败态、无重试）。已在实现中修复：起播阶段（等待画面就绪 + play）加 20s
+        上界，超时按播放失败呈现并可重试；并补充单测（play 永不完成 → 20s
+        后显示失败态与重试）。同时补充本轮设备证据：预告片出画（START-649）、在线流出画（DBER-065，含失败→重试→成功）、退出后 0 个
+        mpv 线程。
+      truncated: false
+    completed_at: 2026-10-16T05:13:17.050Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: "21/21 全部通过（iteration 2，candidate
+        4d44089e）。本轮修复的两点均在本机独立复现：（1）媒体不可达时起播不再永久加载——play() 挂起被 20s
+        起播上界拦住，13:24:58.165 日志「session-init failed: TimeoutException after
+        0:00:20.000000」并进入「在线播放失败」+「重试」，点击重试重新走解析与播放；（2）Android 走
+        vo=mediacodec_embed + hwdec=mediacodec 的 MediaCodec 直渲染（无 EGL
+        依赖），模拟器上「正片」（出画、进度 00:19→00:50、seek 到 02:41 后继续至
+        03:00）与「预告片」（00:28→00:36 / 01:00）均成功出真实画面；设备侧另闭环：断网播放 → mpv ffmpeg/error
+        进日志 + 失败态可重试 → 恢复后重试成功出画；断网解析失败 → 失败态 → 恢复后重试成功出画；退出播放后 mpv 线程与 CPU
+        归零、再次进入可重新解析播放；核查记录与工作区一致（analyze 0 告警、992 tests
+        passed，本人独立复跑结果相同，新增起播时序/上界与日志转发测试单独运行通过）。遗留风险主要是「挂起播放器的资源未真正回收」（僵尸 mpv
+        线程持续 CPU，仅 force-stop 能清）与「20s 上界未覆盖解析/initialize 阶段」，另有真机未回归、起播约 +1s
+        稳定窗、日志无速率限制等，详见 risks。"
+      truncated: false
+    completed_at: 2026-10-16T05:37:38.356Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-10-16T03:13:09.123Z
