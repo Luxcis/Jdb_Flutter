@@ -153,6 +153,9 @@ class _FakePlayback implements MoviePreviewPlayback {
   }
 
   @override
+  Future<void> waitUntilViewReady() async {}
+
+  @override
   Future<void> play() async {
     playCalls++;
   }

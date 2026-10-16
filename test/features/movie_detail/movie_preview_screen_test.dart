@@ -442,6 +442,51 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('起播前先挂载播放画面并等待画面输出就绪', (tester) async {
+    final viewReadyCompleter = Completer<void>();
+    final playback = _FakePlayback(viewReadyCompleter: viewReadyCompleter);
+    await _pumpPreviewPage(tester, playback);
+    await tester.pump();
+    await tester.pump();
+
+    // 画面已挂载、仍在等待输出就绪：此时不得起播，也不得提前显示操作层。
+    expect(find.byKey(const Key('fake-preview-video')), findsOneWidget);
+    expect(playback.commands, ['initialize', 'view-ready']);
+    expect(playback.playCalls, 0);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    viewReadyCompleter.complete();
+    await tester.pump();
+    await tester.pump();
+
+    expect(playback.commands, ['initialize', 'view-ready', 'play']);
+    expect(playback.playCalls, 1);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('起播长时间无响应时按播放失败呈现并可重试', (tester) async {
+    final playCompleter = Completer<void>();
+    final playback = _FakePlayback(playCompleter: playCompleter);
+    await _pumpPreviewPage(tester, playback);
+    await tester.pump();
+    await tester.pump();
+
+    expect(playback.commands, ['initialize', 'view-ready', 'play']);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.text('预告片播放失败'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 21));
+
+    expect(find.text('预告片播放失败'), findsOneWidget);
+    expect(find.text('重试'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+
+    playCompleter.complete();
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('完成态 seek 尚未完成时退出不会继续调用 play', (tester) async {
     final seekCompleter = Completer<void>();
     final playback = _FakePlayback(
@@ -457,7 +502,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
     await tester.tapAt(_backgroundPoint(tester));
     await tester.pump();
-    expect(playback.commands, ['initialize', 'play', 'seek:0']);
+    expect(playback.commands, ['initialize', 'view-ready', 'play', 'seek:0']);
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
@@ -582,7 +627,10 @@ void main() {
     await tester.tapAt(_backgroundPoint(tester));
     await tester.pump();
 
-    expect(playback.commands, ['initialize', 'play', 'seek:0', 'play']);
+    expect(
+      playback.commands,
+      ['initialize', 'view-ready', 'play', 'seek:0', 'play'],
+    );
     await tester.pump(kDoubleTapTimeout);
   });
 
@@ -597,7 +645,7 @@ void main() {
     await tester.tapAt(_backgroundPoint(tester));
     await tester.pump();
 
-    expect(playback.commands, ['initialize', 'play', 'play']);
+    expect(playback.commands, ['initialize', 'view-ready', 'play', 'play']);
     await tester.pump(kDoubleTapTimeout);
   });
 
@@ -615,7 +663,7 @@ void main() {
     await tester.tapAt(_backgroundPoint(tester));
     await tester.pump();
 
-    expect(playback.commands, ['initialize', 'play', 'pause']);
+    expect(playback.commands, ['initialize', 'view-ready', 'play', 'pause']);
     await tester.pump(kDoubleTapTimeout);
   });
 
@@ -915,6 +963,8 @@ class _FakePlayback implements MoviePreviewPlayback {
   _FakePlayback({
     this.initializeError,
     this.initializeCompleter,
+    this.viewReadyCompleter,
+    this.playCompleter,
     this.seekCompleter,
     this.disposeCompleter,
     this.initialState = const MoviePreviewPlaybackState(),
@@ -922,12 +972,15 @@ class _FakePlayback implements MoviePreviewPlayback {
 
   final Object? initializeError;
   final Completer<void>? initializeCompleter;
+  final Completer<void>? viewReadyCompleter;
+  final Completer<void>? playCompleter;
   final Completer<void>? seekCompleter;
   final Completer<void>? disposeCompleter;
   final MoviePreviewPlaybackState initialState;
   late final _state = ValueNotifier(initialState);
   final commands = <String>[];
   int initializeCalls = 0;
+  int viewReadyCalls = 0;
   int playCalls = 0;
   int pauseCalls = 0;
   int disposeCalls = 0;
@@ -960,9 +1013,17 @@ class _FakePlayback implements MoviePreviewPlayback {
   }
 
   @override
+  Future<void> waitUntilViewReady() async {
+    viewReadyCalls++;
+    commands.add('view-ready');
+    await viewReadyCompleter?.future;
+  }
+
+  @override
   Future<void> play() async {
     playCalls++;
     commands.add('play');
+    await playCompleter?.future;
   }
 
   @override

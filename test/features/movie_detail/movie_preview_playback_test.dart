@@ -51,10 +51,14 @@ class _FakePlatformPlayer extends PlatformPlayer {
   }
 }
 
-MediaKitMoviePreviewPlayback _build(_FakePlatformPlayer platform) {
+MediaKitMoviePreviewPlayback _build(
+  _FakePlatformPlayer platform, {
+  Duration viewBindingSettle = Duration.zero,
+}) {
   return MediaKitMoviePreviewPlayback(
     Uri.parse('https://media.example.com/preview.m3u8'),
     player: Player(platformPlayer: platform),
+    viewBindingSettle: viewBindingSettle,
   );
 }
 
@@ -241,5 +245,102 @@ void main() {
 
     await expectLater(playback.dispose(), throwsA(isA<StateError>()));
     expect(() => state.addListener(() {}), throwsFlutterError);
+  });
+
+  test('Android 渲染配置走 MediaCodec 直渲染，其他平台保持默认', () {
+    final android = moviePreviewVideoControllerConfiguration(isAndroid: true);
+    expect(android.vo, 'mediacodec_embed');
+    expect(android.hwdec, 'mediacodec');
+
+    final desktop = moviePreviewVideoControllerConfiguration(isAndroid: false);
+    expect(desktop.vo, isNull);
+    expect(desktop.hwdec, isNull);
+  });
+
+  test('播放器日志格式化为含 prefix 与级别的诊断文本', () {
+    expect(
+      formatMoviePreviewPlayerLog(
+        const PlayerLog(
+          prefix: 'vo/gpu/opengl',
+          level: 'fatal',
+          text: 'Could not create EGL context for GLES 2.x +!',
+        ),
+      ),
+      'movie_preview mpv[vo/gpu/opengl/fatal] '
+      'Could not create EGL context for GLES 2.x +!',
+    );
+  });
+
+  test('播放器日志转发到 logSink', () async {
+    final platform = _FakePlatformPlayer();
+    final messages = <String>[];
+    final playback = MediaKitMoviePreviewPlayback(
+      Uri.parse('https://media.example.com/preview.m3u8'),
+      player: Player(platformPlayer: platform),
+      logSink: messages.add,
+    );
+    await playback.initialize();
+
+    platform.logController.add(
+      const PlayerLog(prefix: 'vd', level: 'error', text: 'Could not open codec'),
+    );
+    await pumpEventQueue();
+
+    expect(messages, [
+      'movie_preview mpv[vd/error] Could not open codec',
+    ]);
+    await playback.dispose();
+  });
+
+  test('waitUntilViewReady 在画面输出就绪后完成', () async {
+    final platform = _FakePlatformPlayer();
+    final playback = _build(platform);
+    await playback.initialize();
+
+    final video = playback.buildView() as Video;
+    var ready = false;
+    final future = playback.waitUntilViewReady().then((_) => ready = true);
+    await pumpEventQueue();
+    expect(ready, isFalse);
+
+    video.controller.id.value = 1;
+    await future;
+    expect(ready, isTrue);
+    await playback.dispose();
+  });
+
+  test('画面输出就绪后仍需等稳定窗口（视频输出绑定）结束', () async {
+    final platform = _FakePlatformPlayer();
+    final playback = _build(
+      platform,
+      viewBindingSettle: const Duration(milliseconds: 200),
+    );
+    await playback.initialize();
+
+    final video = playback.buildView() as Video;
+    var ready = false;
+    final future = playback.waitUntilViewReady().then((_) => ready = true);
+    video.controller.id.value = 1;
+    await pumpEventQueue();
+    expect(ready, isFalse);
+
+    await future;
+    expect(ready, isTrue);
+    await playback.dispose();
+  });
+
+  test('画面输出已就绪时 waitUntilViewReady 只等稳定窗口', () async {
+    final platform = _FakePlatformPlayer();
+    final playback = _build(platform);
+    await playback.initialize();
+
+    final video = playback.buildView() as Video;
+    video.controller.id.value = 1;
+    await pumpEventQueue();
+
+    await playback.waitUntilViewReady();
+
+    expect(playback.state.value.isInitialized, isTrue);
+    await playback.dispose();
   });
 }

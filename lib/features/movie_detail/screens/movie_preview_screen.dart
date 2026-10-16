@@ -53,6 +53,9 @@ class MoviePreviewScreen extends StatefulWidget {
 class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
   static const _cleanupStepTimeout = Duration(milliseconds: 1500);
 
+  /// 起播阶段（等待画面就绪 + play）的上限；超过则按播放失败呈现，可重试。
+  static const _startupTimeout = Duration(seconds: 20);
+
   late final MoviePreviewOperationManager _operationManager;
   late final MoviePreviewBrightnessController _brightnessController;
   late final MoviePreviewVolumeController _volumeController;
@@ -160,10 +163,10 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
 
   Widget _buildBody() {
     final session = _session;
-    if (!_isLoading && !_hasError && session != null) {
+    if (!_hasError && session != null && session.isInitialized) {
       return _buildPlaybackBody(session);
     }
-    return _buildStatusBody(hasError: _hasError);
+    return _buildStatusBody(hasError: _hasError, resolving: true);
   }
 
   Widget _buildPlaybackBody(_PlaybackSession session) {
@@ -177,21 +180,25 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
         return Stack(
           fit: StackFit.expand,
           children: [
+            // 画面先行挂载：先建立播放画面输出（surface），再等待就绪并起播。
             playback.buildView(),
-            MoviePreviewControlsOverlay(
-              title: _title,
-              onBack: _pop,
-              playback: playback,
-              brightnessController: _brightnessController,
-              volumeController: _volumeController,
-            ),
+            if (_isLoading)
+              _buildStatusBody(hasError: false)
+            else
+              MoviePreviewControlsOverlay(
+                title: _title,
+                onBack: _pop,
+                playback: playback,
+                brightnessController: _brightnessController,
+                volumeController: _volumeController,
+              ),
           ],
         );
       },
     );
   }
 
-  Widget _buildStatusBody({required bool hasError}) {
+  Widget _buildStatusBody({required bool hasError, bool resolving = false}) {
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -215,7 +222,7 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const CircularProgressIndicator(color: Colors.white),
-                    if (_isOnline)
+                    if (resolving && _isOnline)
                       const Padding(
                         padding: EdgeInsets.only(top: 16),
                         child: Text(
@@ -283,18 +290,27 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
       return;
     }
 
+    MoviePreviewPlayback? playback;
     _PlaybackSession? session;
     try {
-      session = _PlaybackSession(
-        _createPlayback(uri, httpHeaders: httpHeaders),
-      );
+      playback = _createPlayback(uri, httpHeaders: httpHeaders);
+      session = _PlaybackSession(playback);
+      // 先登记会话：初始化失败时由重试路径等待其清理完成后才启动新驱动。
       _session = session;
-      await session.playback.initialize();
+      await playback.initialize();
       if (!_isCurrentSession(generation, session)) {
         _detachAndCleanup(session);
         return;
       }
-      await session.playback.play();
+      // 先挂载播放画面（建立视频输出 surface），待其就绪后再起播；
+      // 画面未就绪就起播会让视频输出中途切换，导致黑屏或播放管线卡死。
+      session.isInitialized = true;
+      setState(() {});
+      // 起播阶段有界：媒体不可达时播放器可能长时间不返回（例如 mpv 卡在取流），
+      // 超时按播放失败处理，避免页面永久停在加载态。
+      await _waitViewReadyAndPlay(generation, session).timeout(
+        _startupTimeout,
+      );
       if (!_isCurrentSession(generation, session)) {
         _detachAndCleanup(session);
         return;
@@ -317,6 +333,16 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
         _showPageError();
       }
     }
+  }
+
+  /// 等待画面输出就绪并开始播放；两者都完成后返回。
+  Future<void> _waitViewReadyAndPlay(
+    int generation,
+    _PlaybackSession session,
+  ) async {
+    await session.playback.waitUntilViewReady();
+    if (!_isCurrentSession(generation, session)) return;
+    await session.playback.play();
   }
 
   /// 解析在线正片播放地址；返回 `null` 表示不再继续（代际过期或已进入失败态）。
@@ -441,6 +467,9 @@ class _PlaybackSession {
 
   final MoviePreviewPlayback playback;
   Future<void>? cleanupOperation;
+
+  /// 播放器初始化完成，可以挂载播放画面。
+  var isInitialized = false;
 }
 
 void _logIgnored(String stage, Object error, StackTrace stackTrace) {

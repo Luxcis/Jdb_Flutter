@@ -1,9 +1,32 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+
+/// Android 播放渲染配置：MediaCodec 直接渲染输出到播放画面，不经 GL/EGL 上下文。
+///
+/// 等价于 mpv-android 默认的 `vo=mediacodec_embed` + `hwdec=mediacodec`：
+/// 在 GL 上下文不可用的运行环境（如模拟器的 gfxstream/SwiftShader 翻译层）
+/// 同样能出画；非 Android 保持 media_kit 默认配置。
+VideoControllerConfiguration moviePreviewVideoControllerConfiguration({
+  bool? isAndroid,
+}) {
+  final android = isAndroid ?? (!kIsWeb && Platform.isAndroid);
+  if (!android) {
+    return const VideoControllerConfiguration();
+  }
+  return const VideoControllerConfiguration(
+    vo: 'mediacodec_embed',
+    hwdec: 'mediacodec',
+  );
+}
+
+/// 把播放器（mpv）日志格式化为诊断输出；播放失败原因据此在设备日志中可见。
+String formatMoviePreviewPlayerLog(PlayerLog log) =>
+    'movie_preview mpv[${log.prefix}/${log.level}] ${log.text}';
 
 @immutable
 class MoviePreviewPlaybackState {
@@ -33,6 +56,14 @@ abstract interface class MoviePreviewPlayback {
 
   Widget buildView();
   Future<void> initialize();
+
+  /// 等待播放画面输出（surface）就绪并与视频输出绑定。
+  ///
+  /// 调用方需先挂载 [buildView] 返回的画面，再等待本方法完成后才 [play]；
+  /// 画面未就绪时开始播放会让视频输出中途切换，导致黑屏或播放管线卡死。
+  /// 超时则继续（尽力而为），不抛出异常。
+  Future<void> waitUntilViewReady();
+
   Future<void> play();
   Future<void> pause();
   Future<void> seekTo(Duration position);
@@ -51,15 +82,28 @@ class MediaKitMoviePreviewPlayback implements MoviePreviewPlayback {
   ///
   /// [uri] 为播放地址；[player] 可注入自定义 [Player]（测试用 fake），
   /// 省略时创建真实 [Player]；[httpHeaders] 为播放请求头（在线正片需要注入
-  /// Referer 白名单，预告片为 null）。
+  /// Referer 白名单，预告片为 null）；[videoConfiguration] 为视频输出配置，
+  /// 省略时按平台选择（Android 使用 MediaCodec 直渲染）；
+  /// [viewBindingSettle] 为画面输出就绪后的稳定窗口（测试可传
+  /// [Duration.zero]）；[logSink] 接收播放器日志的诊断文本，
+  /// 省略时写入 [debugPrint]。
   MediaKitMoviePreviewPlayback(
     Uri uri, {
     Player? player,
     Map<String, String>? httpHeaders,
+    VideoControllerConfiguration? videoConfiguration,
+    Duration viewBindingSettle = _defaultViewBindingSettle,
+    void Function(String message)? logSink,
   }) : _uri = uri,
        _httpHeaders = httpHeaders,
+       _viewBindingSettle = viewBindingSettle,
+       _logSink = logSink ?? debugPrint,
        _player = player ?? Player() {
-    _videoController = VideoController(_player);
+    _videoController = VideoController(
+      _player,
+      configuration: videoConfiguration ??
+          moviePreviewVideoControllerConfiguration(),
+    );
     _subscriptions.addAll([
       _player.stream.playing.listen(_onPlaying),
       _player.stream.buffering.listen(_onBuffering),
@@ -69,11 +113,26 @@ class MediaKitMoviePreviewPlayback implements MoviePreviewPlayback {
       _player.stream.duration.listen(_onDuration),
       _player.stream.width.listen(_onWidth),
       _player.stream.height.listen(_onHeight),
+      // 播放链路失败原因（视频输出初始化失败、网络失败、解码失败等）据此可见。
+      _player.stream.log.listen(_onLog),
     ]);
   }
 
+  /// 画面输出就绪的等待上限；超时继续起播（尽力而为）。
+  static const _viewReadyTimeout = Duration(seconds: 5);
+
+  /// 视频输出与画面输出完成绑定所需的稳定窗口（默认 1s）。
+  ///
+  /// media_kit 在画面输出（surface）就绪后才异步改写 mpv 的视频输出
+  /// （`vo` / `wid`）并重建解码器；mpv 没有暴露绑定完成的回调，
+  /// 而在这之前起播会让 MediaCodec 直渲染管线停住（进度不动、画面全黑），
+  /// 因此等一个有界稳定窗口后再起播。
+  static const _defaultViewBindingSettle = Duration(seconds: 1);
+
   final Uri _uri;
   final Map<String, String>? _httpHeaders;
+  final Duration _viewBindingSettle;
+  final void Function(String message) _logSink;
   final Player _player;
   late final VideoController _videoController;
   final _state = ValueNotifier(const MoviePreviewPlaybackState());
@@ -115,6 +174,32 @@ class MediaKitMoviePreviewPlayback implements MoviePreviewPlayback {
     );
     _isInitialized = true;
     _syncState();
+  }
+
+  @override
+  Future<void> waitUntilViewReady() async {
+    if (_videoController.id.value == null) {
+      final completer = Completer<void>();
+      void listener() {
+        if (_videoController.id.value != null && !completer.isCompleted) {
+          completer.complete();
+        }
+      }
+
+      _videoController.id.addListener(listener);
+      try {
+        await completer.future.timeout(_viewReadyTimeout);
+      } on TimeoutException {
+        _logSink(
+          'movie_preview view-ready timeout: 播放画面输出未在 '
+          '${_viewReadyTimeout.inSeconds}s 内就绪，继续起播',
+        );
+        return;
+      } finally {
+        _videoController.id.removeListener(listener);
+      }
+    }
+    await Future<void>.delayed(_viewBindingSettle);
   }
 
   @override
@@ -189,6 +274,11 @@ class MediaKitMoviePreviewPlayback implements MoviePreviewPlayback {
   void _onError(String value) {
     _errorDescription = value;
     _syncState();
+  }
+
+  void _onLog(PlayerLog log) {
+    // 只做诊断输出，不改变播放状态与用户可见文案。
+    _logSink(formatMoviePreviewPlayerLog(log));
   }
 
   void _onPosition(Duration value) {
