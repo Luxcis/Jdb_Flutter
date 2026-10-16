@@ -67,7 +67,8 @@ jobs:
 
       - name: Build APK
         working-directory: ${{ env.APK_BUILD_DIR }}
-        run: flutter build apk --split-per-abi
+        # cronetHttpNoPlay=true：使用 embedded Cronet（不依赖 Google Play 服务）
+        run: flutter build apk --split-per-abi --dart-define=cronetHttpNoPlay=true
 
       - name: Generate APK checksums
         working-directory: ${{ env.APK_BUILD_DIR }}/build/app/outputs/flutter-apk

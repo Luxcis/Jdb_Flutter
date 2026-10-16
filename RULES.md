@@ -4,7 +4,15 @@
 
 本项目为 JavDB 的第三方客户端，主要目标为实现其官方客户端除付费、在线观影、广告之外的所有功能。相关接口及使用方式文档在 `/docs/api` 下。
 
+例外：影片详情页的「正片」在线播放（MissAV 片源）为有意加入的能力，机制见 `docs/main/missav/`，规格见 `docs/comet/specs/missav-playback/`。
+
 ## 技术约定
+
+### 在线播放（MissAV 正片）
+
+- 取流：播放器直连 surrit CDN，播放请求头必须带 `Referer: https://missav.live/ja/` 与浏览器 UA（Referer 白名单）。
+- 页面解析：必须使用 `cronet_http`（Chromium 网络栈指纹），不能改用 dart:io/dio 直连 missav（WAF 按 TLS 指纹筛选，实测 403）。
+- 构建：APK 构建必须携带 `--dart-define=cronetHttpNoPlay=true`（embedded Cronet，不依赖 Google Play 服务）；`.github/workflows/compile_apk.yml` 已同步。
 
 ### 主题（Theme）
 

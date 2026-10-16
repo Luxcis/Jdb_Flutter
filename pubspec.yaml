@@ -63,6 +63,7 @@ dependencies:
   screen_brightness: ^2.1.11
   volume_controller: ^3.7.1
   http: ^1.6.0
+  cronet_http: ^1.10.0
   open_filex: ^4.7.0
   pub_semver: ^2.2.0
 

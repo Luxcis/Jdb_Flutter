@@ -87,6 +87,7 @@ class MovieDetailTabs extends StatelessWidget {
     required this.onDeleteReview,
     required this.onSaveToList,
     required this.onPreviewTap,
+    required this.onOnlineTap,
     required this.onActorTap,
   });
 
@@ -103,6 +104,7 @@ class MovieDetailTabs extends StatelessWidget {
   final VoidCallback onDeleteReview;
   final VoidCallback onSaveToList;
   final VoidCallback onPreviewTap;
+  final VoidCallback onOnlineTap;
   final ValueChanged<ActorSummary> onActorTap;
 
   @override
@@ -140,6 +142,7 @@ class MovieDetailTabs extends StatelessWidget {
               onDeleteReview: onDeleteReview,
               onSaveToList: onSaveToList,
               onPreviewTap: onPreviewTap,
+              onOnlineTap: onOnlineTap,
               onActorTap: onActorTap,
             ),
           ),
@@ -217,7 +220,7 @@ class MovieDetailTabHeaderDelegate extends SliverPersistentHeaderDelegate {
   }
 }
 
-/// 「基本信息」Tab 内容：信息卡 + 类别 + 演员 + 剧照 + 相关影片行。
+/// 「基本信息」Tab 内容：信息卡 + 类别 + 演员 + 正片/预告片/剧照 + 相关影片行。
 class MovieDetailBasicInfoTab extends StatelessWidget {
   const MovieDetailBasicInfoTab({
     super.key,
@@ -228,6 +231,7 @@ class MovieDetailBasicInfoTab extends StatelessWidget {
     required this.onDeleteReview,
     required this.onSaveToList,
     required this.onPreviewTap,
+    required this.onOnlineTap,
     required this.onActorTap,
   });
 
@@ -238,6 +242,9 @@ class MovieDetailBasicInfoTab extends StatelessWidget {
   final VoidCallback onDeleteReview;
   final VoidCallback onSaveToList;
   final VoidCallback onPreviewTap;
+
+  /// 正片在线播放入口点击回调。
+  final VoidCallback onOnlineTap;
   final ValueChanged<ActorSummary> onActorTap;
 
   @override
@@ -262,14 +269,16 @@ class MovieDetailBasicInfoTab extends StatelessWidget {
           MovieCategorySection(tags: detail.tagItems, type: detail.type),
         if (detail.actors.isNotEmpty)
           MovieActorSection(actors: detail.actors, onActorTap: onActorTap),
-        if (detail.previewVideoUrl != null || detail.screenshots.isNotEmpty)
-          MovieScreenshotSection(
-            urls: detail.screenshots,
-            previewCoverUrl:
-                detail.previewVideoUrl == null ? null : detail.coverUrl,
-            previewTitle: detail.title,
-            onPreviewTap: onPreviewTap,
-          ),
+        MovieScreenshotSection(
+          urls: detail.screenshots,
+          previewCoverUrl: detail.previewVideoUrl == null
+              ? null
+              : detail.coverUrl,
+          previewTitle: detail.title,
+          onPreviewTap: onPreviewTap,
+          onlineCoverUrl: detail.coverUrl,
+          onOnlineTap: onOnlineTap,
+        ),
         if (detail.actorMovies.isNotEmpty)
           MovieRowSection(title: 'TA还出演过', movies: detail.actorMovies),
         if (detail.relativeMovies.isNotEmpty)

@@ -42,18 +42,23 @@ abstract interface class MoviePreviewPlayback {
 
 typedef MoviePreviewPlaybackFactory = MoviePreviewPlayback Function(Uri uri);
 
-/// 基于 media_kit 的预告片播放适配器。
+/// 基于 media_kit 的预告片 / 在线正片播放适配器。
 ///
 /// 测试通过 [Player.platformPlayer] 注入 fake（见
 /// `movie_preview_playback_test.dart`），生产环境默认创建真实 [Player]。
 class MediaKitMoviePreviewPlayback implements MoviePreviewPlayback {
   /// 构造播放适配器。
   ///
-  /// [uri] 为预告片地址；[player] 可注入自定义 [Player]（测试用 fake），
-  /// 省略时创建真实 [Player]。
-  MediaKitMoviePreviewPlayback(Uri uri, {Player? player})
-    : _uri = uri,
-      _player = player ?? Player() {
+  /// [uri] 为播放地址；[player] 可注入自定义 [Player]（测试用 fake），
+  /// 省略时创建真实 [Player]；[httpHeaders] 为播放请求头（在线正片需要注入
+  /// Referer 白名单，预告片为 null）。
+  MediaKitMoviePreviewPlayback(
+    Uri uri, {
+    Player? player,
+    Map<String, String>? httpHeaders,
+  }) : _uri = uri,
+       _httpHeaders = httpHeaders,
+       _player = player ?? Player() {
     _videoController = VideoController(_player);
     _subscriptions.addAll([
       _player.stream.playing.listen(_onPlaying),
@@ -68,6 +73,7 @@ class MediaKitMoviePreviewPlayback implements MoviePreviewPlayback {
   }
 
   final Uri _uri;
+  final Map<String, String>? _httpHeaders;
   final Player _player;
   late final VideoController _videoController;
   final _state = ValueNotifier(const MoviePreviewPlaybackState());
@@ -103,7 +109,10 @@ class MediaKitMoviePreviewPlayback implements MoviePreviewPlayback {
 
   @override
   Future<void> initialize() async {
-    await _player.open(Media(_uri.toString()), play: false);
+    await _player.open(
+      Media(_uri.toString(), httpHeaders: _httpHeaders),
+      play: false,
+    );
     _isInitialized = true;
     _syncState();
   }

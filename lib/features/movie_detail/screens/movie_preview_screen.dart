@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
+import 'package:jade/features/movie_detail/services/missav_stream_resolver.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_brightness.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_operation_manager.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_orientation.dart';
@@ -26,6 +27,7 @@ class MoviePreviewScreen extends StatefulWidget {
     this.operationManager,
     this.brightnessController,
     this.volumeController,
+    this.onlineResolver,
   }) : assert(
          orientationSetter == null || orientationCoordinator == null,
          'Only one orientation dependency can be provided.',
@@ -41,6 +43,9 @@ class MoviePreviewScreen extends StatefulWidget {
   final MoviePreviewBrightnessController? brightnessController;
   final MoviePreviewVolumeController? volumeController;
 
+  /// 在线正片来源的取流解析器；省略时在首次解析时创建生产实现。
+  final MissavStreamResolver? onlineResolver;
+
   @override
   State<MoviePreviewScreen> createState() => _MoviePreviewScreenState();
 }
@@ -54,6 +59,8 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
 
   _PlaybackSession? _session;
   MoviePreviewOperationLease? _operationLease;
+  MissavStreamResolver? _onlineResolver;
+  MissavHttpStreamResolver? _ownedResolver;
   var _isLoading = true;
   var _hasError = false;
   var _isRetrying = false;
@@ -62,14 +69,19 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
 
   String get _title => widget.args?.title ?? '预告片';
 
+  bool get _isOnline => widget.args?.isOnline ?? false;
+
   void _pop() => Navigator.of(context).pop();
 
-  MoviePreviewPlayback _createPlayback(Uri uri) {
+  MoviePreviewPlayback _createPlayback(
+    Uri uri, {
+    Map<String, String>? httpHeaders,
+  }) {
     final injectedFactory = widget.playbackFactory;
     if (injectedFactory != null) {
       return injectedFactory(uri);
     }
-    return MediaKitMoviePreviewPlayback(uri);
+    return MediaKitMoviePreviewPlayback(uri, httpHeaders: httpHeaders);
   }
 
   @override
@@ -114,10 +126,23 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
     _session = null;
     _operationLease = null;
     _orientationReady = false;
+    _closeOwnedResolver();
     unawaited(_operationManager.release());
     unawaited(_cleanupSession(session));
     unawaited(_resetBrightness());
     super.dispose();
+  }
+
+  void _closeOwnedResolver() {
+    final owned = _ownedResolver;
+    _ownedResolver = null;
+    _onlineResolver = null;
+    if (owned == null) return;
+    try {
+      owned.close();
+    } catch (error, stackTrace) {
+      _logIgnored('close-resolver', error, stackTrace);
+    }
   }
 
   Future<void> _resetBrightness() async {
@@ -175,9 +200,9 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
               ? Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      '预告片播放失败',
-                      style: TextStyle(color: Colors.white),
+                    Text(
+                      _isOnline ? '在线播放失败' : '预告片播放失败',
+                      style: const TextStyle(color: Colors.white),
                     ),
                     const SizedBox(height: 12),
                     ElevatedButton(
@@ -186,7 +211,20 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
                     ),
                   ],
                 )
-              : const CircularProgressIndicator(color: Colors.white),
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(color: Colors.white),
+                    if (_isOnline)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 16),
+                        child: Text(
+                          '正在解析播放地址…',
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                      ),
+                  ],
+                ),
         ),
         SafeArea(
           child: Align(
@@ -224,7 +262,20 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
   }
 
   Future<void> _initializePlayback(int generation) async {
-    final uri = widget.args?.videoUri;
+    final args = widget.args;
+    var uri = args?.videoUri;
+    Map<String, String>? httpHeaders;
+
+    if (uri == null && (args?.isOnline ?? false)) {
+      final resolved = await _resolveOnlineStream(
+        args!.onlineNumber!,
+        generation,
+      );
+      if (resolved == null) return;
+      uri = resolved.playlistUrl;
+      httpHeaders = resolved.httpHeaders;
+    }
+
     if (uri == null) {
       if (_isCurrentGeneration(generation)) {
         _showPageError();
@@ -234,7 +285,9 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
 
     _PlaybackSession? session;
     try {
-      session = _PlaybackSession(_createPlayback(uri));
+      session = _PlaybackSession(
+        _createPlayback(uri, httpHeaders: httpHeaders),
+      );
       _session = session;
       await session.playback.initialize();
       if (!_isCurrentSession(generation, session)) {
@@ -264,6 +317,33 @@ class _MoviePreviewScreenState extends State<MoviePreviewScreen> {
         _showPageError();
       }
     }
+  }
+
+  /// 解析在线正片播放地址；返回 `null` 表示不再继续（代际过期或已进入失败态）。
+  Future<MissavResolvedStream?> _resolveOnlineStream(
+    String number,
+    int generation,
+  ) async {
+    try {
+      final resolver = _onlineResolver ??= _createOnlineResolver();
+      final resolved = await resolver.resolve(number);
+      if (!_isCurrentGeneration(generation)) return null;
+      return resolved;
+    } catch (error, stackTrace) {
+      _logFailure('online-resolve', error, stackTrace);
+      if (_isCurrentGeneration(generation)) {
+        _showPageError();
+      }
+      return null;
+    }
+  }
+
+  MissavStreamResolver _createOnlineResolver() {
+    final injected = widget.onlineResolver;
+    if (injected != null) return injected;
+    final owned = MissavHttpStreamResolver();
+    _ownedResolver = owned;
+    return owned;
   }
 
   Future<void> _retry() async {
@@ -365,5 +445,10 @@ class _PlaybackSession {
 
 void _logIgnored(String stage, Object error, StackTrace stackTrace) {
   // 清理/副作用路径故意忽略失败，但保留日志痕迹便于排查。
+  debugPrint('movie_preview $stage failed: $error\n$stackTrace');
+}
+
+void _logFailure(String stage, Object error, StackTrace stackTrace) {
+  // 失败路径已转换为页面错误态，日志用于排查具体原因。
   debugPrint('movie_preview $stage failed: $error\n$stackTrace');
 }
