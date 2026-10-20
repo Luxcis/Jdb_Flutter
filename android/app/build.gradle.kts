@@ -70,7 +70,8 @@ android {
             if (storeFileProp != null) {
                  signingConfig = signingConfigs.getByName("release")
             } else {
-                 println(">>> Release build signing config not applied.") // Optional: warning
+                println(">>> signing.properties not found, falling back to debug signing.")
+                signingConfig = signingConfigs.getByName("debug")
             }
         }
     }

@@ -19,6 +19,7 @@ import 'package:jade/core/storage/testing/in_memory_secure_store.dart';
 import 'package:jade/core/providers/following_tags_provider.dart';
 import 'package:jade/core/services/following_tags_service.dart';
 import 'package:jade/core/services/following_tags_store.dart';
+import 'package:jade/core/widgets/startup_failure_screen.dart';
 import 'package:jade/features/search/index.dart';
 
 export 'package:jade/app.dart' show MyApp;
@@ -40,7 +41,21 @@ Future<void> mainForTest({
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
-  runApp(await _buildEntry());
+  await _bootstrap();
+}
+
+/// 启动初始化：成功即运行主应用；失败停留在错误页而非永久白屏，
+/// 重试时重新执行同一初始化流程。
+Future<void> _bootstrap() async {
+  late final Widget entry;
+  try {
+    entry = await _buildEntry();
+  } catch (error, stackTrace) {
+    debugPrint('启动初始化失败: $error\n$stackTrace');
+    runApp(StartupFailureScreen(error: error, onRetry: _bootstrap));
+    return;
+  }
+  runApp(entry);
 }
 
 Future<Widget> _buildEntry({

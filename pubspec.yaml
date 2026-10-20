@@ -103,3 +103,9 @@ flutter_launcher_icons:
   ios: false
   image_path: "assets/icon/icon.png"
   min_sdk_android: 21
+
+# shared_preferences_android 2.5.0 起 Android 实现改走 JNI；R8 混淆会重命名
+# kotlin.coroutines.Continuation 等符号，release 构建启动即抛 NoSuchMethodError
+# 并永久白屏（flutter/flutter#194649）。上游补齐 consumer keep rules 前封顶 2.4.x。
+dependency_overrides:
+  shared_preferences_android: ">=2.4.10 <2.5.0"
