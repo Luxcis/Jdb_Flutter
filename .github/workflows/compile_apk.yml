@@ -51,6 +51,23 @@ jobs:
         working-directory: ${{ env.APK_BUILD_DIR }}
         run: flutter pub get
 
+      # media_kit_libs_android_video 在 Gradle 评估期用 Java 下载 libmpv jar，
+      # GitHub 对该请求返回 406，故先经 curl 预下载到插件 buildDir 供其跳过。
+      - name: Pre-download libmpv jars
+        working-directory: ${{ env.APK_BUILD_DIR }}
+        run: |
+          DEST="build/media_kit_libs_android_video/v1.1.7"
+          BASE="https://github.com/media-kit/libmpv-android-video-build/releases/download/v1.1.7"
+          mkdir -p "$DEST"
+          download() {
+            curl -fsSL --retry 3 --retry-delay 5 -o "$DEST/$1" "$BASE/$1"
+            echo "$2  $DEST/$1" | md5sum -c -
+          }
+          download default-arm64-v8a.jar 83df25b61193af8fa815e373143ac9af
+          download default-armeabi-v7a.jar 22e21526fefc0a2b8f17adbec9f57590
+          download default-x86_64.jar 6fa26bf0459b11f1c0b0dbc29e5b940d
+          download default-x86.jar 0d742b756dc9d1fcd84ea271d8b68f32
+
       - name: Decode Keystore
         working-directory: ${{ env.APK_BUILD_DIR }}
         run: |
@@ -118,6 +135,23 @@ jobs:
       - name: Dependencies
         working-directory: ${{ env.APK_BUILD_DIR }}
         run: flutter pub get
+
+      # media_kit_libs_android_video 在 Gradle 评估期用 Java 下载 libmpv jar，
+      # GitHub 对该请求返回 406，故先经 curl 预下载到插件 buildDir 供其跳过。
+      - name: Pre-download libmpv jars
+        working-directory: ${{ env.APK_BUILD_DIR }}
+        run: |
+          DEST="build/media_kit_libs_android_video/v1.1.7"
+          BASE="https://github.com/media-kit/libmpv-android-video-build/releases/download/v1.1.7"
+          mkdir -p "$DEST"
+          download() {
+            curl -fsSL --retry 3 --retry-delay 5 -o "$DEST/$1" "$BASE/$1"
+            echo "$2  $DEST/$1" | md5sum -c -
+          }
+          download default-arm64-v8a.jar 83df25b61193af8fa815e373143ac9af
+          download default-armeabi-v7a.jar 22e21526fefc0a2b8f17adbec9f57590
+          download default-x86_64.jar 6fa26bf0459b11f1c0b0dbc29e5b940d
+          download default-x86.jar 0d742b756dc9d1fcd84ea271d8b68f32
 
       - name: Build Debug APK
         working-directory: ${{ env.APK_BUILD_DIR }}
