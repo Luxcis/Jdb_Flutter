@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/review.dart';
+import 'package:jade/features/movie_detail/models/online_play_source.dart';
 
 /// Renders the review-state actions shown on a movie detail page.
 class MovieReviewActions extends StatelessWidget {
@@ -8,6 +9,8 @@ class MovieReviewActions extends StatelessWidget {
     super.key,
     required this.review,
     required this.loading,
+    required this.movieNumber,
+    required this.onOnlinePlay,
     required this.onWantWatch,
     required this.onWatched,
     required this.onDelete,
@@ -19,6 +22,12 @@ class MovieReviewActions extends StatelessWidget {
 
   /// Whether a review-state request is currently in progress.
   final bool loading;
+
+  /// The movie number used to decide whether online play is available.
+  final String movieNumber;
+
+  /// Called when the movie's online play entry is activated.
+  final VoidCallback onOnlinePlay;
 
   /// Called when the movie is marked as wanted.
   final VoidCallback onWantWatch;
@@ -50,7 +59,14 @@ class MovieReviewActions extends StatelessWidget {
       foregroundColor: colorScheme.onError,
     );
     final status = review?.status;
-    final buttons = <Widget>[];
+    final buttons = <Widget>[
+      _ReviewActionButton(
+        buttonKey: const Key('movie-online-play-button'),
+        label: '在线播放',
+        onPressed: hasUsableMovieNumber(movieNumber) ? onOnlinePlay : null,
+        style: actionStyle,
+      ),
+    ];
 
     if (status == 'want_watch') {
       buttons.add(

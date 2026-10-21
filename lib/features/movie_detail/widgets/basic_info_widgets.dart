@@ -82,6 +82,7 @@ class MovieDetailTabs extends StatelessWidget {
     required this.onRetryRelatedLists,
     required this.reviewStatus,
     required this.onReviewSortChanged,
+    required this.onOnlinePlay,
     required this.onWantWatch,
     required this.onWatched,
     required this.onDeleteReview,
@@ -98,6 +99,7 @@ class MovieDetailTabs extends StatelessWidget {
   final VoidCallback onRetryRelatedLists;
   final ReviewStatusState reviewStatus;
   final ValueChanged<MovieReviewSort> onReviewSortChanged;
+  final VoidCallback onOnlinePlay;
   final VoidCallback onWantWatch;
   final VoidCallback onWatched;
   final VoidCallback onDeleteReview;
@@ -135,6 +137,7 @@ class MovieDetailTabs extends StatelessWidget {
             builder: (_, _) => MovieDetailBasicInfoTab(
               detail: detail,
               reviewStatus: reviewStatus,
+              onOnlinePlay: onOnlinePlay,
               onWantWatch: onWantWatch,
               onWatched: onWatched,
               onDeleteReview: onDeleteReview,
@@ -223,6 +226,7 @@ class MovieDetailBasicInfoTab extends StatelessWidget {
     super.key,
     required this.detail,
     required this.reviewStatus,
+    required this.onOnlinePlay,
     required this.onWantWatch,
     required this.onWatched,
     required this.onDeleteReview,
@@ -233,6 +237,7 @@ class MovieDetailBasicInfoTab extends StatelessWidget {
 
   final MovieDetail detail;
   final ReviewStatusState reviewStatus;
+  final VoidCallback onOnlinePlay;
   final VoidCallback onWantWatch;
   final VoidCallback onWatched;
   final VoidCallback onDeleteReview;
@@ -252,6 +257,7 @@ class MovieDetailBasicInfoTab extends StatelessWidget {
             detail: detail,
             review: reviewStatus.review,
             reviewMutationLoading: reviewStatus.mutationLoading,
+            onOnlinePlay: onOnlinePlay,
             onWantWatch: onWantWatch,
             onWatched: onWatched,
             onDeleteReview: onDeleteReview,

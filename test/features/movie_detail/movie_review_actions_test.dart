@@ -7,6 +7,8 @@ Future<void> pumpActions(
   WidgetTester tester, {
   Review? review,
   bool loading = false,
+  String movieNumber = 'IPX-538',
+  VoidCallback? onOnlinePlay,
   VoidCallback? onWantWatch,
   VoidCallback? onWatched,
   VoidCallback? onDelete,
@@ -18,6 +20,8 @@ Future<void> pumpActions(
         body: MovieReviewActions(
           review: review,
           loading: loading,
+          movieNumber: movieNumber,
+          onOnlinePlay: onOnlinePlay ?? () {},
           onWantWatch: onWantWatch ?? () {},
           onWatched: onWatched ?? () {},
           onDelete: onDelete ?? () {},
@@ -36,9 +40,13 @@ List<String> buttonLabels(WidgetTester tester) {
 }
 
 void main() {
-  testWidgets('未标记时按想看看过存入清单排序', (tester) async {
+  testWidgets('未标记时在线播放在想看左侧', (tester) async {
     await pumpActions(tester);
-    expect(buttonLabels(tester), ['想看', '看过', '存入清单']);
+    expect(buttonLabels(tester), ['在线播放', '想看', '看过', '存入清单']);
+    expect(
+      tester.getTopLeft(find.text('在线播放')).dx,
+      lessThan(tester.getTopLeft(find.text('想看')).dx),
+    );
     expect(
       tester.getTopLeft(find.text('想看')).dx,
       lessThan(tester.getTopLeft(find.text('存入清单')).dx),
@@ -49,20 +57,20 @@ void main() {
     );
   });
 
-  testWidgets('想看状态显示删除想看看过存入清单', (tester) async {
+  testWidgets('想看状态在线播放位于删除想看左侧', (tester) async {
     await pumpActions(
       tester,
       review: const Review(id: 'r1', status: 'want_watch'),
     );
-    expect(buttonLabels(tester), ['删除想看', '看过', '存入清单']);
+    expect(buttonLabels(tester), ['在线播放', '删除想看', '看过', '存入清单']);
   });
 
-  testWidgets('看过状态只显示删除看过和存入清单', (tester) async {
+  testWidgets('看过状态在线播放位于删除看过左侧', (tester) async {
     await pumpActions(
       tester,
       review: const Review(id: 'r2', status: 'watched'),
     );
-    expect(buttonLabels(tester), ['删除看过', '存入清单']);
+    expect(buttonLabels(tester), ['在线播放', '删除看过', '存入清单']);
   });
 
   testWidgets('未知影评状态回退为未标记操作', (tester) async {
@@ -70,11 +78,47 @@ void main() {
       tester,
       review: const Review(id: 'r3', status: 'unknown'),
     );
-    expect(buttonLabels(tester), ['想看', '看过', '存入清单']);
+    expect(buttonLabels(tester), ['在线播放', '想看', '看过', '存入清单']);
   });
 
-  testWidgets('加载时只禁用影评操作而保留存入清单', (tester) async {
+  testWidgets('番号空白时在线播放禁用且其余按钮可用', (tester) async {
+    await pumpActions(tester, movieNumber: '');
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const Key('movie-online-play-button')),
+          )
+          .onPressed,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const Key('movie-want-watch-button')),
+          )
+          .onPressed,
+      isNotNull,
+    );
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const Key('movie-save-to-list-button')),
+          )
+          .onPressed,
+      isNotNull,
+    );
+  });
+
+  testWidgets('加载时只禁用影评操作而保留在线播放与存入清单', (tester) async {
     await pumpActions(tester, loading: true);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const Key('movie-online-play-button')),
+          )
+          .onPressed,
+      isNotNull,
+    );
     expect(
       tester
           .widget<FilledButton>(
@@ -165,6 +209,8 @@ void main() {
             child: MovieReviewActions(
               review: null,
               loading: false,
+              movieNumber: 'IPX-538',
+              onOnlinePlay: () {},
               onWantWatch: () {},
               onWatched: () {},
               onDelete: () {},
@@ -177,6 +223,7 @@ void main() {
 
     expect(errors, isEmpty);
     final topPositions = [
+      tester.getTopLeft(find.byKey(const Key('movie-online-play-button'))).dy,
       tester.getTopLeft(find.byKey(const Key('movie-want-watch-button'))).dy,
       tester.getTopLeft(find.byKey(const Key('movie-watched-button'))).dy,
       tester.getTopLeft(find.byKey(const Key('movie-save-to-list-button'))).dy,
@@ -188,16 +235,18 @@ void main() {
     final calls = <String>[];
     await pumpActions(
       tester,
+      onOnlinePlay: () => calls.add('online_play'),
       onWantWatch: () => calls.add('want_watch'),
       onWatched: () => calls.add('watched'),
       onSaveToList: () => calls.add('save'),
     );
 
+    await tester.tap(find.byKey(const Key('movie-online-play-button')));
     await tester.tap(find.byKey(const Key('movie-want-watch-button')));
     await tester.tap(find.byKey(const Key('movie-watched-button')));
     await tester.tap(find.byKey(const Key('movie-save-to-list-button')));
 
-    expect(calls, ['want_watch', 'watched', 'save']);
+    expect(calls, ['online_play', 'want_watch', 'watched', 'save']);
 
     calls.clear();
     await pumpActions(
@@ -244,6 +293,7 @@ void main() {
 
     expect(deleteBackground('movie-delete-want-watch-button', context), error);
     expect(deleteBackground('movie-watched-button', context), isNot(error));
+    expect(deleteBackground('movie-online-play-button', context), isNot(error));
     expect(
       deleteBackground('movie-save-to-list-button', context),
       isNot(error),

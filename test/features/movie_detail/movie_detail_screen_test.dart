@@ -1861,8 +1861,9 @@ void main() {
     expect(actions, findsOneWidget);
     expect(
       find.descendant(of: actions, matching: find.byType(FilledButton)),
-      findsNWidgets(3),
+      findsNWidgets(4),
     );
+    expect(find.text('在线播放'), findsOneWidget);
     expect(find.text('想看'), findsOneWidget);
     expect(find.text('看过'), findsOneWidget);
     expect(find.text('存入清单'), findsOneWidget);
