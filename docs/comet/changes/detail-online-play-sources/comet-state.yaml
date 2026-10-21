@@ -1,0 +1,139 @@
+schema: comet.native.v4
+name: detail-online-play-sources
+language: zh-CN
+phase: build
+status: active
+state_version: 3
+brief: brief.md
+document_constraints_version: 3
+shape_confirmation_hash: 2ad8ba34bacc4a2361f1bf3cfe90578f39bba8bd86fd1d84c57bdba55072f868
+spec_changes:
+  - capability: online-play-sources
+    operation: create
+    source: specs/online-play-sources/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/detail-online-play-sources
+  target_branch: dev
+  finish: null
+loop:
+  stage: building
+  goal_cycle: 1
+  iteration: 1
+  attempt: 0
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: submit-builder-candidate
+acceptance:
+  - id: A1
+    source: brief.md
+    text: 'A1: 详情页按钮组三种标记状态均包含"在线播放"按钮且位于首位：未标记状态顺序为 在线播放、想看、看过、存入清单；want_watch 状态为
+      在线播放、删除想看、看过、存入清单；watched 状态为 在线播放、删除看过、存入清单。'
+    result: pending
+    reason: null
+  - id: A2
+    source: brief.md
+    text: 'A2: 点击"在线播放"弹出底部抽屉，按顺序列出三个源
+      Jable（jable.tv）、SupJav（supjav.com）、MissAV（missav.live），每个条目可点选；抽屉可通过拖动把手、点击遮罩或系统返回关闭，不产生其他副作用。'
+    result: pending
+    reason: null
+  - id: A3
+    source: brief.md
+    text: "A3: 点选某源后抽屉关闭，应用通过系统浏览器打开对应链接；番号 `IPX-538` 时三个源分别打开
+      `https://jable.tv/videos/ipx-538`、`https://supjav.com/ipx-538`、`https://m\
+      issav.live/ipx-538`（番号 trim 并转小写后代入模板）。"
+    result: pending
+    reason: null
+  - id: A4
+    source: brief.md
+    text: 'A4: 番号 trim 后为空时"在线播放"按钮置灰不可点击，不弹出抽屉。'
+    result: pending
+    reason: null
+  - id: A5
+    source: brief.md
+    text: 'A5: 设备无法调起浏览器时，显示 SnackBar"无法打开链接，请检查设备上的浏览器"，应用不崩溃；该失败不影响抽屉的再次使用。'
+    result: pending
+    reason: null
+  - id: A6
+    source: brief.md
+    text: "A6: `flutter analyze --no-pub` 零告警；`flutter test`
+      全量通过；新增单测覆盖注册表顺序/标识与三个源的小写化 URL 构造，新增抽屉测试覆盖源列表与点击回调，按钮组测试覆盖三种状态与回调触发。"
+    result: pending
+    reason: null
+  - id: A7
+    source: specs/online-play-sources/spec.md
+    text: 注册表顺序与内置三源 Given 任何调用方读取播放源注册表 When 遍历注册表条目 Then 顺序与内容为
+      Jable（jable.tv）、SupJav（supjav.com）、MissAV（missav.live），每个条目具备稳定
+      id、label、host 与可用的 buildUrl
+    result: pending
+    reason: null
+  - id: A8
+    source: specs/online-play-sources/spec.md
+    text: 番号代入模板生成链接 Given 影片番号为 `IPX-538` When 分别构造三个源的链接 Then 结果依次为
+      `https://jable.tv/videos/ipx-538`、`https://supjav.com/ipx-538`、`https://missav.live/ipx-538`；番号两侧空白被去除、字母转小写，模板其余部分不变
+    result: pending
+    reason: null
+  - id: A9
+    source: specs/online-play-sources/spec.md
+    text: 三种标记状态下按钮组构成 Given 影片详情页分别处于未标记、想看、看过三种标记状态 When 渲染操作按钮组 Then 未标记状态依次为
+      在线播放、想看、看过、存入清单；想看状态依次为 在线播放、删除想看、看过、存入清单；看过状态依次为
+      在线播放、删除看过、存入清单；所有既有按钮的文案与 Key 保持不变
+    result: pending
+    reason: null
+  - id: A10
+    source: specs/online-play-sources/spec.md
+    text: 点击在线播放触发回调 Given 影片番号非空且用户点击"在线播放"按钮 When 按钮点击完成 Then 触发 `onOnlinePlay`
+      回调一次；同一时刻按钮组的其余按钮行为不受影响
+    result: pending
+    reason: null
+  - id: A11
+    source: specs/online-play-sources/spec.md
+    text: 番号空白时按钮禁用 Given 影片番号 trim 后为空字符串 When 渲染操作按钮组 Then
+      "在线播放"按钮呈现禁用态且不可点击，不弹出抽屉；其余按钮不受影响
+    result: pending
+    reason: null
+  - id: A12
+    source: specs/online-play-sources/spec.md
+    text: 抽屉按序展示播放源 Given 用户在详情页点击"在线播放" When 抽屉弹出 Then 按顺序展示
+      Jable（jable.tv）、SupJav（supjav.com）、MissAV（missav.live）三个可点击条目，展示名称与域名说明，无网络请求发生
+    result: pending
+    reason: null
+  - id: A13
+    source: specs/online-play-sources/spec.md
+    text: 点选源后关闭抽屉并传出链接 Given 抽屉已弹出且影片番号为 `IPX-538` When 用户点选 MissAV 条目 Then
+      抽屉关闭，回调传出 MissAV 源及其构造的链接 `https://missav.live/ipx-538`；点选其他条目同理按各自模板传出
+    result: pending
+    reason: null
+  - id: A14
+    source: specs/online-play-sources/spec.md
+    text: 点选后由系统浏览器打开 Given 用户点选了某个播放源 When 链接构造完成 Then
+      应用关闭抽屉并以外部浏览器方式打开该链接（`externalApplication`），不在应用内嵌 WebView
+    result: pending
+    reason: null
+  - id: A15
+    source: specs/online-play-sources/spec.md
+    text: 浏览器调起失败降级 Given 设备无法处理目标链接（无可用浏览器） When 调起失败 Then 显示
+      SnackBar「无法打开链接，请检查设备上的浏览器」，应用不崩溃，详情页与"在线播放"按钮可继续正常使用
+    result: pending
+    reason: null
+builder_handoff: null
+blockers: []
+verification: null
+history: []
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pending
+verification_report: null
+archived: false
+created_at: 2026-10-21T01:56:48.498Z

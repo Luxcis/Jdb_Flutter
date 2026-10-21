@@ -15,8 +15,10 @@ import 'package:jade/features/movie_detail/models/movie_review_status.dart';
 import 'package:jade/features/movie_detail/services/detail_section_state.dart';
 import 'package:jade/features/movie_detail/services/movie_detail_service.dart';
 import 'package:jade/features/movie_detail/widgets/basic_info_widgets.dart';
+import 'package:jade/features/movie_detail/widgets/online_play_source_sheet.dart';
 import 'package:jade/features/movie_detail/widgets/save_to_list_sheet.dart';
 import 'package:jade/features/movie_detail/widgets/watched_review_sheet.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MovieDetailScreen extends StatefulWidget {
   const MovieDetailScreen({super.key, required this.id});
@@ -304,6 +306,32 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     }
   }
 
+  /// 打开「在线播放」源选择抽屉；点选后用系统浏览器打开对应链接。
+  Future<void> _openOnlinePlaySheet() async {
+    final detail = _detail;
+    if (detail == null) return;
+    final url = await OnlinePlaySourceSheet.show(
+      context,
+      number: detail.number,
+    );
+    if (url == null || !mounted) return;
+    await _launchOnlinePlayUrl(url);
+  }
+
+  /// 用外部浏览器打开链接；调起失败时提示且不影响后续再次使用。
+  Future<void> _launchOnlinePlayUrl(Uri url) async {
+    var launched = false;
+    try {
+      launched = await launchUrl(url, mode: LaunchMode.externalApplication);
+    } catch (error) {
+      // url_launcher 在部分设备上以异常表示调起失败，与返回 false 等价处理。
+      launched = false;
+    }
+    if (!launched && mounted) {
+      _showSnackBar('无法打开链接，请检查设备上的浏览器');
+    }
+  }
+
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(
       context,
@@ -368,6 +396,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
               onRetryRelatedLists: _retryRelatedLists,
               reviewStatus: _reviewStatus,
               onReviewSortChanged: _changeReviewSort,
+              onOnlinePlay: () => unawaited(_openOnlinePlaySheet()),
               onWantWatch: () => unawaited(_markWantWatch()),
               onWatched: () => unawaited(_openWatchedReviewSheet()),
               onDeleteReview: () => unawaited(_removeCurrentReview()),

@@ -14,6 +14,7 @@ class MovieInfoCard extends StatelessWidget {
     required this.detail,
     required this.review,
     required this.reviewMutationLoading,
+    required this.onOnlinePlay,
     required this.onWantWatch,
     required this.onWatched,
     required this.onDeleteReview,
@@ -23,6 +24,7 @@ class MovieInfoCard extends StatelessWidget {
   final MovieDetail detail;
   final Review? review;
   final bool reviewMutationLoading;
+  final VoidCallback onOnlinePlay;
   final VoidCallback onWantWatch;
   final VoidCallback onWatched;
   final VoidCallback onDeleteReview;
@@ -111,6 +113,8 @@ class MovieInfoCard extends StatelessWidget {
               key: const Key('movie-detail-actions'),
               review: review,
               loading: reviewMutationLoading,
+              movieNumber: detail.number,
+              onOnlinePlay: onOnlinePlay,
               onWantWatch: onWantWatch,
               onWatched: onWatched,
               onDelete: onDeleteReview,
