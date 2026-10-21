@@ -53,6 +53,10 @@ dsh-usage/
 .mnemon
 .dart-home/
 .mimosa/
+.pi
+.dsh
+.zcode
+.codegraph
 AGENTS.local.md
 # >>> Comet managed project state >>>
 !/.comet/
