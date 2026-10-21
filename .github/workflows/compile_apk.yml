@@ -7,6 +7,10 @@ on:
 env:
   FLUTTER_VERSION: "3.44.0"
   APK_BUILD_DIR: "/tmp/build"
+  # 与提交的 pubspec.lock 源保持一致：lock 记录的是镜像 URL，若 CI
+  # 走默认 pub.dev，pub 会把整棵树视为异源并全量重解析（v0.15.0 白屏
+  # 复现根因之一：shared_preferences_android 2.4.10 被静默升级到 2.5.1）。
+  PUB_HOSTED_URL: "https://pub.flutter-io.cn"
 
 jobs:
   build:
@@ -49,7 +53,7 @@ jobs:
 
       - name: Dependencies
         working-directory: ${{ env.APK_BUILD_DIR }}
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       # media_kit_libs_android_video 在 Gradle 评估期用 Java 下载 libmpv jar，
       # GitHub 对该请求返回 406，故先经 curl 预下载到插件 buildDir 供其跳过。
@@ -134,7 +138,7 @@ jobs:
 
       - name: Dependencies
         working-directory: ${{ env.APK_BUILD_DIR }}
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       # media_kit_libs_android_video 在 Gradle 评估期用 Java 下载 libmpv jar，
       # GitHub 对该请求返回 406，故先经 curl 预下载到插件 buildDir 供其跳过。
