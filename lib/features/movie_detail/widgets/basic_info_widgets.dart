@@ -9,6 +9,7 @@ import 'package:jade/features/movie_detail/models/movie_review_sort.dart';
 import 'package:jade/features/movie_detail/services/detail_section_state.dart';
 import 'package:jade/features/movie_detail/widgets/basic_info_sections.dart';
 import 'package:jade/features/movie_detail/widgets/movie_detail_lists.dart';
+import 'package:jade/features/movie_detail/widgets/movie_detail_title_bar.dart';
 import 'package:jade/features/movie_detail/widgets/movie_info_card.dart';
 
 /// 影片详情页顶部封面区（含动态高度）。
@@ -120,6 +121,7 @@ class MovieDetailTabs extends StatelessWidget {
     );
     return NestedScrollView(
       headerSliverBuilder: (context, innerBoxIsScrolled) => [
+        MovieDetailTitleBar(title: detail.title),
         SliverToBoxAdapter(child: MovieDetailHero(detail: detail)),
         SliverPersistentHeader(
           pinned: true,
@@ -130,50 +132,55 @@ class MovieDetailTabs extends StatelessWidget {
           ),
         ),
       ],
-      body: TabBarView(
-        children: [
-          ListenableBuilder(
-            listenable: reviewStatus,
-            builder: (_, _) => MovieDetailBasicInfoTab(
-              detail: detail,
-              reviewStatus: reviewStatus,
-              onOnlinePlay: onOnlinePlay,
-              onWantWatch: onWantWatch,
-              onWatched: onWatched,
-              onDeleteReview: onDeleteReview,
-              onSaveToList: onSaveToList,
-              onPreviewTap: onPreviewTap,
-              onActorTap: onActorTap,
+      // 标题栏已随滚动结构处理状态栏内边距，Tab 内容不再重复叠加顶部内边距。
+      body: MediaQuery.removePadding(
+        context: context,
+        removeTop: true,
+        child: TabBarView(
+          children: [
+            ListenableBuilder(
+              listenable: reviewStatus,
+              builder: (_, _) => MovieDetailBasicInfoTab(
+                detail: detail,
+                reviewStatus: reviewStatus,
+                onOnlinePlay: onOnlinePlay,
+                onWantWatch: onWantWatch,
+                onWatched: onWatched,
+                onDeleteReview: onDeleteReview,
+                onSaveToList: onSaveToList,
+                onPreviewTap: onPreviewTap,
+                onActorTap: onActorTap,
+              ),
             ),
-          ),
-          ListenableBuilder(
-            listenable: magnetsState,
-            builder: (_, _) => MovieMagnetList(
-              magnets: magnetsState.items,
-              error: magnetsState.error,
-              loading: magnetsState.loading,
-              onRetry: onRetryMagnets,
+            ListenableBuilder(
+              listenable: magnetsState,
+              builder: (_, _) => MovieMagnetList(
+                magnets: magnetsState.items,
+                error: magnetsState.error,
+                loading: magnetsState.loading,
+                onRetry: onRetryMagnets,
+              ),
             ),
-          ),
-          ListenableBuilder(
-            listenable: reviewsState,
-            builder: (_, _) => MovieReviewList(
-              reviews: reviewsState.items,
-              loading: reviewsState.loading,
-              sort: reviewsState.sort,
-              onSortChanged: onReviewSortChanged,
+            ListenableBuilder(
+              listenable: reviewsState,
+              builder: (_, _) => MovieReviewList(
+                reviews: reviewsState.items,
+                loading: reviewsState.loading,
+                sort: reviewsState.sort,
+                onSortChanged: onReviewSortChanged,
+              ),
             ),
-          ),
-          ListenableBuilder(
-            listenable: relatedListsState,
-            builder: (_, _) => MovieRelatedListList(
-              lists: relatedListsState.items,
-              error: relatedListsState.error,
-              loading: relatedListsState.loading,
-              onRetry: onRetryRelatedLists,
+            ListenableBuilder(
+              listenable: relatedListsState,
+              builder: (_, _) => MovieRelatedListList(
+                lists: relatedListsState.items,
+                error: relatedListsState.error,
+                loading: relatedListsState.loading,
+                onRetry: onRetryRelatedLists,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -271,8 +278,9 @@ class MovieDetailBasicInfoTab extends StatelessWidget {
         if (detail.previewVideoUrl != null || detail.screenshots.isNotEmpty)
           MovieScreenshotSection(
             urls: detail.screenshots,
-            previewCoverUrl:
-                detail.previewVideoUrl == null ? null : detail.coverUrl,
+            previewCoverUrl: detail.previewVideoUrl == null
+                ? null
+                : detail.coverUrl,
             previewTitle: detail.title,
             onPreviewTap: onPreviewTap,
           ),
