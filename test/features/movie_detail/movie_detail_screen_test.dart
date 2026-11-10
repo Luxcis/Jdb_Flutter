@@ -11,6 +11,7 @@ import 'package:jade/core/network/testing/fake_adapter.dart';
 import 'package:jade/router/routes.dart';
 import 'package:jade/core/storage/storage_keys.dart';
 import 'package:jade/core/widgets/actor_card.dart';
+import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/list_summary_tile.dart';
 import 'package:jade/core/widgets/movie_card.dart';
 import 'package:jade/core/widgets/movie_cover_image.dart';
@@ -22,6 +23,7 @@ import 'package:jade/features/common/services/tag_movies_service.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
 import 'package:jade/features/movie_detail/screens/movie_detail_screen.dart';
 import 'package:jade/features/movie_detail/widgets/basic_info_widgets.dart';
+import 'package:jade/features/movie_detail/widgets/movie_info_card.dart';
 import 'package:jade/features/movie_detail/widgets/movie_review_actions.dart';
 import 'package:jade/features/movie_detail/widgets/top_ranking_tile.dart';
 import 'package:jade/features/movie_detail/widgets/watched_review_sheet.dart';
@@ -129,6 +131,7 @@ Future<void> _scrollUntilFound(
 
 void _enqueueCompleteMovieDetail(
   FakeAdapter adapter, {
+  String title = '测试影片',
   String? previewVideoUrl,
   Map<String, dynamic>? userReview,
   String coverUrl = 'covers/test.jpg',
@@ -146,7 +149,7 @@ void _enqueueCompleteMovieDetail(
         'type': '1',
         'number': 'SSIS-001',
         'number_letter': 'SSIS',
-        'title': '测试影片',
+        'title': title,
         'cover_url': coverUrl,
         'preview_video_url': ?previewVideoUrl,
         'release_date': '2026-07-22',
@@ -1819,10 +1822,15 @@ void main() {
 
     expect(find.byType(DraggableScrollableSheet), findsNothing);
     expect(find.byType(NestedScrollView), findsOneWidget);
-    final pinnedHeader = tester.widget<SliverPersistentHeader>(
-      find.byType(SliverPersistentHeader),
+    expect(find.byType(SliverAppBar), findsOneWidget);
+    final tabHeader = tester.widget<SliverPersistentHeader>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is SliverPersistentHeader &&
+            widget.delegate is MovieDetailTabHeaderDelegate,
+      ),
     );
-    expect(pinnedHeader.pinned, isTrue);
+    expect(tabHeader.pinned, isTrue);
 
     const tabLabels = ['基本信息', '磁链下载', '短评', '相关清单'];
     for (final label in tabLabels) {
@@ -2072,6 +2080,140 @@ void main() {
     expect(relatedDividers.single.height, 1);
     expect(relatedDividers.single.indent, 16);
     expect(relatedDividers.single.endIndent, 16);
+  });
+
+  testWidgets('详情页标题栏在顶部多行、滚动后单行并固定', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(
+      adapter,
+      title: 'SSIS-001 一个需要多行展示才能完整显示的影片标题，用于验证滚动后收拢',
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(home: MovieDetailScreen(id: 'm1')),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    Text expandedTitle() =>
+        tester.widget<Text>(find.byKey(const Key('movie-detail-title-text')));
+    Text collapsedTitle() => tester.widget<Text>(
+      find.byKey(const Key('movie-detail-title-text-collapsed')),
+    );
+    expect(expandedTitle().maxLines, greaterThan(1));
+    expect(
+      find.byKey(const Key('movie-detail-title-text-collapsed')),
+      findsNothing,
+    );
+
+    // 在「短评」Tab 内向下滚动时，标题栏同样收拢为单行。
+    await tester.tap(find.text('短评'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.drag(
+      find.byKey(const PageStorageKey('movie-detail-reviews')),
+      const Offset(0, -600),
+    );
+    await tester.pump();
+
+    expect(collapsedTitle().maxLines, 1);
+    expect(collapsedTitle().overflow, TextOverflow.ellipsis);
+    expect(find.byKey(const Key('movie-detail-title-text')), findsNothing);
+    final appBarRect = tester.getRect(find.byType(AppBar));
+    expect(appBarRect.top, closeTo(0, 0.5));
+    expect(appBarRect.height, closeTo(kToolbarHeight, 0.5));
+    final tabBarRect = tester.getRect(
+      find.byKey(const Key('movie-detail-tab-bar')),
+    );
+    expect(tabBarRect.top, closeTo(appBarRect.bottom, 0.5));
+
+    // 回到页面顶部后恢复多行展示。
+    tester
+        .state<ScrollableState>(find.byType(Scrollable).first)
+        .position
+        .jumpTo(0);
+    await tester.pump();
+    expect(expandedTitle().maxLines, greaterThan(1));
+    expect(
+      find.byKey(const Key('movie-detail-title-text-collapsed')),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('主详情加载中不渲染标题栏', (tester) async {
+    final adapter = await _setupApiClient();
+    adapter.responseDelay = const Duration(milliseconds: 300);
+    _enqueueCompleteMovieDetail(adapter);
+
+    await tester.pumpWidget(
+      const MaterialApp(home: MovieDetailScreen(id: 'm1')),
+    );
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byKey(const Key('movie-detail-title-bar')), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const Key('movie-detail-title-bar')), findsOneWidget);
+
+    // 等待附属区块的延迟响应结束，避免残留计时器。
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('主详情失败时不渲染标题栏并展示错误重试', (tester) async {
+    final adapter = await _setupApiClient();
+    adapter.enqueue('/api/v4/movies/m1', {
+      'success': 0,
+      'message': 'boom',
+    }, statusCode: 500);
+
+    await tester.pumpWidget(
+      const MaterialApp(home: MovieDetailScreen(id: 'm1')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byType(ErrorRetryWidget), findsOneWidget);
+    expect(find.byKey(const Key('movie-detail-title-bar')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('系统状态栏内边距不会重复加到 Tab 内容顶部', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final adapter = await _setupApiClient();
+    _enqueueCompleteMovieDetail(adapter);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(390, 844),
+            padding: EdgeInsets.only(top: 24),
+          ),
+          child: const MovieDetailScreen(id: 'm1'),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final tabBarBottom = tester
+        .getBottomLeft(find.byKey(const Key('movie-detail-tab-bar')))
+        .dy;
+    final cardTop = tester.getTopLeft(find.byType(MovieInfoCard)).dy;
+    // 基本信息首项自带 12 顶部间距，不应再叠加状态栏的 24。
+    expect(cardTop - tabBarBottom, lessThan(20));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('点击相关清单条目经内置跳转打开 common-list 并可返回', (tester) async {
@@ -2539,7 +2681,9 @@ void main() {
     final adapter = await _setupApiClient();
     _enqueueCompleteMovieDetail(adapter);
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
+    await tester.pumpWidget(
+      const MaterialApp(home: MovieDetailScreen(id: 'm1')),
+    );
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
     await _pumpUntilText(tester, '测试影片');
@@ -2566,7 +2710,9 @@ void main() {
     final adapter = await _setupApiClient();
     _enqueueCompleteMovieDetail(adapter, coverUrl: '');
 
-    await tester.pumpWidget(const MaterialApp(home: MovieDetailScreen(id: 'm1')));
+    await tester.pumpWidget(
+      const MaterialApp(home: MovieDetailScreen(id: 'm1')),
+    );
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 

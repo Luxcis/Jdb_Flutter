@@ -377,14 +377,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     return Stack(
       children: [
         Scaffold(
-          appBar: AppBar(
-            title: Text(
-              detail.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
           body: DefaultTabController(
             length: 4,
             child: MovieDetailTabs(
