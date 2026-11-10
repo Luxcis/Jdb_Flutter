@@ -4,6 +4,9 @@ import 'package:jade/features/movie_detail/widgets/movie_detail_title_bar.dart';
 
 const _longTitle = 'SSIS-123 这是一个需要多行展示才能完整显示的影片标题，用于验证展开态不会把标题截断为单行';
 const _titleTextKey = Key('movie-detail-title-text');
+const _collapsedTitleTextKey = Key('movie-detail-title-text-collapsed');
+const _expandedOpacityKey = Key('movie-detail-title-expanded-opacity');
+const _collapsedOpacityKey = Key('movie-detail-title-collapsed-opacity');
 const _titleBarKey = Key('movie-detail-title-bar');
 
 void _usePhoneSize(WidgetTester tester) {
@@ -30,8 +33,20 @@ double _titleBarHeight(WidgetTester tester) {
   return tester.getSize(find.byType(AppBar)).height;
 }
 
-Text _titleText(WidgetTester tester) {
+Text _expandedTitle(WidgetTester tester) {
   return tester.widget<Text>(find.byKey(_titleTextKey));
+}
+
+Text _collapsedTitle(WidgetTester tester) {
+  return tester.widget<Text>(find.byKey(_collapsedTitleTextKey));
+}
+
+double _expandedOpacity(WidgetTester tester) {
+  return tester.widget<Opacity>(find.byKey(_expandedOpacityKey)).opacity;
+}
+
+double _collapsedOpacity(WidgetTester tester) {
+  return tester.widget<Opacity>(find.byKey(_collapsedOpacityKey)).opacity;
 }
 
 ScrollableState _scrollable(WidgetTester tester) {
@@ -44,31 +59,40 @@ void main() {
     await tester.pumpWidget(_buildHarness());
 
     expect(find.byKey(_titleBarKey), findsOneWidget);
-    expect(_titleText(tester).maxLines, greaterThan(1));
-    expect(_titleText(tester).overflow, TextOverflow.ellipsis);
+    expect(find.byKey(_collapsedTitleTextKey), findsNothing);
+    expect(_expandedTitle(tester).maxLines, greaterThan(1));
+    expect(_expandedTitle(tester).overflow, TextOverflow.ellipsis);
     // 多行文字高度明显超过单行高度。
     expect(tester.getSize(find.byKey(_titleTextKey)).height, greaterThan(40));
     expect(_titleBarHeight(tester), greaterThan(kToolbarHeight));
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('向下滚动后标题收拢为单行并随滚动连续收缩', (tester) async {
+  testWidgets('向下滚动时标题随滚动距离收缩并做淡入淡出', (tester) async {
     _usePhoneSize(tester);
     await tester.pumpWidget(_buildHarness());
     final expandedHeight = _titleBarHeight(tester);
+    final collapseRange = expandedHeight - kToolbarHeight;
 
     final position = _scrollable(tester).position;
-    position.jumpTo(1);
+    // 折叠过程中：两层标题同时存在且透明度介于 0 与 1 之间，高度随滚动收缩。
+    position.jumpTo(collapseRange * 0.4);
     await tester.pump();
-
-    expect(_titleText(tester).maxLines, 1);
-    expect(_titleText(tester).overflow, TextOverflow.ellipsis);
+    expect(find.byKey(_titleTextKey), findsOneWidget);
+    expect(find.byKey(_collapsedTitleTextKey), findsOneWidget);
+    expect(_expandedOpacity(tester), inExclusiveRange(0.0, 1.0));
+    expect(_collapsedOpacity(tester), inExclusiveRange(0.0, 1.0));
     final partialHeight = _titleBarHeight(tester);
     expect(partialHeight, lessThan(expandedHeight));
     expect(partialHeight, greaterThan(kToolbarHeight));
 
+    // 完全收起后只剩单行省略标题，高度固定为 toolbar 高度。
     position.jumpTo(position.maxScrollExtent);
     await tester.pump();
+    expect(find.byKey(_titleTextKey), findsNothing);
+    expect(_collapsedTitle(tester).maxLines, 1);
+    expect(_collapsedTitle(tester).overflow, TextOverflow.ellipsis);
+    expect(_collapsedOpacity(tester), 1);
     expect(_titleBarHeight(tester), closeTo(kToolbarHeight, 0.01));
     expect(tester.getTopLeft(find.byType(AppBar)).dy, 0);
     expect(tester.takeException(), isNull);
@@ -82,11 +106,12 @@ void main() {
     final position = _scrollable(tester).position;
     position.jumpTo(position.maxScrollExtent);
     await tester.pump();
-    expect(_titleText(tester).maxLines, 1);
+    expect(_collapsedTitle(tester).maxLines, 1);
 
     position.jumpTo(0);
     await tester.pump();
-    expect(_titleText(tester).maxLines, greaterThan(1));
+    expect(find.byKey(_collapsedTitleTextKey), findsNothing);
+    expect(_expandedTitle(tester).maxLines, greaterThan(1));
     expect(_titleBarHeight(tester), closeTo(expandedHeight, 0.01));
   });
 
@@ -99,7 +124,7 @@ void main() {
     final height = _titleBarHeight(tester);
     expect(height, lessThanOrEqualTo(844 * 0.4 + 0.5));
     expect(height, greaterThanOrEqualTo(kToolbarHeight));
-    expect(_titleText(tester).maxLines, greaterThanOrEqualTo(1));
+    expect(_expandedTitle(tester).maxLines, greaterThanOrEqualTo(1));
     expect(tester.takeException(), isNull);
   });
 
@@ -108,7 +133,7 @@ void main() {
     await tester.pumpWidget(_buildHarness(title: ''));
 
     expect(_titleBarHeight(tester), closeTo(kToolbarHeight, 0.01));
-    expect(_titleText(tester).maxLines, 1);
+    expect(_expandedTitle(tester).maxLines, 1);
     expect(tester.takeException(), isNull);
   });
 
@@ -133,17 +158,17 @@ void main() {
       ),
     );
 
-    expect(_titleText(tester).maxLines, greaterThan(1));
+    expect(_expandedTitle(tester).maxLines, greaterThan(1));
     expect(tester.getSize(find.byKey(_titleTextKey)).height, greaterThan(50));
     expect(tester.takeException(), isNull);
 
     final position = _scrollable(tester).position;
     position.jumpTo(position.maxScrollExtent);
     await tester.pump();
-    expect(_titleText(tester).maxLines, 1);
+    expect(_collapsedTitle(tester).maxLines, 1);
     // 收起态单行标题不被垂直压缩截断：文本高度保持 2x 行高，标题栏也能容纳。
     final collapsedTextHeight = tester
-        .getSize(find.byKey(_titleTextKey))
+        .getSize(find.byKey(_collapsedTitleTextKey))
         .height;
     expect(collapsedTextHeight, greaterThan(50));
     expect(
@@ -188,7 +213,7 @@ void main() {
     final position = _scrollable(tester).position;
     position.jumpTo(position.maxScrollExtent);
     await tester.pump();
-    expect(_titleText(tester).maxLines, 1);
+    expect(_collapsedTitle(tester).maxLines, 1);
 
     expect(find.byType(BackButton), findsOneWidget);
     await tester.tap(find.byType(BackButton));

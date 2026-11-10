@@ -138,10 +138,10 @@ class _TitleLayout {
   }
 }
 
-/// 标题本体：根据 [FlexibleSpaceBarSettings] 的当前高度切换多行/单行形态。
+/// 标题本体：折叠进度由滚动距离决定，多行标题与单行省略标题随进度交叉淡入淡出。
 ///
-/// 折叠高度由 [SliverAppBar] 随滚动距离直接驱动，因此滚动一开始标题即切为单行，
-/// 高度连续收缩到 toolbar 高度后固定在顶部。
+/// 标题栏高度由 [SliverAppBar] 随滚动连续收缩；标题在两态之间按同一进度做淡入淡出，
+/// 使收缩过程看起来是连续的动画，而不是滚动一开始就瞬间切换为单行。
 class _CollapsingTitle extends StatelessWidget {
   const _CollapsingTitle({
     required this.title,
@@ -157,24 +157,73 @@ class _CollapsingTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = context
         .dependOnInheritedWidgetOfExactType<FlexibleSpaceBarSettings>();
-    final collapsed =
-        settings != null && settings.currentExtent < settings.maxExtent - 0.5;
+    final range = settings == null
+        ? 0.0
+        : settings.maxExtent - settings.minExtent;
+    final progress = range <= 0
+        ? 0.0
+        : ((settings!.maxExtent - settings.currentExtent) / range).clamp(
+            0.0,
+            1.0,
+          );
+    final expandedOpacity = 1 - _linearStep(progress, 0.0, 0.45);
+    final collapsedOpacity = _linearStep(progress, 0.35, 0.85);
+    // 展开态与收起态同时存在时只让较明显的一层参与无障碍朗读。
+    final showCollapsedSemantics = progress >= 0.5;
     return Padding(
-      padding: const EdgeInsets.only(
+      padding: EdgeInsets.only(
         left: MovieDetailTitleBar._leadingPadding,
         right: MovieDetailTitleBar._trailingPadding,
+        top: MediaQuery.paddingOf(context).top,
         bottom: MovieDetailTitleBar._bottomPadding,
       ),
-      child: Align(
-        alignment: Alignment.bottomLeft,
-        child: Text(
-          title,
-          key: const Key('movie-detail-title-text'),
-          maxLines: collapsed ? 1 : expandedMaxLines,
-          overflow: TextOverflow.ellipsis,
-          style: style,
+      child: ClipRect(
+        child: Align(
+          alignment: Alignment.bottomLeft,
+          child: Stack(
+            alignment: Alignment.bottomLeft,
+            children: [
+              if (expandedOpacity > 0.001)
+                Opacity(
+                  key: const Key('movie-detail-title-expanded-opacity'),
+                  opacity: expandedOpacity,
+                  child: ExcludeSemantics(
+                    excluding: showCollapsedSemantics,
+                    child: Text(
+                      title,
+                      key: const Key('movie-detail-title-text'),
+                      maxLines: expandedMaxLines,
+                      overflow: TextOverflow.ellipsis,
+                      style: style,
+                    ),
+                  ),
+                ),
+              if (collapsedOpacity > 0.001)
+                Opacity(
+                  key: const Key('movie-detail-title-collapsed-opacity'),
+                  opacity: collapsedOpacity,
+                  child: ExcludeSemantics(
+                    excluding: !showCollapsedSemantics,
+                    child: Text(
+                      title,
+                      key: const Key('movie-detail-title-text-collapsed'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: style,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+/// 把 [value] 从 [begin, end] 线性映射到 0..1，区间外夹取。
+double _linearStep(double value, double begin, double end) {
+  if (value <= begin) return 0;
+  if (value >= end) return 1;
+  return (value - begin) / (end - begin);
 }

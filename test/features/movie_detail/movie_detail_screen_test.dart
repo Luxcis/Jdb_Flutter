@@ -2100,9 +2100,16 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 
-    Text titleText() =>
+    Text expandedTitle() =>
         tester.widget<Text>(find.byKey(const Key('movie-detail-title-text')));
-    expect(titleText().maxLines, greaterThan(1));
+    Text collapsedTitle() => tester.widget<Text>(
+      find.byKey(const Key('movie-detail-title-text-collapsed')),
+    );
+    expect(expandedTitle().maxLines, greaterThan(1));
+    expect(
+      find.byKey(const Key('movie-detail-title-text-collapsed')),
+      findsNothing,
+    );
 
     // 在「短评」Tab 内向下滚动时，标题栏同样收拢为单行。
     await tester.tap(find.text('短评'));
@@ -2114,8 +2121,9 @@ void main() {
     );
     await tester.pump();
 
-    expect(titleText().maxLines, 1);
-    expect(titleText().overflow, TextOverflow.ellipsis);
+    expect(collapsedTitle().maxLines, 1);
+    expect(collapsedTitle().overflow, TextOverflow.ellipsis);
+    expect(find.byKey(const Key('movie-detail-title-text')), findsNothing);
     final appBarRect = tester.getRect(find.byType(AppBar));
     expect(appBarRect.top, closeTo(0, 0.5));
     expect(appBarRect.height, closeTo(kToolbarHeight, 0.5));
@@ -2130,7 +2138,11 @@ void main() {
         .position
         .jumpTo(0);
     await tester.pump();
-    expect(titleText().maxLines, greaterThan(1));
+    expect(expandedTitle().maxLines, greaterThan(1));
+    expect(
+      find.byKey(const Key('movie-detail-title-text-collapsed')),
+      findsNothing,
+    );
     expect(tester.takeException(), isNull);
   });
 
