@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/code.dart';
@@ -48,6 +50,16 @@ class _SearchResultsScreenState extends State<SearchResultsScreen>
     _entityDataSource =
         widget.entityDataSource ?? SearchEntityService.resolve();
     _historyStore = widget.historyStore;
+    unawaited(_recordInitialQuery());
+  }
+
+  /// 首次进入结果页即记录关键词：评论正文选择菜单等直接进入结果页的搜索
+  /// 同样出现在搜索首页的“最近搜索”中；重复保存幂等。
+  Future<void> _recordInitialQuery() async {
+    final keyword = widget.query.trim();
+    if (keyword.isEmpty) return;
+    final store = await _resolveHistoryStore();
+    await store.save(keyword);
   }
 
   Future<SearchHistoryStore> _resolveHistoryStore() async {
