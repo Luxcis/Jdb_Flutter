@@ -1,10 +1,16 @@
 import 'package:flutter/gestures.dart' show computeHitSlop, kPrimaryButton;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:go_router/go_router.dart';
+import 'package:jade/router/routes.dart';
 
-/// 评论内容：超过 5 行自动截断，提供展开/收起控制；正文支持长按选择与复制。
+/// 评论内容：超过 5 行自动截断，提供展开/收起控制；正文支持长按选择、复制与搜索。
 class ExpandableReviewContent extends StatefulWidget {
-  const ExpandableReviewContent({super.key, required this.text, required this.style});
+  const ExpandableReviewContent({
+    super.key,
+    required this.text,
+    required this.style,
+  });
 
   static const maxLines = 5;
 
@@ -145,7 +151,8 @@ String _visiblePrefixOf(
   return graphemes.take(low).join();
 }
 
-/// 可选择正文：长按进入选择态并展示中文操作菜单，未选中时点击触发 [onTap]。
+/// 可选择正文：长按进入选择态并展示中文操作菜单（复制、搜索、全选），
+/// 未选中时点击触发 [onTap]。
 class ReviewSelectableText extends StatefulWidget {
   const ReviewSelectableText({
     super.key,
@@ -187,15 +194,38 @@ class _ReviewSelectableTextState extends State<ReviewSelectableText> {
     }
   }
 
-  /// 复制当前所选文本；折叠态下选区可能覆盖省略号之后的隐藏文本，仅保留可见前缀。
-  void _copySelection() {
-    var text = _selectedText;
+  /// 当前选区对应的可见文本。
+  ///
+  /// 折叠态下选区可能覆盖省略号之后的隐藏文本，而 [SelectedContent] 只提供纯文本、
+  /// 不含选区位置：若选区不是可见前缀的子串，说明它越过了省略号，退化为可见前缀。
+  String _visibleSelectionText() {
+    final selected = _selectedText;
     final visiblePrefix = widget.visiblePrefix;
-    if (visiblePrefix != null && text.length > visiblePrefix.length) {
-      text = visiblePrefix;
+    if (visiblePrefix == null || visiblePrefix.contains(selected)) {
+      return selected;
     }
+    return visiblePrefix;
+  }
+
+  /// 复制当前所选可见文本。
+  void _copySelection() {
+    final text = _visibleSelectionText();
     if (text.isEmpty) return;
     Clipboard.setData(ClipboardData(text: text));
+  }
+
+  /// 搜索当前所选文本：去除首尾空白并把内部换行/连续空白折叠为单个空格。
+  void _searchSelection(BuildContext context) {
+    final keyword = _visibleSelectionText()
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (keyword.isEmpty) return;
+    context.push(
+      Uri(
+        path: AppRoutes.searchResults,
+        queryParameters: {'q': keyword},
+      ).toString(),
+    );
   }
 
   void _handlePointerUp(PointerUpEvent event) {
@@ -233,6 +263,13 @@ class _ReviewSelectableTextState extends State<ReviewSelectableText> {
                 onPressed: () {
                   _copySelection();
                   selectableRegionState.hideToolbar(false);
+                },
+              ),
+              ContextMenuButtonItem(
+                label: '搜索',
+                onPressed: () {
+                  selectableRegionState.hideToolbar(false);
+                  _searchSelection(context);
                 },
               ),
               ContextMenuButtonItem(
