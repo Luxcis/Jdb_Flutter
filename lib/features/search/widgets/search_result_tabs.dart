@@ -72,7 +72,11 @@ class _PaginatedEntitySearchTabState<T>
 
 /// 影片搜索 Tab：筛选条 + 分页网格。
 class MovieSearchTab extends StatefulWidget {
-  const MovieSearchTab({super.key, required this.query, required this.dataSource});
+  const MovieSearchTab({
+    super.key,
+    required this.query,
+    required this.dataSource,
+  });
 
   final String query;
   final SearchMovieDataSource dataSource;
@@ -81,7 +85,8 @@ class MovieSearchTab extends StatefulWidget {
   State<MovieSearchTab> createState() => _MovieSearchTabState();
 }
 
-class _MovieSearchTabState extends State<MovieSearchTab> {
+class _MovieSearchTabState extends State<MovieSearchTab>
+    with AutomaticKeepAliveClientMixin {
   late final PaginationController<MovieSummary> _controller;
   SearchMovieFilter _filter = const SearchMovieFilter();
 
@@ -111,8 +116,14 @@ class _MovieSearchTabState extends State<MovieSearchTab> {
     super.dispose();
   }
 
+  /// 切到其它 Tab 时不销毁状态：已加载列表、分页游标、筛选与滚动位置
+  /// 随 Tab 保活，切回不重新加载。
+  @override
+  bool get wantKeepAlive => true;
+
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Column(
       children: [
         SearchMovieFilterBar(value: _filter, onChanged: _changeFilter),
@@ -124,7 +135,11 @@ class _MovieSearchTabState extends State<MovieSearchTab> {
 
 /// 演员搜索 Tab：分页头像网格。
 class ActorSearchTab extends StatefulWidget {
-  const ActorSearchTab({super.key, required this.query, required this.dataSource});
+  const ActorSearchTab({
+    super.key,
+    required this.query,
+    required this.dataSource,
+  });
 
   final String query;
   final SearchEntityDataSource dataSource;
@@ -167,4 +182,3 @@ class _ActorSearchTabState extends State<ActorSearchTab>
     );
   }
 }
-
