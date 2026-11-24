@@ -22,6 +22,8 @@ from __future__ import annotations
 
 import argparse
 import os
+import pathlib
+import re
 import sys
 import urllib.parse
 import urllib.request
@@ -31,6 +33,65 @@ DEFAULT_WEB_IMAGE_PREFIX = "https://c0.jdbstatic.com/"
 MOBILE_CDN_HOST = "tp.spfcas.com"
 MOBILE_CDN_PATH_PREFIX = "/rhe951l4q/"
 IMAGE_SUFFIXES = (".jpg", ".jpeg", ".png", ".webp", ".gif")
+ALLOWED_URL_SCHEMES = ("http", "https")
+
+
+def allowed_download_hosts(web_image_prefix: str = DEFAULT_WEB_IMAGE_PREFIX) -> frozenset[str]:
+    """Hosts this helper is allowed to download from."""
+    hosts = {MOBILE_CDN_HOST}
+    prefix_host = urllib.parse.urlparse(web_image_prefix).hostname
+    if prefix_host:
+        hosts.add(prefix_host)
+    return frozenset(hosts)
+
+
+def validate_download_url(url: str, allowed_hosts: frozenset[str]) -> None:
+    """Reject URLs that could be used for SSRF against arbitrary hosts."""
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ALLOWED_URL_SCHEMES:
+        raise ValueError(f"unsupported URL scheme: {parsed.scheme!r}")
+    if parsed.username or parsed.password:
+        raise ValueError("URL must not embed credentials")
+    if parsed.hostname not in allowed_hosts:
+        raise ValueError(f"download host not allowed: {parsed.hostname!r}")
+
+
+class _AllowlistedRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Apply the download allowlist to every redirect hop."""
+
+    def __init__(self, allowed_hosts: frozenset[str]) -> None:
+        super().__init__()
+        self._allowed_hosts = allowed_hosts
+
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp,
+        code: int,
+        msg: str,
+        headers,
+        newurl: str,
+    ):
+        validate_download_url(newurl, self._allowed_hosts)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+SAFE_FILENAME = re.compile(r"[^A-Za-z0-9._-]")
+
+
+def write_image_file(output_path: str, data: bytes) -> pathlib.Path:
+    """Write bytes into the working directory using a bare, sanitized filename."""
+    if os.path.isabs(output_path) or os.pardir in pathlib.PurePath(output_path).parts:
+        raise ValueError(f"output path must stay in the working directory: {output_path!r}")
+    name = SAFE_FILENAME.sub("", os.path.basename(output_path))
+    if not name.strip("."):
+        raise ValueError(f"invalid output path: {output_path!r}")
+    working_dir = pathlib.Path(os.path.realpath(os.getcwd()))
+    target = working_dir / name
+    if target.parent != working_dir:
+        raise ValueError(f"output path escapes working directory: {output_path!r}")
+    target.write_bytes(data)
+    return target
 
 
 def resolve_display_url(
@@ -69,10 +130,16 @@ def decrypt_mobile_image_bytes(data: bytes) -> bytes:
     return bytes(byte ^ key for byte in data[1:])
 
 
-def download(url: str) -> bytes:
-    """Download bytes with a browser-like user agent."""
+def download(
+    url: str,
+    allowed_hosts: frozenset[str] | None = None,
+) -> bytes:
+    """Download bytes with a browser-like user agent from an allowlisted host."""
+    hosts = allowed_hosts or allowed_download_hosts()
+    validate_download_url(url, hosts)
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=30) as response:
+    opener = urllib.request.build_opener(_AllowlistedRedirectHandler(hosts))
+    with opener.open(req, timeout=30) as response:
         return response.read()
 
 
@@ -104,13 +171,11 @@ def save_decrypted_image(url: str, output_path: str | None = None) -> dict[str, 
 
     if output_path is None:
         output_path = output_path_for_url(url)
-
-    with open(output_path, "wb") as handle:
-        handle.write(data)
+    target_path = write_image_file(output_path, data)
 
     return {
         "input_url": url,
-        "output": output_path,
+        "output": str(target_path),
         "key": encrypted[0],
         "encrypted_size": len(encrypted),
         "decrypted_size": len(data),
@@ -124,20 +189,18 @@ def save_display_image(
 ) -> dict[str, object]:
     """Resolve and save a displayable web image. Kept as an explicit fallback."""
     display_url = resolve_display_url(url, web_image_prefix)
-    data = download(display_url)
+    data = download(display_url, allowed_download_hosts(web_image_prefix))
     if not data.startswith(b"\xff\xd8\xff"):
         raise ValueError(f"downloaded data is not JPEG: {data[:8].hex()}")
 
     if output_path is None:
         output_path = output_path_for_url(display_url)
-
-    with open(output_path, "wb") as handle:
-        handle.write(data)
+    target_path = write_image_file(output_path, data)
 
     return {
         "input_url": url,
         "display_url": display_url,
-        "output": output_path,
+        "output": str(target_path),
         "size": len(data),
     }
 

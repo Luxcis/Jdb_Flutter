@@ -1,13 +1,15 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:jade/core/widgets/selectable_copy_search_text.dart';
 
 /// 影片详情页顶部可折叠标题栏。
 ///
 /// 作为详情页 [NestedScrollView] 滚动头部的第一个 sliver：
 /// - 页面处于顶部时按标题实际行数展开，多行展示完整标题；
 /// - 用户向下滚动后立即收拢为单行并以省略号隐藏超出部分，高度随滚动连续收缩；
-/// - 收起后固定在页面顶部（pinned），TabBar 固定在其下方。
+/// - 收起后固定在页面顶部（pinned），TabBar 固定在其下方；
+/// - 展开态与收起态标题均支持长按选择，菜单与评论正文一致（复制、搜索、全选）。
 class MovieDetailTitleBar extends StatelessWidget {
   const MovieDetailTitleBar({super.key, required this.title});
 
@@ -49,6 +51,8 @@ class MovieDetailTitleBar extends StatelessWidget {
         title: title,
         style: style,
         expandedMaxLines: layout.expandedMaxLines,
+        expandedVisiblePrefix: layout.expandedVisiblePrefix,
+        collapsedVisiblePrefix: layout.collapsedVisiblePrefix,
       ),
     );
   }
@@ -60,6 +64,8 @@ class _TitleLayout {
     required this.collapsedHeight,
     required this.expandedHeight,
     required this.expandedMaxLines,
+    required this.expandedVisiblePrefix,
+    required this.collapsedVisiblePrefix,
   });
 
   /// 收起态高度，不含状态栏内边距；大字号下自动加高，避免单行标题被裁剪。
@@ -71,12 +77,20 @@ class _TitleLayout {
   /// 展开态允许显示的最大行数；常规标题等于实际行数，极端超长标题按高度上限截断。
   final int expandedMaxLines;
 
+  /// 展开态省略号之前的可见文本前缀；未截断时为完整标题。
+  final String expandedVisiblePrefix;
+
+  /// 收起态单行省略之前的可见文本前缀；完整显示时为完整标题。
+  final String collapsedVisiblePrefix;
+
   static _TitleLayout measure({
     required BuildContext context,
     required String title,
     required TextStyle style,
   }) {
     final mediaQuery = MediaQuery.of(context);
+    final textDirection = Directionality.of(context);
+    final textScaler = mediaQuery.textScaler;
     final maxWidth = math.max(
       0.0,
       mediaQuery.size.width -
@@ -85,8 +99,8 @@ class _TitleLayout {
     );
     final painter = TextPainter(
       text: TextSpan(text: title, style: style),
-      textDirection: Directionality.of(context),
-      textScaler: mediaQuery.textScaler,
+      textDirection: textDirection,
+      textScaler: textScaler,
     )..layout(maxWidth: maxWidth);
     final metrics = painter.computeLineMetrics();
     final lineCount = metrics.length;
@@ -95,10 +109,12 @@ class _TitleLayout {
     painter.dispose();
     // 空标题没有可测量的行高，退化为标准单行标题栏。
     if (lineCount == 0 || textHeight <= 0 || lineHeight <= 0) {
-      return const _TitleLayout(
+      return _TitleLayout(
         collapsedHeight: kToolbarHeight,
         expandedHeight: kToolbarHeight,
         expandedMaxLines: 1,
+        expandedVisiblePrefix: title,
+        collapsedVisiblePrefix: title,
       );
     }
 
@@ -130,10 +146,30 @@ class _TitleLayout {
             MovieDetailTitleBar._topGap) /
         lineHeight;
     final maxLines = math.max(1, capacity.floor());
+    final expandedMaxLines = math.min(lineCount, maxLines);
+    // 可见前缀只在标题栏构建时计算一次：滚动帧内只重建标题本体，不重复测量文本。
     return _TitleLayout(
       collapsedHeight: collapsedHeight,
       expandedHeight: expandedHeight,
-      expandedMaxLines: math.min(lineCount, maxLines),
+      expandedMaxLines: expandedMaxLines,
+      expandedVisiblePrefix: expandedMaxLines >= lineCount
+          ? title
+          : visiblePrefixOf(
+              text: title,
+              style: style,
+              maxLines: expandedMaxLines,
+              maxWidth: maxWidth,
+              textDirection: textDirection,
+              textScaler: textScaler,
+            ),
+      collapsedVisiblePrefix: visiblePrefixOf(
+        text: title,
+        style: style,
+        maxLines: 1,
+        maxWidth: maxWidth,
+        textDirection: textDirection,
+        textScaler: textScaler,
+      ),
     );
   }
 }
@@ -147,11 +183,15 @@ class _CollapsingTitle extends StatelessWidget {
     required this.title,
     required this.style,
     required this.expandedMaxLines,
+    required this.expandedVisiblePrefix,
+    required this.collapsedVisiblePrefix,
   });
 
   final String title;
   final TextStyle style;
   final int expandedMaxLines;
+  final String expandedVisiblePrefix;
+  final String collapsedVisiblePrefix;
 
   @override
   Widget build(BuildContext context) {
@@ -189,12 +229,12 @@ class _CollapsingTitle extends StatelessWidget {
                   opacity: expandedOpacity,
                   child: ExcludeSemantics(
                     excluding: showCollapsedSemantics,
-                    child: Text(
-                      title,
+                    child: SelectableCopySearchText(
                       key: const Key('movie-detail-title-text'),
-                      maxLines: expandedMaxLines,
-                      overflow: TextOverflow.ellipsis,
+                      text: title,
                       style: style,
+                      maxLines: expandedMaxLines,
+                      visiblePrefix: expandedVisiblePrefix,
                     ),
                   ),
                 ),
@@ -204,12 +244,12 @@ class _CollapsingTitle extends StatelessWidget {
                   opacity: collapsedOpacity,
                   child: ExcludeSemantics(
                     excluding: !showCollapsedSemantics,
-                    child: Text(
-                      title,
+                    child: SelectableCopySearchText(
                       key: const Key('movie-detail-title-text-collapsed'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      text: title,
                       style: style,
+                      maxLines: 1,
+                      visiblePrefix: collapsedVisiblePrefix,
                     ),
                   ),
                 ),

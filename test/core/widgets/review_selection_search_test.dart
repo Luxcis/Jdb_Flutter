@@ -11,8 +11,8 @@ import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/models/review.dart';
 import 'package:jade/core/models/series.dart';
-import 'package:jade/core/widgets/review/expandable_review_content.dart';
 import 'package:jade/core/widgets/review_tile.dart';
+import 'package:jade/core/widgets/selectable_copy_search_text.dart';
 import 'package:jade/features/movie_detail/models/movie_review_sort.dart';
 import 'package:jade/features/movie_detail/widgets/movie_detail_lists.dart';
 import 'package:jade/features/search/models/search_movie_filter.dart';
@@ -250,7 +250,7 @@ void main() {
       home: const Scaffold(
         body: Padding(
           padding: EdgeInsets.all(16),
-          child: ReviewSelectableText(
+          child: SelectableCopySearchText(
             text: '   ',
             style: TextStyle(fontSize: 32),
           ),

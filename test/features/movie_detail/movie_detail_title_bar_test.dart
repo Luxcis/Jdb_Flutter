@@ -34,11 +34,21 @@ double _titleBarHeight(WidgetTester tester) {
 }
 
 Text _expandedTitle(WidgetTester tester) {
-  return tester.widget<Text>(find.byKey(_titleTextKey));
+  return tester.widget<Text>(
+    find.descendant(
+      of: find.byKey(_titleTextKey),
+      matching: find.byType(Text),
+    ),
+  );
 }
 
 Text _collapsedTitle(WidgetTester tester) {
-  return tester.widget<Text>(find.byKey(_collapsedTitleTextKey));
+  return tester.widget<Text>(
+    find.descendant(
+      of: find.byKey(_collapsedTitleTextKey),
+      matching: find.byType(Text),
+    ),
+  );
 }
 
 double _expandedOpacity(WidgetTester tester) {
