@@ -2100,10 +2100,17 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 
-    Text expandedTitle() =>
-        tester.widget<Text>(find.byKey(const Key('movie-detail-title-text')));
+    Text expandedTitle() => tester.widget<Text>(
+      find.descendant(
+        of: find.byKey(const Key('movie-detail-title-text')),
+        matching: find.byType(Text),
+      ),
+    );
     Text collapsedTitle() => tester.widget<Text>(
-      find.byKey(const Key('movie-detail-title-text-collapsed')),
+      find.descendant(
+        of: find.byKey(const Key('movie-detail-title-text-collapsed')),
+        matching: find.byType(Text),
+      ),
     );
     expect(expandedTitle().maxLines, greaterThan(1));
     expect(
