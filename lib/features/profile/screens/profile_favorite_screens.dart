@@ -1,14 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jade/router/routes.dart';
-import 'package:jade/features/following/index.dart';
 import 'package:jade/features/profile/widgets/profile_cell.dart';
-
-class ProfileFollowingScreen extends StatelessWidget {
-  const ProfileFollowingScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) => const FollowingScreen();
-}
 
 class ProfileFavoritesScreen extends StatelessWidget {
   const ProfileFavoritesScreen({super.key});

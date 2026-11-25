@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:media_kit/media_kit.dart';
@@ -52,10 +54,31 @@ Future<void> _bootstrap() async {
     entry = await _buildEntry();
   } catch (error, stackTrace) {
     debugPrint('启动初始化失败: $error\n$stackTrace');
-    runApp(StartupFailureScreen(error: error, onRetry: _bootstrap));
+    runApp(
+      StartupFailureScreen(
+        error: error,
+        retryable: _isRetryableStartupError(error),
+        onRetry: _bootstrap,
+      ),
+    );
     return;
   }
   runApp(entry);
+}
+
+/// 启动初始化错误分类：网络类错误可重试；本地数据/配置类错误重试同一流程
+/// 通常不会成功，需要提示用户重启或清理应用数据。
+bool _isRetryableStartupError(Object error) {
+  if (error is DioException) {
+    return switch (error.type) {
+      DioExceptionType.connectionError ||
+      DioExceptionType.connectionTimeout ||
+      DioExceptionType.receiveTimeout ||
+      DioExceptionType.sendTimeout => true,
+      _ => false,
+    };
+  }
+  return error is SocketException || error is TimeoutException;
 }
 
 Future<Widget> _buildEntry({

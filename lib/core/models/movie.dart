@@ -16,6 +16,7 @@ class MovieSummary {
     this.releaseDate,
     this.duration,
     this.score,
+    this.ranking,
   });
   final String id;
   final String number;
@@ -25,6 +26,9 @@ class MovieSummary {
   final String? releaseDate;
   final int? duration;
   final double? score;
+
+  /// 服务端返回的榜单名次。仅榜单类响应携带；过滤（如「未标看过」）后可跳号。
+  final int? ranking;
   factory MovieSummary.fromJson(Map<String, dynamic> json) =>
       _$MovieSummaryFromJson(json);
   Map<String, dynamic> toJson() => _$MovieSummaryToJson(this);
@@ -41,6 +45,7 @@ class MovieDetail extends MovieSummary {
     super.releaseDate,
     super.duration,
     super.score,
+    super.ranking,
     this.previewVideoUrl,
     this.type = 0,
     this.numberLetter,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/actor.dart';
 import 'package:jade/core/models/paged_result.dart';
+import 'package:jade/core/utils/user_facing_error.dart';
 import 'package:jade/core/widgets/actor_card.dart';
 import 'package:jade/core/widgets/actor_grid_view.dart';
 import 'package:jade/core/widgets/empty_state.dart';
@@ -130,7 +131,8 @@ class _RecommendTabState extends State<_RecommendTab> {
         _loading = false;
         _error = null;
       });
-    } catch (error) {
+    } catch (error, stackTrace) {
+      debugPrint('actors recommend load failed: $error\n$stackTrace');
       if (!mounted) return;
       setState(() {
         _loading = false;
@@ -154,7 +156,10 @@ class _RecommendTabState extends State<_RecommendTab> {
     }
     final error = _error;
     if (error != null) {
-      return ErrorRetryWidget(message: error.toString(), onRetry: _retry);
+      return ErrorRetryWidget(
+        message: userFacingErrorMessage(error),
+        onRetry: _retry,
+      );
     }
     final data = _data;
     if (data == null) {

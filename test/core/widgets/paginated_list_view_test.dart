@@ -82,6 +82,8 @@ void main() {
     await _pumpList(tester, controller);
     await tester.pumpAndSettle();
     expect(find.byType(ErrorRetryWidget), findsOneWidget);
+    expect(find.text('加载失败，请重试'), findsOneWidget);
+    expect(find.textContaining('StateError'), findsNothing);
     await tester.tap(find.text('重试'));
     await tester.pumpAndSettle();
     expect(attempts, 2);
@@ -120,6 +122,77 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('加载更多失败后继续滚动不再自动请求，只有点击重试才重发', (tester) async {
+    var attempts = 0;
+    final controller = PaginationController<_Item>(
+      fetch: (page) async {
+        attempts++;
+        if (page == 1) {
+          return PagedResult(
+            items: List.generate(30, (i) => _Item('$i')),
+            currentPage: 1,
+            totalPages: 2,
+            total: 31,
+          );
+        }
+        throw StateError('page 2 failed');
+      },
+    )..fetchMore();
+    addTearDown(controller.dispose);
+
+    await _pumpList(tester, controller);
+    await tester.pumpAndSettle();
+
+    final list = find.byType(ListView);
+    await tester.fling(list, const Offset(0, -3000), 3000);
+    await tester.pumpAndSettle();
+    expect(attempts, 2);
+    expect(find.byKey(const Key('list-tail-retry')), findsOneWidget);
+
+    // 失败后继续滚动（含惯性滚动逐帧通知）不得自动重发请求。
+    for (var i = 0; i < 3; i++) {
+      await tester.fling(list, const Offset(0, -600), 2000);
+      await tester.pumpAndSettle();
+    }
+    expect(attempts, 2);
+    expect(find.byKey(const Key('list-tail-retry')), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+
+    await tester.ensureVisible(find.byKey(const Key('list-tail-retry')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('list-tail-retry')));
+    await tester.pumpAndSettle();
+    expect(attempts, 3);
+  });
+
+  testWidgets('没有更多数据时滚动接近底部不再请求', (tester) async {
+    var attempts = 0;
+    final controller = PaginationController<_Item>(
+      fetch: (_) async {
+        attempts++;
+        return PagedResult(
+          items: List.generate(30, (i) => _Item('$i')),
+          currentPage: 1,
+          totalPages: 1,
+          total: 30,
+        );
+      },
+    )..fetchMore();
+    addTearDown(controller.dispose);
+
+    await _pumpList(tester, controller);
+    await tester.pumpAndSettle();
+    expect(attempts, 1);
+
+    final list = find.byType(ListView);
+    for (var i = 0; i < 3; i++) {
+      await tester.fling(list, const Offset(0, -3000), 3000);
+      await tester.pumpAndSettle();
+    }
+
+    expect(attempts, 1);
   });
 }
 

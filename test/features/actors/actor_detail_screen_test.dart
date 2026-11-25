@@ -67,7 +67,9 @@ void main() {
   }
 
   Future<void> pumpDetailPage(WidgetTester tester) async {
-    await tester.pumpWidget(const MaterialApp(home: ActorDetailScreen(id: 'a1')));
+    await tester.pumpWidget(
+      const MaterialApp(home: ActorDetailScreen(id: 'a1')),
+    );
     await settle(tester);
   }
 
@@ -107,10 +109,9 @@ void main() {
     );
     expect(request.method, 'POST');
     expect(request.data, isA<FormData>());
-    expect(
-      Map.fromEntries((request.data as FormData).fields),
-      {'name': 'collect'},
-    );
+    expect(Map.fromEntries((request.data as FormData).fields), {
+      'name': 'collect',
+    });
   });
 
   testWidgets('点击实心收藏按钮后取消收藏并切换为空心', (tester) async {
@@ -134,10 +135,9 @@ void main() {
     final request = adapter.requests.singleWhere(
       (r) => r.path == '${Endpoints.actors}/a1/collect_actions',
     );
-    expect(
-      Map.fromEntries((request.data as FormData).fields),
-      {'name': 'uncollect'},
-    );
+    expect(Map.fromEntries((request.data as FormData).fields), {
+      'name': 'uncollect',
+    });
   });
 
   testWidgets('收藏请求失败时状态不切换并提示', (tester) async {
@@ -162,5 +162,47 @@ void main() {
     expect(find.byIcon(Icons.favorite_border), findsOneWidget);
     expect(find.byIcon(Icons.favorite), findsNothing);
     expect(find.text('操作失败，请重试'), findsOneWidget);
+  });
+
+  testWidgets('加载失败展示中文错误文案与重试按钮，重试成功后展示内容', (tester) async {
+    final adapter = await setupAdapter();
+    adapter.throwFirst(
+      '${Endpoints.actors}/a1',
+      DioException(
+        requestOptions: RequestOptions(path: '${Endpoints.actors}/a1'),
+        type: DioExceptionType.connectionError,
+        error: 'Connection refused',
+      ),
+    );
+    enqueueActorDetail(adapter, hasCollected: false);
+    enqueueEmptyMovies(adapter);
+
+    await pumpDetailPage(tester);
+
+    expect(find.text('网络连接失败，请检查网络'), findsOneWidget);
+    expect(find.textContaining('DioException'), findsNothing);
+    expect(find.textContaining('Connection refused'), findsNothing);
+    expect(find.text('重试'), findsOneWidget);
+
+    await tester.tap(find.text('重试'));
+    await settle(tester);
+
+    expect(find.text('三上悠亜'), findsOneWidget);
+    expect(find.text('网络连接失败，请检查网络'), findsNothing);
+  });
+
+  testWidgets('服务端返回中文 message 时错误态直接展示该文案', (tester) async {
+    final adapter = await setupAdapter();
+    adapter.enqueue('${Endpoints.actors}/a1', {
+      'success': 0,
+      'action': 'ParameterInvalid',
+      'message': '演员不存在',
+    });
+
+    await pumpDetailPage(tester);
+
+    expect(find.text('演员不存在'), findsOneWidget);
+    expect(find.textContaining('ApiException'), findsNothing);
+    expect(find.text('重试'), findsOneWidget);
   });
 }

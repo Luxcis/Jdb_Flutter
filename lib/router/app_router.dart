@@ -19,7 +19,8 @@ import 'package:jade/features/startup/index.dart';
 import 'package:jade/features/reviews/index.dart';
 import 'package:jade/features/series/index.dart';
 import 'package:jade/features/common/index.dart';
-import 'package:jade/features/following/index.dart';
+import 'package:jade/features/following/screens/follow_tag_movies_screen.dart';
+import 'package:jade/features/following/screens/following_screen.dart';
 
 class AppRouter {
   const AppRouter._();
@@ -33,6 +34,8 @@ class AppRouter {
         GoRouter(
           initialLocation: initialLocation,
           redirect: _redirect,
+          // 认证状态变化时重新求值 redirect（登录/登出/会话刷新）。
+          refreshListenable: AuthProvider.authRevision,
           routes: _routes,
         ),
       );
@@ -56,7 +59,8 @@ class AppRouter {
     }
     final from = router.state.uri.toString();
     _allowAuthErrorLoginOnce = true;
-    router.push(
+    // 用 go 替换整个导航栈：返回键不能回到已被登出的受保护页面。
+    router.go(
       Uri(path: AppRoutes.login, queryParameters: {'from': from}).toString(),
     );
   }
@@ -75,7 +79,23 @@ class AppRouter {
       return AppRoutes.home;
     }
 
+    if (!isLogged && _isProtectedLocation(loc)) {
+      return Uri(
+        path: AppRoutes.login,
+        queryParameters: {'from': state.uri.toString()},
+      ).toString();
+    }
+
     return null;
+  }
+
+  /// 需要登录的 `/profile/**` 子页。
+  ///
+  /// `/profile` 标签页自身在未登录时展示登录引导，`/profile/settings` 承载
+  /// 本地设置（线路/主题等），二者保持未登录可达。
+  static bool _isProtectedLocation(String location) {
+    if (!location.startsWith('${AppRoutes.profile}/')) return false;
+    return location != AppRoutes.profileSettings;
   }
 
   static List<RouteBase> get _routes => [
@@ -254,9 +274,9 @@ class AppRouter {
       path: AppRoutes.profileWatched,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileWatched,
-        child: const ProfileMovieCollectionScreen(
+        child: const ProfileReviewMoviesScreen(
           title: '我看过的',
-          filterButton: true,
+          status: 'watched',
         ),
       ),
     ),
@@ -264,7 +284,7 @@ class AppRouter {
       path: AppRoutes.profileFollowing,
       builder: (c, s) => _AuthGuard(
         route: AppRoutes.profileFollowing,
-        child: const ProfileFollowingScreen(),
+        child: const FollowingScreen(),
       ),
     ),
     GoRoute(

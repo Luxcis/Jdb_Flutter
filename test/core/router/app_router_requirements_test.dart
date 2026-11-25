@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:jade/core/models/follow_tag.dart';
 import 'package:jade/core/providers/auth_provider.dart';
+import 'package:jade/core/providers/following_tags_provider.dart';
+import 'package:jade/core/services/following_tags_service.dart';
+import 'package:jade/core/services/following_tags_store.dart';
+import 'package:jade/features/following/screens/following_screen.dart';
 import 'package:jade/router/app_router.dart';
 import 'package:jade/router/routes.dart';
 import 'package:jade/features/profile/index.dart';
@@ -9,6 +14,19 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jade/core/storage/testing/in_memory_secure_store.dart';
 
+class _MemoryFollowingStore implements FollowingTagsStore {
+  List<FollowTagItem> stored = [];
+
+  @override
+  Future<void> clear() async => stored = [];
+
+  @override
+  Future<List<FollowTagItem>> load() async => stored;
+
+  @override
+  Future<void> save(List<FollowTagItem> tags) async => stored = List.of(tags);
+}
+
 Future<Widget> _buildApp({required String initialLocation}) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
@@ -16,10 +34,17 @@ Future<Widget> _buildApp({required String initialLocation}) async {
     prefs,
     secure: InMemorySecureValueStore(),
   );
+  final following = FollowingTagsProvider(
+    store: _MemoryFollowingStore(),
+    dataSource: const UnavailableFollowingTagsDataSource(),
+  );
   final router = AppRouter.buildForTest(initialLocation: initialLocation);
 
-  return ChangeNotifierProvider<AuthProvider>.value(
-    value: auth,
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider<AuthProvider>.value(value: auth),
+      ChangeNotifierProvider<FollowingTagsProvider>.value(value: following),
+    ],
     child: MaterialApp.router(routerConfig: router),
   );
 }
@@ -54,6 +79,28 @@ void main() {
     expect(find.byType(ProfileMovieCollectionScreen), findsNothing);
     expect(find.text('我想看的'), findsOneWidget);
     expect(find.byIcon(Icons.filter_list), findsNothing);
+  });
+
+  testWidgets('我看过的路由渲染真实评价影片页且不再使用占位集合页', (tester) async {
+    await tester.pumpWidget(
+      await _buildApp(initialLocation: '/profile/watched'),
+    );
+    await tester.pump();
+
+    expect(find.byType(ProfileReviewMoviesScreen), findsOneWidget);
+    expect(find.byType(ProfileMovieCollectionScreen), findsNothing);
+    expect(find.text('我看过的'), findsOneWidget);
+    expect(find.byIcon(Icons.filter_list), findsNothing);
+  });
+
+  testWidgets('我的关注路由直连 FollowingScreen', (tester) async {
+    await tester.pumpWidget(
+      await _buildApp(initialLocation: AppRoutes.profileFollowing),
+    );
+    await tester.pump();
+
+    expect(find.byType(FollowingScreen), findsOneWidget);
+    expect(find.text('我的关注'), findsAtLeastNWidgets(1));
   });
 
   testWidgets('近期浏览路由渲染真实近期浏览页', (tester) async {

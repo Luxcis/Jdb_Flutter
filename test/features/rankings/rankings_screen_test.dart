@@ -36,6 +36,29 @@ Map<String, dynamic> _top250Response(int startRank, int count) => {
   },
 };
 
+/// 带服务端 `ranking` 的 Top250 响应；[rankings] 按返回顺序给出真实名次，
+/// 可模拟「未标看过」过滤后的跳号（如 1、4、7）。
+Map<String, dynamic> _top250RankedResponse(List<int> rankings) => {
+  'success': 1,
+  'data': {
+    'movies': [
+      for (final ranking in rankings)
+        {
+          'id': 'top-$ranking',
+          'number': 'TOP-$ranking',
+          'title': 'Top Movie $ranking',
+          'cover_url': 'cover.jpg',
+          'ranking': ranking,
+        },
+    ],
+  },
+};
+
+Map<String, dynamic> _emptyMovieResponse() => {
+  'success': 1,
+  'data': {'movies': <Map<String, dynamic>>[]},
+};
+
 Future<_RankingFixture> _pumpRankings(
   WidgetTester tester, {
   Duration responseDelay = Duration.zero,
@@ -513,25 +536,104 @@ void main() {
     expect(find.text('Top Movie 51'), findsOneWidget);
   });
 
-  testWidgets('Top250 首批不足 50 条时不再请求', (tester) async {
+  testWidgets('Top250 名次使用服务端 ranking 并允许跳号', (tester) async {
+    await _pumpRankings(
+      tester,
+      initialTabIndex: 0,
+      top250Responses: [
+        _top250RankedResponse([1, 4, 7]),
+      ],
+    );
+    await _pumpRankingFrame(tester);
+
+    int rankOf(String title) => tester
+        .widget<RatingBadge>(
+          find.descendant(
+            of: find.ancestor(
+              of: find.text(title),
+              matching: find.byType(MovieListTile),
+            ),
+            matching: find.byType(RatingBadge),
+          ),
+        )
+        .rank;
+
+    expect(rankOf('Top Movie 1'), 1);
+    expect(rankOf('Top Movie 4'), 4);
+    expect(rankOf('Top Movie 7'), 7);
+  });
+
+  testWidgets('Top250 过滤后的短页不提前截断，继续按 start_rank 加载', (tester) async {
     final fixture = await _pumpRankings(
       tester,
       initialTabIndex: 0,
-      top250Responses: [_top250Response(1, 10)],
+      // 「未标看过」过滤后首页只有 20 条且名次跳号，仍应继续请求第 51 名起。
+      top250Responses: [
+        _top250RankedResponse([for (var rank = 1; rank <= 60; rank += 3) rank]),
+        _top250Response(51, 50),
+      ],
     );
     await _pumpRankingFrame(tester);
+
     await tester.drag(
       find.byKey(const Key('top250-list')),
       const Offset(0, -10000),
     );
+    await tester.pump();
+    await _pumpRankingFrame(tester);
+    await tester.drag(
+      find.byKey(const Key('top250-list')),
+      const Offset(0, -400),
+    );
+    await tester.pump();
+
+    final startRanks = fixture.adapter.requests
+        .where((request) => request.path == Endpoints.moviesTop)
+        .map((request) => request.uri.queryParameters['start_rank'])
+        .toList();
+    expect(startRanks, ['1', '51']);
+    expect(find.text('Top Movie 51'), findsOneWidget);
+  });
+
+  testWidgets('Top250 遇到空页后停止，短页不会无限请求', (tester) async {
+    final fixture = await _pumpRankings(
+      tester,
+      initialTabIndex: 0,
+      top250Responses: [
+        _top250RankedResponse([for (var rank = 1; rank <= 60; rank += 3) rank]),
+        _emptyMovieResponse(),
+      ],
+    );
     await _pumpRankingFrame(tester);
 
-    expect(
-      fixture.adapter.requests.where(
-        (request) => request.path == Endpoints.moviesTop,
-      ),
-      hasLength(1),
+    for (var i = 0; i < 4; i++) {
+      await tester.drag(
+        find.byKey(const Key('top250-list')),
+        const Offset(0, -10000),
+      );
+      await _pumpRankingFrame(tester);
+    }
+
+    final topRequests = fixture.adapter.requests.where(
+      (request) => request.path == Endpoints.moviesTop,
     );
+    expect(topRequests, hasLength(2));
+    expect(topRequests.last.uri.queryParameters['start_rank'], '51');
+  });
+
+  testWidgets('Top250 首屏失败显示统一中文文案而非原始异常', (tester) async {
+    await _pumpRankings(
+      tester,
+      initialTabIndex: 0,
+      top250Responses: [
+        {'success': 0, 'message': ''},
+      ],
+    );
+    await _pumpRankingFrame(tester);
+
+    expect(find.text('加载失败，请重试'), findsOneWidget);
+    expect(find.textContaining('DioException'), findsNothing);
+    expect(find.textContaining('ApiException'), findsNothing);
   });
 
   testWidgets('Top250 从 201 开始时加载一批后停止', (tester) async {

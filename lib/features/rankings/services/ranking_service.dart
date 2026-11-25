@@ -9,6 +9,11 @@ class RankingService {
   RankingService(this._api);
   final ApiClient _api;
 
+  /// `/api/v1/rankings` 与 `/api/v1/rankings/playback` 不接受 `limit` 参数，
+  /// 服务端按自身默认页大小分页（历史客户端固定传 limit=20）。
+  /// 响应缺少 `total_pages` 时用该值判断「本页是否满页」。
+  static const int defaultRankingPageSize = 20;
+
   /// 从全局 ApiClient 单例创建服务；未初始化（未登录/无连接）时返回 null，
   /// 由调用方按空态处理。
   static RankingService? tryCreate() {
@@ -33,7 +38,7 @@ class RankingService {
         'limit': limit,
       },
     );
-    return _parseMoviePage(response.data, fallbackPage: 1);
+    return _parseMoviePage(response.data, fallbackPage: 1, pageSize: limit);
   }
 
   Future<PagedResult<MovieSummary>> getPlayback({
@@ -44,6 +49,7 @@ class RankingService {
       Endpoints.rankingsPlayback,
       queryParameters: {'filter_by': filterBy, 'period': period},
     );
+    // 播放榜请求不携带页码，只能取第一页；不做「满页则还有下一页」推断。
     return _parseMoviePage(response.data, fallbackPage: 1);
   }
 
@@ -56,7 +62,11 @@ class RankingService {
       Endpoints.rankings,
       queryParameters: {'type': type, 'period': period, 'page': page},
     );
-    return _parseMoviePage(response.data, fallbackPage: page);
+    return _parseMoviePage(
+      response.data,
+      fallbackPage: page,
+      pageSize: defaultRankingPageSize,
+    );
   }
 
   Future<PagedResult<ActorSummary>> getActorRanking({required int type}) async {
@@ -80,16 +90,27 @@ class RankingService {
   PagedResult<MovieSummary> _parseMoviePage(
     dynamic data, {
     required int fallbackPage,
+    int? pageSize,
   }) {
     final m = data as Map<String, dynamic>;
     final items = apiList(m, const [
       'movies',
       'items',
     ]).map((j) => MovieSummary.fromJson(normalizeMovieSummaryJson(j))).toList();
+    // 服务端 current_page 前移时以服务端值为准，避免重复或漏页。
+    final currentPage = apiInt(m['current_page'], fallbackPage);
+    // 缺少 total_pages 时按「本页满页则还有下一页」推断（对齐 apiPageResult）；
+    // pageSize 为 null 表示该接口不分页（如无法翻页的播放榜）。
+    final rawTotalPages = m['total_pages'];
+    final totalPages = rawTotalPages == null
+        ? (pageSize == null
+              ? currentPage
+              : currentPage + (items.length >= pageSize ? 1 : 0))
+        : apiInt(rawTotalPages, currentPage);
     return PagedResult(
       items: items,
-      currentPage: apiInt(m['current_page'], fallbackPage),
-      totalPages: apiInt(m['total_pages'], fallbackPage),
+      currentPage: currentPage,
+      totalPages: totalPages,
       total: apiInt(m['total'], items.length),
     );
   }

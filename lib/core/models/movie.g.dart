@@ -15,6 +15,7 @@ MovieSummary _$MovieSummaryFromJson(Map<String, dynamic> json) => MovieSummary(
   releaseDate: json['release_date'] as String?,
   duration: (json['duration'] as num?)?.toInt(),
   score: (json['score'] as num?)?.toDouble(),
+  ranking: (json['ranking'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$MovieSummaryToJson(MovieSummary instance) =>
@@ -27,6 +28,7 @@ Map<String, dynamic> _$MovieSummaryToJson(MovieSummary instance) =>
       'release_date': instance.releaseDate,
       'duration': instance.duration,
       'score': instance.score,
+      'ranking': instance.ranking,
     };
 
 MovieDetail _$MovieDetailFromJson(Map<String, dynamic> json) => MovieDetail(
@@ -38,6 +40,7 @@ MovieDetail _$MovieDetailFromJson(Map<String, dynamic> json) => MovieDetail(
   releaseDate: json['release_date'] as String?,
   duration: (json['duration'] as num?)?.toInt(),
   score: (json['score'] as num?)?.toDouble(),
+  ranking: (json['ranking'] as num?)?.toInt(),
   previewVideoUrl: json['preview_video_url'] as String?,
   type: (json['type'] as num?)?.toInt() ?? 0,
   numberLetter: json['number_letter'] as String?,
@@ -102,6 +105,7 @@ Map<String, dynamic> _$MovieDetailToJson(MovieDetail instance) =>
       'release_date': instance.releaseDate,
       'duration': instance.duration,
       'score': instance.score,
+      'ranking': instance.ranking,
       'type': instance.type,
       'preview_video_url': instance.previewVideoUrl,
       'number_letter': instance.numberLetter,

@@ -7,6 +7,7 @@ import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/cache_service.dart';
 import 'package:jade/core/network/domain_manager.dart';
 import 'package:jade/core/providers/auth_provider.dart';
+import 'package:jade/core/providers/following_tags_provider.dart';
 import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/providers/theme_provider.dart';
 import 'package:jade/core/widgets/confirm_dialog.dart';
@@ -87,6 +88,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   Future<void> _openTokenAuthenticationDialog() async {
     final auth = context.read<AuthProvider>();
+    final following = _followingTagsProviderOrNull();
     final service =
         widget.tokenAuthenticationService ??
         ApiTokenAuthenticationService(ApiClient.instance);
@@ -95,13 +97,35 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       barrierDismissible: false,
       builder: (_) => TokenAuthenticationDialog(
         authenticate: service.authenticate,
-        saveSession: auth.login,
+        saveSession: ({required token, required user}) async {
+          // 换号成功后必须清理上一账号的关注标签缓存，避免冷启动把旧标签
+          // 作为 batch_push 推给新账号；清理失败不影响已保存的会话。
+          await auth.login(token: token, user: user);
+          if (following == null) return;
+          try {
+            await following.clear();
+          } catch (error, stackTrace) {
+            debugPrint(
+              'Profile token switch following tags clear failed: '
+              '$error\n$stackTrace',
+            );
+          }
+        },
       ),
     );
     if (updated == true && mounted) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('认证 Token 已更新')));
+    }
+  }
+
+  /// 关注标签缓存是可选依赖：设置页在独立测试等场景可能未装配 Provider。
+  FollowingTagsProvider? _followingTagsProviderOrNull() {
+    try {
+      return context.read<FollowingTagsProvider>();
+    } on ProviderNotFoundException {
+      return null;
     }
   }
 

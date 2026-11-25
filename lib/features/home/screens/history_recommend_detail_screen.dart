@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/movie.dart';
+import 'package:jade/core/utils/user_facing_error.dart';
 import 'package:jade/core/widgets/empty_state.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/features/home/services/history_recommend_service.dart';
@@ -45,7 +46,8 @@ class _HistoryRecommendDetailScreenState
       final movies = await _dataSource.getMovies(widget.period);
       if (!mounted) return;
       setState(() => _movies = movies);
-    } catch (error) {
+    } catch (error, stackTrace) {
+      debugPrint('history_recommend_detail load failed: $error\n$stackTrace');
       if (!mounted) return;
       setState(() => _error = error);
     }
@@ -61,7 +63,10 @@ class _HistoryRecommendDetailScreenState
 
   Widget _buildBody() {
     if (_error != null) {
-      return ErrorRetryWidget(message: _error.toString(), onRetry: _load);
+      return ErrorRetryWidget(
+        message: userFacingErrorMessage(_error!),
+        onRetry: _load,
+      );
     }
     final movies = _movies;
     if (movies == null) {

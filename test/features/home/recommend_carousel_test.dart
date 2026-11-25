@@ -14,13 +14,21 @@ const movies = [
 Future<void> pumpCarousel(
   WidgetTester tester, {
   List<MovieSummary> items = movies,
+  bool disableAnimations = false,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
-      home: Scaffold(
-        body: SizedBox(
-          height: 220,
-          child: RecommendCarousel(movies: items, onMovieTap: (_) {}),
+      home: Builder(
+        builder: (context) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(disableAnimations: disableAnimations),
+          child: Scaffold(
+            body: SizedBox(
+              height: 220,
+              child: RecommendCarousel(movies: items, onMovieTap: (_) {}),
+            ),
+          ),
         ),
       ),
     ),
@@ -201,7 +209,12 @@ void main() {
     await pumpCarousel(
       tester,
       items: const [
-        MovieSummary(id: 'short', number: 'S-1', title: shortTitle, coverUrl: ''),
+        MovieSummary(
+          id: 'short',
+          number: 'S-1',
+          title: shortTitle,
+          coverUrl: '',
+        ),
       ],
     );
 
@@ -229,5 +242,64 @@ void main() {
       closeTo(reference.height, 0.1),
     );
     expect(overlaySize.height, closeTo(reference.height + 16, 0.1));
+  });
+
+  testWidgets('系统开启减少动态效果时不自动切换且控制按钮禁用', (tester) async {
+    await pumpCarousel(tester, disableAnimations: true);
+
+    final toggle = find.byKey(RecommendCarousel.autoPlayToggleKey);
+    expect(toggle, findsOneWidget);
+    expect(find.byIcon(Icons.play_arrow), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 15));
+    await finishAutoPlayAnimation(tester);
+    expectVisibleTitle(tester, 'A');
+
+    expect(tester.widget<IconButton>(toggle).onPressed, isNull);
+  });
+
+  testWidgets('点击暂停后不再自动切换，再次点击恢复自动切换', (tester) async {
+    await pumpCarousel(tester);
+    final toggle = find.byKey(RecommendCarousel.autoPlayToggleKey);
+    expect(toggle, findsOneWidget);
+    expect(find.byIcon(Icons.pause), findsOneWidget);
+
+    await tester.tap(toggle);
+    await tester.pump();
+    expect(find.byIcon(Icons.play_arrow), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 12));
+    await finishAutoPlayAnimation(tester);
+    expectVisibleTitle(tester, 'A');
+
+    await tester.tap(toggle);
+    await tester.pump();
+    expect(find.byIcon(Icons.pause), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    await finishAutoPlayAnimation(tester);
+    expectVisibleTitle(tester, 'B');
+  });
+
+  testWidgets('暂停状态下仍可手动滑动且松手后保持暂停', (tester) async {
+    await pumpCarousel(tester);
+    await tester.tap(find.byKey(RecommendCarousel.autoPlayToggleKey));
+    await tester.pump();
+
+    await tester.drag(
+      find.byKey(const Key('home-recommend-carousel')),
+      const Offset(-600, 0),
+    );
+    await finishManualSwipe(tester);
+    expectVisibleTitle(tester, 'B');
+
+    await tester.pump(const Duration(seconds: 10));
+    await finishAutoPlayAnimation(tester);
+    expectVisibleTitle(tester, 'B');
+  });
+
+  testWidgets('只有一张推荐时不显示暂停控制', (tester) async {
+    await pumpCarousel(tester, items: [movies.first]);
+
+    expect(find.byKey(RecommendCarousel.autoPlayToggleKey), findsNothing);
   });
 }

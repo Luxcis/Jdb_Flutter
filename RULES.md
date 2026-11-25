@@ -34,9 +34,9 @@
 lib/
 ├── core/                    # 公共层，被各 feature 依赖
 │   ├── network/             # 网络请求、API 客户端
-│   ├── router/              # 路由配置
 │   ├── storage/             # 本地存储
-│   └── widgets/             # 通用按钮、弹窗等可复用组件
+│   └── widgets/             # 通用按钮、弹窗、列表屏等可复用组件
+├── router/                  # 路由配置与路径常量（组装层，依赖 feature，不放在 core）
 ├── features/                # 业务模块
 │   └── <feature_name>/
 │       ├── screens/         # 页面
@@ -50,7 +50,7 @@ lib/
 ### 结构规则
 
 1. **统一命名和层级**：每个 feature 下允许有 `screens/`、`widgets/`、`models/`、`services/`，新增时只在这几类目录中加，不随意在 feature 根目录创建新目录名。
-2. **公共能力单独成层**：`lib/core/` 放网络、路由、存储、通用 UI 组件、常量等公共能力。feature 只依赖 core，feature 之间不互相依赖；core 不依赖具体 feature。
+2. **公共能力单独成层**：`lib/core/` 放网络、存储、通用 UI 组件、常量等公共能力；路由组装层位于顶层 `lib/router/`（需引用各 feature 入口页，避免 core 依赖 feature）。feature 只依赖 core，feature 之间不互相依赖；core 不依赖具体 feature。
 3. **约定入口文件**：每个 feature 必须有 `index.dart` 作为入口文件，对外只 export 需要被路由或其它模块引用的部分，内部实现细节不暴露。
 4. **文档化**：在项目根目录维护 `STRUCTURE.md`，说明业务模块列表、公共层内容、新增 feature 需要创建的目录及命名约定。
 

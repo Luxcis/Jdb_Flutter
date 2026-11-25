@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/core/models/movie.dart';
+import 'package:jade/core/network/api_exception.dart';
 import 'package:jade/features/home/services/home_provider.dart';
 import 'package:jade/features/home/services/home_service.dart';
 
@@ -170,5 +172,33 @@ void main() {
     expect(service.recommendCalls, 2);
     expect(service.latestPages, [1]);
     expect(service.magnetPages, [1]);
+  });
+
+  test('分区失败保存面向用户的中文文案而不是异常字符串', () async {
+    final service = _FakeHomeService();
+    final provider = HomeProvider(service);
+    service.recommendError = DioException(
+      requestOptions: RequestOptions(path: '/api/v1/movies/recommend'),
+      type: DioExceptionType.connectionTimeout,
+    );
+    service.latestError = StateError('bad json');
+    service.magnetError = const ApiException(
+      action: ApiErrorActions.parameterInvalid,
+      message: '磁链数据不可用',
+    );
+
+    await provider.loadAll();
+
+    expect(provider.recommends.error, '网络连接失败，请检查网络');
+    expect(provider.latest.error, '加载失败，请重试');
+    expect(provider.magnetUpdates.error, '磁链数据不可用');
+    for (final error in [
+      provider.recommends.error!,
+      provider.latest.error!,
+      provider.magnetUpdates.error!,
+    ]) {
+      expect(error, isNot(contains('DioException')));
+      expect(error, isNot(contains('ApiException')));
+    }
   });
 }

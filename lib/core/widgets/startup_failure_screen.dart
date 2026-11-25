@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jade/core/utils/user_facing_error.dart';
 
 import 'error_retry_widget.dart';
 
@@ -10,10 +11,15 @@ class StartupFailureScreen extends StatelessWidget {
     super.key,
     required this.error,
     required this.onRetry,
+    this.retryable = true,
   });
 
   final Object error;
   final VoidCallback onRetry;
+
+  /// 本地数据/配置类错误重试同一初始化流程通常无意义，提示用户重启或清理数据；
+  /// 网络类错误仍按可重试处理。
+  final bool retryable;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +28,10 @@ class StartupFailureScreen extends StatelessWidget {
       home: Scaffold(
         body: SafeArea(
           child: ErrorRetryWidget(
-            message: '启动初始化失败：$error',
+            // 原始异常只进日志；页面统一展示中文可读文案。
+            message: retryable
+                ? '启动初始化失败：${userFacingErrorMessage(error)}'
+                : '启动初始化失败：本地数据异常，请重启应用；若仍失败请清除应用数据后重试',
             onRetry: onRetry,
           ),
         ),

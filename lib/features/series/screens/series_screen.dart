@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/models/series.dart';
-import 'package:jade/router/routes.dart';
 import 'package:jade/core/widgets/entity_list_tile.dart';
-import 'package:jade/core/widgets/paginated_list_view.dart';
-import 'package:jade/core/widgets/pagination_controller.dart';
+import 'package:jade/core/widgets/entity_tab_list_screen.dart';
 import 'package:jade/features/series/models/series_letter.dart';
 import 'package:jade/features/series/services/series_service.dart';
+import 'package:jade/router/routes.dart';
 
 class SeriesScreen extends StatefulWidget {
   const SeriesScreen({super.key, this.dataSource});
@@ -18,129 +16,74 @@ class SeriesScreen extends StatefulWidget {
   State<SeriesScreen> createState() => _SeriesScreenState();
 }
 
-class _SeriesScreenState extends State<SeriesScreen>
-    with TickerProviderStateMixin {
-  static const tabs = ['番号', '有码', '无码', '欧美', '动漫'];
-  static const types = ['0', '1', '2', '4'];
+class _SeriesScreenState extends State<SeriesScreen> {
+  /// Tab 文案与接口 type 的单一来源，避免两个平行常量列表不同步。
+  static const _tabs = [
+    (label: '有码', type: '0'),
+    (label: '无码', type: '1'),
+    (label: '欧美', type: '2'),
+    (label: '动漫', type: '4'),
+  ];
 
-  late final TabController _tabController;
-  late final SeriesDataSource _dataSource;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: tabs.length, vsync: this);
-    _dataSource = widget.dataSource ?? SeriesService.resolve();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
+  late final SeriesDataSource _dataSource =
+      widget.dataSource ?? SeriesService.resolve();
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('系列'),
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabs: [for (final tab in tabs) Tab(text: tab)],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _SeriesTab<SeriesLetter>(
-            fetchPage: (page) => _dataSource.getLetters(page: page),
-            emptyMessage: '暂无番号',
-            itemBuilder: (context, item) => EntityListTile(
-              name: item.letter,
-              count: item.videosCount,
-              subtitle: item.description,
+    // 番号与系列是两种模型，故以 Object 作为 Tab 的公共条目类型，
+    // tile 内再恢复为各自的强类型。
+    return EntityTabListScreen<Object>(
+      title: '系列',
+      emptyMessage: '暂无系列',
+      tabs: [
+        EntityTabSpec<Object>(
+          label: '番号',
+          emptyMessage: '暂无番号',
+          fetch: (page) => _dataSource.getLetters(page: page),
+          tile: (context, item) {
+            final letter = item as SeriesLetter;
+            return EntityListTile(
+              name: letter.letter,
+              count: letter.videosCount,
+              subtitle: letter.description,
               onTap: () => context.push(
                 Uri(
                   path: AppRoutes.commonList,
                   queryParameters: {
-                    'title': '番号 - ${item.letter}',
-                    'type': '${item.type}',
+                    'title': '番号 - ${letter.letter}',
+                    'type': '${letter.type}',
                     'category': 'c',
-                    'id': item.id,
+                    'id': letter.id,
                   },
                 ).toString(),
               ),
-            ),
-          ),
-          for (final type in types)
-            _SeriesTab<Series>(
-              fetchPage: (page) =>
-                  _dataSource.getSeries(type: type, page: page),
-              emptyMessage: '暂无系列',
-              itemBuilder: (context, item) => EntityListTile(
-                name: item.name,
-                count: item.movieCount,
+            );
+          },
+        ),
+        for (final tab in _tabs)
+          EntityTabSpec<Object>(
+            label: tab.label,
+            fetch: (page) => _dataSource.getSeries(type: tab.type, page: page),
+            tile: (context, item) {
+              final series = item as Series;
+              return EntityListTile(
+                name: series.name,
+                count: series.movieCount,
                 onTap: () => context.push(
                   Uri(
                     path: AppRoutes.commonList,
                     queryParameters: {
-                      'title': '系列 - ${item.name}',
-                      'type': '${item.type}',
+                      'title': '系列 - ${series.name}',
+                      'type': '${series.type}',
                       'category': 's',
-                      'id': item.id,
+                      'id': series.id,
                     },
                   ).toString(),
                 ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SeriesTab<T> extends StatefulWidget {
-  const _SeriesTab({
-    required this.fetchPage,
-    required this.itemBuilder,
-    required this.emptyMessage,
-  });
-
-  final Future<PagedResult<T>> Function(int page) fetchPage;
-  final Widget Function(BuildContext context, T item) itemBuilder;
-  final String emptyMessage;
-
-  @override
-  State<_SeriesTab<T>> createState() => _SeriesTabState<T>();
-}
-
-class _SeriesTabState<T> extends State<_SeriesTab<T>>
-    with AutomaticKeepAliveClientMixin {
-  late final PaginationController<T> _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = PaginationController<T>(fetch: widget.fetchPage)..fetchMore();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return PaginatedListView<T>(
-      controller: _controller,
-      itemBuilder: widget.itemBuilder,
-      emptyMessage: widget.emptyMessage,
+              );
+            },
+          ),
+      ],
     );
   }
 }

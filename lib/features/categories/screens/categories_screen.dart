@@ -8,7 +8,7 @@ import 'package:jade/features/categories/services/category_service.dart';
 import 'package:jade/features/categories/services/category_tab_controller.dart';
 import 'package:jade/features/categories/widgets/category_filter_sheet.dart';
 import 'package:jade/core/providers/following_tags_provider.dart';
-import 'package:jade/features/following/index.dart';
+import 'package:jade/core/widgets/following_tags_button.dart';
 
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({super.key, this.dataSource});

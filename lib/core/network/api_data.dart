@@ -85,6 +85,7 @@ Map<String, dynamic> normalizeMovieSummaryJson(Map<String, dynamic> json) {
     'thumb_url': apiString(json['thumb_url']),
     'duration': apiIntOrNull(json['duration']),
     'score': apiDoubleOrNull(json['score']),
+    'ranking': apiIntOrNull(json['ranking']),
   };
 }
 

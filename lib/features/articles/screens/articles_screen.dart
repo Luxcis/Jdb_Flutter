@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/paged_result.dart';
+import 'package:jade/core/utils/user_facing_error.dart';
 import 'package:jade/core/widgets/empty_state.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
@@ -51,7 +52,7 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
         builder: (context, _) {
           if (_ctrl.error != null && _ctrl.items.isEmpty) {
             return ErrorRetryWidget(
-              message: _ctrl.error.toString(),
+              message: userFacingErrorMessage(_ctrl.error!),
               onRetry: _ctrl.refresh,
             );
           }

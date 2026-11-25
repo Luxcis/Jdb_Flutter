@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jade/core/utils/user_facing_error.dart';
 import 'package:jade/core/widgets/empty_state.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
@@ -21,7 +22,7 @@ class PaginatedListView<T> extends StatelessWidget {
     builder: (context, _) {
       if (controller.error != null && controller.items.isEmpty) {
         return ErrorRetryWidget(
-          message: controller.error.toString(),
+          message: userFacingErrorMessage(controller.error!),
           onRetry: controller.refresh,
         );
       }
@@ -35,7 +36,9 @@ class PaginatedListView<T> extends StatelessWidget {
         onNotification: (notification) {
           if ((notification is ScrollUpdateNotification ||
                   notification is ScrollEndNotification) &&
-              notification.metrics.extentAfter < 200) {
+              notification.metrics.extentAfter < 200 &&
+              controller.error == null &&
+              controller.hasMore) {
             controller.fetchMore();
           }
           return false;

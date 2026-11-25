@@ -150,6 +150,31 @@ void main() {
     expect(restored.isLogged, isFalse);
   });
 
+  test('logout 写 tombstone 失败时仍清空内存并通知调用方', () async {
+    final prefs = await SharedPreferences.getInstance();
+    // 首次 login 成功落库；随后的 tombstone 写入失败。
+    final secure = _FailingWriteSecureStore(successWrites: 1);
+    final auth = await AuthProvider.create(prefs, secure: secure);
+    await auth.login(
+      token: 'active-token',
+      user: {'id': 10, 'username': 'active-user'},
+    );
+    final listener = _RecordingListener();
+    auth.addListener(listener.onChanged);
+
+    await auth.logout();
+
+    expect(auth.token, isNull);
+    expect(auth.user, isNull);
+    expect(auth.isLogged, isFalse);
+    expect(listener.calls, 1);
+    // 持久化失败被吞掉：secure 中仍是旧会话，但内存态已登出。
+    expect(jsonDecode(secure[_authSessionKey]!), {
+      'token': 'active-token',
+      'user': {'id': 10, 'username': 'active-user'},
+    });
+  });
+
   test('updateUser 保留 token、刷新 user 并持久化', () async {
     final prefs = await SharedPreferences.getInstance();
     final secure = InMemorySecureValueStore();
