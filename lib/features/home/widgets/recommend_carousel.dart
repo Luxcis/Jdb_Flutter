@@ -10,9 +10,6 @@ class RecommendCarousel extends StatefulWidget {
     required this.onMovieTap,
   });
 
-  /// 暂停/播放自动轮播的控制按钮（便于测试定位）。
-  static const autoPlayToggleKey = Key('home-recommend-autoplay-toggle');
-
   final List<MovieSummary> movies;
   final ValueChanged<MovieSummary> onMovieTap;
 
@@ -30,23 +27,17 @@ class _RecommendCarouselState extends State<RecommendCarousel>
   /// 系统开启“减少动态效果”时不自动轮播。
   bool _reduceMotion = false;
 
-  /// 用户通过角标按钮暂停自动轮播。
-  bool _userPaused = false;
-
   bool get _canAutoPlay => widget.movies.length > 1;
 
-  /// 是否允许自动轮播（不含生命周期/TickerMode，这两项由控制器同步）。
-  ///
-  /// 系统“减少动态效果”是硬性关闭：只要该设置开启就不自动切换，
-  /// 角标按钮仍会展示但禁用，并用 tooltip 说明原因。
-  bool get _autoPlayEnabled => _canAutoPlay && !_reduceMotion && !_userPaused;
+  /// 是否允许自动轮播（不含生命周期/TickerMode，这两项由有效状态控制）。
+  bool get _autoPlayEnabled => _canAutoPlay && !_reduceMotion;
 
+  /// 当前是否应自动轮播：切到其他 tab 时 GoRouter 的 IndexedStack 会关闭
+  /// TickerMode，自动轮播随之暂停；切回或应用恢复前台后重新计时。
   bool get _shouldAutoPlay =>
       _autoPlayEnabled &&
       _lifecycleState == AppLifecycleState.resumed &&
       _tickerModeEnabled;
-
-  bool get _showAutoPlayToggle => _canAutoPlay;
 
   @override
   void initState() {
@@ -74,7 +65,10 @@ class _RecommendCarouselState extends State<RecommendCarousel>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_lifecycleState == state) return;
     _lifecycleState = state;
+    // 生命周期变化不一定触发父级重建；显式刷新以同步 autoPlay 选项。
+    if (mounted) setState(() {});
     _syncAutoPlay();
   }
 
@@ -87,11 +81,6 @@ class _RecommendCarouselState extends State<RecommendCarousel>
     });
   }
 
-  void _toggleAutoPlay() {
-    setState(() => _userPaused = !_userPaused);
-    _syncAutoPlay();
-  }
-
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -100,87 +89,59 @@ class _RecommendCarouselState extends State<RecommendCarousel>
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        CarouselSlider.builder(
-          key: const Key('home-recommend-carousel'),
-          carouselController: _controller,
-          itemCount: widget.movies.length,
-          options: CarouselOptions(
-            height: 220,
-            viewportFraction: 1,
-            enableInfiniteScroll: _canAutoPlay,
-            // autoPlay 只表达“是否允许自动切换”；后台/TickerMode
-            // 由 startAutoPlay/stopAutoPlay 控制，避免旧 options 残留。
-            autoPlay: _autoPlayEnabled,
-            autoPlayInterval: const Duration(seconds: 5),
-            autoPlayAnimationDuration: const Duration(milliseconds: 400),
-            autoPlayCurve: Curves.easeInOut,
-            pauseAutoPlayOnTouch: true,
-            enlargeCenterPage: false,
-          ),
-          itemBuilder: (context, index, realIndex) {
-            final movie = widget.movies[index];
-            return Semantics(
-              button: true,
-              label: movie.title,
-              child: GestureDetector(
-                key: Key('home-recommend-card-${movie.id}'),
-                onTap: () => widget.onMovieTap(movie),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    MovieCoverImage(
-                      movie.coverUrl,
-                      variant: MovieImageVariant.cover,
-                      semanticLabel: movie.title,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        color: Colors.black54,
-                        padding: const EdgeInsets.all(8),
-                        child: Text(
-                          movie.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ],
+    return CarouselSlider.builder(
+      key: const Key('home-recommend-carousel'),
+      carouselController: _controller,
+      itemCount: widget.movies.length,
+      options: CarouselOptions(
+        height: 220,
+        viewportFraction: 1,
+        enableInfiniteScroll: _canAutoPlay,
+        // 直接使用当前有效状态：离屏分支重建时 carousel_slider 会按该值
+        // 重建计时器，用“允许播放”代替会让切走后的轮播继续滚动。
+        autoPlay: _shouldAutoPlay,
+        autoPlayInterval: const Duration(seconds: 5),
+        autoPlayAnimationDuration: const Duration(milliseconds: 400),
+        autoPlayCurve: Curves.easeInOut,
+        pauseAutoPlayOnTouch: true,
+        enlargeCenterPage: false,
+      ),
+      itemBuilder: (context, index, realIndex) {
+        final movie = widget.movies[index];
+        return Semantics(
+          button: true,
+          label: movie.title,
+          child: GestureDetector(
+            key: Key('home-recommend-card-${movie.id}'),
+            onTap: () => widget.onMovieTap(movie),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                MovieCoverImage(
+                  movie.coverUrl,
+                  variant: MovieImageVariant.cover,
+                  semanticLabel: movie.title,
                 ),
-              ),
-            );
-          },
-        ),
-        if (_showAutoPlayToggle)
-          Positioned(
-            top: 8,
-            right: 8,
-            child: Material(
-              color: Colors.black54,
-              shape: const CircleBorder(),
-              clipBehavior: Clip.antiAlias,
-              child: IconButton(
-                key: RecommendCarousel.autoPlayToggleKey,
-                // 减少动效下轮播不会自动切换，按钮保留但禁用，
-                // 并通过 tooltip 说明原因，避免用户误以为功能失效。
-                tooltip: _reduceMotion
-                    ? '系统已开启减少动态效果'
-                    : (_userPaused ? '播放轮播' : '暂停轮播'),
-                onPressed: _reduceMotion ? null : _toggleAutoPlay,
-                iconSize: 20,
-                visualDensity: VisualDensity.compact,
-                color: Colors.white,
-                disabledColor: Colors.white70,
-                icon: Icon(_autoPlayEnabled ? Icons.pause : Icons.play_arrow),
-              ),
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    color: Colors.black54,
+                    padding: const EdgeInsets.all(8),
+                    child: Text(
+                      movie.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-      ],
+        );
+      },
     );
   }
 }
