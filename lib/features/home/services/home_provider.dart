@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:jade/core/models/movie.dart';
+import 'package:jade/core/utils/user_facing_error.dart';
 import 'package:jade/features/home/services/home_service.dart';
 
 /// 首页分区标识。
@@ -21,9 +22,9 @@ class HomeSection {
   /// 标记分区开始加载（保留旧数据，清除错误）。
   HomeSection startLoading() => HomeSection(items: items, isLoading: true);
 
-  /// 标记分区加载失败（保留旧数据，记录错误信息）。
+  /// 标记分区加载失败（保留旧数据，记录面向用户的错误文案）。
   HomeSection fail(Object error) =>
-      HomeSection(items: items, error: error.toString());
+      HomeSection(items: items, error: userFacingErrorMessage(error));
 
   bool get isEmpty => items.isEmpty;
 }
@@ -75,8 +76,10 @@ class HomeProvider extends ChangeNotifier {
       if (kind == HomeSectionKind.latest) _latestPage = 1;
       if (kind == HomeSectionKind.magnets) _magnetPage = 1;
       _setSection(kind, HomeSection(items: items));
-    } catch (e) {
-      _setSection(kind, _sectionOf(kind).fail(e));
+    } catch (error, stackTrace) {
+      // 原始异常只写日志，分区状态保存面向用户的中文文案。
+      debugPrint('home section ${kind.name} load failed: $error\n$stackTrace');
+      _setSection(kind, _sectionOf(kind).fail(error));
     }
   }
 

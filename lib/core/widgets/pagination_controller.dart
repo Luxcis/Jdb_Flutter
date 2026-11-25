@@ -46,7 +46,11 @@ class PaginationController<T> extends ChangeNotifier {
       _items.addAll(result.items);
       _hasMore = _page < result.totalPages;
     } catch (error) {
-      if (generation == _generation) _error = error;
+      if (generation == _generation) {
+        // 用户只看到统一中文文案，原始异常保留在日志中便于排查。
+        debugPrint('PaginationController page $requestedPage failed: $error');
+        _error = error;
+      }
     } finally {
       if (generation == _generation) {
         _isLoading = false;

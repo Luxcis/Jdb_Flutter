@@ -22,7 +22,10 @@ Future<FakeAdapter> _pumpDetail(
     'key_api_domains': ['https://jdforrepam.com'],
   });
   final prefs = await SharedPreferences.getInstance();
-  final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+  final auth = await AuthProvider.create(
+    prefs,
+    secure: InMemorySecureValueStore(),
+  );
   final api = await ApiClient.create(
     prefs: prefs,
     tokenProvider: auth,
@@ -46,7 +49,9 @@ Future<FakeAdapter> _pumpDetail(
     },
   });
 
-  await tester.pumpWidget(const MaterialApp(home: ArticleDetailScreen(id: '1')));
+  await tester.pumpWidget(
+    const MaterialApp(home: ArticleDetailScreen(id: '1')),
+  );
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 350));
   await tester.pump();
@@ -84,7 +89,8 @@ void main() {
   testWidgets('点击正文图片打开大图预览并可关闭', (tester) async {
     await _pumpDetail(
       tester,
-      content: '<p>正文</p>'
+      content:
+          '<p>正文</p>'
           '<img src="https://img.example.com/a.jpg">'
           '<img src="https://img.example.com/b.jpg">',
     );
@@ -112,7 +118,10 @@ void main() {
       'key_api_domains': ['https://jdforrepam.com'],
     });
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+    final auth = await AuthProvider.create(
+      prefs,
+      secure: InMemorySecureValueStore(),
+    );
     final api = await ApiClient.create(
       prefs: prefs,
       tokenProvider: auth,
@@ -124,20 +133,22 @@ void main() {
       {'success': 0, 'message': 'boom'},
       {
         'success': 1,
-        'data': {
-          'id': 1,
-          'title': '恢复标题',
-          'content': '<p>恢复正文</p>',
-        },
+        'data': {'id': 1, 'title': '恢复标题', 'content': '<p>恢复正文</p>'},
       },
     ]);
 
-    await tester.pumpWidget(const MaterialApp(home: ArticleDetailScreen(id: '1')));
+    await tester.pumpWidget(
+      const MaterialApp(home: ArticleDetailScreen(id: '1')),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
 
     expect(find.text('重试'), findsOneWidget);
+    // 服务端中文 message 原样展示，且不含异常类型技术串。
+    expect(find.text('boom'), findsOneWidget);
+    expect(find.textContaining('DioException'), findsNothing);
+    expect(find.textContaining('ApiException'), findsNothing);
 
     await tester.tap(find.text('重试'));
     await tester.pump();
@@ -164,10 +175,7 @@ void main() {
       '<img src="https://img.example.com/images/a.jpg">',
     );
     expect(
-      resolveArticleImageUrls(
-        '<img src="a.jpg">',
-        '//img.example.com',
-      ),
+      resolveArticleImageUrls('<img src="a.jpg">', '//img.example.com'),
       '<img src="https://img.example.com/a.jpg">',
     );
     expect(

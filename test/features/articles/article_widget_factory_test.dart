@@ -18,10 +18,7 @@ Future<void> _pumpHtml(WidgetTester tester, String data) async {
     MaterialApp(
       home: Scaffold(
         body: SingleChildScrollView(
-          child: HtmlWidget(
-            data,
-            factoryBuilder: () => ArticleWidgetFactory(),
-          ),
+          child: HtmlWidget(data, factoryBuilder: () => ArticleWidgetFactory()),
         ),
       ),
     ),
@@ -33,17 +30,26 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('网络图片使用 CachedImage 渲染', (tester) async {
-    await _pumpHtml(tester, '<p>正文</p><img src="https://img.example.com/a.jpg">');
+    await _pumpHtml(
+      tester,
+      '<p>正文</p><img src="https://img.example.com/a.jpg">',
+    );
     expect(find.byType(CachedImage), findsOneWidget);
   });
 
   testWidgets('base64 图片不渲染为 CachedImage', (tester) async {
-    await _pumpHtml(tester, '<img src="data:image/png;base64,$_onePixelPngBase64">');
+    await _pumpHtml(
+      tester,
+      '<img src="data:image/png;base64,$_onePixelPngBase64">',
+    );
     expect(find.byType(CachedImage), findsNothing);
   });
 
   testWidgets('asset 图片不渲染为 CachedImage', (tester) async {
-    await _pumpHtml(tester, '<img src="asset:assets/images/noimage_147x200.jpg">');
+    await _pumpHtml(
+      tester,
+      '<img src="asset:assets/images/noimage_147x200.jpg">',
+    );
     expect(find.byType(CachedImage), findsNothing);
   });
 
@@ -58,7 +64,9 @@ void main() {
   });
 
   testWidgets('正文图片跟随全局模糊开关', (tester) async {
-    SharedPreferences.setMockInitialValues({StorageKeys.blurMovieImages: false});
+    SharedPreferences.setMockInitialValues({
+      StorageKeys.blurMovieImages: false,
+    });
     final prefs = await SharedPreferences.getInstance();
     final settings = await SettingsProvider.create(prefs);
 

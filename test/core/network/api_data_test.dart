@@ -24,6 +24,29 @@ void main() {
     expect(movie.score, 8.7);
   });
 
+  test('normalizeMovieSummaryJson 解析服务端 ranking 名次', () {
+    final ranked = MovieSummary.fromJson(
+      normalizeMovieSummaryJson({
+        'id': 'm1',
+        'number': 'ABC-001',
+        'title': 'Title',
+        'cover_url': 'cover.jpg',
+        'ranking': '7',
+      }),
+    );
+    final unranked = MovieSummary.fromJson(
+      normalizeMovieSummaryJson({
+        'id': 'm2',
+        'number': 'ABC-002',
+        'title': 'Title',
+        'cover_url': 'cover.jpg',
+      }),
+    );
+
+    expect(ranked.ranking, 7);
+    expect(unranked.ranking, isNull);
+  });
+
   test('normalizeMovieSummaryJson 为缺失的影片字符串字段提供兜底值', () {
     final movie = MovieSummary.fromJson(
       normalizeMovieSummaryJson({

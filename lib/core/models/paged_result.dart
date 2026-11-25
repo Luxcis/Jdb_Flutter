@@ -1,7 +1,11 @@
 import 'package:json_annotation/json_annotation.dart';
 part 'paged_result.g.dart';
 
-@JsonSerializable(fieldRename: FieldRename.snake, genericArgumentFactories: true, createToJson: false)
+@JsonSerializable(
+  fieldRename: FieldRename.snake,
+  genericArgumentFactories: true,
+  createToJson: false,
+)
 class PagedResult<T> {
   const PagedResult({
     required this.items,

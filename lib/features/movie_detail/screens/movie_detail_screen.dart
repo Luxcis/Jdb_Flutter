@@ -7,6 +7,7 @@ import 'package:jade/core/models/list_model.dart';
 import 'package:jade/core/models/magnet.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/network/api_exception.dart';
+import 'package:jade/core/utils/user_facing_error.dart';
 import 'package:jade/router/routes.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/features/movie_detail/models/movie_preview_args.dart';
@@ -87,10 +88,11 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
       unawaited(_loadMagnetsSection(service));
       unawaited(_loadReviewsSection(service));
       unawaited(_loadRelatedListsSection(service));
-    } catch (error) {
+    } catch (error, stackTrace) {
+      debugPrint('movie_detail load failed: $error\n$stackTrace');
       if (!mounted) return;
       setState(() {
-        _error = error.toString();
+        _error = userFacingErrorMessage(error);
         _loading = false;
       });
     }

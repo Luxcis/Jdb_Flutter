@@ -50,9 +50,7 @@ void main() {
 
   test('unfollow 调用 DELETE 且路径拼接 id', () async {
     final fixture = await buildFollowingFixture();
-    fixture.adapter.enqueue('${Endpoints.followingTags}/12345', {
-      'success': 1,
-    });
+    fixture.adapter.enqueue('${Endpoints.followingTags}/12345', {'success': 1});
 
     await fixture.service.unfollow('12345');
 

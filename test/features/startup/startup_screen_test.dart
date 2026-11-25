@@ -94,7 +94,8 @@ Future<GoRouter> _pumpSubject(
         ChangeNotifierProvider.value(value: provider),
         if (auth != null) ChangeNotifierProvider.value(value: auth),
         ChangeNotifierProvider.value(
-          value: followingTagsProvider ??
+          value:
+              followingTagsProvider ??
               FollowingTagsProvider(
                 store: _MemoryFollowingStore(),
                 dataSource: const UnavailableFollowingTagsDataSource(),
@@ -115,6 +116,7 @@ final class _MemoryFollowingStore implements FollowingTagsStore {
     clearCalls++;
     stored = [];
   }
+
   @override
   Future<List<FollowTagItem>> load() async => stored;
   @override
@@ -153,7 +155,10 @@ void main() {
     // 注入未登录的 AuthProvider：重试成功后 _refreshSessionThenNavigate
     // 会 context.read<AuthProvider>()，未登录分支直接 go 首页。
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+    final auth = await AuthProvider.create(
+      prefs,
+      secure: InMemorySecureValueStore(),
+    );
     final router = await _pumpSubject(tester, provider, auth: auth);
 
     await tester.pumpAndSettle();
@@ -176,7 +181,10 @@ void main() {
     ]);
     final provider = await _createProvider(api);
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+    final auth = await AuthProvider.create(
+      prefs,
+      secure: InMemorySecureValueStore(),
+    );
     await auth.login(
       token: 'session-token',
       user: {'id': 1, 'username': 'cached-user'},
@@ -203,7 +211,10 @@ void main() {
     ]);
     final provider = await _createProvider(api);
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+    final auth = await AuthProvider.create(
+      prefs,
+      secure: InMemorySecureValueStore(),
+    );
     await auth.login(
       token: 'session-token',
       user: {'id': 1, 'username': 'cached-user'},
@@ -232,7 +243,10 @@ void main() {
     ]);
     final provider = await _createProvider(api);
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+    final auth = await AuthProvider.create(
+      prefs,
+      secure: InMemorySecureValueStore(),
+    );
     await auth.login(
       token: 'session-token',
       user: {'id': 1, 'username': 'cached-user'},
@@ -273,7 +287,10 @@ void main() {
     ]);
     final provider = await _createProvider(api);
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+    final auth = await AuthProvider.create(
+      prefs,
+      secure: InMemorySecureValueStore(),
+    );
     await auth.login(
       token: 'session-token',
       user: {'id': 1, 'username': 'cached-user'},
@@ -301,7 +318,10 @@ void main() {
     ]);
     final provider = await _createProvider(api);
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+    final auth = await AuthProvider.create(
+      prefs,
+      secure: InMemorySecureValueStore(),
+    );
     final refresh = _FakeSessionRefreshService(
       () async => SessionRefreshStatus.skipped,
     );

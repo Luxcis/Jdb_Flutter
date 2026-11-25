@@ -18,7 +18,10 @@ Future<FakeAdapter> _pumpArticles(WidgetTester tester) async {
     'key_api_domains': ['https://jdforrepam.com'],
   });
   final prefs = await SharedPreferences.getInstance();
-  final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+  final auth = await AuthProvider.create(
+    prefs,
+    secure: InMemorySecureValueStore(),
+  );
   final api = await ApiClient.create(
     prefs: prefs,
     tokenProvider: auth,
@@ -72,7 +75,10 @@ void main() {
       'key_api_domains': ['https://jdforrepam.com'],
     });
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+    final auth = await AuthProvider.create(
+      prefs,
+      secure: InMemorySecureValueStore(),
+    );
     final api = await ApiClient.create(
       prefs: prefs,
       tokenProvider: auth,
@@ -80,18 +86,17 @@ void main() {
     );
     final adapter = FakeAdapter();
     api.setAdapterForTest(adapter);
-    adapter.enqueueSequence(Endpoints.articles, [
-      {'success': 0, 'message': 'boom'},
-      {
-        'success': 1,
-        'data': {
-          'articles': [
-            {'id': 1, 'title': '恢复成功'},
-          ],
-          'current_page': 1,
-        },
+    // 模拟连接级失败：Dio 会包装为 DioException，错误态不得展示其技术串。
+    adapter.throwFirst(Endpoints.articles, StateError('boom'));
+    adapter.enqueue(Endpoints.articles, {
+      'success': 1,
+      'data': {
+        'articles': [
+          {'id': 1, 'title': '恢复成功'},
+        ],
+        'current_page': 1,
       },
-    ]);
+    });
 
     await tester.pumpWidget(const MaterialApp(home: ArticlesScreen()));
     await tester.pump();
@@ -99,6 +104,10 @@ void main() {
     await tester.pump();
 
     expect(find.text('重试'), findsOneWidget);
+    expect(find.text('加载失败，请重试'), findsOneWidget);
+    expect(find.textContaining('DioException'), findsNothing);
+    expect(find.textContaining('StateError'), findsNothing);
+    expect(find.textContaining('boom'), findsNothing);
 
     await tester.tap(find.text('重试'));
     await tester.pump();
@@ -118,7 +127,10 @@ void main() {
       'key_api_domains': ['https://jdforrepam.com'],
     });
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+    final auth = await AuthProvider.create(
+      prefs,
+      secure: InMemorySecureValueStore(),
+    );
     final api = await ApiClient.create(
       prefs: prefs,
       tokenProvider: auth,
@@ -131,8 +143,7 @@ void main() {
         'success': 1,
         'data': {
           'articles': [
-            for (var i = 0; i < 48; i++)
-              {'id': i, 'title': '第1页-$i'},
+            for (var i = 0; i < 48; i++) {'id': i, 'title': '第1页-$i'},
           ],
           'current_page': 1,
         },
@@ -155,10 +166,7 @@ void main() {
 
     // 循环滚动到接近底部，直到第二页请求发出
     for (var i = 0; i < 12 && adapter.requests.length < 2; i++) {
-      await tester.drag(
-        find.byType(CustomScrollView),
-        const Offset(0, -1600),
-      );
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -1600));
       await tester.pump();
     }
     await tester.pump(const Duration(milliseconds: 350));

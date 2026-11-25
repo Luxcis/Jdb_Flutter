@@ -1,10 +1,14 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:jade/core/constants/app_constants.dart';
+import 'package:jade/core/models/startup.dart';
+import 'package:jade/core/network/api_client.dart';
 import 'package:jade/core/network/image_decryptor.dart';
 import 'package:jade/core/providers/settings_provider.dart';
 import 'package:jade/core/storage/storage_keys.dart';
 import 'package:jade/core/widgets/cached_image.dart';
+import 'package:jade/core/widgets/image_size_listener.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -33,25 +37,65 @@ void main() {
       const MaterialApp(home: CachedImage('covers/test.jpg')),
     );
     await tester.pump();
-    expect(find.byType(CachedImage), findsOneWidget);
+
+    final image = tester.widget<CachedNetworkImage>(
+      find.byType(CachedNetworkImage),
+    );
+    expect(image.imageUrl, '${AppConstants.fallbackImageCdn}covers/test.jpg');
   });
 
   testWidgets('http 开头的 URL 不拼接 CDN', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(home: CachedImage('https://other.cdn/covers/test.jpg')),
-    );
+    const url = 'https://other.cdn/covers/test.jpg';
+    await tester.pumpWidget(const MaterialApp(home: CachedImage(url)));
     await tester.pump();
-    expect(find.byType(CachedImage), findsOneWidget);
+
+    final image = tester.widget<CachedNetworkImage>(
+      find.byType(CachedNetworkImage),
+    );
+    expect(image.imageUrl, url);
   });
 
-  testWidgets('支持 width/height 参数', (tester) async {
+  testWidgets('支持 width/height 参数并透传给 CachedNetworkImage', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: CachedImage('covers/test.jpg', width: 100, height: 100),
       ),
     );
     await tester.pump();
-    expect(find.byType(CachedImage), findsOneWidget);
+
+    final image = tester.widget<CachedNetworkImage>(
+      find.byType(CachedNetworkImage),
+    );
+    expect(image.width, 100);
+    expect(image.height, 100);
+  });
+
+  testWidgets('memCache 尺寸透传，尺寸监听复用同一有界 provider', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CachedImage(
+          'screenshots/test.jpg',
+          memCacheHeight: 492,
+          onImageSize: (_) {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final image = tester.widget<CachedNetworkImage>(
+      find.byType(CachedNetworkImage),
+    );
+    expect(image.memCacheHeight, 492);
+
+    final listener = tester.widget<ImageSizeListener>(
+      find.byType(ImageSizeListener),
+    );
+    final provider = listener.imageProvider;
+    expect(provider, isA<ResizeImage>());
+    final resized = provider as ResizeImage;
+    expect(resized.height, 492);
+    expect(resized.width, isNull);
+    expect(resized.imageProvider, isA<CachedNetworkImageProvider>());
   });
 
   testWidgets('使用图片解密缓存管理器加载网络图片', (tester) async {
@@ -152,4 +196,36 @@ void main() {
     );
     expect(networkImage.imageBuilder, isNotNull);
   });
+
+  // 该用例会写入 ApiClient 单例，必须放在文件末尾，避免影响其他用例。
+  testWidgets('配置了自定义 imageEndpoint 时使用该域名前缀', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final api = await ApiClient.create(
+      prefs: prefs,
+      tokenProvider: _FakeTokenProvider(),
+      onAuthError: () {},
+    );
+    await api.domainManager.applyStartup(
+      const BackupDomains(
+        apiDomains: ['https://api.example.com'],
+        imageEndpoint: 'https://custom.cdn/img/',
+      ),
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(home: CachedImage('covers/test.jpg')),
+    );
+    await tester.pump();
+
+    final image = tester.widget<CachedNetworkImage>(
+      find.byType(CachedNetworkImage),
+    );
+    expect(image.imageUrl, 'https://custom.cdn/img/covers/test.jpg');
+  });
+}
+
+class _FakeTokenProvider implements TokenProvider {
+  @override
+  String? get token => null;
 }

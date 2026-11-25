@@ -41,7 +41,9 @@ class ArticleCoverImage extends StatefulWidget {
   }) {
     final naturalHeight = coverWidth * imageSize.height / imageSize.width;
     final maxSquarishHeight = coverWidth * maxHeightFactor;
-    return naturalHeight > maxSquarishHeight ? maxSquarishHeight : naturalHeight;
+    return naturalHeight > maxSquarishHeight
+        ? maxSquarishHeight
+        : naturalHeight;
   }
 
   @override
@@ -95,8 +97,7 @@ class _ArticleCoverImageState extends State<ArticleCoverImage> {
           imageSize: imageSize,
         );
         // 超高限高裁剪时取图顶部（人物主体通常位于上部）。
-        final alignment =
-            _isClipped(imageSize, coverWidth)
+        final alignment = _isClipped(imageSize, coverWidth)
             ? Alignment.topCenter
             : Alignment.center;
         return SizedBox(

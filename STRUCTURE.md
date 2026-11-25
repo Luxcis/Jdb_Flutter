@@ -48,11 +48,11 @@ lib/
 | `storage/` | 本地存储 | `storage_keys.dart`（SP 键常量）、`login_credential_store.dart` |
 | `theme/` | 主题 | `app_theme.dart`（Material 3、`ColorScheme.fromSeed`） |
 | `utils/` | 工具函数 | `github_proxy.dart`（GitHub 代理拼接）、`time_format.dart` |
-| `widgets/` | 通用组件 | 影片卡、演员卡、封面图、评分角标、分页列表、筛选抽屉、排序控件、空/错态、磁链项、短评卡、图片画廊等 |
+| `widgets/` | 通用组件 | 影片卡、演员卡、封面图、评分角标、分页列表、实体 Tab 分页列表屏、关注标签按钮、筛选抽屉、排序控件、空/错态、磁链项、短评卡、图片画廊等 |
 
 ## 3. 业务模块 `lib/features/`
 
-项目现有 17 个 feature，均遵循统一的 `screens/`、`widgets/`、`models/`、`services/` 子目录约定（并不是每个 feature 都用到全部子目录，按需创建）。
+项目现有 16 个 feature，均遵循统一的 `screens/`、`widgets/`、`models/`、`services/` 子目录约定（并不是每个 feature 都用到全部子目录，按需创建）。
 
 | Feature | 职责 | 主要子目录 |
 |---------|------|-----------|
@@ -70,9 +70,8 @@ lib/
 | `makers` | 片商列表 | `screens/` `services/` |
 | `directors` | 导演列表 | `screens/` `services/` |
 | `profile` | 我的：用户信息、想看/看过、关注、收藏、清单、近期浏览、设置、更新、Token 认证 | `screens/` `services/` `widgets/` |
-| `following` | 关注标签影片流、关注页（全局关注标签状态上提 `core/`） | `screens/` `services/` `widgets/` |
+| `following` | 关注标签影片流、关注页（全局关注标签状态与关注按钮上提 `core/`） | `screens/` `services/` |
 | `auth` | 登录、注册 | `screens/` |
-| `settings` | 设置：外观、线路、默认筛选标签、清除缓存 | `screens/` `widgets/` |
 | `startup` | 启动页：域名引导、会话刷新、关注同步 | `screens/` |
 
 > 说明：`actor_detail` 的页面与数据逻辑在 `actors` feature 的 `screens/actor_detail_screen.dart` 与 `services/actor_service.dart` 中实现，未单独拆出 feature。

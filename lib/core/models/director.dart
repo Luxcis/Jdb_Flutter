@@ -15,5 +15,6 @@ class Director {
   final String? avatarUrl;
   final int movieCount;
   final int type;
-  factory Director.fromJson(Map<String, dynamic> json) => _$DirectorFromJson(json);
+  factory Director.fromJson(Map<String, dynamic> json) =>
+      _$DirectorFromJson(json);
 }

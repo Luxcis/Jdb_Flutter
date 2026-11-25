@@ -27,9 +27,9 @@ class _MainShellState extends State<MainShell> {
           return;
         }
         _lastBackPress = now;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('再按一次退出应用')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('再按一次退出应用')));
       },
       child: Scaffold(
         body: widget.navigationShell,

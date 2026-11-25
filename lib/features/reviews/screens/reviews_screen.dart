@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/models/review.dart';
+import 'package:jade/core/utils/user_facing_error.dart';
 import 'package:jade/core/widgets/empty_state.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/pagination_controller.dart';
@@ -82,7 +83,15 @@ class _HotReviewListState extends State<_HotReviewList>
     if (service == null) {
       throw StateError('网络客户端未初始化');
     }
-    return service.getHotReviews(period: widget.period, page: page);
+    try {
+      return await service.getHotReviews(period: widget.period, page: page);
+    } catch (error, stackTrace) {
+      debugPrint(
+        'hot reviews load failed (${widget.period.value}): '
+        '$error\n$stackTrace',
+      );
+      rethrow;
+    }
   }
 
   @override
@@ -108,7 +117,7 @@ class _HotReviewListState extends State<_HotReviewList>
       builder: (context, _) {
         if (_controller.error != null && _controller.items.isEmpty) {
           return ErrorRetryWidget(
-            message: _controller.error.toString(),
+            message: userFacingErrorMessage(_controller.error!),
             onRetry: _controller.refresh,
           );
         }

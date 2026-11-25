@@ -21,12 +21,12 @@ void main() {
   });
 
   test('toJson 往返保留字段', () {
-    final item = FollowTagItem(
-      id: '1',
-      name: 'n',
-      value: 'v',
-      priority: 2,
-    );
-    expect(item.toJson(), {'id': '1', 'name': 'n', 'value': 'v', 'priority': 2});
+    final item = FollowTagItem(id: '1', name: 'n', value: 'v', priority: 2);
+    expect(item.toJson(), {
+      'id': '1',
+      'name': 'n',
+      'value': 'v',
+      'priority': 2,
+    });
   });
 }

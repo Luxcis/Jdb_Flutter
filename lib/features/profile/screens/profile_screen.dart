@@ -124,17 +124,33 @@ class ProfileScreen extends StatelessWidget {
             title: const Text('退出登录'),
             leading: const Icon(Icons.logout),
             onTap: () async {
-              if (!context.mounted) return;
+              final following = context.read<FollowingTagsProvider>();
               final store =
                   credentialStore ?? SecureLoginCredentialStore.createDefault();
+              var loggedOut = false;
               try {
-                await store.clearPassword();
-              } catch (_) {
-                // 缓存清理失败不应阻止用户退出当前会话。
+                // 先确保内存登出（logout 内部已做失败安全），再清理本地缓存，
+                // 避免“缓存已清但会话仍在”的中间态。
+                await auth.logout();
+                loggedOut = true;
+              } catch (error, stackTrace) {
+                // logout 自身已兜底，这里再保护一次，失败也允许回首页。
+                debugPrint('Profile logout failed: $error\n$stackTrace');
               }
-              if (!context.mounted) return;
-              await context.read<FollowingTagsProvider>().clear();
-              await auth.logout();
+              if (loggedOut) {
+                try {
+                  await store.clearPassword();
+                } catch (_) {
+                  // 缓存清理失败不应阻止用户退出当前会话。
+                }
+                try {
+                  await following.clear();
+                } catch (error, stackTrace) {
+                  debugPrint(
+                    'Profile following tags clear failed: $error\n$stackTrace',
+                  );
+                }
+              }
               if (context.mounted) context.go('/home');
             },
           ),

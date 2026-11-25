@@ -28,6 +28,7 @@ class MoviePreviewControlsOverlay extends StatefulWidget {
   static const headerOpacityKey = Key('movie-preview-controls-header-opacity');
   static const bottomOpacityKey = Key('movie-preview-controls-bottom-opacity');
   static const indicatorKey = Key('movie-preview-controls-indicator');
+  static const progressBarKey = Key('movie-preview-controls-progress-bar');
 
   /// 标题文本。
   final String title;
@@ -84,6 +85,9 @@ class _MoviePreviewControlsOverlayState
   // Indicator state.
   _Indicator _indicator = const _Indicator.none();
 
+  /// 拖动进度条期间手指位置的填充比例；null 表示按播放进度填充。
+  double? _scrubPreview;
+
   bool get _canAutoHide {
     return _state.isPlaying &&
         !_state.isBuffering &&
@@ -139,13 +143,20 @@ class _MoviePreviewControlsOverlayState
 
   void _onStateChanged() {
     final value = widget.playback.state.value;
+    final wasAutoHideable = _canAutoHide;
     if (mounted) {
       setState(() {
         _state = value;
       });
+    } else {
+      _state = value;
     }
     if (!_canAutoHide) {
       _setVisible(true);
+    } else if (mounted && !wasAutoHideable) {
+      // 从缓冲/暂停/完成态恢复为可自动隐藏：此前没有计时器（或在到点时
+      // 因不可隐藏而未隐藏），需要按当前状态重新计时。
+      _resetHideTimer();
     }
   }
 
@@ -468,51 +479,67 @@ class _MoviePreviewControlsOverlayState
 
   Widget _progressBar() {
     final canSeek = _state.duration > Duration.zero;
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onTapDown: canSeek
-          ? (details) => _seekToProgress(details.localPosition.dx)
-          : null,
-      onHorizontalDragStart: canSeek
-          ? (_) => _keepVisibleOnInteraction()
-          : null,
-      onHorizontalDragUpdate: canSeek
-          ? (details) => _seekToProgress(details.localPosition.dx)
-          : null,
-      child: SizedBox(
-        height: 36.0,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final progress = _sliderValue;
-            return Stack(
-              alignment: Alignment.centerLeft,
-              children: [
-                Container(
-                  height: 2.4,
-                  width: constraints.maxWidth,
-                  color: Colors.white38,
-                ),
-                FractionallySizedBox(
-                  widthFactor: progress,
+    // 以进度条自身渲染宽度作为 seek 与填充的分母（而非整屏宽度），
+    // 否则进度条只占屏宽一部分时无法定位到后段。
+    return LayoutBuilder(
+      key: MoviePreviewControlsOverlay.progressBarKey,
+      builder: (context, constraints) {
+        final barWidth = constraints.maxWidth;
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTapDown: canSeek
+              ? (details) => _seekToProgress(details.localPosition.dx, barWidth)
+              : null,
+          onHorizontalDragStart: canSeek
+              ? (_) => _keepVisibleOnInteraction()
+              : null,
+          onHorizontalDragUpdate: canSeek
+              ? (details) => _seekToProgress(
+                  details.localPosition.dx,
+                  barWidth,
+                  preview: true,
+                )
+              : null,
+          onHorizontalDragEnd: canSeek ? (_) => _clearScrubPreview() : null,
+          onHorizontalDragCancel: canSeek ? _clearScrubPreview : null,
+          child: SizedBox(
+            height: 36.0,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final progress = _scrubPreview ?? _sliderValue;
+                return Stack(
                   alignment: Alignment.centerLeft,
-                  child: Container(height: 2.4, color: Colors.red),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
+                  children: [
+                    Container(
+                      height: 2.4,
+                      width: constraints.maxWidth,
+                      color: Colors.white38,
+                    ),
+                    FractionallySizedBox(
+                      widthFactor: progress,
+                      alignment: Alignment.centerLeft,
+                      child: Container(height: 2.4, color: Colors.red),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 
-  void _seekToProgress(double dx) {
+  void _seekToProgress(double dx, double width, {bool preview = false}) {
     _keepVisibleOnInteraction();
-    if (_state.duration <= Duration.zero) return;
-    final width = _gestureSize.width;
-    if (width <= 0) return;
+    final duration = _state.duration;
+    if (duration <= Duration.zero || width <= 0) return;
     final ratio = (dx / width).clamp(0.0, 1.0);
+    if (preview && mounted) {
+      setState(() => _scrubPreview = ratio);
+    }
     final target = Duration(
-      milliseconds: (ratio * _state.duration.inMilliseconds).round(),
+      milliseconds: (ratio * duration.inMilliseconds).round(),
     );
     unawaited(
       _ignoreErrors(
@@ -520,6 +547,15 @@ class _MoviePreviewControlsOverlayState
         'seek-progress',
       ),
     );
+  }
+
+  void _clearScrubPreview() {
+    if (_scrubPreview == null) return;
+    if (mounted) {
+      setState(() => _scrubPreview = null);
+    } else {
+      _scrubPreview = null;
+    }
   }
 
   double get _sliderValue {

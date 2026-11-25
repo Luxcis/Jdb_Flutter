@@ -320,4 +320,86 @@ void main() {
     expect(find.text('刷新后影片'), findsOneWidget);
     expect(find.byKey(const Key('movie-grid-refreshing')), findsNothing);
   });
+
+  testWidgets('首屏加载失败显示统一中文文案而非原始异常', (tester) async {
+    final controller = PaginationController<MovieSummary>(
+      fetch: (_) async => throw StateError('network down'),
+    );
+    addTearDown(controller.dispose);
+    await controller.fetchMore();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: MovieGridView(controller: controller)),
+      ),
+    );
+
+    expect(find.text('加载失败，请重试'), findsOneWidget);
+    expect(find.textContaining('StateError'), findsNothing);
+  });
+
+  testWidgets('加载更多失败后继续滚动不再自动请求，点击重试才重发', (tester) async {
+    final requestedPages = <int>[];
+    final movies = List.generate(
+      30,
+      (index) => MovieSummary(
+        id: '$index',
+        number: 'N-$index',
+        title: '影片 $index',
+        coverUrl: '',
+      ),
+    );
+    final controller = PaginationController<MovieSummary>(
+      fetch: (page) async {
+        requestedPages.add(page);
+        if (page == 1) {
+          return PagedResult(
+            items: movies,
+            currentPage: 1,
+            totalPages: 2,
+            total: 31,
+          );
+        }
+        throw StateError('page 2 failed');
+      },
+    );
+    addTearDown(controller.dispose);
+    await controller.fetchMore();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: MovieGridView(controller: controller)),
+      ),
+    );
+
+    final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
+    await tester.drag(
+      find.byType(CustomScrollView),
+      Offset(0, -(scrollable.position.maxScrollExtent - 100)),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(requestedPages, [1, 2]);
+
+    // 滚到列表底部让重试按钮进入视口。
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -600));
+    await tester.pump();
+    expect(find.byKey(const Key('movie-grid-load-more-retry')), findsOneWidget);
+
+    // 失败后继续滚动（含惯性滚动逐帧通知）不得自动重发请求。
+    for (var i = 0; i < 3; i++) {
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
+      await tester.pump();
+    }
+    expect(requestedPages, [1, 2]);
+    expect(find.byKey(const Key('movie-grid-loading-more')), findsNothing);
+    expect(find.byKey(const Key('movie-grid-load-more-retry')), findsOneWidget);
+
+    await tester.ensureVisible(
+      find.byKey(const Key('movie-grid-load-more-retry')),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('movie-grid-load-more-retry')));
+    await tester.pump();
+    expect(requestedPages, [1, 2, 2]);
+  });
 }

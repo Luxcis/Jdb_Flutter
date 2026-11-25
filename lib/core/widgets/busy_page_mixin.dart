@@ -61,7 +61,12 @@ mixin BusyPageState<T extends StatefulWidget> on State<T> {
       try {
         await operation();
       } catch (error, stackTrace) {
-        developer.log(failureMessage, name: logName, error: error, stackTrace: stackTrace);
+        developer.log(
+          failureMessage,
+          name: logName,
+          error: error,
+          stackTrace: stackTrace,
+        );
         if (!mounted) return false;
         showPageMessage(failureMessage);
         return false;

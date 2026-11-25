@@ -143,6 +143,78 @@ void main() {
     expect(tabBar.controller!.index, 2);
   });
 
+  testWidgets('登录成功触发路由重新求值并离开登录页', (tester) async {
+    final auth = await createAuth(false);
+    final router = AppRouter.build(initialLocation: AppRoutes.login);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AuthProvider>.value(
+        value: auth,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(router.state.matchedLocation, AppRoutes.login);
+
+    await auth.login(token: 'tok', user: {'id': 1});
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(router.state.matchedLocation, AppRoutes.home);
+  });
+
+  testWidgets('登出后受保护页被 redirect 替换为登录页', (tester) async {
+    final auth = await createAuth(true);
+    final router = AppRouter.build(initialLocation: AppRoutes.home);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AuthProvider>.value(
+        value: auth,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    router.go(AppRoutes.profileWantWatch);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(router.state.matchedLocation, AppRoutes.profileWantWatch);
+
+    await auth.logout();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(router.state.matchedLocation, AppRoutes.login);
+    expect(
+      router.state.uri.queryParameters['from'],
+      AppRoutes.profileWantWatch,
+    );
+  });
+
+  testWidgets('全局认证失效用 go 清理受保护页导航栈', (tester) async {
+    final auth = await createAuth(true);
+    final router = AppRouter.build(initialLocation: AppRoutes.home);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AuthProvider>.value(
+        value: auth,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    router.go(AppRoutes.profileWantWatch);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(router.state.matchedLocation, AppRoutes.profileWantWatch);
+
+    AppRouter.goLoginForAuthError();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(router.state.matchedLocation, AppRoutes.login);
+    expect(
+      router.state.uri.queryParameters['from'],
+      AppRoutes.profileWantWatch,
+    );
+    expect(router.canPop(), isFalse);
+  });
+
   testWidgets('全局认证失效从当前页面跳转登录并携带 from', (tester) async {
     final auth = await createAuth(true);
     final router = AppRouter.build(initialLocation: '/movie/m1');

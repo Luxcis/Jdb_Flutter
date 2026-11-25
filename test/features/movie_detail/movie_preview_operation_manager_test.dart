@@ -1,4 +1,3 @@
-
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jade/features/movie_detail/services/movie_preview_operation_manager.dart';

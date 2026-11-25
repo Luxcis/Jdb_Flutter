@@ -36,9 +36,11 @@ class ActorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Semantics(
       button: onTap != null,
       label: actor.name,
+      selected: selected,
       child: Stack(
         children: [
           InkWell(
@@ -72,14 +74,16 @@ class ActorCard extends StatelessWidget {
               right: 4,
               child: Container(
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
+                  // 底色与前景都取 ColorScheme 角色：onPrimary/primary 在
+                  // 明暗主题下都满足非文本 3:1，不再硬编码 Colors.white。
+                  color: colors.primary,
                   shape: BoxShape.circle,
                 ),
                 padding: const EdgeInsets.all(2),
-                child: const Icon(
+                child: Icon(
                   Icons.check_circle,
                   size: 20,
-                  color: Colors.white,
+                  color: colors.onPrimary,
                 ),
               ),
             ),

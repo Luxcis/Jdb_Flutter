@@ -73,7 +73,10 @@ void main() {
       decoder: (_) =>
           const BackupDomains(apiDomains: ['https://backup.example']),
     );
-    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+    final auth = await AuthProvider.create(
+      prefs,
+      secure: InMemorySecureValueStore(),
+    );
     await auth.login(token: 't', user: {'id': 1, 'username': 'u'});
     final provider = FollowingTagsProvider(
       store: _MemoryStore2(),

@@ -91,7 +91,9 @@ void main() {
       // 模拟未被 emptyCache 索引到的孤儿文件。
       final cacheDir = Directory('${tmp.path}/jdbImageCache');
       await cacheDir.create(recursive: true);
-      await File('${cacheDir.path}/orphan.jpg').writeAsBytes(List.filled(10, 1));
+      await File(
+        '${cacheDir.path}/orphan.jpg',
+      ).writeAsBytes(List.filled(10, 1));
 
       final service = JdbImageCacheService(
         cacheDirectory: () async => tmp,

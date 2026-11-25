@@ -7,15 +7,21 @@ Future<void> _pumpThumbnail(
   WidgetTester tester, {
   required String url,
   VoidCallback? onTap,
+  double? slotHeight,
+  bool resetMemo = true,
 }) async {
-  resetStillThumbnailAspectMemo();
+  if (resetMemo) resetStillThumbnailAspectMemo();
   await tester.pumpWidget(
     MaterialApp(
       home: Scaffold(
         body: Center(
           child: SizedBox(
-            height: 92,
-            child: MovieStillThumbnail(url, onTap: onTap),
+            height: slotHeight ?? 92,
+            child: MovieStillThumbnail(
+              url,
+              onTap: onTap,
+              slotHeight: slotHeight,
+            ),
           ),
         ),
       ),
@@ -28,9 +34,9 @@ double _pumpedAspect(WidgetTester tester) =>
     tester.widget<AspectRatio>(find.byType(AspectRatio)).aspectRatio;
 
 Finder _thumbnailFinder(String url) => find.byWidgetPredicate(
-      (w) => w is MovieStillThumbnail && w.url == url,
-      skipOffstage: false,
-    );
+  (w) => w is MovieStillThumbnail && w.url == url,
+  skipOffstage: false,
+);
 
 double _aspectByUrl(String url, WidgetTester tester) => tester
     .widget<AspectRatio>(
@@ -65,9 +71,9 @@ void main() {
   testWidgets('图片解码后按真实宽高比自适应', (tester) async {
     await _pumpThumbnail(tester, url: _randomUrl());
 
-    tester
-        .widget<CachedImage>(find.byType(CachedImage))
-        .onImageSize!(const Size(240, 160));
+    tester.widget<CachedImage>(find.byType(CachedImage)).onImageSize!(
+      const Size(240, 160),
+    );
     await tester.pump();
 
     expect(_pumpedAspect(tester), closeTo(1.5, 0.0001));
@@ -76,9 +82,9 @@ void main() {
   testWidgets('竖图解码后钳制到下限 1.0', (tester) async {
     await _pumpThumbnail(tester, url: _randomUrl());
 
-    tester
-        .widget<CachedImage>(find.byType(CachedImage))
-        .onImageSize!(const Size(90, 200));
+    tester.widget<CachedImage>(find.byType(CachedImage)).onImageSize!(
+      const Size(90, 200),
+    );
     await tester.pump();
 
     expect(_pumpedAspect(tester), 1.0);
@@ -87,9 +93,9 @@ void main() {
   testWidgets('超宽图解码后钳制到上限 21:9', (tester) async {
     await _pumpThumbnail(tester, url: _randomUrl());
 
-    tester
-        .widget<CachedImage>(find.byType(CachedImage))
-        .onImageSize!(const Size(700, 200));
+    tester.widget<CachedImage>(find.byType(CachedImage)).onImageSize!(
+      const Size(700, 200),
+    );
     await tester.pump();
 
     expect(_pumpedAspect(tester), closeTo(21 / 9, 0.0001));
@@ -104,25 +110,60 @@ void main() {
     expect(tapped, isTrue);
   });
 
+  testWidgets('按槽位高度×DPR 限制缩略图解码高度', (tester) async {
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await _pumpThumbnail(tester, url: _randomUrl(), slotHeight: 164);
+
+    final image = tester.widget<CachedImage>(find.byType(CachedImage));
+    expect(image.memCacheHeight, 328);
+    expect(image.onImageSize, isNotNull);
+  });
+
+  testWidgets('未提供槽位高度时不限制解码高度', (tester) async {
+    await _pumpThumbnail(tester, url: _randomUrl());
+
+    final image = tester.widget<CachedImage>(find.byType(CachedImage));
+    expect(image.memCacheHeight, isNull);
+  });
+
+  testWidgets('已记忆宽高比时不再额外监听图片尺寸', (tester) async {
+    final url = _randomUrl();
+    await _pumpThumbnail(tester, url: url);
+
+    final first = tester.widget<CachedImage>(find.byType(CachedImage));
+    expect(first.onImageSize, isNotNull);
+    first.onImageSize!(const Size(240, 160));
+    await tester.pump();
+    expect(rememberedStillThumbnailAspect(url), closeTo(1.5, 0.0001));
+
+    // 同一 URL 重新挂载：直接使用记忆比例，不再 resolve 额外的尺寸监听。
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await _pumpThumbnail(tester, url: url, resetMemo: false);
+
+    final rebuilt = tester.widget<CachedImage>(find.byType(CachedImage));
+    expect(rebuilt.onImageSize, isNull);
+    expect(_pumpedAspect(tester), closeTo(1.5, 0.0001));
+  });
+
   // 长列表回滑场景公用的横向剧照列表。
   final rowController = ScrollController();
   Widget longStillsRow() => MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            height: 92,
-            child: ListView.separated(
-              controller: rowController,
-              scrollDirection: Axis.horizontal,
-              itemCount: 60,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
-              itemBuilder: (_, index) => MovieStillThumbnail(
-                'screenshots/item-$index.jpg',
-                onTap: () {},
-              ),
-            ),
-          ),
+    home: Scaffold(
+      body: SizedBox(
+        height: 92,
+        child: ListView.separated(
+          controller: rowController,
+          scrollDirection: Axis.horizontal,
+          itemCount: 60,
+          separatorBuilder: (_, _) => const SizedBox(width: 8),
+          itemBuilder: (_, index) =>
+              MovieStillThumbnail('screenshots/item-$index.jpg', onTap: () {}),
         ),
-      );
+      ),
+    ),
+  );
 
   CachedImage cachedImageOf(String url, WidgetTester tester) =>
       tester.widget<CachedImage>(
@@ -134,9 +175,9 @@ void main() {
 
   testWidgets('长列表：解码后滚出可见区域再滚回，第一帧恢复记忆比例', (tester) async {
     const targetUrl = 'screenshots/item-2.jpg';
+    resetStillThumbnailAspectMemo();
     await tester.pumpWidget(longStillsRow());
     await tester.pump();
-    resetStillThumbnailAspectMemo();
 
     // 目标缩略图解码回调更新比例并写入记忆。
     cachedImageOf(targetUrl, tester).onImageSize!(const Size(240, 160));
@@ -149,11 +190,7 @@ void main() {
     controller.jumpTo(maxScroll);
     await tester.pump();
     await tester.pump();
-    expect(
-      _thumbnailFinder(targetUrl),
-      findsNothing,
-      reason: '目标应已滑出缓存范围',
-    );
+    expect(_thumbnailFinder(targetUrl), findsNothing, reason: '目标应已滑出缓存范围');
 
     // 滚回：不触发任何解码回调，第一帧即恢复记忆中的比例。
     controller.jumpTo(0);
@@ -164,9 +201,11 @@ void main() {
 
   testWidgets('长列表：同一 URL 重挂载后宽度与首次展示一致', (tester) async {
     const targetUrl = 'screenshots/item-2.jpg';
+    resetStillThumbnailAspectMemo();
     await tester.pumpWidget(longStillsRow());
     await tester.pump();
-    cachedImageOf(targetUrl, tester).onImageSize!(const Size(240, 160));    await tester.pump();
+    cachedImageOf(targetUrl, tester).onImageSize!(const Size(240, 160));
+    await tester.pump();
     expect(_aspectByUrl(targetUrl, tester), closeTo(1.5, 0.0001));
     final firstSize = tester.getSize(_thumbnailFinder(targetUrl));
 

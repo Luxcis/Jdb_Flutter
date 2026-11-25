@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/movie.dart';
+import 'package:jade/core/utils/user_facing_error.dart';
 import 'package:jade/core/widgets/empty_state.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/movie_card.dart';
@@ -54,9 +55,10 @@ class _MovieGridViewState extends State<MovieGridView> {
       listenable: widget.controller,
       builder: (context, _) {
         _syncReloadEpoch();
-        if (widget.controller.error != null && widget.controller.items.isEmpty) {
+        if (widget.controller.error != null &&
+            widget.controller.items.isEmpty) {
           return ErrorRetryWidget(
-            message: widget.controller.error.toString(),
+            message: userFacingErrorMessage(widget.controller.error!),
             onRetry: widget.controller.refresh,
           );
         }
@@ -71,7 +73,9 @@ class _MovieGridViewState extends State<MovieGridView> {
         }
         return NotificationListener<ScrollNotification>(
           onNotification: (notification) {
-            if (notification.metrics.extentAfter < 400) {
+            if (notification.metrics.extentAfter < 400 &&
+                widget.controller.error == null &&
+                widget.controller.hasMore) {
               widget.controller.fetchMore();
             }
             return false;

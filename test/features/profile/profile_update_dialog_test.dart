@@ -84,7 +84,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(installCalls, 1, reason: '下载完成后自动触发安装编排，无需用户点击');
-    expect(find.text('下载完成，点击「安装」可开始更新'), findsNothing, reason: '成功路径不出现等待点击的完成态');
+    expect(
+      find.text('下载完成，点击「安装」可开始更新'),
+      findsNothing,
+      reason: '成功路径不出现等待点击的完成态',
+    );
     expect(find.text('发现新版本 0.10.0'), findsNothing, reason: '校验通过并调起安装器后弹窗关闭');
   });
 
@@ -165,7 +169,11 @@ void main() {
 
     expect(find.text('正在校验安装包完整性…'), findsOneWidget);
     expect(find.text('校验中…'), findsOneWidget);
-    expect(find.text('下载完成，点击「安装」可开始更新'), findsNothing, reason: '自动流程没有等待点击的完成态');
+    expect(
+      find.text('下载完成，点击「安装」可开始更新'),
+      findsNothing,
+      reason: '自动流程没有等待点击的完成态',
+    );
     expect(find.text('安装'), findsNothing, reason: '校验中不提供「安装」按钮');
     expect(installCalls, 1);
 
@@ -211,7 +219,11 @@ void main() {
 
     secondPassGate.complete(ApkInstallOutcome.opened);
     await tester.pumpAndSettle();
-    expect(find.text('发现新版本 0.10.0'), findsNothing, reason: '再次校验通过并调起安装器后弹窗关闭');
+    expect(
+      find.text('发现新版本 0.10.0'),
+      findsNothing,
+      reason: '再次校验通过并调起安装器后弹窗关闭',
+    );
   });
 
   testWidgets('无法校验提示阻止安装且保留重试入口', (tester) async {

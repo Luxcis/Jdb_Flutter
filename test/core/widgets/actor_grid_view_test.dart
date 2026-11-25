@@ -296,4 +296,79 @@ void main() {
     await tester.pump();
     expect(controller.items.length, 61);
   });
+
+  testWidgets('加载更多失败后继续滚动不再自动请求，点击重试才重发', (tester) async {
+    final requestedPages = <int>[];
+    final controller = PaginationController<ActorSummary>(
+      fetch: (page) async {
+        requestedPages.add(page);
+        if (page == 1) {
+          return PagedResult(
+            items: List.generate(
+              60,
+              (index) => ActorSummary(
+                id: '1-$index',
+                name: '演员 1-$index',
+                avatarUrl: '',
+              ),
+            ),
+            currentPage: 1,
+            totalPages: 2,
+            total: 61,
+          );
+        }
+        throw StateError('page 2 failed');
+      },
+    );
+    addTearDown(controller.dispose);
+    await controller.fetchMore();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: ActorGridView(controller: controller)),
+      ),
+    );
+
+    final grid = find.byType(GridView);
+    await tester.drag(grid, const Offset(0, -5000));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(requestedPages, [1, 2]);
+
+    // 滚到列表底部让重试按钮进入视口。
+    await tester.drag(grid, const Offset(0, -600));
+    await tester.pump();
+    expect(find.byKey(const Key('actor-grid-tail-retry')), findsOneWidget);
+
+    // 失败后继续滚动（含惯性滚动逐帧通知）不得自动重发请求。
+    for (var i = 0; i < 3; i++) {
+      await tester.drag(grid, const Offset(0, -400));
+      await tester.pump();
+    }
+    expect(requestedPages, [1, 2]);
+    expect(find.byKey(const Key('actor-grid-tail-loading')), findsNothing);
+    expect(find.byKey(const Key('actor-grid-tail-retry')), findsOneWidget);
+
+    await tester.ensureVisible(find.byKey(const Key('actor-grid-tail-retry')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('actor-grid-tail-retry')));
+    await tester.pump();
+    expect(requestedPages, [1, 2, 2]);
+  });
+
+  testWidgets('首屏加载失败显示统一中文文案而非原始异常', (tester) async {
+    final controller = PaginationController<ActorSummary>(
+      fetch: (_) async => throw StateError('network down'),
+    );
+    addTearDown(controller.dispose);
+    await controller.fetchMore();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: ActorGridView(controller: controller)),
+      ),
+    );
+
+    expect(find.text('加载失败，请重试'), findsOneWidget);
+    expect(find.textContaining('StateError'), findsNothing);
+  });
 }

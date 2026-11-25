@@ -117,7 +117,10 @@ void main() {
         imageSize: const Size(900, 800),
       );
       expect(height, closeTo(width * 800 / 900, 0.01));
-      expect(height, lessThanOrEqualTo(width * ArticleCoverImage.maxHeightFactor));
+      expect(
+        height,
+        lessThanOrEqualTo(width * ArticleCoverImage.maxHeightFactor),
+      );
     });
 
     test('超高封面被截断为宽度上限并触发顶部裁剪', () {

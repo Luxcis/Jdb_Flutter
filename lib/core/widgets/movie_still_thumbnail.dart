@@ -17,10 +17,15 @@ double clampStillThumbnailAspect(double aspect) =>
 /// 剧照缩略图：高度由父级（横向列表）约束，宽度按图片实际宽高比自适应，
 /// 完整显示图片；加载完成前按 16:9 占位。
 class MovieStillThumbnail extends StatefulWidget {
-  const MovieStillThumbnail(this.url, {super.key, this.onTap});
+  const MovieStillThumbnail(this.url, {super.key, this.onTap, this.slotHeight});
 
   final String url;
   final VoidCallback? onTap;
+
+  /// 槽位高度（逻辑像素），用于把解码尺寸限制在展示所需大小。
+  ///
+  /// 为 null 时不限制解码高度（保持原图分辨率）。
+  final double? slotHeight;
 
   @override
   State<MovieStillThumbnail> createState() => _MovieStillThumbnailState();
@@ -43,12 +48,25 @@ void resetStillThumbnailAspectMemo() => _stillThumbnailAspectMemo.clear();
 class _MovieStillThumbnailState extends State<MovieStillThumbnail> {
   double _aspect = kStillThumbnailPlaceholderAspect;
 
+  /// 该 URL 的宽高比是否已由本进程解码过（不必再次监听尺寸）。
+  bool _aspectKnown = false;
+
   @override
   void initState() {
     super.initState();
-    _aspect =
-        rememberedStillThumbnailAspect(widget.url) ??
-        kStillThumbnailPlaceholderAspect;
+    final remembered = rememberedStillThumbnailAspect(widget.url);
+    _aspectKnown = remembered != null;
+    _aspect = remembered ?? kStillThumbnailPlaceholderAspect;
+  }
+
+  @override
+  void didUpdateWidget(covariant MovieStillThumbnail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) {
+      final remembered = rememberedStillThumbnailAspect(widget.url);
+      _aspectKnown = remembered != null;
+      _aspect = remembered ?? kStillThumbnailPlaceholderAspect;
+    }
   }
 
   void _handleImageSize(Size size) {
@@ -61,6 +79,12 @@ class _MovieStillThumbnailState extends State<MovieStillThumbnail> {
 
   @override
   Widget build(BuildContext context) {
+    final slotHeight = widget.slotHeight;
+    // 按槽位高度 × DPR 限制解码高度，避免整张原图常驻 ImageCache；
+    // 等比缩放不改变宽高比，尺寸测量复用同一有界 provider。
+    final memCacheHeight = slotHeight == null || slotHeight <= 0
+        ? null
+        : (slotHeight * MediaQuery.devicePixelRatioOf(context)).round();
     return AspectRatio(
       aspectRatio: _aspect,
       child: Material(
@@ -68,7 +92,11 @@ class _MovieStillThumbnailState extends State<MovieStillThumbnail> {
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: widget.onTap,
-          child: CachedImage(widget.url, onImageSize: _handleImageSize),
+          child: CachedImage(
+            widget.url,
+            memCacheHeight: memCacheHeight,
+            onImageSize: _aspectKnown ? null : _handleImageSize,
+          ),
         ),
       ),
     );

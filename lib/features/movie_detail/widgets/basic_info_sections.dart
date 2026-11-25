@@ -127,6 +127,9 @@ class MovieScreenshotSection extends StatelessWidget {
     required this.onPreviewTap,
   });
 
+  /// 预告片 / 剧照区横向缩略图槽位高度（逻辑像素）。
+  static const double screenshotSlotHeight = 164;
+
   final List<String> urls;
   final String? previewCoverUrl;
   final String previewTitle;
@@ -138,7 +141,7 @@ class MovieScreenshotSection extends StatelessWidget {
     return MovieSection(
       title: '预告片 / 剧照',
       titleTrailing: urls.isEmpty ? null : '共 ${urls.length} 张',
-      height: 164,
+      height: screenshotSlotHeight,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
@@ -197,6 +200,7 @@ class MovieScreenshotSection extends StatelessWidget {
             child: MovieStillThumbnail(
               key: Key('movie-detail-screenshot-$screenshotIndex'),
               urls[screenshotIndex],
+              slotHeight: screenshotSlotHeight,
               onTap: () => showDialog<void>(
                 context: context,
                 useSafeArea: false,

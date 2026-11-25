@@ -24,7 +24,9 @@ class PrefsFollowingTagsStore implements FollowingTagsStore {
     try {
       final decoded = jsonDecode(raw) as List<dynamic>;
       return decoded
-          .map((e) => FollowTagItem.fromJson(Map<String, dynamic>.from(e as Map)))
+          .map(
+            (e) => FollowTagItem.fromJson(Map<String, dynamic>.from(e as Map)),
+          )
           .toList(growable: false);
     } catch (_) {
       // 畸形 JSON 视作空列表，避免启动崩溃。

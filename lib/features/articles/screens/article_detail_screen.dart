@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:jade/core/utils/time_format.dart';
+import 'package:jade/core/utils/user_facing_error.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/image_gallery_viewer.dart';
 import 'package:jade/features/articles/models/article.dart';
@@ -59,7 +60,9 @@ class ArticleDetailScreen extends StatefulWidget {
 
 class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   ArticleDetail? _detail;
-  Object? _error;
+
+  /// 已映射为中文的错误文案，不保存异常对象，避免把技术细节展示给用户。
+  String? _error;
   var _loading = true;
 
   @override
@@ -93,10 +96,11 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           _loading = false;
         });
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      debugPrint('article_detail load failed: $error\n$stackTrace');
       if (mounted) {
         setState(() {
-          _error = error;
+          _error = userFacingErrorMessage(error);
           _loading = false;
         });
       }
@@ -117,7 +121,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     }
     final error = _error;
     if (error != null) {
-      return ErrorRetryWidget(message: error.toString(), onRetry: _load);
+      return ErrorRetryWidget(message: error, onRetry: _load);
     }
     final detail = _detail!;
     final textTheme = Theme.of(context).textTheme;

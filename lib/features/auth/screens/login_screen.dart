@@ -1,8 +1,9 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jade/core/device/login_device_info_service.dart';
-import 'package:jade/core/network/api_exception.dart';
 import 'package:jade/core/providers/auth_provider.dart';
+import 'package:jade/core/utils/user_facing_error.dart';
 import 'package:jade/core/storage/login_credential_store.dart';
 import 'package:jade/core/models/follow_tag.dart';
 import 'package:jade/core/providers/following_tags_provider.dart';
@@ -67,6 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _login() async {
+    if (_loading) return;
     final service = AuthSessionService.resolve();
     if (service == null) return;
     setState(() {
@@ -85,8 +87,19 @@ class _LoginScreenState extends State<LoginScreen> {
         password: password,
         deviceParameters: deviceParameters.toMap(),
       );
-      final token = data['token'] as String;
-      final user = data['user'] as Map<String, dynamic>;
+      final token = data['token'];
+      final userValue = data['user'];
+      if (token is! String || token.isEmpty || userValue is! Map) {
+        _showError('登录响应缺少登录凭证，请稍后重试');
+        return;
+      }
+      final Map<String, dynamic> user;
+      try {
+        user = Map<String, dynamic>.from(userValue);
+      } catch (_) {
+        _showError('登录响应缺少登录凭证，请稍后重试');
+        return;
+      }
       try {
         await _credentialStore.save(username: username, password: password);
       } catch (_) {
@@ -112,19 +125,38 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       final from = GoRouterState.of(context).uri.queryParameters['from'] ?? '';
       context.go(from.isNotEmpty ? Uri.decodeComponent(from) : '/home');
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.message ?? '登录失败';
-        _loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
+    } catch (error, stackTrace) {
+      debugPrint('Login failed: $error\n$stackTrace');
+      _showError(_loginErrorMessage(error));
     }
+  }
+
+  /// 登录失败文案：优先服务端中文 message，网络类复用统一文案。
+  String _loginErrorMessage(Object error) {
+    final apiError = userFacingApiException(error);
+    if (apiError != null) {
+      final message = apiError.message?.trim();
+      if (message != null && message.isNotEmpty) return message;
+      return '登录失败，请重试';
+    }
+    if (error is TypeError) {
+      // 服务层对 success=1 但 data 缺失/非对象的响应会抛 TypeError，
+      // 这里统一转为明确的凭证缺失提示。
+      return '登录响应缺少登录凭证，请稍后重试';
+    }
+    if (error is DioException) {
+      final message = userFacingErrorMessage(error);
+      if (message == '网络连接失败，请检查网络') return message;
+    }
+    return '登录失败，请重试';
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    setState(() {
+      _error = message;
+      _loading = false;
+    });
   }
 
   @override
@@ -142,86 +174,101 @@ class _LoginScreenState extends State<LoginScreen> {
       },
       child: Scaffold(
         appBar: AppBar(title: const Text('登录')),
-        body: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (hasFrom)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Text(
-                    '请登录后继续',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-              if (sessionExpired)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Text(
-                    '登录已过期，请重新登录',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+        body: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight > 48
+                    ? constraints.maxHeight - 48
+                    : 0,
+              ),
+              child: IntrinsicHeight(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (hasFrom)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Text(
+                          '请登录后继续',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                    if (sessionExpired)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Text(
+                          '登录已过期，请重新登录',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    TextField(
+                      controller: _emailCtrl,
+                      onChanged: (_) => _usernameEdited = true,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: '邮箱',
+                        border: OutlineInputBorder(),
+                      ),
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              TextField(
-                controller: _emailCtrl,
-                onChanged: (_) => _usernameEdited = true,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: '邮箱',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _passCtrl,
-                onChanged: (_) => _passwordEdited = true,
-                obscureText: true,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _login(),
-                decoration: const InputDecoration(
-                  labelText: '密码',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _loading ? null : _login,
-                  child: _loading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('登录'),
-                ),
-              ),
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Text(
-                    _error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _passCtrl,
+                      onChanged: (_) => _passwordEdited = true,
+                      obscureText: true,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _login(),
+                      decoration: const InputDecoration(
+                        labelText: '密码',
+                        border: OutlineInputBorder(),
+                      ),
                     ),
-                    textAlign: TextAlign.center,
-                  ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _loading ? null : _login,
+                        child: _loading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('登录'),
+                      ),
+                    ),
+                    if (_error != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          _error!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: () {
+                        final to = hasFrom
+                            ? '/register?from=$from'
+                            : '/register';
+                        context.push(to);
+                      },
+                      child: const Text('没有账号？立即注册'),
+                    ),
+                  ],
                 ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () {
-                  final to = hasFrom ? '/register?from=$from' : '/register';
-                  context.push(to);
-                },
-                child: const Text('没有账号？立即注册'),
               ),
-            ],
+            ),
           ),
         ),
       ),

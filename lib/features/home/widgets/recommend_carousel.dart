@@ -24,8 +24,18 @@ class _RecommendCarouselState extends State<RecommendCarousel>
       WidgetsBinding.instance.lifecycleState ?? AppLifecycleState.resumed;
   bool _tickerModeEnabled = true;
 
+  /// 系统开启“减少动态效果”时不自动轮播。
+  bool _reduceMotion = false;
+
+  bool get _canAutoPlay => widget.movies.length > 1;
+
+  /// 是否允许自动轮播（不含生命周期/TickerMode，这两项由有效状态控制）。
+  bool get _autoPlayEnabled => _canAutoPlay && !_reduceMotion;
+
+  /// 当前是否应自动轮播：切到其他 tab 时 GoRouter 的 IndexedStack 会关闭
+  /// TickerMode，自动轮播随之暂停；切回或应用恢复前台后重新计时。
   bool get _shouldAutoPlay =>
-      widget.movies.length > 1 &&
+      _autoPlayEnabled &&
       _lifecycleState == AppLifecycleState.resumed &&
       _tickerModeEnabled;
 
@@ -40,8 +50,10 @@ class _RecommendCarouselState extends State<RecommendCarousel>
   void didChangeDependencies() {
     super.didChangeDependencies();
     final enabled = TickerMode.valuesOf(context).enabled;
-    if (_tickerModeEnabled == enabled) return;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    if (_tickerModeEnabled == enabled && _reduceMotion == reduceMotion) return;
     _tickerModeEnabled = enabled;
+    _reduceMotion = reduceMotion;
     _syncAutoPlay();
   }
 
@@ -53,7 +65,10 @@ class _RecommendCarouselState extends State<RecommendCarousel>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_lifecycleState == state) return;
     _lifecycleState = state;
+    // 生命周期变化不一定触发父级重建；显式刷新以同步 autoPlay 选项。
+    if (mounted) setState(() {});
     _syncAutoPlay();
   }
 
@@ -74,7 +89,6 @@ class _RecommendCarouselState extends State<RecommendCarousel>
 
   @override
   Widget build(BuildContext context) {
-    final canAutoPlay = widget.movies.length > 1;
     return CarouselSlider.builder(
       key: const Key('home-recommend-carousel'),
       carouselController: _controller,
@@ -82,8 +96,10 @@ class _RecommendCarouselState extends State<RecommendCarousel>
       options: CarouselOptions(
         height: 220,
         viewportFraction: 1,
-        enableInfiniteScroll: canAutoPlay,
-        autoPlay: canAutoPlay,
+        enableInfiniteScroll: _canAutoPlay,
+        // 直接使用当前有效状态：离屏分支重建时 carousel_slider 会按该值
+        // 重建计时器，用“允许播放”代替会让切走后的轮播继续滚动。
+        autoPlay: _shouldAutoPlay,
         autoPlayInterval: const Duration(seconds: 5),
         autoPlayAnimationDuration: const Duration(milliseconds: 400),
         autoPlayCurve: Curves.easeInOut,

@@ -14,13 +14,21 @@ const movies = [
 Future<void> pumpCarousel(
   WidgetTester tester, {
   List<MovieSummary> items = movies,
+  bool disableAnimations = false,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
-      home: Scaffold(
-        body: SizedBox(
-          height: 220,
-          child: RecommendCarousel(movies: items, onMovieTap: (_) {}),
+      home: Builder(
+        builder: (context) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(disableAnimations: disableAnimations),
+          child: Scaffold(
+            body: SizedBox(
+              height: 220,
+              child: RecommendCarousel(movies: items, onMovieTap: (_) {}),
+            ),
+          ),
         ),
       ),
     ),
@@ -124,7 +132,7 @@ void main() {
     expectVisibleTitle(tester, 'B');
   });
 
-  testWidgets('TickerMode 关闭时暂停并在恢复后重新计时', (tester) async {
+  testWidgets('切换到其他 tab 时暂停，切回后重新计时', (tester) async {
     Widget harness(bool enabled) => MaterialApp(
       home: TickerMode(
         enabled: enabled,
@@ -139,6 +147,8 @@ void main() {
 
     await tester.pumpWidget(harness(true));
     await tester.pump(const Duration(seconds: 2));
+    await tester.pumpWidget(harness(false));
+    // 离屏分支仍可能随父级重建，重建不能重启自动轮播。
     await tester.pumpWidget(harness(false));
     await tester.pump(const Duration(seconds: 10));
     await finishAutoPlayAnimation(tester);
@@ -201,7 +211,12 @@ void main() {
     await pumpCarousel(
       tester,
       items: const [
-        MovieSummary(id: 'short', number: 'S-1', title: shortTitle, coverUrl: ''),
+        MovieSummary(
+          id: 'short',
+          number: 'S-1',
+          title: shortTitle,
+          coverUrl: '',
+        ),
       ],
     );
 
@@ -229,5 +244,21 @@ void main() {
       closeTo(reference.height, 0.1),
     );
     expect(overlaySize.height, closeTo(reference.height + 16, 0.1));
+  });
+
+  testWidgets('系统开启减少动态效果时不自动切换', (tester) async {
+    await pumpCarousel(tester, disableAnimations: true);
+
+    await tester.pump(const Duration(seconds: 15));
+    await finishAutoPlayAnimation(tester);
+    expectVisibleTitle(tester, 'A');
+  });
+
+  testWidgets('不再渲染轮播暂停按钮', (tester) async {
+    await pumpCarousel(tester);
+
+    expect(find.byIcon(Icons.pause), findsNothing);
+    expect(find.byIcon(Icons.play_arrow), findsNothing);
+    expect(find.byType(IconButton), findsNothing);
   });
 }

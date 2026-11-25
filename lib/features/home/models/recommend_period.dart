@@ -24,10 +24,7 @@ class RecommendPeriod {
   factory RecommendPeriod.fromJson(Map<String, dynamic> json) =>
       RecommendPeriod(
         period: apiInt(json['period'], 0),
-        moviesCount: apiInt(
-          json['movies_count'] ?? json['moviesCount'],
-          0,
-        ),
+        moviesCount: apiInt(json['movies_count'] ?? json['moviesCount'], 0),
         viewsCount: apiInt(json['views_count'] ?? json['viewsCount'], 0),
         createdAt: apiString(json['created_at'] ?? json['createdAt']),
       );

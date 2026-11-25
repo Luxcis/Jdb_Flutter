@@ -8,33 +8,19 @@ part of 'startup.dart';
 
 BackupDomains _$BackupDomainsFromJson(Map<String, dynamic> json) =>
     BackupDomains(
-      apiDomains: (json['apiDomains'] as List<dynamic>)
-          .map((e) => e as String)
-          .toList(),
-      backupUrls:
-          (json['backupUrls'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          const [],
-      unblockedWebDomain: json['unblockedWebDomain'] as String?,
-      permanentWebDomain: json['permanentWebDomain'] as String?,
-      unblockAppDomain: json['unblockAppDomain'] as String?,
-      permanentAppDomain: json['permanentAppDomain'] as String?,
-      imageEndpoint: json['imageEndpoint'] as String?,
+      apiDomains: _stringListOrEmpty(json['apiDomains']),
+      backupUrls: _stringListOrEmpty(json['backupUrls']),
+      unblockedWebDomain: _stringOrNull(json['unblockedWebDomain']),
+      permanentWebDomain: _stringOrNull(json['permanentWebDomain']),
+      unblockAppDomain: _stringOrNull(json['unblockAppDomain']),
+      permanentAppDomain: _stringOrNull(json['permanentAppDomain']),
+      imageEndpoint: _stringOrNull(json['imageEndpoint']),
     );
 
 StartupData _$StartupDataFromJson(Map<String, dynamic> json) => StartupData(
-  backupDomainsData: json['backup_domains_data'] as String?,
-  recentKeywords:
-      (json['recent_keywords'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ??
-      const [],
-  recentMagnetKeywords:
-      (json['recent_magnet_keywords'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ??
-      const [],
-  settings: json['settings'] as Map<String, dynamic>?,
-  user: json['user'] as Map<String, dynamic>?,
+  backupDomainsData: _stringOrNull(json['backup_domains_data']),
+  recentKeywords: _stringListOrEmpty(json['recent_keywords']),
+  recentMagnetKeywords: _stringListOrEmpty(json['recent_magnet_keywords']),
+  settings: _mapOrNull(json['settings']),
+  user: _mapOrNull(json['user']),
 );

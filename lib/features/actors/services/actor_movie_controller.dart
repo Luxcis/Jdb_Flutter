@@ -103,8 +103,9 @@ class ActorMovieController extends ChangeNotifier {
       _service.getActorMovies(
         actorId,
         type: type,
-        filterByTags:
-            _selectedTagIds.isEmpty ? null : _selectedTagIds.join(','),
+        filterByTags: _selectedTagIds.isEmpty
+            ? null
+            : _selectedTagIds.join(','),
         page: page,
         sortBy: _sortBy,
         orderBy: _orderBy,

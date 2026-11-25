@@ -56,10 +56,7 @@ Future<FakeAdapter> _pumpReviews(WidgetTester tester) async {
   return adapter;
 }
 
-Future<void> _pumpUntil(
-  WidgetTester tester,
-  bool Function() condition,
-) async {
+Future<void> _pumpUntil(WidgetTester tester, bool Function() condition) async {
   for (var i = 0; i < 20; i++) {
     if (condition()) return;
     await tester.pump(const Duration(milliseconds: 50));
@@ -111,7 +108,10 @@ void main() {
     final adapter = await _pumpReviews(tester);
     adapter.enqueue(Endpoints.reviewsHotly, _pageResponse(20));
     await _pumpUntil(tester, () => adapter.requests.isNotEmpty);
-    await _pumpUntil(tester, () => find.byType(ReviewTile).evaluate().isNotEmpty);
+    await _pumpUntil(
+      tester,
+      () => find.byType(ReviewTile).evaluate().isNotEmpty,
+    );
 
     await tester.drag(find.byType(ListView), const Offset(0, -10000));
     await tester.pump();
@@ -134,20 +134,20 @@ void main() {
 
   testWidgets('请求失败显示错误并可重试', (tester) async {
     final adapter = await _pumpReviews(tester);
-    adapter.enqueueSequence(
-      Endpoints.reviewsHotly,
-      [
-        {'success': 0, 'message': '失败'},
-        _pageResponse(1),
-      ],
-    );
+    adapter.enqueueSequence(Endpoints.reviewsHotly, [
+      {'success': 0, 'message': '失败'},
+      _pageResponse(1),
+    ]);
     await _pumpUntil(
       tester,
       () => find.byType(ErrorRetryWidget).evaluate().isNotEmpty,
     );
 
     await tester.tap(find.text('重试'));
-    await _pumpUntil(tester, () => find.byType(ReviewTile).evaluate().isNotEmpty);
+    await _pumpUntil(
+      tester,
+      () => find.byType(ReviewTile).evaluate().isNotEmpty,
+    );
 
     expect(find.byType(ReviewTile), findsOneWidget);
   });
@@ -163,11 +163,14 @@ void main() {
   testWidgets('下拉刷新保留短评列表并显示顶部指示器，成功后替换', (tester) async {
     final adapter = await _pumpReviews(tester);
     adapter.responseDelay = const Duration(milliseconds: 200);
-    adapter.enqueueSequence(
-      Endpoints.reviewsHotly,
-      [_pageResponse(1), _pageResponse(1, start: 1)],
+    adapter.enqueueSequence(Endpoints.reviewsHotly, [
+      _pageResponse(1),
+      _pageResponse(1, start: 1),
+    ]);
+    await _pumpUntil(
+      tester,
+      () => find.byType(ReviewTile).evaluate().isNotEmpty,
     );
-    await _pumpUntil(tester, () => find.byType(ReviewTile).evaluate().isNotEmpty);
     expect(find.text('内容0'), findsOneWidget);
 
     final refresh = tester
@@ -179,10 +182,7 @@ void main() {
     expect(find.byKey(const Key('reviews-refreshing')), findsOneWidget);
 
     adapter.responseDelay = Duration.zero;
-    await _pumpUntil(
-      tester,
-      () => adapter.requests.length >= 2,
-    );
+    await _pumpUntil(tester, () => adapter.requests.length >= 2);
     await refresh;
 
     expect(find.text('内容0'), findsNothing);

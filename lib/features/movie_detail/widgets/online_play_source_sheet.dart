@@ -12,14 +12,12 @@ class OnlinePlaySourceSheet extends StatelessWidget {
   final String number;
 
   /// 弹出抽屉；返回点选源的链接，用户取消时为 null。
-  static Future<Uri?> show(
-    BuildContext context, {
-    required String number,
-  }) => showModalBottomSheet<Uri>(
-    context: context,
-    showDragHandle: true,
-    builder: (_) => OnlinePlaySourceSheet(number: number),
-  );
+  static Future<Uri?> show(BuildContext context, {required String number}) =>
+      showModalBottomSheet<Uri>(
+        context: context,
+        showDragHandle: true,
+        builder: (_) => OnlinePlaySourceSheet(number: number),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -40,8 +38,7 @@ class OnlinePlaySourceSheet extends StatelessWidget {
               title: Text(source.label),
               subtitle: Text(source.host),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () =>
-                  Navigator.of(context).pop(source.buildUrl(number)),
+              onTap: () => Navigator.of(context).pop(source.buildUrl(number)),
             ),
           const SizedBox(height: 8),
         ],

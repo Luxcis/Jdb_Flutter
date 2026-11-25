@@ -181,7 +181,7 @@ void main() {
     await tester.pump(kDoubleTapTimeout);
   });
 
-  testWidgets('点击底部进度条 seek 到对应位置', (tester) async {
+  testWidgets('点击进度条 50% 位置按进度条宽度 seek 到一半时长', (tester) async {
     final playback = _FakePlayback(
       initialState: const MoviePreviewPlaybackState(
         isInitialized: true,
@@ -192,16 +192,142 @@ void main() {
     );
     await _pumpOverlay(tester, playback);
 
-    final barBox =
-        tester.renderObject(find.byType(LayoutBuilder).at(1)) as RenderBox;
-    final barTopLeft = barBox.localToGlobal(Offset.zero);
-    await tester.tapAt(
-      barTopLeft + Offset(barBox.size.width * 0.25, barBox.size.height / 2),
+    await _tapProgressBar(tester, 0.5);
+
+    expect(playback.seekPositions, hasLength(1));
+    expect(
+      playback.seekPositions.single.inMilliseconds,
+      closeTo(const Duration(minutes: 1).inMilliseconds, 1000),
+    );
+    await tester.pump(kDoubleTapTimeout);
+  });
+
+  testWidgets('点击进度条最右端 seek 到接近视频结尾', (tester) async {
+    final playback = _FakePlayback(
+      initialState: const MoviePreviewPlaybackState(
+        isInitialized: true,
+        isPlaying: true,
+        position: Duration.zero,
+        duration: Duration(minutes: 2),
+      ),
+    );
+    await _pumpOverlay(tester, playback);
+
+    await _tapProgressBar(tester, 1.0, insetPixels: 1.0);
+
+    final target = playback.seekPositions.single.inMilliseconds;
+    final total = const Duration(minutes: 2).inMilliseconds;
+    expect(target, greaterThan((total * 0.95).round()));
+    expect(target, lessThanOrEqualTo(total));
+    await tester.pump(kDoubleTapTimeout);
+  });
+
+  testWidgets('拖动进度条时填充跟随手指且按进度条宽度 seek', (tester) async {
+    final playback = _FakePlayback(
+      initialState: const MoviePreviewPlaybackState(
+        isInitialized: true,
+        isPlaying: true,
+        position: Duration.zero,
+        duration: Duration(minutes: 2),
+      ),
+    );
+    await _pumpOverlay(tester, playback);
+
+    final box = _progressBarBox(tester);
+    final topLeft = box.localToGlobal(Offset.zero);
+    final gesture = await tester.startGesture(
+      topLeft + Offset(box.size.width * 0.25, box.size.height / 2),
     );
     await tester.pump();
+    // 第一次移动越过拖动阈值，让进度条的手势识别器赢得手势竞技场。
+    await gesture.moveBy(Offset(box.size.width * 0.1, 0));
+    await tester.pump();
+    await gesture.moveBy(Offset(box.size.width * 0.4, 0));
+    await tester.pump();
 
-    expect(playback.seekPositions, isNotEmpty);
+    final fill = tester.widget<FractionallySizedBox>(
+      find.descendant(
+        of: find.byKey(MoviePreviewControlsOverlay.progressBarKey),
+        matching: find.byType(FractionallySizedBox),
+      ),
+    );
+    expect(fill.widthFactor, closeTo(0.75, 0.02));
+
+    await gesture.up();
+    await tester.pump();
+    expect(
+      playback.seekPositions.last.inMilliseconds,
+      closeTo(const Duration(seconds: 90).inMilliseconds, 1500),
+    );
     await tester.pump(kDoubleTapTimeout);
+  });
+
+  testWidgets('初始缓冲结束后恢复播放会重新计时并自动隐藏', (tester) async {
+    final playback = _FakePlayback(
+      initialState: const MoviePreviewPlaybackState(
+        isInitialized: true,
+        isPlaying: true,
+        isBuffering: true,
+      ),
+    );
+    await _pumpOverlay(tester, playback);
+
+    expect(_headerOpacity(tester), 1.0);
+    await tester.pump(const Duration(seconds: 4));
+    expect(_headerOpacity(tester), 1.0, reason: '缓冲期间不应自动隐藏');
+
+    playback.emit(
+      const MoviePreviewPlaybackState(isInitialized: true, isPlaying: true),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 3));
+
+    expect(_headerOpacity(tester), 0.0);
+    expect(_bottomOpacity(tester), 0.0);
+  });
+
+  testWidgets('暂停恢复播放后重新计时并自动隐藏', (tester) async {
+    final playback = _FakePlayback(
+      initialState: const MoviePreviewPlaybackState(
+        isInitialized: true,
+        isPlaying: true,
+      ),
+    );
+    await _pumpOverlay(tester, playback);
+
+    playback.emit(const MoviePreviewPlaybackState(isInitialized: true));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 4));
+    expect(_headerOpacity(tester), 1.0, reason: '暂停期间应保持显示');
+
+    playback.emit(
+      const MoviePreviewPlaybackState(isInitialized: true, isPlaying: true),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 3));
+
+    expect(_headerOpacity(tester), 0.0);
+    expect(_bottomOpacity(tester), 0.0);
+  });
+
+  testWidgets('手动唤起操作层后按规则再次自动隐藏', (tester) async {
+    final playback = _FakePlayback(
+      initialState: const MoviePreviewPlaybackState(
+        isInitialized: true,
+        isPlaying: true,
+      ),
+    );
+    await _pumpOverlay(tester, playback);
+
+    await tester.pump(const Duration(seconds: 3));
+    expect(_headerOpacity(tester), 0.0);
+
+    await tester.tapAt(_centerPoint());
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(_headerOpacity(tester), 1.0);
+
+    await tester.pump(const Duration(seconds: 3));
+    expect(_headerOpacity(tester), 0.0);
   });
 
   testWidgets('亮度/音量调节失败不中断播放与操作层', (tester) async {
@@ -263,6 +389,26 @@ Future<void> _pumpOverlay(
 
 Offset _centerPoint() => const Offset(400.0, 300.0);
 
+RenderBox _progressBarBox(WidgetTester tester) =>
+    tester.renderObject<RenderBox>(
+      find.byKey(MoviePreviewControlsOverlay.progressBarKey),
+    );
+
+Future<void> _tapProgressBar(
+  WidgetTester tester,
+  double fraction, {
+  double insetPixels = 0.0,
+}) async {
+  final box = _progressBarBox(tester);
+  final topLeft = box.localToGlobal(Offset.zero);
+  final dx = (box.size.width * fraction - insetPixels).clamp(
+    0.0,
+    box.size.width - 1.0,
+  );
+  await tester.tapAt(topLeft + Offset(dx, box.size.height / 2));
+  await tester.pump();
+}
+
 Future<void> _doubleTapAt(WidgetTester tester, Offset point) async {
   await tester.tapAt(point);
   await tester.pump(const Duration(milliseconds: 50));
@@ -295,6 +441,8 @@ class _FakePlayback implements MoviePreviewPlayback {
 
   @override
   ValueListenable<MoviePreviewPlaybackState> get state => _state;
+
+  void emit(MoviePreviewPlaybackState value) => _state.value = value;
 
   @override
   Widget buildView() => const SizedBox.expand();

@@ -29,10 +29,7 @@ class ActorMovieFilterSheet extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
             child: Row(
               children: [
-                Text(
-                  '筛选',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+                Text('筛选', style: Theme.of(context).textTheme.titleLarge),
                 const Spacer(),
                 PopupMenuButton<String>(
                   initialValue: controller.sortBy,
@@ -52,13 +49,10 @@ class ActorMovieFilterSheet extends StatelessWidget {
                 ),
                 if (controller.sortBy == 'release')
                   IconButton(
-                    tooltip:
-                        controller.orderBy == 'desc' ? '降序' : '升序',
+                    tooltip: controller.orderBy == 'desc' ? '降序' : '升序',
                     onPressed: controller.toggleOrder,
                     icon: Icon(
-                      controller.orderBy == 'desc'
-                          ? Icons.south
-                          : Icons.north,
+                      controller.orderBy == 'desc' ? Icons.south : Icons.north,
                     ),
                   ),
               ],
@@ -130,17 +124,14 @@ class _TagGroup extends StatelessWidget {
               for (final tag in tags)
                 FilterChip(
                   label: Text(
-                    showCount
-                        ? '${tag.name}(${tag.videosCount})'
-                        : tag.name,
+                    showCount ? '${tag.name}(${tag.videosCount})' : tag.name,
                   ),
                   selected: selectedIds.contains(tag.id),
                   onSelected: (_) => onToggle(tag.id),
                   showCheckmark: false,
                   visualDensity: VisualDensity.compact,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  labelPadding:
-                      const EdgeInsets.symmetric(horizontal: 6),
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 6),
                 ),
             ],
           ),

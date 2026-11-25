@@ -14,8 +14,7 @@ class JdSignature {
 
   /// 生成签名。[timestamp] 为 Unix 秒；测试时注入确定性时间戳。
   static String generate({int? timestamp}) {
-    final ts = timestamp ??
-        (DateTime.now().millisecondsSinceEpoch ~/ 1000);
+    final ts = timestamp ?? (DateTime.now().millisecondsSinceEpoch ~/ 1000);
     final hash = md5.convert(utf8.encode('$ts$_d1'));
     return '$ts.$_d2.${hash.toString()}';
   }

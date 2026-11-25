@@ -2,7 +2,9 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
 import 'package:jade/core/models/actor.dart';
+import 'package:jade/core/utils/user_facing_error.dart';
 import 'package:jade/core/widgets/actor_avatar_image.dart';
+import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/favorite_button.dart';
 import 'package:jade/core/widgets/movie_grid_view.dart';
 import 'package:jade/features/actors/services/actor_movie_controller.dart';
@@ -23,7 +25,9 @@ class _ActorDetailScreenState extends State<ActorDetailScreen> {
   ActorMovieController? _controller;
   ActorDetail? _detail;
   bool _isLoading = true;
-  String? _error;
+
+  /// 加载失败时保存原始异常，展示前经 [userFacingErrorMessage] 转成中文文案。
+  Object? _error;
   var _favoriteBusy = false;
 
   /// 切换收藏状态：未登录或正在请求时忽略。
@@ -68,6 +72,17 @@ class _ActorDetailScreenState extends State<ActorDetailScreen> {
   }
 
   Future<void> _load() async {
+    // 首次加载与页面内重试共用同一入口：先重置错误/加载态，
+    // 并释放上一轮影片控制器，避免重试后残留旧的监听与请求。
+    _controller?.dispose();
+    _controller = null;
+    _error = null;
+    if (mounted) {
+      setState(() => _isLoading = true);
+    } else {
+      _isLoading = true;
+    }
+
     final service = ActorService.tryCreate();
     if (service == null) {
       if (!mounted) return;
@@ -97,10 +112,11 @@ class _ActorDetailScreenState extends State<ActorDetailScreen> {
         _controller = controller;
         await controller.initialize();
       }
-    } catch (e) {
+    } catch (error, stackTrace) {
+      debugPrint('actor detail load failed: $error\n$stackTrace');
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = error;
         _isLoading = false;
       });
     }
@@ -141,7 +157,10 @@ class _ActorDetailScreenState extends State<ActorDetailScreen> {
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(title: const Text('演员详情')),
-        body: Center(child: Text(_error!)),
+        body: ErrorRetryWidget(
+          message: userFacingErrorMessage(_error!),
+          onRetry: _load,
+        ),
       );
     }
 

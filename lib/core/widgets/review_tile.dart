@@ -55,9 +55,13 @@ class _ReviewTileState extends State<ReviewTile> {
       auth = null;
     }
     if (auth == null || !auth.isLogged) {
-      _showSnackBar('请先登录', actionLabel: '去登录', onAction: () {
-        context.push('/login');
-      });
+      _showSnackBar(
+        '请先登录',
+        actionLabel: '去登录',
+        onAction: () {
+          context.push('/login');
+        },
+      );
       return;
     }
 
@@ -68,10 +72,9 @@ class _ReviewTileState extends State<ReviewTile> {
     }
     setState(() => _liking = true);
     try {
-      await ReviewApi(api).likeReview(
-        movieId: movie.id,
-        reviewId: widget.review.id,
-      );
+      await ReviewApi(
+        api,
+      ).likeReview(movieId: movie.id, reviewId: widget.review.id);
       if (!mounted) return;
       setState(() {
         _liked = true;

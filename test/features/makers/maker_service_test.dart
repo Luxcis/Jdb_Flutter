@@ -53,7 +53,8 @@ void main() {
   });
 }
 
-Future<({FakeAdapter adapter, MakerService service})> buildMakerFixture() async {
+Future<({FakeAdapter adapter, MakerService service})>
+buildMakerFixture() async {
   final preferences = await SharedPreferences.getInstance();
   final domainManager = await DomainManager.load(preferences);
   final adapter = FakeAdapter();

@@ -25,8 +25,7 @@ class _StartupApi implements StartupApi {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('A1/A2/A3: 豆腐块实时跟随深浅色切换（应用内与跟随系统）',
-      (tester) async {
+  testWidgets('A1/A2/A3: 豆腐块实时跟随深浅色切换（应用内与跟随系统）', (tester) async {
     SharedPreferences.setMockInitialValues({
       'key_baseurl': 'https://jdforrepam.com',
       'key_api_domains': ['https://jdforrepam.com'],

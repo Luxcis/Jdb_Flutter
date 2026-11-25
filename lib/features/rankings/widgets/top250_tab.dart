@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:jade/core/models/movie.dart';
 import 'package:jade/core/models/paged_result.dart';
 import 'package:jade/core/providers/auth_provider.dart';
+import 'package:jade/core/utils/user_facing_error.dart';
 import 'package:jade/core/widgets/error_retry_widget.dart';
 import 'package:jade/core/widgets/login_guide_card.dart';
 import 'package:jade/core/widgets/movie_list_tile.dart';
@@ -31,25 +32,26 @@ class _Top250TabState extends State<Top250Tab>
   late final PaginationController<MovieSummary> _controller =
       PaginationController(fetch: _fetchPage);
 
-  int get _logicalTotalPages =>
-      ((_maxRank - widget.filter.startRank + 1) / _pageSize).ceil();
-
   Future<PagedResult<MovieSummary>> _fetchPage(int page) async {
     final service = RankingService.tryCreate();
     if (service == null) return emptyMoviePage(page: page);
+    final requestStartRank = widget.filter.startRank + (page - 1) * _pageSize;
     final result = await service.getTop250(
-      startRank: widget.filter.startRank + (page - 1) * _pageSize,
+      startRank: requestStartRank,
       type: widget.filter.type,
       typeValue: widget.filter.typeValue,
       ignoreWatched: widget.filter.ignoreWatched,
       limit: _pageSize,
     );
-    final isLastPage =
-        result.items.length < _pageSize || page >= _logicalTotalPages;
+    // 开启「未标看过」后服务端会剔除已看影片，单页条目可能不足 _pageSize，
+    // 不能按「不足一页」判断末页；改按 start_rank 上限收敛：
+    // 下一批起始名次超过 250 或本页为空即结束，保证不会无限请求。
+    final nextStartRank = requestStartRank + _pageSize;
+    final exhausted = result.items.isEmpty || nextStartRank > _maxRank;
     return PagedResult(
       items: result.items,
       currentPage: page,
-      totalPages: isLastPage ? page : _logicalTotalPages,
+      totalPages: exhausted ? page : page + 1,
       total: _maxRank - widget.filter.startRank + 1,
     );
   }
@@ -102,7 +104,7 @@ class _Top250TabState extends State<Top250Tab>
       builder: (context, _) {
         if (_controller.error != null && _controller.items.isEmpty) {
           return ErrorRetryWidget(
-            message: _controller.error.toString(),
+            message: userFacingErrorMessage(_controller.error!),
             onRetry: _controller.refresh,
           );
         }
@@ -145,7 +147,7 @@ class _Top250TabState extends State<Top250Tab>
                     final movie = _controller.items[index];
                     return MovieListTile(
                       movie: movie,
-                      rank: widget.filter.startRank + index,
+                      rank: movie.ranking ?? widget.filter.startRank + index,
                       onTap: () => context.push('/movie/${movie.id}'),
                     );
                   },

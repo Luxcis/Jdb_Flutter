@@ -51,6 +51,22 @@ class CachedImage extends StatelessWidget {
     return '$endpoint$url';
   }
 
+  /// 与 [CachedNetworkImage] 内部一致的图片 provider。
+  ///
+  /// 传入 [memCacheWidth]/[memCacheHeight] 时用 [ResizeImage] 包装，使
+  /// [ImageSizeListener] 的尺寸测量与展示命中同一份有界解码结果；
+  /// 等比缩放不改变宽高比，尺寸回调仍然有效。
+  ImageProvider<Object> _imageProvider() {
+    final provider = CachedNetworkImageProvider(
+      _fullUrl,
+      cacheManager: JdbImageCacheManager.instance,
+    );
+    final cacheWidth = memCacheWidth;
+    final cacheHeight = memCacheHeight;
+    if (cacheWidth == null && cacheHeight == null) return provider;
+    return ResizeImage(provider, width: cacheWidth, height: cacheHeight);
+  }
+
   @override
   Widget build(BuildContext context) {
     // select 精确订阅：仅模糊开关变化时才重建。
@@ -109,10 +125,7 @@ class CachedImage extends StatelessWidget {
     final onSize = onImageSize;
     if (onSize == null) return image;
     return ImageSizeListener(
-      imageProvider: CachedNetworkImageProvider(
-        _fullUrl,
-        cacheManager: JdbImageCacheManager.instance,
-      ),
+      imageProvider: _imageProvider(),
       onImageSize: onSize,
       child: image,
     );

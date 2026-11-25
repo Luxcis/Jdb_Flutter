@@ -44,10 +44,10 @@ void main() {
 
   test('likeReview 正确替换路径中的 movie_id 与 review_id', () async {
     final fixture = await _createFixture();
-    fixture.adapter.enqueue(
-      '/api/v1/movies/m-42/reviews/r-7/like',
-      {'success': 1, 'data': null},
-    );
+    fixture.adapter.enqueue('/api/v1/movies/m-42/reviews/r-7/like', {
+      'success': 1,
+      'data': null,
+    });
 
     await fixture.api.likeReview(movieId: 'm-42', reviewId: 'r-7');
 
