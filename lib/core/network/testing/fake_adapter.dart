@@ -30,11 +30,7 @@ class FakeAdapter implements HttpClientAdapter {
 
   /// 同一 path 前 [count] 次请求抛 [error]，之后正常返回 enqueue 响应。
   /// 用于模拟连接级错误（如 `Connection reset by peer`）。
-  void throwFirst(
-    String path,
-    Object error, {
-    int count = 1,
-  }) {
+  void throwFirst(String path, Object error, {int count = 1}) {
     _throwSequences[path] = _ThrowStub(error: error, remaining: count);
   }
 

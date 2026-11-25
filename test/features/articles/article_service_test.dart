@@ -70,8 +70,7 @@ void main() {
         'success': 1,
         'data': {
           'articles': [
-            for (var i = 0; i < 48; i++)
-              {'id': i, 'title': 't$i'},
+            for (var i = 0; i < 48; i++) {'id': i, 'title': 't$i'},
           ],
           'current_page': 1,
         },

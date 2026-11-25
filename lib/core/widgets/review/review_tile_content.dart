@@ -4,7 +4,11 @@ import 'package:jade/core/widgets/movie_cover_image.dart';
 
 /// 评论卡片头部的影片信息区，点击跳转影片详情。
 class ReviewMovieHeader extends StatelessWidget {
-  const ReviewMovieHeader({super.key, required this.movie, required this.onTap});
+  const ReviewMovieHeader({
+    super.key,
+    required this.movie,
+    required this.onTap,
+  });
 
   final ReviewMovie movie;
   final VoidCallback onTap;
@@ -119,9 +123,7 @@ class ReviewLikeRow extends StatelessWidget {
                   label: liked ? '已点赞' : '点赞，当前 $likedCount 人已赞',
                   child: ExcludeSemantics(
                     child: Icon(
-                      liked
-                          ? Icons.thumb_up_alt
-                          : Icons.thumb_up_alt_outlined,
+                      liked ? Icons.thumb_up_alt : Icons.thumb_up_alt_outlined,
                       key: liked
                           ? const Key('review-liked-icon')
                           : const Key('review-unliked-icon'),

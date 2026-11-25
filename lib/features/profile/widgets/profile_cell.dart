@@ -3,7 +3,11 @@ import 'package:go_router/go_router.dart';
 
 /// 我的收藏等子页的 cell 列表脚手架：标题 + 分隔线列表。
 class ProfileCellScaffold extends StatelessWidget {
-  const ProfileCellScaffold({super.key, required this.title, required this.cells});
+  const ProfileCellScaffold({
+    super.key,
+    required this.title,
+    required this.cells,
+  });
 
   final String title;
   final List<ProfileCell> cells;

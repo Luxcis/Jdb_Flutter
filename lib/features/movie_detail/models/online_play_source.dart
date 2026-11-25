@@ -40,8 +40,9 @@ final class UrlTemplateOnlinePlaySource implements OnlinePlaySource {
   final String urlTemplate;
 
   @override
-  Uri buildUrl(String number) =>
-      Uri.parse(urlTemplate.replaceFirst('{number}', normalizeMovieNumber(number)));
+  Uri buildUrl(String number) => Uri.parse(
+    urlTemplate.replaceFirst('{number}', normalizeMovieNumber(number)),
+  );
 
   @override
   String toString() => 'UrlTemplateOnlinePlaySource($id)';

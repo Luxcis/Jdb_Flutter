@@ -3,7 +3,11 @@ import 'package:jade/features/rankings/models/top250_filter.dart';
 
 /// Top250 筛选底部弹窗：类型/年份 + 起始排名 + 是否忽略已看过。
 class Top250FilterSheet extends StatefulWidget {
-  const Top250FilterSheet({super.key, required this.value, required this.onChanged});
+  const Top250FilterSheet({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
 
   final Top250Filter value;
   final ValueChanged<Top250Filter> onChanged;

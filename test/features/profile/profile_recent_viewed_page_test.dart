@@ -64,15 +64,16 @@ Future<_FakeRecentViewedSource> _pumpPage(
   addTearDown(tester.view.resetDevicePixelRatio);
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
-  final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+  final auth = await AuthProvider.create(
+    prefs,
+    secure: InMemorySecureValueStore(),
+  );
   await auth.login(token: 'token', user: {'id': 1, 'username': 'tester'});
   final source = _FakeRecentViewedSource(multiplePages: multiplePages);
   await tester.pumpWidget(
     ChangeNotifierProvider<AuthProvider>.value(
       value: auth,
-      child: MaterialApp(
-        home: ProfileRecentViewedScreen(dataSource: source),
-      ),
+      child: MaterialApp(home: ProfileRecentViewedScreen(dataSource: source)),
     ),
   );
   await tester.pump();

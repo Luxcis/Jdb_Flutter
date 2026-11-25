@@ -91,7 +91,9 @@ void main() {
     final fixture = await _createFixture();
     fixture.adapter.enqueue(Endpoints.reviewsHotly, _response(20));
 
-    final result = await fixture.service.getHotReviews(period: ReviewPeriod.all);
+    final result = await fixture.service.getHotReviews(
+      period: ReviewPeriod.all,
+    );
 
     expect(result.currentPage, 1);
     expect(result.totalPages, 2);
@@ -101,7 +103,9 @@ void main() {
     final fixture = await _createFixture();
     fixture.adapter.enqueue(Endpoints.reviewsHotly, _response(5));
 
-    final result = await fixture.service.getHotReviews(period: ReviewPeriod.all);
+    final result = await fixture.service.getHotReviews(
+      period: ReviewPeriod.all,
+    );
 
     expect(result.currentPage, 1);
     expect(result.totalPages, 1);
@@ -111,7 +115,9 @@ void main() {
     final fixture = await _createFixture();
     fixture.adapter.enqueue(Endpoints.reviewsHotly, _response(0));
 
-    final result = await fixture.service.getHotReviews(period: ReviewPeriod.all);
+    final result = await fixture.service.getHotReviews(
+      period: ReviewPeriod.all,
+    );
 
     expect(result.items, isEmpty);
     expect(result.totalPages, 1);

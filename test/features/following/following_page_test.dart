@@ -20,12 +20,15 @@ class _FakeData implements FollowingTagsDataSource {
   _FakeData({this.unfollowError});
   final Object? unfollowError;
   @override
-  Future<FollowTagItem> follow({required String name, required String value}) async =>
-      FollowTagItem(id: 'n', name: name, value: value);
+  Future<FollowTagItem> follow({
+    required String name,
+    required String value,
+  }) async => FollowTagItem(id: 'n', name: name, value: value);
   @override
   Future<void> unfollow(String id) async {
     if (unfollowError != null) throw unfollowError!;
   }
+
   @override
   Future<List<FollowTagItem>> batchPush(List<FollowTagItem> tags) async => tags;
 }
@@ -48,10 +51,12 @@ Future<FollowingTagsProvider> _pumpPage(
   if (tags.isNotEmpty) {
     await provider.syncFromLogin(tags);
   }
-  await tester.pumpWidget(MultiProvider(
-    providers: [ChangeNotifierProvider.value(value: provider)],
-    child: const MaterialApp(home: FollowingScreen()),
-  ));
+  await tester.pumpWidget(
+    MultiProvider(
+      providers: [ChangeNotifierProvider.value(value: provider)],
+      child: const MaterialApp(home: FollowingScreen()),
+    ),
+  );
   return provider;
 }
 
@@ -76,17 +81,19 @@ void main() {
   });
 
   testWidgets('列表展示标签', (tester) async {
-    await _pumpPage(tester, tags: const [
-      FollowTagItem(id: '1', name: '有碼,森螢', value: '0:a:g1Q'),
-    ]);
+    await _pumpPage(
+      tester,
+      tags: const [FollowTagItem(id: '1', name: '有碼,森螢', value: '0:a:g1Q')],
+    );
     expect(find.text('有碼,森螢'), findsOneWidget);
     expect(find.text('0:a:g1Q'), findsOneWidget);
   });
 
   testWidgets('左滑取消关注成功：确认后该项被移除', (tester) async {
-    final provider = await _pumpPage(tester, tags: const [
-      FollowTagItem(id: '1', name: '有碼,森螢', value: '0:a:g1Q'),
-    ]);
+    final provider = await _pumpPage(
+      tester,
+      tags: const [FollowTagItem(id: '1', name: '有碼,森螢', value: '0:a:g1Q')],
+    );
     expect(find.text('有碼,森螢'), findsOneWidget);
     // 标签项无数量字段，不显示 (count)。
     expect(find.textContaining('(0)'), findsNothing);
@@ -101,9 +108,7 @@ void main() {
     final provider = await _pumpPage(
       tester,
       dataSource: _FakeData(unfollowError: StateError('boom')),
-      tags: const [
-        FollowTagItem(id: '1', name: '有碼,森螢', value: '0:a:g1Q'),
-      ],
+      tags: const [FollowTagItem(id: '1', name: '有碼,森螢', value: '0:a:g1Q')],
     );
     expect(find.text('有碼,森螢'), findsOneWidget);
 
@@ -116,9 +121,10 @@ void main() {
   });
 
   testWidgets('取消关注：确认框点取消后项保留', (tester) async {
-    final provider = await _pumpPage(tester, tags: const [
-      FollowTagItem(id: '1', name: '有碼,森螢', value: '0:a:g1Q'),
-    ]);
+    final provider = await _pumpPage(
+      tester,
+      tags: const [FollowTagItem(id: '1', name: '有碼,森螢', value: '0:a:g1Q')],
+    );
 
     await _swipeAndConfirm(tester, name: '有碼,森螢', confirm: false);
 

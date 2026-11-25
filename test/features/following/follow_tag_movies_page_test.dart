@@ -28,8 +28,10 @@ class _MemoryStore implements FollowingTagsStore {
 
 class _FakeData implements FollowingTagsDataSource {
   @override
-  Future<FollowTagItem> follow({required String name, required String value}) async =>
-      FollowTagItem(id: 'n', name: name, value: value);
+  Future<FollowTagItem> follow({
+    required String name,
+    required String value,
+  }) async => FollowTagItem(id: 'n', name: name, value: value);
   @override
   Future<void> unfollow(String id) async {}
   @override
@@ -54,11 +56,7 @@ void main() {
     api.setAdapterForTest(adapter);
     adapter.enqueue(Endpoints.moviesTags, {
       'success': 1,
-      'data': {
-        'movies': const [],
-        'current_page': 1,
-        'total_pages': 1,
-      },
+      'data': {'movies': const [], 'current_page': 1, 'total_pages': 1},
     });
     return (adapter, dm);
   }
@@ -76,10 +74,12 @@ void main() {
     if (tags.isNotEmpty) {
       await provider.syncFromLogin(tags);
     }
-    await tester.pumpWidget(MultiProvider(
-      providers: [ChangeNotifierProvider.value(value: provider)],
-      child: MaterialApp(home: FollowTagMoviesScreen(value: value)),
-    ));
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [ChangeNotifierProvider.value(value: provider)],
+        child: MaterialApp(home: FollowTagMoviesScreen(value: value)),
+      ),
+    );
   }
 
   testWidgets('排序仅含更新日期与发布日期两项', (tester) async {
@@ -104,9 +104,10 @@ void main() {
 
   testWidgets('导航栏标题使用关注标签名称', (tester) async {
     await setup();
-    await pumpPage(tester, tags: const [
-      FollowTagItem(id: '1', name: '有碼,森螢', value: '0:a:g1Q'),
-    ]);
+    await pumpPage(
+      tester,
+      tags: const [FollowTagItem(id: '1', name: '有碼,森螢', value: '0:a:g1Q')],
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('有碼,森螢'), findsOneWidget);

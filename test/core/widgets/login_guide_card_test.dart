@@ -6,10 +6,7 @@ void main() {
   testWidgets('LoginGuideCard 渲染提示信息和去登录按钮', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: LoginGuideCard(
-          message: '请登录查看',
-          loginPath: '/rankings',
-        ),
+        home: LoginGuideCard(message: '请登录查看', loginPath: '/rankings'),
       ),
     );
     await tester.pump();
@@ -20,9 +17,7 @@ void main() {
 
   testWidgets('LoginGuideCard 渲染锁图标', (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: LoginGuideCard(message: '请登录'),
-      ),
+      const MaterialApp(home: LoginGuideCard(message: '请登录')),
     );
     await tester.pump();
 

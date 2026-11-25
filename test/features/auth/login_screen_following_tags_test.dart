@@ -48,7 +48,10 @@ void main() {
   testWidgets('登录响应含 following_tags 时写入 provider 缓存', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+    final auth = await AuthProvider.create(
+      prefs,
+      secure: InMemorySecureValueStore(),
+    );
     final provider = FollowingTagsProvider(
       store: _MemoryStore1(),
       dataSource: _NoOpSource(),
@@ -122,7 +125,10 @@ void main() {
   testWidgets('登录响应 following_tags 含非 Map 元素时登录仍成功且按空列表处理', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+    final auth = await AuthProvider.create(
+      prefs,
+      secure: InMemorySecureValueStore(),
+    );
     final provider = FollowingTagsProvider(
       store: _MemoryStore1(),
       dataSource: _NoOpSource(),

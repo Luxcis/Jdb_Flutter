@@ -283,7 +283,9 @@ void main() {
     // 点击取消收藏成功 → 空心
     await tester.tap(find.byIcon(Icons.favorite));
     await tester.pumpAndSettle();
-    expect(favorites.setCollectedCalls, [(category: 'm', id: 'm1', collect: false)]);
+    expect(favorites.setCollectedCalls, [
+      (category: 'm', id: 'm1', collect: false),
+    ]);
     expect(find.byIcon(Icons.favorite_border), findsOneWidget);
 
     // 等待成功 SnackBar 消失，避免遮挡后续交互

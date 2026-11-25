@@ -160,7 +160,11 @@ class MovieReviewSortHeader extends StatelessWidget {
 
 /// 短评排序按钮组（最热 / 最新）。
 class MovieReviewSortBar extends StatelessWidget {
-  const MovieReviewSortBar({super.key, required this.sort, required this.onSortChanged});
+  const MovieReviewSortBar({
+    super.key,
+    required this.sort,
+    required this.onSortChanged,
+  });
 
   final MovieReviewSort sort;
   final ValueChanged<MovieReviewSort>? onSortChanged;

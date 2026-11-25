@@ -67,7 +67,11 @@ Widget detailTabDivider(BuildContext context) {
 
 /// 可滚动容器内的加载失败提示（包裹 [ErrorRetryWidget]，避免溢出）。
 class ScrollableTabError extends StatelessWidget {
-  const ScrollableTabError({super.key, required this.message, required this.onRetry});
+  const ScrollableTabError({
+    super.key,
+    required this.message,
+    required this.onRetry,
+  });
 
   final String message;
   final VoidCallback onRetry;

@@ -8,10 +8,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: FavoriteButton(
-            hasCollected: false,
-            onPressed: () => pressed++,
-          ),
+          body: FavoriteButton(hasCollected: false, onPressed: () => pressed++),
         ),
       ),
     );
@@ -26,10 +23,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: FavoriteButton(
-            hasCollected: true,
-            onPressed: () {},
-          ),
+          body: FavoriteButton(hasCollected: true, onPressed: () {}),
         ),
       ),
     );

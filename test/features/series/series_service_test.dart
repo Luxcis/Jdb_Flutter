@@ -103,7 +103,8 @@ void main() {
   });
 }
 
-Future<({FakeAdapter adapter, SeriesService service})> buildSeriesFixture() async {
+Future<({FakeAdapter adapter, SeriesService service})>
+buildSeriesFixture() async {
   final preferences = await SharedPreferences.getInstance();
   final domainManager = await DomainManager.load(preferences);
   final adapter = FakeAdapter();

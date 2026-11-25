@@ -16,7 +16,10 @@ Future<Map<String, dynamic>> _readBody(ResponseBody resp) async {
 void main() {
   test('FakeAdapter 按路径返回预设响应', () async {
     final adapter = FakeAdapter();
-    adapter.enqueue('/api/v1/x', {'success': 1, 'data': {'a': 1}});
+    adapter.enqueue('/api/v1/x', {
+      'success': 1,
+      'data': {'a': 1},
+    });
     final resp = await adapter.fetch(
       RequestOptions(path: '/api/v1/x'),
       null,

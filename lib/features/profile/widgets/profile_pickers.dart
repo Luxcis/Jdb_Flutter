@@ -58,10 +58,7 @@ class LinePickerSheet extends StatelessWidget {
   }
 }
 
-const githubProxyOptions = [
-  'https://hub.luxcis.top/',
-  'https://gh-proxy.com/',
-];
+const githubProxyOptions = ['https://hub.luxcis.top/', 'https://gh-proxy.com/'];
 
 /// GitHub 代理对应的展示文案。
 String githubProxyLabel(String proxy) {
@@ -80,9 +77,8 @@ class GithubProxyPickerSheet extends StatelessWidget {
   Future<void> _selectCustom(BuildContext sheetContext) async {
     final value = await showDialog<String>(
       context: sheetContext,
-      builder: (dialogContext) => CustomProxyDialog(
-        initialValue: settingsProvider.githubProxy,
-      ),
+      builder: (dialogContext) =>
+          CustomProxyDialog(initialValue: settingsProvider.githubProxy),
     );
     if (value == null) return;
     final normalized = normalizeGithubProxy(value.trim());
@@ -191,10 +187,7 @@ class _CustomProxyDialogState extends State<CustomProxyDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('取消'),
         ),
-        TextButton(
-          onPressed: _submit,
-          child: const Text('确定'),
-        ),
+        TextButton(onPressed: _submit, child: const Text('确定')),
       ],
     );
   }

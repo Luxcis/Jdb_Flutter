@@ -53,9 +53,7 @@ void main() {
 
     final page = find.byKey(const Key('image-gallery-page-1'));
     expect(page, findsOneWidget);
-    final image = tester.widget<CachedImage>(
-      page,
-    );
+    final image = tester.widget<CachedImage>(page);
     expect(image.fit, BoxFit.contain);
   });
 

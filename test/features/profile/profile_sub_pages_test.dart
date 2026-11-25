@@ -85,7 +85,14 @@ final class _CompletingTokenAuthenticationService
   }
 }
 
-Future<({AuthProvider auth, SharedPreferences prefs, InMemorySecureValueStore secure, void Function() dispose})>
+Future<
+  ({
+    AuthProvider auth,
+    SharedPreferences prefs,
+    InMemorySecureValueStore secure,
+    void Function() dispose,
+  })
+>
 _pumpSettings(
   WidgetTester tester, {
   required AppVersionService appVersionService,
@@ -187,7 +194,10 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final settings = await SettingsProvider.create(prefs);
     final theme = await ThemeProvider.create();
-    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+    final auth = await AuthProvider.create(
+      prefs,
+      secure: InMemorySecureValueStore(),
+    );
     await ApiClient.create(
       prefs: prefs,
       tokenProvider: auth,
@@ -236,7 +246,10 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final settings = await SettingsProvider.create(prefs);
     final theme = await ThemeProvider.create();
-    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+    final auth = await AuthProvider.create(
+      prefs,
+      secure: InMemorySecureValueStore(),
+    );
     await ApiClient.create(
       prefs: prefs,
       tokenProvider: auth,
@@ -282,7 +295,10 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final settings = await SettingsProvider.create(prefs);
     final theme = await ThemeProvider.create();
-    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+    final auth = await AuthProvider.create(
+      prefs,
+      secure: InMemorySecureValueStore(),
+    );
     await ApiClient.create(
       prefs: prefs,
       tokenProvider: auth,

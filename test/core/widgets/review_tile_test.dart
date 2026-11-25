@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart'
-    show RenderParagraph;
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart' show SystemChannels;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -18,18 +17,17 @@ Review _review({
   ReviewMovie? movie,
   String content = '评论内容',
   bool liked = false,
-}) =>
-    Review(
-      id: 'r1',
-      author: const ReviewAuthor(name: '作者A'),
-      watchedCount: 3,
-      score: 4.5,
-      content: content,
-      likedCount: 17,
-      liked: liked,
-      createdAt: '2016-09-24',
-      movie: movie,
-    );
+}) => Review(
+  id: 'r1',
+  author: const ReviewAuthor(name: '作者A'),
+  watchedCount: 3,
+  score: 4.5,
+  content: content,
+  likedCount: 17,
+  liked: liked,
+  createdAt: '2016-09-24',
+  movie: movie,
+);
 
 const _movie = ReviewMovie(
   id: 'm1',
@@ -149,9 +147,7 @@ void main() {
 
     expect(find.text('ABC-001 / 2026-08-05'), findsOneWidget);
     expect(find.text('评论内容'), findsOneWidget);
-    final title = tester.widget<Text>(
-      find.text('这是一个非常长的影片标题需要省略显示最多两行'),
-    );
+    final title = tester.widget<Text>(find.text('这是一个非常长的影片标题需要省略显示最多两行'));
     expect(title.maxLines, 2);
     expect(title.overflow, TextOverflow.ellipsis);
   });
@@ -168,9 +164,7 @@ void main() {
   testWidgets('无影片信息点击点赞提示无法点赞且不发请求', (tester) async {
     final auth = await _loggedInAuth();
     final adapter = await _setupFakeApi();
-    await tester.pumpWidget(
-      _wrapWithAuth(ReviewTile(review: _review()), auth),
-    );
+    await tester.pumpWidget(_wrapWithAuth(ReviewTile(review: _review()), auth));
 
     await tester.tap(find.byKey(const Key('review-like-button')));
     await tester.pump();
@@ -207,9 +201,7 @@ void main() {
   });
 
   testWidgets('短评论不显示展开收起按钮', (tester) async {
-    await tester.pumpWidget(
-      _wrap(ReviewTile(review: _review(content: '短评论'))),
-    );
+    await tester.pumpWidget(_wrap(ReviewTile(review: _review(content: '短评论'))));
 
     expect(find.text('短评论'), findsOneWidget);
     expect(find.text('展开'), findsNothing);
@@ -252,7 +244,9 @@ void main() {
         GoRoute(
           path: '/reviews',
           builder: (_, _) => Scaffold(
-            body: ReviewTile(review: _review(movie: _movie, content: longText)),
+            body: ReviewTile(
+              review: _review(movie: _movie, content: longText),
+            ),
           ),
         ),
         GoRoute(
@@ -283,8 +277,9 @@ void main() {
       routes: [
         GoRoute(
           path: '/reviews',
-          builder: (_, _) =>
-              Scaffold(body: ReviewTile(review: _review(movie: _movie))),
+          builder: (_, _) => Scaffold(
+            body: ReviewTile(review: _review(movie: _movie)),
+          ),
         ),
         GoRoute(
           path: '/movie/:id',
@@ -312,18 +307,14 @@ void main() {
     expect(collapsed.maxLines, 5);
 
     // 点击正文（非按钮）展开
-    await tester.tapAt(
-      tester.getCenter(find.text(longText)).translate(0, -20),
-    );
+    await tester.tapAt(tester.getCenter(find.text(longText)).translate(0, -20));
     await tester.pump();
 
     final expanded = tester.widget<Text>(find.text(longText));
     expect(expanded.maxLines, isNull);
 
     // 再点收起
-    await tester.tapAt(
-      tester.getCenter(find.text(longText)).translate(0, -20),
-    );
+    await tester.tapAt(tester.getCenter(find.text(longText)).translate(0, -20));
     await tester.pump();
 
     final collapsedAgain = tester.widget<Text>(find.text(longText));
@@ -361,9 +352,7 @@ void main() {
   });
 
   testWidgets('无 Provider 包裹点击点赞按未登录处理不崩溃', (tester) async {
-    await tester.pumpWidget(
-      _wrap(ReviewTile(review: _review(movie: _movie))),
-    );
+    await tester.pumpWidget(_wrap(ReviewTile(review: _review(movie: _movie))));
 
     await tester.tap(find.byKey(const Key('review-like-button')));
     await tester.pump();
@@ -374,16 +363,13 @@ void main() {
   testWidgets('已登录点赞成功数字加一且图标变实心', (tester) async {
     final auth = await _loggedInAuth();
     final adapter = await _setupFakeApi();
-    adapter.enqueue(
-      '/api/v1/movies/m1/reviews/r1/like',
-      {'success': 1, 'data': null},
-    );
+    adapter.enqueue('/api/v1/movies/m1/reviews/r1/like', {
+      'success': 1,
+      'data': null,
+    });
 
     await tester.pumpWidget(
-      _wrapWithAuth(
-        ReviewTile(review: _review(movie: _movie)),
-        auth,
-      ),
+      _wrapWithAuth(ReviewTile(review: _review(movie: _movie)), auth),
     );
 
     expect(find.text('17'), findsOneWidget);
@@ -399,16 +385,13 @@ void main() {
     final auth = await _loggedInAuth();
     final adapter = await _setupFakeApi();
     adapter.responseDelay = const Duration(seconds: 2);
-    adapter.enqueue(
-      '/api/v1/movies/m1/reviews/r1/like',
-      {'success': 1, 'data': null},
-    );
+    adapter.enqueue('/api/v1/movies/m1/reviews/r1/like', {
+      'success': 1,
+      'data': null,
+    });
 
     await tester.pumpWidget(
-      _wrapWithAuth(
-        ReviewTile(review: _review(movie: _movie)),
-        auth,
-      ),
+      _wrapWithAuth(ReviewTile(review: _review(movie: _movie)), auth),
     );
 
     await tester.tap(find.byKey(const Key('review-like-button')));
@@ -431,15 +414,13 @@ void main() {
   testWidgets('已点赞评论点击无效果', (tester) async {
     final auth = await _loggedInAuth();
     final adapter = await _setupFakeApi();
-    adapter.enqueue(
-      '/api/v1/movies/m1/reviews/r1/like',
-      {'success': 1, 'data': null},
-    );
+    adapter.enqueue('/api/v1/movies/m1/reviews/r1/like', {
+      'success': 1,
+      'data': null,
+    });
     await tester.pumpWidget(
       _wrapWithAuth(
-        ReviewTile(
-          review: _review(movie: _movie, liked: true),
-        ),
+        ReviewTile(review: _review(movie: _movie, liked: true)),
         auth,
       ),
     );
@@ -457,10 +438,10 @@ void main() {
   testWidgets('点赞失败提示且数字不变', (tester) async {
     final auth = await _loggedInAuth();
     final adapter = await _setupFakeApi();
-    adapter.enqueue(
-      '/api/v1/movies/m1/reviews/r1/like',
-      {'success': 0, 'message': '失败'},
-    );
+    adapter.enqueue('/api/v1/movies/m1/reviews/r1/like', {
+      'success': 0,
+      'message': '失败',
+    });
 
     await tester.pumpWidget(
       _wrapWithAuth(ReviewTile(review: _review(movie: _movie)), auth),
@@ -501,7 +482,9 @@ void main() {
 
   testWidgets('长按拉丁单词复制完整单词', (tester) async {
     _mockClipboard(tester);
-    await tester.pumpWidget(_wrap(ReviewTile(review: _review(content: 'flutter'))));
+    await tester.pumpWidget(
+      _wrap(ReviewTile(review: _review(content: 'flutter'))),
+    );
 
     await tester.longPress(find.text('flutter'));
     await tester.pumpAndSettle();
@@ -599,9 +582,9 @@ void main() {
       MaterialApp(
         home: Builder(
           builder: (context) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              textScaler: const TextScaler.linear(1.3),
-            ),
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(1.3)),
             child: Scaffold(
               body: ReviewTile(review: _review(content: longText)),
             ),

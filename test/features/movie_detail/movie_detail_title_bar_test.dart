@@ -35,10 +35,7 @@ double _titleBarHeight(WidgetTester tester) {
 
 Text _expandedTitle(WidgetTester tester) {
   return tester.widget<Text>(
-    find.descendant(
-      of: find.byKey(_titleTextKey),
-      matching: find.byType(Text),
-    ),
+    find.descendant(of: find.byKey(_titleTextKey), matching: find.byType(Text)),
   );
 }
 

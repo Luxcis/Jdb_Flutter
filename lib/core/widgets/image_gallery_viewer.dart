@@ -16,7 +16,7 @@ class ImageGalleryViewer extends StatefulWidget {
   final List<String> urls;
   final int initialIndex;
   final Widget Function(BuildContext context, String url, int index)?
-      itemBuilder;
+  itemBuilder;
 
   @override
   State<ImageGalleryViewer> createState() => _ImageGalleryViewerState();
@@ -85,12 +85,16 @@ class _ImageGalleryViewerState extends State<ImageGalleryViewer> {
                 maxScale: PhotoViewComputedScale.contained * 4,
                 child: SizedBox.expand(
                   child:
-                      widget.itemBuilder?.call(context, widget.urls[index], index) ??
-                          CachedImage(
-                            widget.urls[index],
-                            key: Key('image-gallery-page-$index'),
-                            fit: BoxFit.contain,
-                          ),
+                      widget.itemBuilder?.call(
+                        context,
+                        widget.urls[index],
+                        index,
+                      ) ??
+                      CachedImage(
+                        widget.urls[index],
+                        key: Key('image-gallery-page-$index'),
+                        fit: BoxFit.contain,
+                      ),
                 ),
               ),
             );

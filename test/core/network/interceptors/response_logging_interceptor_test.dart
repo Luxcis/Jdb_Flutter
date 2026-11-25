@@ -274,7 +274,10 @@ void main() {
         final response = Response<dynamic>(
           requestOptions: options,
           statusCode: 200,
-          data: {'success': 1, 'data': {'token': 't1'}},
+          data: {
+            'success': 1,
+            'data': {'token': 't1'},
+          },
         );
 
         interceptor.onResponse(response, _ResponseHandler());

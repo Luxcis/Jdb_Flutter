@@ -26,12 +26,14 @@ void main() {
 
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  Future<(AuthProvider, _FakeTokenAuthenticationService)>
-      loggedInService({
+  Future<(AuthProvider, _FakeTokenAuthenticationService)> loggedInService({
     required Future<Map<String, dynamic>> Function(String) onAuthenticate,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+    final auth = await AuthProvider.create(
+      prefs,
+      secure: InMemorySecureValueStore(),
+    );
     await auth.login(
       token: 'session-token',
       user: {'id': 1, 'username': 'cached-user'},
@@ -42,7 +44,10 @@ void main() {
 
   test('未登录时返回 skipped 且不调用接口', () async {
     final prefs = await SharedPreferences.getInstance();
-    final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+    final auth = await AuthProvider.create(
+      prefs,
+      secure: InMemorySecureValueStore(),
+    );
     final tokenAuthentication = _FakeTokenAuthenticationService(
       (_) => throw StateError('不应调用'),
     );
@@ -85,8 +90,9 @@ void main() {
 
   test('鉴权失败时登出并返回 expired', () async {
     final (auth, tokenAuthentication) = await loggedInService(
-      onAuthenticate: (_) async =>
-          throw const ApiException(action: ApiErrorActions.jwtVerificationError),
+      onAuthenticate: (_) async => throw const ApiException(
+        action: ApiErrorActions.jwtVerificationError,
+      ),
     );
     final service = ApiSessionRefreshService(
       auth: auth,

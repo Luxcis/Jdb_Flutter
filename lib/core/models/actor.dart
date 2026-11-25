@@ -45,11 +45,7 @@ class ActorTagItem {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'videos_count': videosCount,
-    };
+    return {'id': id, 'name': name, 'videos_count': videosCount};
   }
 }
 

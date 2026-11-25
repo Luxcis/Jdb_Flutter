@@ -9,12 +9,7 @@ import 'package:jade/core/widgets/sort_select.dart';
 import 'package:jade/features/home/screens/latest_movies_screen.dart';
 import 'package:jade/features/home/services/latest_movies_service.dart';
 
-typedef _Request = ({
-  String type,
-  String filterBy,
-  String sortBy,
-  int page,
-});
+typedef _Request = ({String type, String filterBy, String sortBy, int page});
 
 class _RecordingSource implements LatestMoviesDataSource {
   _RecordingSource({this.multiplePages = false});
@@ -29,12 +24,7 @@ class _RecordingSource implements LatestMoviesDataSource {
     required String sortBy,
     int page = 1,
   }) async {
-    requests.add((
-      type: type,
-      filterBy: filterBy,
-      sortBy: sortBy,
-      page: page,
-    ));
+    requests.add((type: type, filterBy: filterBy, sortBy: sortBy, page: page));
     final itemCount = multiplePages ? (page == 1 ? 48 : 12) : 1;
     return PagedResult(
       items: [
@@ -182,10 +172,7 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(
-      source.requests
-          .where((request) => request.type == '1')
-          .last
-          .filterBy,
+      source.requests.where((request) => request.type == '1').last.filterBy,
       'subtitle',
     );
     // 切回 Tab A 不重新加载（keepAlive 保留）

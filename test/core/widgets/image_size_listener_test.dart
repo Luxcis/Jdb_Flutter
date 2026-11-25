@@ -131,7 +131,11 @@ void main() {
     final image = await _createTestImage(tester, 100, 100);
     final provider = _FixedSizeImageProvider(image, synchronous: true);
     final sizes = <Size>[];
-    await _pumpListener(tester, imageProvider: provider, onImageSize: sizes.add);
+    await _pumpListener(
+      tester,
+      imageProvider: provider,
+      onImageSize: sizes.add,
+    );
     expect(sizes, [const Size(100, 100)]);
 
     // MediaQuery 变化触发 didChangeDependencies 重新订阅，同一尺寸不应重复回调。

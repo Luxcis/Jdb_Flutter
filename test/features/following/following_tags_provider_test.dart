@@ -22,14 +22,19 @@ class _FakeData implements FollowingTagsDataSource {
   List<String> unfollowed = [];
   int followCalls = 0;
   @override
-  Future<FollowTagItem> follow({required String name, required String value}) async {
+  Future<FollowTagItem> follow({
+    required String name,
+    required String value,
+  }) async {
     followCalls++;
     return FollowTagItem(id: 'new', name: name, value: value);
   }
+
   @override
   Future<void> unfollow(String id) async {
     unfollowed.add(id);
   }
+
   @override
   Future<List<FollowTagItem>> batchPush(List<FollowTagItem> tags) async {
     if (batchPushError != null) throw batchPushError!;
@@ -51,7 +56,10 @@ void main() {
 
   test('follow 插入头部并持久化', () async {
     final store = _MemoryStore();
-    final provider = FollowingTagsProvider(store: store, dataSource: _FakeData());
+    final provider = FollowingTagsProvider(
+      store: store,
+      dataSource: _FakeData(),
+    );
     await provider.initialize();
     await provider.follow(name: 'a', value: 'va');
     await provider.follow(name: 'b', value: 'vb');
@@ -74,17 +82,24 @@ void main() {
   });
 
   test('syncFromRemote 用远程覆盖本地且失败保留本地', () async {
-    final store = _MemoryStore(const [FollowTagItem(id: '1', name: 'a', value: 'va')]);
-    final provider = FollowingTagsProvider(store: store, dataSource: _FakeData(
-      remote: const [FollowTagItem(id: '9', name: 'x', value: 'vx')],
-    ));
+    final store = _MemoryStore(const [
+      FollowTagItem(id: '1', name: 'a', value: 'va'),
+    ]);
+    final provider = FollowingTagsProvider(
+      store: store,
+      dataSource: _FakeData(
+        remote: const [FollowTagItem(id: '9', name: 'x', value: 'vx')],
+      ),
+    );
     await provider.initialize();
     await provider.syncFromRemote();
     expect(provider.tags.single.id, '9');
   });
 
   test('syncFromRemote 失败保留本地缓存且不抛出', () async {
-    final store = _MemoryStore(const [FollowTagItem(id: '1', name: 'a', value: 'va')]);
+    final store = _MemoryStore(const [
+      FollowTagItem(id: '1', name: 'a', value: 'va'),
+    ]);
     final provider = FollowingTagsProvider(
       store: store,
       dataSource: _FakeData(batchPushError: StateError('boom')),
@@ -96,8 +111,13 @@ void main() {
   });
 
   test('clear 清空列表与缓存', () async {
-    final store = _MemoryStore(const [FollowTagItem(id: '1', name: 'a', value: 'va')]);
-    final provider = FollowingTagsProvider(store: store, dataSource: _FakeData());
+    final store = _MemoryStore(const [
+      FollowTagItem(id: '1', name: 'a', value: 'va'),
+    ]);
+    final provider = FollowingTagsProvider(
+      store: store,
+      dataSource: _FakeData(),
+    );
     await provider.initialize();
     await provider.clear();
     expect(provider.tags, isEmpty);

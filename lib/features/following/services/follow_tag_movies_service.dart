@@ -11,10 +11,11 @@ class FollowTagMoviesService {
   final ApiClient _api;
 
   /// 装配点判空：未登录/无连接时返回 null，由调用方保留空态分支。
-  static FollowTagMoviesService? resolve() => switch (ApiClient.instanceOrNull) {
-    final api? => FollowTagMoviesService(api),
-    null => null,
-  };
+  static FollowTagMoviesService? resolve() =>
+      switch (ApiClient.instanceOrNull) {
+        final api? => FollowTagMoviesService(api),
+        null => null,
+      };
 
   /// 按关注标签的 `filter_by` 表达式分页取影片。
   Future<PagedResult<MovieSummary>> getMovies({
@@ -31,13 +32,17 @@ class FollowTagMoviesService {
       'page': page,
       'limit': limit,
     };
-    final response = await _api.get(Endpoints.moviesTags, queryParameters: query);
+    final response = await _api.get(
+      Endpoints.moviesTags,
+      queryParameters: query,
+    );
     return apiPageResult(
       response.data,
       keys: const ['movies'],
       page: page,
       pageSize: limit,
-      fromJson: (json) => MovieSummary.fromJson(normalizeMovieSummaryJson(json)),
+      fromJson: (json) =>
+          MovieSummary.fromJson(normalizeMovieSummaryJson(json)),
     );
   }
 }

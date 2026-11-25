@@ -12,7 +12,12 @@ class FilterGroup {
 }
 
 class FilterDrawer extends StatefulWidget {
-  const FilterDrawer({super.key, required this.schema, required this.onChanged, this.initialValues});
+  const FilterDrawer({
+    super.key,
+    required this.schema,
+    required this.onChanged,
+    this.initialValues,
+  });
   final FilterSchema schema;
   final void Function(Map<String, String>) onChanged;
   final Map<String, String>? initialValues;
@@ -37,21 +42,33 @@ class _FilterDrawerState extends State<FilterDrawer> {
         child: Column(
           children: [
             Expanded(
-              child: ListView(children: widget.schema.groups.map((g) =>
-                ExpansionTile(title: Text(g.label), children: g.items.map((item) =>
-                  // ignore: deprecated_member_use
-                  RadioListTile<String>(
-                    title: Text(item.label),
-                    value: item.value,
-                    // ignore: deprecated_member_use
-                    groupValue: _values[g.label],
-                    // ignore: deprecated_member_use
-                    onChanged: (v) {
-                      setState(() { if (v != null) _values[g.label] = v; });
-                    },
-                  ),
-                ).toList()),
-              ).toList()),
+              child: ListView(
+                children: widget.schema.groups
+                    .map(
+                      (g) => ExpansionTile(
+                        title: Text(g.label),
+                        children: g.items
+                            .map(
+                              (item) =>
+                                  // ignore: deprecated_member_use
+                                  RadioListTile<String>(
+                                    title: Text(item.label),
+                                    value: item.value,
+                                    // ignore: deprecated_member_use
+                                    groupValue: _values[g.label],
+                                    // ignore: deprecated_member_use
+                                    onChanged: (v) {
+                                      setState(() {
+                                        if (v != null) _values[g.label] = v;
+                                      });
+                                    },
+                                  ),
+                            )
+                            .toList(),
+                      ),
+                    )
+                    .toList(),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.all(16),

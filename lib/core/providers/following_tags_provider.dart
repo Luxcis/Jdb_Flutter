@@ -23,8 +23,7 @@ class FollowingTagsProvider extends ChangeNotifier {
   bool get initialized => _initialized;
 
   /// 是否已关注具备该 value 的标签。
-  bool isFollowing(String value) =>
-      _tags.any((tag) => tag.value == value);
+  bool isFollowing(String value) => _tags.any((tag) => tag.value == value);
 
   /// 初始化：从本地缓存加载。幂等。
   Future<void> initialize() async {
@@ -70,7 +69,10 @@ class FollowingTagsProvider extends ChangeNotifier {
       notifyListeners();
     } catch (error) {
       // 网络错误保留本地缓存，不抛出以免打断启动。
-      developer.log('FollowingTags sync failed: $error', name: 'following.tags');
+      developer.log(
+        'FollowingTags sync failed: $error',
+        name: 'following.tags',
+      );
     }
   }
 

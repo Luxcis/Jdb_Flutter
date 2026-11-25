@@ -145,24 +145,26 @@ void main() {
     });
   });
 
-  test('uncollectActor 发送 POST collect_actions multipart 表单 uncollect', () async {
-    final fixture = await buildFavoritesFixture();
-    fixture.adapter.enqueue('${Endpoints.actors}/a1/collect_actions', {
-      'success': 1,
-      'data': null,
-    });
+  test(
+    'uncollectActor 发送 POST collect_actions multipart 表单 uncollect',
+    () async {
+      final fixture = await buildFavoritesFixture();
+      fixture.adapter.enqueue('${Endpoints.actors}/a1/collect_actions', {
+        'success': 1,
+        'data': null,
+      });
 
-    await fixture.service.uncollectActor('a1');
+      await fixture.service.uncollectActor('a1');
 
-    final request = fixture.adapter.requests.single;
-    expect(request.method, 'POST');
-    expect(request.path, '${Endpoints.actors}/a1/collect_actions');
-    expect(request.data, isA<FormData>());
-    expect(
-      Map.fromEntries((request.data as FormData).fields),
-      {'name': 'uncollect'},
-    );
-  });
+      final request = fixture.adapter.requests.single;
+      expect(request.method, 'POST');
+      expect(request.path, '${Endpoints.actors}/a1/collect_actions');
+      expect(request.data, isA<FormData>());
+      expect(Map.fromEntries((request.data as FormData).fields), {
+        'name': 'uncollect',
+      });
+    },
+  );
 
   test('uncollectMaker/Series/Director/Code/List 发送对应 POST', () async {
     final fixture = await buildFavoritesFixture();
@@ -192,10 +194,9 @@ void main() {
       expect(request.method, 'POST');
       expect(request.path, entry.key);
       expect(request.data, isA<FormData>());
-      expect(
-        Map.fromEntries((request.data as FormData).fields),
-        {'name': 'uncollect'},
-      );
+      expect(Map.fromEntries((request.data as FormData).fields), {
+        'name': 'uncollect',
+      });
     }
   });
 
@@ -224,10 +225,13 @@ void main() {
 
   test('getHasCollected 请求失败返回 null', () async {
     final fixture = await buildFavoritesFixture();
-    fixture.adapter.throwFirst('/api/v1/lists/l1', DioException(
-      requestOptions: RequestOptions(path: '/api/v1/lists/l1'),
-      error: 'connection reset',
-    ));
+    fixture.adapter.throwFirst(
+      '/api/v1/lists/l1',
+      DioException(
+        requestOptions: RequestOptions(path: '/api/v1/lists/l1'),
+        error: 'connection reset',
+      ),
+    );
 
     final result = await fixture.service.getHasCollected('l', 'l1');
 
@@ -271,10 +275,9 @@ void main() {
     expect(request.method, 'POST');
     expect(request.path, '/api/v1/actors/a1/collect_actions');
     expect(request.data, isA<FormData>());
-    expect(
-      Map.fromEntries((request.data as FormData).fields),
-      {'name': 'collect'},
-    );
+    expect(Map.fromEntries((request.data as FormData).fields), {
+      'name': 'collect',
+    });
   });
 
   test('setCollected collect=false 发送 uncollect multipart 表单', () async {
@@ -290,9 +293,8 @@ void main() {
     expect(request.method, 'POST');
     expect(request.path, '/api/v1/actors/a1/collect_actions');
     expect(request.data, isA<FormData>());
-    expect(
-      Map.fromEntries((request.data as FormData).fields),
-      {'name': 'uncollect'},
-    );
+    expect(Map.fromEntries((request.data as FormData).fields), {
+      'name': 'uncollect',
+    });
   });
 }

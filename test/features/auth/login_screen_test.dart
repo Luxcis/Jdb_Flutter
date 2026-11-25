@@ -168,7 +168,11 @@ void main() {
 
   testWidgets('reason=expired 时显示登录过期提示条', (tester) async {
     final store = _MemoryLoginCredentialStore();
-    await _pumpLogin(tester, credentialStore: store, initialLocation: '/login?reason=expired');
+    await _pumpLogin(
+      tester,
+      credentialStore: store,
+      initialLocation: '/login?reason=expired',
+    );
 
     expect(find.text('登录已过期，请重新登录'), findsOneWidget);
   });
@@ -190,7 +194,10 @@ Future<({AuthProvider auth, FakeAdapter adapter, GoRouter router})> _pumpLogin(
 }) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
-  final auth = await AuthProvider.create(prefs, secure: InMemorySecureValueStore());
+  final auth = await AuthProvider.create(
+    prefs,
+    secure: InMemorySecureValueStore(),
+  );
   final api = await ApiClient.create(
     prefs: prefs,
     tokenProvider: auth,

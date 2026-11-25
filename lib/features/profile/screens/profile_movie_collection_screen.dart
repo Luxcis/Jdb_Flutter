@@ -20,7 +20,8 @@ class ProfileMovieCollectionScreen extends StatefulWidget {
       _ProfileMovieCollectionScreenState();
 }
 
-class _ProfileMovieCollectionScreenState extends State<ProfileMovieCollectionScreen>
+class _ProfileMovieCollectionScreenState
+    extends State<ProfileMovieCollectionScreen>
     with TickerProviderStateMixin {
   late final TabController _tabController;
   late final PaginationController<MovieSummary> _controller;
